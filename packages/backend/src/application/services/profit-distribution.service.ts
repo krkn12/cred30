@@ -13,12 +13,34 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
             return { success: false, message: 'Não há lucros acumulados para distribuir' };
         }
 
-        // Contar cotas ativas
-        const totalQuotasResult = await pool.query("SELECT COUNT(*) FROM quotas WHERE status = 'ACTIVE'");
-        const totalQuotas = parseInt(totalQuotasResult.rows[0].count);
+        // Contar cotas ativas ELEGÍVEIS (Usuário tem empréstimo OU jogou)
+        // Regra: "quem tiver cota e ter feito emprestimo ou jogou e pra ganha nas cotas"
 
-        if (totalQuotas === 0) {
-            // Se não há cotas, todo o lucro vai para o caixa operacional
+        const eligibleUsersQuery = `
+            WITH EligibleUsers AS (
+                SELECT DISTINCT u.id 
+                FROM users u
+                LEFT JOIN loans l ON l.user_id = u.id
+                LEFT JOIN transactions t ON t.user_id = u.id
+                WHERE l.id IS NOT NULL OR t.type = 'GAME_BET'
+            )
+            SELECT q.user_id, COUNT(q.id) as quota_count
+            FROM quotas q
+            JOIN EligibleUsers eu ON q.user_id = eu.id
+            WHERE q.status = 'ACTIVE'
+            GROUP BY q.user_id
+        `;
+
+        const eligibleResult = await pool.query(eligibleUsersQuery);
+        const usersWithQuotas = eligibleResult.rows;
+
+        // Calcular total de cotas elegíveis
+        const eligibleTotalQuotas = usersWithQuotas.reduce((acc, row) => acc + parseInt(row.quota_count), 0);
+
+        console.log('DEBUG - Cotas elegíveis para dividendo:', eligibleTotalQuotas);
+
+        if (eligibleTotalQuotas === 0) {
+            // Se não há cotas elegíveis, todo o lucro vai para o caixa operacional
             const profitToTransfer = parseFloat(config.profit_pool);
 
             if (profitToTransfer > 0) {
@@ -29,35 +51,30 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
 
                 return {
                     success: true,
-                    message: `Não há cotas ativas. Lucro de R$ ${profitToTransfer.toFixed(2)} transferido para o Caixa Operacional.`,
+                    message: `Não há cotistas elegíveis (ativos em empréstimos/jogos). Lucro de R$ ${profitToTransfer.toFixed(2)} revertido para o Caixa Operacional.`,
                     data: { transferredToBalance: profitToTransfer }
                 };
             }
 
-            return { success: false, message: 'Não há cotas ativas e sem lucro para distribuir.' };
+            return { success: false, message: 'Não há cotas elegíveis e sem lucro para distribuir.' };
         }
 
         const profit = parseFloat(config.profit_pool);
         const totalForUsers = profit * DIVIDEND_USER_SHARE;
         const totalForMaintenance = profit - totalForUsers;
-        const dividendPerQuota = totalForUsers / totalQuotas;
+
+        // O valor por cota aumenta, pois o bolo é dividido por menos gente (apenas elegíveis)
+        const dividendPerQuota = totalForUsers / eligibleTotalQuotas;
 
         // Distribuir para usuários - OTIMIZADO
         // Buscar APENAS usuários que têm cotas, já com a contagem
-        const usersWithQuotasResult = await pool.query(
-            `SELECT user_id, COUNT(*) as quota_count 
-       FROM quotas 
-       WHERE status = 'ACTIVE' 
-       GROUP BY user_id`
-        );
-
-        const usersWithQuotas = usersWithQuotasResult.rows;
+        // A lógica de usersWithQuotas já foi atualizada para pegar apenas elegíveis
         let distributedTotal = 0;
 
-        console.log('DEBUG - Iniciando distribuição automática de dividendos:', {
+        console.log('DEBUG - Iniciando distribuição automática de dividendos (Elegíveis):', {
             totalProfit: profit,
             totalForUsers,
-            totalQuotas,
+            eligibleTotalQuotas,
             dividendPerQuota,
             usersCount: usersWithQuotas.length
         });
@@ -80,7 +97,7 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
                     [
                         user.user_id,
                         userShare,
-                        `Dividendos (85% do Lucro): R$ ${dividendPerQuota.toFixed(4)}/cota (${quotaCount} cotas)`
+                        `Dividendos (85% do Lucro): R$ ${dividendPerQuota.toFixed(4)}/cota (${quotaCount} cotas) - Elegível`
                     ]
                 );
 
@@ -112,7 +129,7 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
                 distributed: distributedTotal,
                 maintenance: finalMaintenance,
                 perQuota: dividendPerQuota,
-                totalQuotas,
+                eligibleTotalQuotas,
                 usersBenefited: usersWithQuotas.length
             },
         };
