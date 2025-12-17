@@ -1,0 +1,20 @@
+services:
+  # Backend App
+  - type: web
+    name: cred30-backend
+    runtime: node
+    plan: free
+    buildCommand: |
+      curl -fsSL https://bun.sh/install | bash
+      export PATH="$HOME/.bun/bin:$PATH"
+      cd packages/backend && bun install
+    startCommand: |
+      export PATH="$HOME/.bun/bin:$PATH"
+      cd packages/backend && bun run src/index.ts
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: NODE_ENV
+        value: production
