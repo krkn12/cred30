@@ -87,6 +87,7 @@ async function startServer() {
     app.route('/api/transactions', transactionRoutes);
     app.route('/api/admin', adminRoutes);
     app.route('/api/withdrawals', withdrawalRoutes);
+    app.route('/api/games', gamesRoutes);
     // Rota de health check
     app.get('/api/health', (c) => {
       return c.json({ status: 'ok', timestamp: new Date().toISOString() });
