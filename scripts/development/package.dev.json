@@ -1,0 +1,48 @@
+{
+  "name": "cred30-dev",
+  "version": "1.0.0-dev",
+  "description": "Cred30 - Versão de Desenvolvimento Zero-Cost",
+  "scripts": {
+    "setup": "npm install && cd backend && npm install",
+    "db:start": "docker-compose -f docker-compose.local.yml up -d postgres",
+    "db:stop": "docker-compose -f docker-compose.local.yml stop",
+    "db:reset": "cd backend && npm run db-reset",
+    "db:seed": "cd backend && npm run seed",
+    "backend:dev": "cd backend && npm run dev",
+    "backend:dev-simple": "cd backend && npm run dev-simple",
+    "backend:build": "cd backend && npm run build",
+    "backend:start": "cd backend && npm run start",
+    "frontend:dev": "npm run dev",
+    "frontend:build": "npm run build",
+    "frontend:preview": "npm run preview",
+    "dev": "concurrently \"npm run backend:dev\" \"npm run frontend:dev\"",
+    "dev-simple": "concurrently \"npm run backend:dev-simple\" \"npm run frontend:dev\"",
+    "test": "npm run test",
+    "ngrok": "ngrok http 3001",
+    "quick-start": "npm run setup && npm run db:start && npm run db:seed && npm run dev",
+    "health": "curl http://localhost:3001/api/health && echo '✅ Backend OK' || echo '❌ Backend Error'",
+    "logs:backend": "cd backend && npm run dev 2>&1 | tee backend.log",
+    "logs:db": "docker-compose -f docker-compose.local.yml logs postgres",
+    "clean": "rm -rf node_modules backend/node_modules frontend/dist backend/dist",
+    "help": "echo 'Available scripts: setup, db:start, db:stop, db:reset, db:seed, backend:dev, frontend:dev, dev, test, ngrok, quick-start, health, logs:backend, logs:db, clean'"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "ngrok": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "keywords": [
+    "fintech",
+    "finance",
+    "investment",
+    "loans",
+    "nodejs",
+    "typescript",
+    "postgresql"
+  ],
+  "author": "Cred30 Development Team",
+  "license": "MIT"
+}

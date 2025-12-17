@@ -1,0 +1,17 @@
+﻿version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: cred30-postgres
+    environment:
+      POSTGRES_DB: cred30
+      POSTGRES_USER: cred30user
+      POSTGRES_PASSWORD: cred30pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

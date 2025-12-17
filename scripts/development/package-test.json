@@ -1,0 +1,38 @@
+{
+  "name": "cred30-auth-test",
+  "version": "1.0.0",
+  "description": "Script automatizado para teste de fluxo de autenticação do sistema Cred30",
+  "main": "test-auth-flow.js",
+  "type": "module",
+  "scripts": {
+    "test": "node test-auth-flow.js",
+    "test:multiple": "node test-auth-flow.js --multiple 5",
+    "test:single": "node test-auth-flow.js",
+    "help": "node test-auth-flow.js --help"
+  },
+  "keywords": [
+    "authentication",
+    "jwt",
+    "test",
+    "automation",
+    "api",
+    "cred30"
+  ],
+  "author": "Sistema Cred30",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "."
+  },
+  "bugs": {
+    "url": "."
+  },
+  "homepage": "."
+}

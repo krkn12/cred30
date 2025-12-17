@@ -1,0 +1,28 @@
+[Unit]
+Description=Ngrok URL Monitor Service
+Documentation=https://github.com/your-repo/cred30/scripts/README-NGROK-MONITOR.md
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=your-username
+Group=your-username
+WorkingDirectory=/path/to/your/project/cred30
+ExecStart=/bin/bash /path/to/your/project/cred30/scripts/ngrok-url-monitor.sh
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ngrok-monitor
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/path/to/your/project/cred30
+
+[Install]
+WantedBy=multi-user.target

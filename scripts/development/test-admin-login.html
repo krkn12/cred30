@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Login Admin - Cred30</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        h1 {
+            color: #22d3ee;
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #94a3b8;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.8);
+            color: white;
+            font-size: 16px;
+        }
+        button {
+            background: linear-gradient(135deg, #22d3ee, #0891b2);
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(34, 211, 238, 0.3);
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: rgba(148, 163, 184, 0.1);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        .success {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.3);
+            color: #10b981;
+        }
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+        .instructions {
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(148, 163, 184, 0.1);
+            border-radius: 8px;
+        }
+        .btn-test {
+            margin-top: 15px;
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        .btn-save {
+            margin-top: 10px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+        .btn-clear {
+            margin-top: 10px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        .token-code {
+            word-break: break-all;
+            background: rgba(0,0,0,0.2);
+            padding: 5px;
+            border-radius: 3px;
+            display: block;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Teste Login Administrador</h1>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" value="josiassm701@gmail.com" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Senha:</label>
+                <input type="password" id="password" placeholder="Digite sua senha" required>
+            </div>
+            <div class="form-group">
+                <label for="secretPhrase">Frase Secreta:</label>
+                <input type="text" id="secretPhrase" value="kaka" required>
+            </div>
+            <button type="submit">🚀 Fazer Login</button>
+        </form>
+        
+        <div id="result" class="result" style="display: none;"></div>
+        
+        <div class="instructions">
+            <h3>📋 Instruções:</h3>
+            <ol>
+                <li>Digite sua senha no campo acima</li>
+                <li>Clique em "Fazer Login"</li>
+                <li>Se o login for bem-sucedido, copie o token gerado</li>
+                <li>Use o token para testar o acesso admin</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const secretPhrase = document.getElementById('secretPhrase').value;
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password, secretPhrase }),
+                });
+                
+                const data = await response.json();
+                
+                resultDiv.style.display = 'block';
+                
+                if (data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ Login Successful!</h3>
+                        <p><strong>User:</strong> ${data.data.user.name}</p>
+                        <p><strong>Email:</strong> ${data.data.user.email}</p>
+                        <p><strong>Is Admin:</strong> ${data.data.user.isAdmin}</p>
+                        <p><strong>Token:</strong> <code class="token-code">${data.data.token}</code></p>
+                        <button onclick="testAdminAccess('${data.data.token}')" class="btn-test">🧪 Testar Acesso Admin</button>
+                        <button onclick="saveToken('${data.data.token}')" class="btn-save">💾 Salvar Token no LocalStorage</button>
+                    `;
+                    
+                    // Salvar automaticamente
+                    localStorage.setItem('authToken', data.data.token);
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `
+                        <h3>❌ Login Failed!</h3>
+                        <p><strong>Error:</strong> ${data.message}</p>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Network Error!</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                `;
+            }
+        });
+        
+        function testAdminAccess(token) {
+            fetch('http://localhost:3001/api/admin/dashboard', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.success ? '✅ Acesso admin funcionando!' : '❌ Acesso admin negado: ' + data.message);
+            })
+            .catch(error => {
+                alert('❌ Erro ao testar acesso: ' + error.message);
+            });
+        }
+        
+        function saveToken(token) {
+            localStorage.setItem('authToken', token);
+            alert('✅ Token salvo no localStorage! Você pode agora acessar a aplicação principal.');
+            window.location.href = '/';
+        }
+        
+        // Verificar se já tem um token salvo
+        window.addEventListener('load', () => {
+            const savedToken = localStorage.getItem('authToken');
+            if (savedToken) {
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result';
+                resultDiv.innerHTML = `
+                    <h3>💾 Token Encontrado!</h3>
+                    <p>Você já tem um token salvo. Quer testá-lo?</p>
+                    <button onclick="testAdminAccess('${savedToken}')" class="btn-test">🧪 Testar Acesso Admin</button>
+                    <button onclick="localStorage.removeItem('authToken'); location.reload();" class="btn-clear">🗑️ Limpar Token</button>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+FROM oven/bun:latest
+
+WORKDIR /app
+
+# Instalar dependencias
+COPY package.json bun.lock ./
+RUN bun install
+
+# Copiar codigo fonte
+COPY . .
+
+# Expor porta
+EXPOSE 3001
+
+# Comando para desenvolvimento
+CMD ["bun", "run", "dev"]

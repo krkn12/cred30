@@ -1,0 +1,91 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: cred30-db-ngrok
+    environment:
+      POSTGRES_DB: cred30
+      POSTGRES_USER: cred30user
+      POSTGRES_PASSWORD: cred30pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cred30user -d cred30"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: cred30-backend-ngrok
+    environment:
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: cred30user
+      DB_PASSWORD: cred30pass
+      DB_DATABASE: cred30
+      PORT: 3001
+      JWT_SECRET: ngrok-dev-secret-key-123456789
+      QUOTA_PRICE: 50
+      LOAN_INTEREST_RATE: 0.2
+      PENALTY_RATE: 0.4
+      ADMIN_PIX_KEY: admin@pix.local
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: npm run dev-simple
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: cred30-frontend-ngrok
+    environment:
+      VITE_API_URL: http://localhost:3001/api
+      VITE_ENV: development
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run dev
+
+  # Redis para cache
+  redis:
+    image: redis:7-alpine
+    container_name: cred30-redis-ngrok
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: cred30-network-ngrok
