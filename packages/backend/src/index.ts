@@ -8,6 +8,7 @@ import { loanRoutes } from './presentation/http/routes/loans.routes';
 import { transactionRoutes } from './presentation/http/routes/transactions.routes';
 import { adminRoutes } from './presentation/http/routes/admin.routes';
 import { withdrawalRoutes } from './presentation/http/routes/withdrawals.routes';
+import { gamesRoutes } from './presentation/http/routes/games.routes';
 import { pool, initializeDatabase, setDbPool } from './infrastructure/database/postgresql/connection/pool';
 import { initializeScheduler } from './scheduler';
 
@@ -15,22 +16,9 @@ const app = new Hono();
 
 // Middleware para CORS
 app.use('*', cors({
-  origin: [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:3001',
-    'http://127.0.0.1:3001',
-    'http://localhost:3002',
-    'http://127.0.0.1:3002',
-    'http://localhost:3003',
-    'http://127.0.0.1:3003',
-    'https://33efd838e74b.ngrok-free.app',
-    'https://cred30-prod-app-2025.web.app',
-    'https://cred30-prod-app-2025.firebaseapp.com',
-    'https://cred30-backend.onrender.com'
-  ],
+  origin: '*',
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'Expires'],
+  allowHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'Expires', 'X-Requested-With', 'Accept', 'Origin'],
   credentials: true,
 }));
 
