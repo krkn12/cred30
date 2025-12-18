@@ -15,6 +15,7 @@ import { executeInTransaction, updateUserBalance, createTransaction, updateTrans
 import { distributeProfits } from '../../../application/services/profit-distribution.service';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
 import { calculateGatewayCost } from '../../../shared/utils/financial.utils';
+import { simulatePaymentApproval } from '../../../infrastructure/gateways/mercadopago.service';
 
 interface PaymentApprovalResult {
   success: boolean;
@@ -50,6 +51,11 @@ const actionSchema = z.object({
   }),
   type: z.enum(['TRANSACTION', 'LOAN']),
   action: z.enum(['APPROVE', 'REJECT']),
+});
+
+const simulateMpSchema = z.object({
+  paymentId: z.string(),
+  transactionId: z.string()
 });
 
 // Dashboard administrativo

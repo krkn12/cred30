@@ -96,6 +96,23 @@ const AdminView = ({ state, onRefresh, onLogout }: {
     }
   };
 
+  const handleSimulateMpPayment = async (paymentId: string, transactionId: string) => {
+    try {
+      if (!confirm('Deseja simular a aprovação deste pagamento no Mercado Pago Sandbox?')) return;
+
+      const response = await apiService.post('/admin/simulate-mp-payment', { paymentId, transactionId });
+
+      if (response.success) {
+        alert('Sucesso! O pagamento foi aprovado no Sandbox e a transação foi processada.');
+        await onRefresh();
+      } else {
+        alert('Erro: ' + response.message);
+      }
+    } catch (error: any) {
+      alert('Erro ao simular: ' + error.message);
+    }
+  };
+
   const handleRejectPayment = async (transactionId: string) => {
     try {
       // Importar apiService dinamicamente removido - uso de import estático
@@ -607,6 +624,17 @@ const AdminView = ({ state, onRefresh, onLogout }: {
                         </div>
                       )}
                     </div>
+
+                    {/* Botão de Simulação Mercado Pago (Apenas se houver mp_id) */}
+                    {metadata.mp_id && (
+                      <button
+                        onClick={() => handleSimulateMpPayment(metadata.mp_id, t.id)}
+                        className="w-full mt-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
+                        title="Simular pagamento aprovado no Mercado Pago"
+                      >
+                        <ShieldCheck size={14} /> Simular Pagamento (Sandbox)
+                      </button>
+                    )}
                   </div>
                   <div className="flex gap-2 ml-4">
                     {isLoanPayment && canApprovePayment ? (
@@ -1269,17 +1297,23 @@ const InvestView = ({ onBuy }: { onBuy: (qty: number, method: 'PIX' | 'BALANCE' 
       {/* Main Action Button */}
       <button
         type="button"
-        onClick={() => setShowConfirm(true)}
+        onClick={() => {
+          if (method === 'CARD') {
+            handlePurchase();
+          } else {
+            setShowConfirm(true);
+          }
+        }}
         className="relative z-[100] w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)]"
       >
-        Confirmar Compra
+        {method === 'CARD' ? 'Ir para Pagamento Seguro' : 'Confirmar Compra'}
       </button>
 
       {/* Confirmation Modal */}
       {showConfirm && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[110] p-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[110] p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowConfirm(false); }}>
           <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 w-full max-w-sm relative animate-fade-in">
-            <button title="Fechar" onClick={() => setShowConfirm(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white"><XIcon size={20} /></button>
+            <button title="Fechar" onClick={() => setShowConfirm(false)} className="absolute top-4 right-4 text-zinc-400 hover:text-white bg-zinc-800 p-1.5 rounded-full z-10"><XIcon size={24} /></button>
 
             <h3 className="text-xl font-bold text-white mb-4">Finalizar Compra</h3>
 
@@ -1319,6 +1353,13 @@ const InvestView = ({ onBuy }: { onBuy: (qty: number, method: 'PIX' | 'BALANCE' 
                 </button>
               </>
             )}
+
+            <button
+              onClick={() => setShowConfirm(false)}
+              className="w-full mt-3 py-2 text-zinc-500 hover:text-white text-sm transition-colors"
+            >
+              Cancelar e Voltar
+            </button>
           </div>
         </div>
       )}
@@ -1536,9 +1577,9 @@ const PortfolioView = ({ quotas, hasLoans, onSell, onSellAll }: { quotas: Quota[
 
       {/* Confirmation Modal */}
       {showConfirm && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[110] p-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[110] p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowConfirm(false); }}>
           <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 w-full max-w-sm relative animate-fade-in">
-            <button title="Fechar" onClick={() => setShowConfirm(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white"><XIcon size={20} /></button>
+            <button title="Fechar" onClick={() => setShowConfirm(false)} className="absolute top-4 right-4 text-zinc-400 hover:text-white bg-zinc-800 p-1.5 rounded-full z-10"><XIcon size={24} /></button>
 
             <h3 className="text-xl font-bold text-white mb-4">{modalTitle || 'Confirmar Resgate'}</h3>
 
@@ -1572,6 +1613,13 @@ const PortfolioView = ({ quotas, hasLoans, onSell, onSellAll }: { quotas: Quota[
 
             <button onClick={handleConfirm} className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-3 rounded-xl transition border border-zinc-600">
               Confirmar Resgate
+            </button>
+
+            <button
+              onClick={() => setShowConfirm(false)}
+              className="w-full mt-3 py-2 text-zinc-500 hover:text-white text-sm transition-colors"
+            >
+              Cancelar e Voltar
             </button>
           </div>
         </div>
@@ -1827,7 +1875,7 @@ const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalance, cur
 
       {/* Payment Modal Rendered OUTSIDE the loop for Z-Index safety */}
       {selectedLoan && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={(e) => { if (e.target === e.currentTarget) setPayModalId(null); }}>
           <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 w-full max-w-sm">
             <h3 className="text-xl font-bold text-white mb-4">Confirmar Pagamento</h3>
             <p className="text-zinc-400 text-sm mb-6">
@@ -1882,8 +1930,14 @@ const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalance, cur
               </div>
             </div>
 
-            <button onClick={() => { onPay(selectedLoan.id, false, payMethod); setPayModalId(null); }} className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 rounded-xl mb-3">
-              Confirmar Pagamento {payMethod.toUpperCase()}
+            <button
+              onClick={() => {
+                onPay(selectedLoan.id, false, payMethod);
+                setPayModalId(null);
+              }}
+              className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-4 rounded-xl mb-3 shadow-lg shadow-emerald-500/20 transition-all font-display tracking-tight"
+            >
+              {payMethod === 'card' ? 'Pagar com Cartão' : 'Gerar PIX copia e cola'}
             </button>
 
             <button onClick={() => setPayModalId(null)} className="w-full text-zinc-500 py-2 text-sm">Cancelar</button>
@@ -1893,7 +1947,7 @@ const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalance, cur
 
       {/* Installment Payment Modal */}
       {installmentModalData && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={(e) => { if (e.target === e.currentTarget) setInstallmentModalData(null); }}>
           <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 w-full max-w-sm">
             <h3 className="text-xl font-bold text-white mb-4">Pagar Parcela</h3>
             <p className="text-zinc-400 text-sm mb-6">
@@ -1956,9 +2010,9 @@ const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalance, cur
                 onPayInstallment(installmentModalData.loanId, installmentModalData.installmentAmount, false, payMethod);
                 setInstallmentModalData(null);
               }}
-              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl mb-3"
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-xl mb-3 shadow-lg shadow-emerald-500/20 transition-all font-display tracking-tight"
             >
-              Confirmar Pagamento {payMethod.toUpperCase()}
+              {payMethod === 'card' ? 'Pagar com Cartão' : 'Gerar PIX copia e cola'}
             </button>
 
             <button onClick={() => setInstallmentModalData(null)} className="w-full text-zinc-500 py-2 text-sm">Cancelar</button>
@@ -2183,6 +2237,14 @@ export default function App() {
     details: {}
   });
 
+  const [showSuccess, setShowSuccess] = useState<{ isOpen: boolean, title: string, message: string }>({
+    isOpen: false,
+    title: '',
+    message: ''
+  });
+
+  const [isProcessing, setIsProcessing] = useState(false);
+
   useEffect(() => {
     loadData();
     const handleAuthExpired = () => setState(prev => ({ ...prev, currentUser: null }));
@@ -2237,7 +2299,11 @@ export default function App() {
           description: `Compra de ${qty} cota(s)`
         });
       } else {
-        alert('Operação realizada com sucesso!');
+        setShowSuccess({
+          isOpen: true,
+          title: 'Sucesso!',
+          message: 'Suas cotas foram adquiridas e já estão rendendo!'
+        });
         setCurrentView('portfolio');
       }
     } catch (error: any) {
@@ -2250,7 +2316,11 @@ export default function App() {
       if (!confirm('Vender cota?')) return;
       await sellQuota(quotaId);
       await refreshState();
-      alert('Cota vendida!');
+      setShowSuccess({
+        isOpen: true,
+        title: 'Venda Realizada',
+        message: 'O valor foi creditado no seu saldo.'
+      });
     } catch (error: any) { alert(error.message); }
   };
 
@@ -2308,7 +2378,11 @@ export default function App() {
           description: `Pagamento de Empréstimo`
         });
       } else {
-        alert('Pagamento enviado!');
+        setShowSuccess({
+          isOpen: true,
+          title: 'Pagamento OK!',
+          message: 'Seu empréstimo foi atualizado com sucesso.'
+        });
       }
     } catch (e: any) { alert(e.message); }
   };
@@ -2340,7 +2414,11 @@ export default function App() {
           description: `Pagamento de Parcela`
         });
       } else {
-        alert('Pagamento processado!');
+        setShowSuccess({
+          isOpen: true,
+          title: 'Parcela Paga!',
+          message: 'O pagamento da sua parcela foi registrado.'
+        });
       }
     } catch (e: any) { alert(e.message); }
   }
@@ -2483,14 +2561,37 @@ export default function App() {
                   }
 
                   await refreshState();
-                  alert('Pagamento realizado com sucesso! Aguarde a aprovação automática do sistema.');
                   setCardModalData(prev => ({ ...prev, isOpen: false }));
+                  setShowSuccess({
+                    isOpen: true,
+                    title: 'Pagamento Recebido!',
+                    message: 'Seu pagamento com cartão foi processado. A ativação no sistema ocorre em instantes.'
+                  });
                   if (cardModalData.type === 'QUOTA') setCurrentView('portfolio');
                 } catch (e: any) {
                   throw new Error(e.message || 'Erro ao processar pagamento com cartão');
                 }
               }}
             />
+
+            {showSuccess.isOpen && (
+              <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[300] p-4 animate-in fade-in duration-300" onClick={(e) => { if (e.target === e.currentTarget) setShowSuccess(prev => ({ ...prev, isOpen: false })); }}>
+                <div className="bg-surface border border-primary-500/30 rounded-3xl p-8 w-full max-w-sm text-center shadow-[0_0_40px_rgba(6,182,212,0.15)] relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-500 to-emerald-500"></div>
+                  <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 animate-in zoom-in duration-500 delay-100">
+                    <Check className="text-emerald-400" size={40} />
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2">{showSuccess.title}</h3>
+                  <p className="text-zinc-400 leading-relaxed mb-8">{showSuccess.message}</p>
+                  <button
+                    onClick={() => setShowSuccess(prev => ({ ...prev, isOpen: false }))}
+                    className="w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-4 rounded-xl transition-all shadow-lg"
+                  >
+                    Entendido
+                  </button>
+                </div>
+              </div>
+            )}
           </Layout>
         } />
       </Routes>
