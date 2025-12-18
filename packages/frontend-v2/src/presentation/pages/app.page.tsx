@@ -29,7 +29,6 @@ const AdminView = ({ state, onRefresh, onLogout }: {
   useEffect(() => {
     const fetchPending = async () => {
       try {
-        setIsLoading(true);
         const result = await getPendingItems();
         setPending(result);
       } catch (error) {
@@ -2328,10 +2327,24 @@ export default function App() {
 
   useEffect(() => {
     loadData();
+
+    // Auto-refresh: Atualiza os dados a cada 15 segundos automaticamente
+    const interval = setInterval(() => {
+      // Só atualiza se o usuário estiver logado e a aba estiver ativa (visível)
+      if (state.currentUser && !document.hidden) {
+        refreshState();
+        console.log('Dados atualizados automaticamente...');
+      }
+    }, 15000);
+
     const handleAuthExpired = () => setState(prev => ({ ...prev, currentUser: null }));
     window.addEventListener('auth-expired', handleAuthExpired);
-    return () => window.removeEventListener('auth-expired', handleAuthExpired);
-  }, []);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('auth-expired', handleAuthExpired);
+    };
+  }, [state.currentUser?.id]); // Reinicia se o usuário mudar
 
   const loadData = async () => {
     try {
