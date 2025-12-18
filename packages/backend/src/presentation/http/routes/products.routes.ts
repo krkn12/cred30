@@ -212,19 +212,52 @@ productsRoutes.post('/fetch-metadata', authMiddleware, adminMiddleware, async (c
 
         const getTitle = () => {
             const match = html.match(/<title>([^<]*)<\/title>/i);
-            return match ? match[1] : '';
+            return match ? match[1].trim() : '';
         }
+
+        // Tentar extrair preço
+        const getPrice = () => {
+            // 1. Meta tags comuns de e-commerce
+            const metaPrice = getMeta('product:price:amount') ||
+                getMeta('og:price:amount') ||
+                getMeta('product:amount');
+            if (metaPrice) return parseFloat(metaPrice.replace(',', '.'));
+
+            // 2. Tentar buscar no Schema.org JSON-LD
+            try {
+                const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi);
+                if (jsonLdMatch) {
+                    for (const script of jsonLdMatch) {
+                        const content = script.replace(/<script.*?>|<\/script>/gi, '');
+                        const json = JSON.parse(content);
+
+                        // Pode ser um objeto simples ou um array
+                        const items = Array.isArray(json) ? json : [json];
+                        for (const item of items) {
+                            if (item['@type'] === 'Product' || item['@type'] === 'Offer') {
+                                const price = item.offers?.price || item.price;
+                                if (price) return parseFloat(String(price).replace(',', '.'));
+                            }
+                        }
+                    }
+                }
+            } catch (e) { }
+
+            return null;
+        };
 
         let title = getMeta('og:title') || getMeta('twitter:title') || getTitle();
         let description = getMeta('og:description') || getMeta('description') || getMeta('twitter:description');
         let image = getMeta('og:image') || getMeta('twitter:image');
+        let price = getPrice();
 
         return c.json({
             success: true,
             data: {
-                title: title || '',
-                description: description || '',
-                imageUrl: image || ''
+                title: (title || '').trim(),
+                description: (description || '').trim(),
+                imageUrl: (image || '').trim(),
+                price: price
             }
         });
 

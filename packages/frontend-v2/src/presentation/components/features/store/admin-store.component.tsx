@@ -39,6 +39,7 @@ export const AdminStoreManager: React.FC = () => {
             if (meta.title) setTitle(meta.title);
             if (meta.description) setDescription(meta.description.substring(0, 500));
             if (meta.imageUrl) setImageUrl(meta.imageUrl);
+            if (meta.price) setPrice(String(meta.price));
         } catch (error) {
             alert('Não foi possível buscar dados automaticamente. Tente preencher manualmente.');
         } finally {
