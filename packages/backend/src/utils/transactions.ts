@@ -19,26 +19,26 @@ export interface CreateTransactionParams {
 
 // Executar operações dentro de uma transação
 export async function executeInTransaction(
-  pool: Pool, 
+  pool: Pool,
   callback: (client: PoolClient) => Promise<any>
 ): Promise<TransactionResult> {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
-    
+
     const result = await callback(client);
-    
+
     await client.query('COMMIT');
-    
+
     return { success: true, data: result };
   } catch (error) {
     await client.query('ROLLBACK');
-    
+
     console.error('Erro na transação:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Erro desconhecido' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
     };
   } finally {
     client.release();
@@ -52,10 +52,10 @@ export async function updateUserBalance(
   amount: number,
   operation: 'credit' | 'debit'
 ): Promise<void> {
-  const query = operation === 'credit' 
+  const query = operation === 'credit'
     ? 'UPDATE users SET balance = balance + $1 WHERE id = $2'
     : 'UPDATE users SET balance = balance - $1 WHERE id = $2';
-  
+
   await client.query(query, [amount, userId]);
 }
 
@@ -86,19 +86,19 @@ export async function updateTransactionStatus(
   try {
     const result = await client.query(
       `UPDATE transactions 
-       SET status = $1, updated_at = CURRENT_TIMESTAMP
+       SET status = $1, processed_at = CURRENT_TIMESTAMP
        WHERE id = $2 AND status = $3
        RETURNING id`,
       [newStatus, transactionId, currentStatus]
     );
-    
+
     if (result.rows.length === 0) {
       return {
         success: false,
         error: 'Transação não encontrada ou já foi processada'
       };
     }
-    
+
     return { success: true };
   } catch (error) {
     return {
@@ -122,7 +122,7 @@ export async function getUserTransactions(
      LIMIT $2 OFFSET $3`,
     [userId, limit, offset]
   );
-  
+
   return result.rows;
 }
 
@@ -137,16 +137,16 @@ export async function getPendingTransactions(
     LEFT JOIN users u ON t.user_id = u.id
     WHERE t.status = 'PENDING'
   `;
-  
+
   const params: any[] = [];
-  
+
   if (type) {
     query += ' AND t.type = $1';
     params.push(type);
   }
-  
+
   query += ' ORDER BY t.created_at DESC';
-  
+
   const result = await pool.query(query, params);
   return result.rows;
 }
@@ -158,7 +158,7 @@ export async function calculateSystemBalance(pool: Pool): Promise<number> {
      FROM quotas`,
     [50] // QUOTA_PRICE
   );
-  
+
   return parseFloat(result.rows[0].total_quotas_value);
 }
 
@@ -166,28 +166,28 @@ export async function calculateSystemBalance(pool: Pool): Promise<number> {
 export function validateWithdrawalAmount(amount: number, balance: number): TransactionResult {
   const MIN_WITHDRAWAL = 10;
   const MAX_WITHDRAWAL = 50000;
-  
+
   if (amount < MIN_WITHDRAWAL) {
     return {
       success: false,
       error: `Valor mínimo de saque é R$ ${MIN_WITHDRAWAL.toFixed(2)}`
     };
   }
-  
+
   if (amount > MAX_WITHDRAWAL) {
     return {
       success: false,
       error: `Valor máximo de saque é R$ ${MAX_WITHDRAWAL.toFixed(2)}`
     };
   }
-  
+
   if (amount > balance) {
     return {
       success: false,
       error: 'Saldo insuficiente para saque'
     };
   }
-  
+
   return { success: true };
 }
 
@@ -195,6 +195,6 @@ export function validateWithdrawalAmount(amount: number, balance: number): Trans
 export function calculateWithdrawalFee(amount: number): number {
   const FEE_PERCENTAGE = 0.02;
   const FEE_FIXED = 5.00;
-  
+
   return Math.max(amount * FEE_PERCENTAGE, FEE_FIXED);
 }
