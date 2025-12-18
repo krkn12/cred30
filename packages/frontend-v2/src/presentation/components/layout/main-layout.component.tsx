@@ -1,32 +1,83 @@
-import React from 'react';
-import { LogOut, Home, PieChart, DollarSign, Settings, TrendingUp, ArrowUpFromLine } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { LogOut, Home, PieChart, DollarSign, Settings, TrendingUp, ArrowUpFromLine, Gamepad2, ShoppingBag } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { User } from '../../../domain/types/common.types';
 
 interface LayoutProps {
   children: React.ReactNode;
   user: User | null;
   currentView: string;
-  onChangeView: (view: string) => void;
+  onChangeView: (view: any) => void;
   onLogout: () => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onChangeView, onLogout }) => {
+  const navigate = useNavigate();
+  const [installPrompt, setInstallPrompt] = React.useState<any>(null);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = () => {
+    if (installPrompt) {
+      installPrompt.prompt();
+      setInstallPrompt(null);
+    }
+  };
+
+  const handleNavigation = (view: string) => {
+    onChangeView(view);
+    navigate(`/app/${view}`);
+  }
+
+  // Sincronizar URL inicial com estado
+  useEffect(() => {
+    navigate(`/app/${currentView}`);
+  }, []);
+
   if (!user) return <div className="min-h-screen bg-background text-white flex flex-col justify-center py-12 sm:px-6 lg:px-8">{children}</div>;
 
   const navItems = [
     { id: 'dashboard', label: 'Início', icon: Home },
+    { id: 'store', label: 'Loja', icon: ShoppingBag },
     { id: 'invest', label: 'Investir', icon: TrendingUp },
-    { id: 'portfolio', label: 'Carteira', icon: PieChart },
-    { id: 'loans', label: 'Empréstimos', icon: DollarSign },
+    { id: 'games', label: 'Jogos', icon: Gamepad2 },
+    { id: 'portfolio', label: 'Carteira', icon: PieChart }, // Removi "Portfolio" duplicado se houver
+    { id: 'loans', label: 'Empréstimos', icon: DollarSign }, // Removi "Emprestimos" duplicado se houver
     { id: 'withdraw', label: 'Sacar', icon: ArrowUpFromLine },
   ];
 
   return (
     <div className="min-h-screen bg-background text-zinc-100 flex flex-col md:flex-row font-sans">
-      {/* Mobile Header */}
-      <div className="md:hidden bg-surface border-b border-surfaceHighlight p-4 flex justify-between items-center sticky top-0 z-20">
-        <h1 className="text-xl font-bold text-primary-400 tracking-tight">Cred30</h1>
-        <button onClick={onLogout} className="text-zinc-400" title="Sair" aria-label="Sair"><LogOut size={20} /></button>
+      {/* Mobile Header com Saldo e Install Btn */}
+      <div className="md:hidden bg-surface border-b border-surfaceHighlight p-4 flex justify-between items-center sticky top-0 z-20 shadow-md">
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <div className="w-8 h-8 bg-gradient-to-tr from-primary-400 to-primary-600 rounded-lg flex items-center justify-center text-black font-bold shadow-[0_0_10px_rgba(34,211,238,0.3)]">C</div>
+          <span className="text-white">Cred<span className="text-primary-400">30</span></span>
+        </h1>
+
+        {user && (
+          <div className="flex items-center gap-2">
+            {installPrompt && (
+              <button onClick={handleInstallClick} className="bg-primary-600 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">
+                INSTALAR APP
+              </button>
+            )}
+            <div className="bg-zinc-800 px-3 py-1.5 rounded-full border border-zinc-700 flex items-center gap-2">
+              <span className="text-xs text-zinc-400">Saldo</span>
+              <span className="text-sm font-bold text-emerald-400">
+                {user.balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </span>
+            </div>
+            <button onClick={onLogout} className="text-zinc-400 p-1" title="Sair"><LogOut size={20} /></button>
+          </div>
+        )}
       </div>
 
       {/* Sidebar Desktop */}
@@ -43,12 +94,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => onChangeView(item.id)}
-              className={`w-full flex items-center gap-4 px-4 py-4 text-sm font-medium rounded-xl transition-all duration-200 ${
-                currentView === item.id
-                  ? 'bg-primary-400/10 text-primary-400 border border-primary-400/20'
-                  : 'text-zinc-400 hover:bg-surfaceHighlight hover:text-white'
-              }`}
+              onClick={() => handleNavigation(item.id)}
+              className={`w-full flex items-center gap-4 px-4 py-4 text-sm font-medium rounded-xl transition-all duration-200 ${currentView === item.id
+                ? 'bg-primary-400/10 text-primary-400 border border-primary-400/20'
+                : 'text-zinc-400 hover:bg-surfaceHighlight hover:text-white'
+                }`}
             >
               <item.icon size={22} className={currentView === item.id ? 'stroke-[2.5px]' : ''} />
               {item.label}
@@ -56,15 +106,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
           ))}
         </nav>
         <div className="p-4 border-t border-surfaceHighlight">
-            <button
-              onClick={() => onChangeView('settings')}
-              className={`w-full flex items-center gap-4 px-4 py-3 text-sm font-medium rounded-xl transition-colors mb-4 ${
-                currentView === 'settings' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
+          <button
+            onClick={() => handleNavigation('settings')}
+            className={`w-full flex items-center gap-4 px-4 py-3 text-sm font-medium rounded-xl transition-colors mb-4 ${currentView === 'settings' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
               }`}
-            >
-              <Settings size={20} />
-              Configurações
-            </button>
+          >
+            <Settings size={20} />
+            Configurações
+          </button>
           <div className="flex items-center gap-3 px-4 py-3 bg-surfaceHighlight/50 rounded-xl border border-surfaceHighlight">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center font-bold text-primary-400 border border-zinc-700">
               {user.name.charAt(0).toUpperCase()}
@@ -82,34 +131,28 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8 overflow-y-auto bg-background">
-        <div className="max-w-6xl mx-auto space-y-8 pb-20 md:pb-0">
+        <div className="max-w-6xl mx-auto space-y-8 pb-32 md:pb-0">
           {children}
         </div>
       </main>
 
-      {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-lg border-t border-surfaceHighlight flex justify-around p-3 z-30 pb-6 pt-3 shadow-2xl">
-        {navItems.map((item) => (
+      {/* Mobile Bottom Nav - Floating Dock */}
+      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/50 rounded-2xl flex justify-between items-center px-4 py-3 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] z-30">
+        {navItems.slice(0, 5).map((item) => (
           <button
             key={item.id}
-            onClick={() => onChangeView(item.id)}
-            className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all ${
-              currentView === item.id ? 'text-primary-400 scale-105' : 'text-zinc-500'
-            }`}
+            onClick={() => handleNavigation(item.id)}
+            className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all relative ${currentView === item.id
+              ? 'text-primary-400 -translate-y-2'
+              : 'text-zinc-500 hover:text-zinc-300'
+              }`}
           >
-            <item.icon size={24} className={currentView === item.id ? 'drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]' : ''} />
-            <span className="text-[10px] font-medium">{item.label}</span>
+            <div className={`p-2 rounded-full transition-all ${currentView === item.id ? 'bg-primary-400/20 shadow-[0_0_15px_rgba(34,211,238,0.3)]' : ''}`}>
+              <item.icon size={22} strokeWidth={currentView === item.id ? 2.5 : 2} />
+            </div>
+            {currentView === item.id && <span className="absolute -bottom-4 w-1 h-1 bg-primary-400 rounded-full"></span>}
           </button>
         ))}
-        <button
-             onClick={() => onChangeView('settings')}
-             className={`flex flex-col items-center gap-1 p-2 rounded-lg ${
-                currentView === 'settings' ? 'text-white' : 'text-zinc-500'
-             }`}
-        >
-            <Settings size={24} />
-            <span className="text-[10px] font-medium">Ajustes</span>
-        </button>
       </div>
     </div>
   );

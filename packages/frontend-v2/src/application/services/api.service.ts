@@ -272,6 +272,19 @@ class ApiService {
     return response.data;
   }
 
+  // Método para pagar parcela de empréstimo
+  async repayInstallment(loanId: string, installmentAmount: number, useBalance: boolean): Promise<any> {
+    const response = await this.request<any>('/loans/repay-installment', {
+      method: 'POST',
+      body: JSON.stringify({
+        loanId,
+        installmentAmount,
+        useBalance
+      }),
+    });
+    return response.data;
+  }
+
   // Método para solicitar saque
   async requestWithdrawal(amount: number, pixKey: string): Promise<any> {
     const response = await this.request<any>('/transactions/withdraw', {
@@ -282,6 +295,23 @@ class ApiService {
       }),
     });
     return response.data;
+  }
+
+  // Método para jogar Caça-Níquel
+  async spinSlot(): Promise<any> {
+    // Retorna a resposta completa, pois o componente espera verificar result.success
+    return this.request<any>('/games/slot/spin', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
+  // Método para excluir conta
+  async deleteAccount(): Promise<any> {
+    const response = await this.request<any>('/users/me', {
+      method: 'DELETE',
+    });
+    return response;
   }
 
   // Métodos administrativos
@@ -374,7 +404,48 @@ class ApiService {
     return response.data;
   }
 
+  // --- Loja de Produtos (Afiliados) ---
 
+  async getProducts(category?: string): Promise<any[]> {
+    const params = category ? `?category=${category}` : '';
+    const response = await this.request<any[]>('/products' + params);
+    return response.data || [];
+  }
+
+  async getAllProductsAdmin(): Promise<any[]> {
+    const response = await this.request<any[]>('/products/admin/all');
+    return response.data || [];
+  }
+
+  async createProduct(data: any): Promise<any> {
+    const response = await this.request<any>('/products', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return response.data!;
+  }
+
+  async updateProduct(id: string, data: any): Promise<any> {
+    const response = await this.request<any>(`/products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    return response.data!;
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    await this.request<void>(`/products/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  async fetchProductMetadata(url: string): Promise<{ title: string; description: string; imageUrl: string }> {
+    const response = await this.request<any>('/products/fetch-metadata', {
+      method: 'POST',
+      body: JSON.stringify({ url })
+    });
+    return response.data;
+  }
 
   // Verificar se o usuário está autenticado
   isAuthenticated(): boolean {
