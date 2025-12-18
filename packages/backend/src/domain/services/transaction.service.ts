@@ -219,7 +219,7 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
     }
 
     await client.query(
-      'UPDATE transactions SET status = $1, updated_at = $2 WHERE id = $3',
+      'UPDATE transactions SET status = $1, processed_at = $2 WHERE id = $3',
       ['REJECTED', new Date(), id]
     );
 
@@ -316,7 +316,7 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
   }
 
   await client.query(
-    'UPDATE transactions SET status = $1, updated_at = $2 WHERE id = $3',
+    'UPDATE transactions SET status = $1, processed_at = $2 WHERE id = $3',
     ['APPROVED', new Date(), id]
   );
 
@@ -339,11 +339,11 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
   const loan = loanResult.rows[0];
 
   if (action === 'REJECT') {
-    await client.query('UPDATE loans SET status = $1, updated_at = $2 WHERE id = $3', ['REJECTED', new Date(), id]);
+    await client.query('UPDATE loans SET status = $1, approved_at = $2 WHERE id = $3', ['REJECTED', new Date(), id]);
     return { success: true, status: 'REJECTED' };
   }
 
-  await client.query('UPDATE loans SET status = $1, updated_at = $2 WHERE id = $3', ['APPROVED', new Date(), id]);
+  await client.query('UPDATE loans SET status = $1, approved_at = $2 WHERE id = $3', ['APPROVED', new Date(), id]);
   await updateUserBalance(client, loan.user_id, parseFloat(loan.amount), 'credit');
 
   await createTransaction(
