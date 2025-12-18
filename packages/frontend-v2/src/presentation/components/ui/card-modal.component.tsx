@@ -7,6 +7,7 @@ interface CardModalProps {
     isOpen: boolean;
     onClose: () => void;
     amount: number;
+    userEmail: string;
     onSubmit: (formData: any) => Promise<void>;
 }
 
@@ -20,6 +21,7 @@ export const CardModal: React.FC<CardModalProps> = ({
     isOpen,
     onClose,
     amount,
+    userEmail,
     onSubmit
 }) => {
     const brickContainerRef = useRef<HTMLDivElement>(null);
@@ -37,9 +39,9 @@ export const CardModal: React.FC<CardModalProps> = ({
             const renderPaymentBrick = async (builder: any) => {
                 const settings = {
                     initialization: {
-                        amount: amount, // valor total a pagar
+                        amount: amount,
                         payer: {
-                            email: "", // Opcional, o brick pedirá se não enviado
+                            email: userEmail,
                         },
                     },
                     customization: {
@@ -51,7 +53,10 @@ export const CardModal: React.FC<CardModalProps> = ({
                         paymentMethods: {
                             creditCard: 'all',
                             debitCard: 'all',
-                            maxInstallments: 12
+                            maxInstallments: 12,
+                            types: {
+                                excluded: ['ticket', 'bank_transfer']
+                            }
                         },
                     },
                     callbacks: {
@@ -59,6 +64,12 @@ export const CardModal: React.FC<CardModalProps> = ({
                             setLoading(false);
                         },
                         onSubmit: async ({ selectedPaymentMethod, formData }: any) => {
+                            console.log('Dados do Cartão selecionados:', {
+                                method: selectedPaymentMethod,
+                                installments: formData.installments,
+                                payment_method_id: formData.payment_method_id
+                            });
+
                             setLoading(true);
                             setError(null);
                             try {
