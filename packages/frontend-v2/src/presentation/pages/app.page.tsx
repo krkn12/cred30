@@ -672,6 +672,11 @@ const AdminView = ({ state, onRefresh, onLogout }: {
                       <span className={`text-xs font-bold px-2 py-0.5 rounded ${t.type === 'BUY_QUOTA' ? 'bg-primary-900 text-primary-200' : isLoanPayment ? 'bg-blue-900 text-blue-200' : 'bg-orange-900 text-orange-200'}`}>
                         {t.type === 'BUY_QUOTA' ? 'COMPRA COTA' : isLoanPayment ? 'PGTO EMPRÉSTIMO' : 'SAQUE'}
                       </span>
+                      {t.user_quotas > 0 && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary-500/20 text-primary-400 border border-primary-500/30 animate-pulse">
+                          PRIORIDADE: {t.user_quotas} COTAS
+                        </span>
+                      )}
                       <span className="text-zinc-400 text-xs">{t.date ? new Date(t.date).toLocaleDateString('pt-BR', {
                         day: '2-digit',
                         month: '2-digit',
@@ -777,6 +782,11 @@ const AdminView = ({ state, onRefresh, onLogout }: {
                       <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-900 text-blue-200">
                         SOLICITAÇÃO EMPRÉSTIMO
                       </span>
+                      {l.user_quotas > 0 && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary-500/20 text-primary-400 border border-primary-500/30 animate-pulse">
+                          PRIORIDADE: {l.user_quotas} COTAS
+                        </span>
+                      )}
                       <span className="text-zinc-400 text-xs">{l.created_at || l.createdAt ? new Date(l.created_at || l.createdAt).toLocaleDateString('pt-BR', {
                         day: '2-digit',
                         month: '2-digit',
