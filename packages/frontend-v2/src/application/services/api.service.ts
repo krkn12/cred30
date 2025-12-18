@@ -106,6 +106,36 @@ class ApiService {
     }
   }
 
+  // Método genérico para POST
+  async post<T>(endpoint: string, body: any): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  // Método genérico para GET
+  async get<T>(endpoint: string): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'GET',
+    });
+  }
+
+  // Método genérico para PUT
+  async put<T>(endpoint: string, body: any): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+  }
+
+  // Método genérico para DELETE
+  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'DELETE',
+    });
+  }
+
   // Método para login
   async login(email: string, password: string, secretPhrase: string): Promise<AuthResponse> {
     const response = await this.request<AuthResponse>('/auth/login', {
