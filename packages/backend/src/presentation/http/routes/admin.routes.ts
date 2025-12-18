@@ -134,21 +134,25 @@ adminRoutes.get('/dashboard', adminMiddleware, async (c) => {
       config.system_balance = operationalCash;
     }
 
-    // Buscar transações pendentes com informações do usuário
+    // Buscar transações pendentes com informações do usuário e contagem de cotas para prioridade
     const pendingTransactionsResult = await pool.query(
-      `SELECT t.*, u.name as user_name, u.email as user_email
+      `SELECT t.*, u.name as user_name, u.email as user_email,
+              (SELECT COUNT(*) FROM quotas q WHERE q.user_id = t.user_id AND q.status = 'ACTIVE') as user_quotas
        FROM transactions t
        LEFT JOIN users u ON t.user_id = u.id
-       WHERE t.status = 'PENDING'`
+       WHERE t.status = 'PENDING'
+       ORDER BY user_quotas DESC, t.created_at ASC`
     );
     const pendingTransactions = pendingTransactionsResult.rows;
 
-    // Buscar empréstimos pendentes com informações do usuário
+    // Buscar empréstimos pendentes com informações do usuário e contagem de cotas para prioridade
     const pendingLoansResult = await pool.query(
-      `SELECT l.*, u.name as user_name, u.email as user_email
+      `SELECT l.*, u.name as user_name, u.email as user_email,
+              (SELECT COUNT(*) FROM quotas q WHERE q.user_id = l.user_id AND q.status = 'ACTIVE') as user_quotas
        FROM loans l
        LEFT JOIN users u ON l.user_id = u.id
-       WHERE l.status = 'PENDING'`
+       WHERE l.status = 'PENDING'
+       ORDER BY user_quotas DESC, l.created_at ASC`
     );
     const pendingLoans = pendingLoansResult.rows;
 
