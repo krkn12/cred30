@@ -1585,7 +1585,7 @@ const PortfolioView = ({ quotas, hasLoans, onSell, onSellAll }: { quotas: Quota[
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {safeQuotas.map((quota: any, idx: number) => {
-          // Verificação de segurança para cada quota
+          // Verificação de segurança para garantir que cada quota
           if (!quota || !quota.id) return null;
 
           // Verificação adicional para garantir que todos os valores necessários existem
@@ -2630,6 +2630,7 @@ export default function App() {
               isOpen={cardModalData.isOpen}
               onClose={() => setCardModalData(prev => ({ ...prev, isOpen: false }))}
               amount={cardModalData.amount}
+              userEmail={state.currentUser?.email || ''}
               onSubmit={async (formData) => {
                 try {
                   console.log('Finalizando pagamento com cartão...', formData);
