@@ -474,7 +474,7 @@ class ApiService {
     });
   }
 
-  async fetchProductMetadata(url: string): Promise<{ title: string; description: string; imageUrl: string }> {
+  async fetchProductMetadata(url: string): Promise<{ title: string; description: string; imageUrl: string; price?: number }> {
     const response = await this.request<any>('/products/fetch-metadata', {
       method: 'POST',
       body: JSON.stringify({ url })
