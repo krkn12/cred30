@@ -114,3 +114,18 @@ export const checkPaymentStatus = async (paymentId: number) => {
         throw error;
     }
 };
+/**
+ * Simula aprovação de um pagamento (Apenas Sandbox)
+ */
+export const simulatePaymentApproval = async (paymentId: number) => {
+    try {
+        const response = await payment.update({
+            id: paymentId,
+            body: { status: 'approved' }
+        } as any);
+        return response.status;
+    } catch (error) {
+        console.error('Erro ao simular aprovação Mercado Pago:', error);
+        throw error;
+    }
+};

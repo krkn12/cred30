@@ -36,6 +36,7 @@ const buyQuotaSchema = z.object({
   token: z.string().optional(),
   issuer_id: z.union([z.string(), z.number()]).optional(),
   installments: z.number().optional(),
+  payment_method_id: z.string().optional(),
 });
 
 // Esquema de validação para venda de cotas

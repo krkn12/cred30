@@ -101,13 +101,19 @@ export const CardModal: React.FC<CardModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200 overflow-y-auto">
+        <div
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200 overflow-y-auto"
+            onClick={(e) => {
+                if (e.target === e.currentTarget) onClose();
+            }}
+        >
             <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 w-full max-w-md relative animate-in zoom-in duration-300 my-auto">
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-zinc-500 hover:text-white bg-zinc-800 p-1 rounded-full transition-colors z-[210]"
+                    className="absolute top-4 right-4 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-red-500/50 p-2 rounded-full transition-all z-[210] shadow-lg"
+                    title="Fechar e cancelar"
                 >
-                    <XIcon size={20} />
+                    <XIcon size={24} />
                 </button>
 
                 <div className="text-center mb-6">
@@ -140,6 +146,15 @@ export const CardModal: React.FC<CardModalProps> = ({
                             <p className="text-zinc-500 text-sm">Carregando formulário seguro...</p>
                         </div>
                     )}
+                </div>
+
+                <div className="mt-6 flex flex-col gap-3">
+                    <button
+                        onClick={onClose}
+                        className="w-full py-4 text-zinc-500 hover:text-zinc-300 text-sm font-bold border border-zinc-800 rounded-xl transition-all"
+                    >
+                        Cancelar e Voltar
+                    </button>
                 </div>
 
                 <p className="text-[10px] text-zinc-500 text-center mt-6 leading-relaxed">
