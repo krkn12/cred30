@@ -7,11 +7,14 @@ import { UpdateNotification } from '../components/ui/update-notification.compone
 import { StoreView } from '../components/features/store/store.component';
 import { AdminStoreManager } from '../components/features/store/admin-store.component';
 import WelcomePage from './welcome.page';
-import { loadState, registerUser, loginUser, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, fastForwardTime, repayLoan, getCurrentUser, resetPassword, requestWithdrawal, getPendingItems, processAdminAction, updateSystemBalance, updateProfitPool, distributeMonthlyDividends, fixLoanPix, clearAllCache, deleteUserAccount } from '../../application/services/storage.service';
+import { loadState, registerUser, loginUser, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, fastForwardTime, repayLoan, repayInstallment, getCurrentUser, resetPassword, requestWithdrawal, getPendingItems, processAdminAction, updateSystemBalance, updateProfitPool, distributeMonthlyDividends, fixLoanPix, clearAllCache, deleteUserAccount } from '../../application/services/storage.service';
 import { apiService } from '../../application/services/api.service';
 import { AppState, Quota, Loan, Transaction, User } from '../../domain/types/common.types';
-import { ADMIN_PIX_KEY, QUOTA_PRICE, VESTING_PERIOD_MS } from '../../shared/constants/app.constants';
+import { QUOTA_PRICE, VESTING_PERIOD_MS } from '../../shared/constants/app.constants';
 import { Wallet, TrendingUp, AlertTriangle, ArrowRight, DollarSign, Calendar, Lock, CheckCircle2, QrCode, ArrowUpRight, ArrowDownLeft, KeyRound, ChevronLeft, PieChart, Trash2, ArrowUpFromLine, Users, Repeat, Crown, Copy, ShieldCheck, Clock, Check, X as XIcon, RefreshCw, LogOut, Coins, PiggyBank, Star, Settings, Gamepad2 } from 'lucide-react';
+import { PIXModal } from '../components/ui/pix-modal.component';
+import { CardModal } from '../components/ui/card-modal.component';
+
 
 // --- Admin Component ---
 
@@ -379,6 +382,17 @@ const AdminView = ({ state, onRefresh, onLogout }: {
           <p className="text-3xl font-bold">{formatCurrency(state.profitPool)}</p>
           <p className="text-xs opacity-75 mt-1">85% para distribuição</p>
         </div>
+
+        <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-2xl p-6 text-white border border-red-500/30 shadow-lg">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+              <ShieldCheck size={24} className="text-white" />
+            </div>
+            <span className="text-sm font-medium opacity-90">Custo Gateway</span>
+          </div>
+          <p className="text-3xl font-bold">{formatCurrency(state.stats?.totalGatewayCosts ?? 0)}</p>
+          <p className="text-xs opacity-75 mt-1">Taxas pagas ao Mercado Pago</p>
+        </div>
       </div>
 
       <AdminStoreManager />
@@ -456,11 +470,12 @@ const AdminView = ({ state, onRefresh, onLogout }: {
             <div className="space-y-2 text-sm text-blue-200">
               <p>• Total de cotas ativas × R$ 50,00</p>
               <p>• Menos: Valor total emprestado</p>
+              <p>• Menos: Custo do Gateway (Mercado Pago)</p>
               <p>• Igual: Caixa disponível</p>
             </div>
             <div className="mt-3 pt-3 border-t border-blue-500/20">
               <p className="text-xs text-blue-300 font-medium">
-                <strong>Exemplo:</strong> 10 cotas (R$ 500) - R$ 200 emprestados = R$ 300 disponíveis
+                <strong>Exemplo:</strong> 10 cotas (R$ 500) - R$ 200 emprestados - R$ 4,95 taxas = R$ 295,05 disponíveis
               </p>
             </div>
           </div>
@@ -1185,10 +1200,22 @@ const Dashboard = ({ state, onBuyQuota, onReinvest, onRefer, onVip, onLogout }: 
   );
 };
 
-const InvestView = ({ onBuy }: { onBuy: (qty: number, method: 'PIX' | 'BALANCE') => void }) => {
+const InvestView = ({ onBuy }: { onBuy: (qty: number, method: 'PIX' | 'BALANCE' | 'CARD') => void }) => {
   const [qty, setQty] = useState(1);
-  const [method, setMethod] = useState<'PIX' | 'BALANCE'>('PIX');
+  const [method, setMethod] = useState<'PIX' | 'BALANCE' | 'CARD'>('PIX');
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const baseCost = qty * QUOTA_PRICE;
+
+  // Cálculo local de taxas para exibição
+  const getFee = () => {
+    if (method === 'PIX' || method === 'BALANCE') return 0;
+    // Regra: 4.99% + 0.40 para cartão
+    return (baseCost * 0.0499) + 0.40;
+  };
+
+  const fee = getFee();
+  const total = baseCost + fee;
 
   const handlePurchase = () => {
     onBuy(qty, method);
@@ -1214,19 +1241,27 @@ const InvestView = ({ onBuy }: { onBuy: (qty: number, method: 'PIX' | 'BALANCE')
           <button onClick={() => setQty(qty + 1)} className="w-10 h-10 rounded-full bg-surfaceHighlight text-white flex items-center justify-center hover:bg-zinc-700 transition">+</button>
         </div>
 
-        <div className="bg-background rounded-xl p-1 mb-6 flex">
-          <button onClick={() => setMethod('PIX')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${method === 'PIX' ? 'bg-surfaceHighlight text-white' : 'text-zinc-500'}`}>Via PIX</button>
-          <button onClick={() => setMethod('BALANCE')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${method === 'BALANCE' ? 'bg-surfaceHighlight text-white' : 'text-zinc-500'}`}>Usar Saldo</button>
+        <div className="bg-background rounded-xl p-1 mb-6 flex gap-1">
+          <button onClick={() => setMethod('PIX')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${method === 'PIX' ? 'bg-primary-500 text-black' : 'text-zinc-500 hover:text-zinc-300'}`}>PIX</button>
+          <button onClick={() => setMethod('CARD')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${method === 'CARD' ? 'bg-primary-500 text-black' : 'text-zinc-500 hover:text-zinc-300'}`}>CARTÃO</button>
+          <button onClick={() => setMethod('BALANCE')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${method === 'BALANCE' ? 'bg-primary-500 text-black' : 'text-zinc-500 hover:text-zinc-300'}`}>SALDO</button>
         </div>
 
-        <div className="bg-background rounded-xl p-4 border border-surfaceHighlight">
+        <div className="bg-background rounded-xl p-4 border border-surfaceHighlight text-left">
           <div className="flex justify-between text-sm mb-2">
-            <span className="text-zinc-400">Quantidade</span>
-            <span className="text-white">{qty}</span>
+            <span className="text-zinc-400">Subtotal ({qty}x)</span>
+            <span className="text-white font-medium">{baseCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
           </div>
+          {fee > 0 && (
+            <div className="flex justify-between text-sm mb-2 text-yellow-500/90 font-medium">
+              <span>Taxa de Serviço ({method})</span>
+              <span>+ {fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            </div>
+          )}
+          <div className="h-px bg-surfaceHighlight my-3"></div>
           <div className="flex justify-between text-lg font-bold">
             <span className="text-white">Total</span>
-            <span className="text-primary-400">{(qty * QUOTA_PRICE).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            <span className="text-primary-400">{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
           </div>
         </div>
       </div>
@@ -1248,34 +1283,39 @@ const InvestView = ({ onBuy }: { onBuy: (qty: number, method: 'PIX' | 'BALANCE')
 
             <h3 className="text-xl font-bold text-white mb-4">Finalizar Compra</h3>
 
-            <div className="bg-background border border-zinc-700 rounded-xl p-4 mb-4">
-              <div className="flex justify-between text-sm text-zinc-400 mb-1">
-                <span>Itens</span>
-                <span>{qty}x Cotas</span>
+            <div className="bg-background border border-zinc-700 rounded-xl p-4 mb-4 space-y-2">
+              <div className="flex justify-between text-sm text-zinc-400">
+                <span>Valor das Cotas</span>
+                <span className="text-zinc-200">{baseCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
               </div>
+
+              {fee > 0 && (
+                <div className="flex justify-between text-sm text-yellow-500/80">
+                  <span>Taxa de Processamento</span>
+                  <span>{fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                </div>
+              )}
+
+              <div className="h-px bg-zinc-800 my-1"></div>
+
               <div className="flex justify-between text-lg text-white font-bold">
-                <span>Total</span>
-                <span>{(qty * QUOTA_PRICE).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                <span>Total Final</span>
+                <span className="text-primary-400">{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
               </div>
             </div>
 
-            {method === 'PIX' ? (
+            {method === 'BALANCE' ? (
               <>
-                <p className="text-zinc-300 text-sm mb-2">Copie a chave abaixo para pagamento:</p>
-                <div className="bg-background border border-dashed border-primary-500/50 rounded-xl p-3 flex items-center justify-between mb-4 relative cursor-pointer" onClick={() => navigator.clipboard.writeText(ADMIN_PIX_KEY)}>
-                  <span className="font-mono text-white text-sm truncate mr-2">{ADMIN_PIX_KEY}</span>
-                  <Copy size={16} className="text-primary-400" />
-                </div>
-                <p className="text-xs text-zinc-500 mb-4 text-center">Após enviar o PIX, clique no botão abaixo para notificar o administrador.</p>
-                <button onClick={handlePurchase} className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 rounded-xl transition">
-                  Já enviei o PIX
+                <p className="text-zinc-300 text-sm mb-4">O valor será debitado do seu saldo disponível imediatamente.</p>
+                <button onClick={handlePurchase} className="w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-3 rounded-xl transition">
+                  Confirmar Pagamento com Saldo
                 </button>
               </>
             ) : (
               <>
-                <p className="text-zinc-300 text-sm mb-4">O valor será debitado do seu saldo disponível imediatamente.</p>
-                <button onClick={handlePurchase} className="w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-3 rounded-xl transition">
-                  Confirmar Pagamento
+                <p className="text-zinc-300 text-sm mb-4">Um código de pagamento dinâmico será gerado para você.</p>
+                <button onClick={handlePurchase} className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 rounded-xl transition">
+                  Gerar Pagamento {method}
                 </button>
               </>
             )}
@@ -1540,21 +1580,22 @@ const PortfolioView = ({ quotas, hasLoans, onSell, onSellAll }: { quotas: Quota[
   );
 };
 
-const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalance }: {
+const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalance, currentUser }: {
   loans: Loan[],
   onRequest: (amount: number, installments: number, pix: string) => void,
-  onPay: (id: string, useBalance: boolean) => void,
-  onPayInstallment: (id: string, amount: number, useBalance: boolean) => void,
-  userBalance: number
+  onPay: (id: string, useBalance: boolean, method?: 'pix' | 'card') => void,
+  onPayInstallment: (id: string, amount: number, useBalance: boolean, method?: 'pix' | 'card') => void,
+  userBalance: number,
+  currentUser: User | null
 }) => {
   const [amount, setAmount] = useState('');
-  const [pix, setPix] = useState('');
   const [installments, setInstallments] = useState(1);
   const [payModalId, setPayModalId] = useState<string | null>(null);
   const [installmentModalData, setInstallmentModalData] = useState<{ loanId: string, installmentAmount: number } | null>(null);
 
   const activeLoans = loans.filter(l => l.status === 'APPROVED' || l.status === 'PENDING' || l.status === 'PAYMENT_PENDING' || l.status === 'REJECTED');
   const selectedLoan = activeLoans.find(l => l.id === payModalId);
+  const [payMethod, setPayMethod] = useState<'pix' | 'card'>('pix');
   const totalDebt = activeLoans.reduce((acc, l) => acc + (l.remainingAmount || l.totalRepayment), 0);
   const approvedLoans = activeLoans.filter(l => l.status === 'APPROVED');
 
@@ -1606,24 +1647,10 @@ const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalance }: {
               </div>
             </div>
 
-            <div>
-              <label className="text-xs text-zinc-400 block mb-1 font-medium">Chave PIX para receber</label>
-              <input
-                type="text"
-                value={pix}
-                onChange={e => {
-                  const newValue = e.target.value;
-                  console.log('DEBUG - Campo PIX alterado:', {
-                    newValue,
-                    valorAnterior: pix,
-                    vazio: !newValue,
-                    trim: newValue ? newValue.trim() : 'N/A'
-                  });
-                  setPix(newValue);
-                }}
-                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 px-4 text-white outline-none focus:border-primary-500 transition"
-                placeholder="CPF, Email, Telefone..."
-              />
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+              <label className="text-xs text-emerald-400 block mb-1 font-medium italic">Recebimento automático via PIX</label>
+              <p className="text-white text-sm font-mono break-all line-clamp-1">{currentUser?.pixKey || 'Chave não cadastrada'}</p>
+              <p className="text-emerald-500/60 text-[10px] mt-1 line-clamp-2 leading-tight">O empréstimo será enviado para sua chave principal cadastrada no perfil.</p>
             </div>
           </div>
 
@@ -1661,18 +1688,9 @@ const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalance }: {
             </div>
             <button
               onClick={() => {
-                // DEBUG: Log antes de enviar a solicitação
-                console.log('DEBUG - Botão solicitar clicado:', {
-                  amount: parseFloat(amount),
-                  installments,
-                  pix,
-                  pixVazio: !pix,
-                  pixTrim: pix ? pix.trim() : 'N/A'
-                });
-
-                onRequest(parseFloat(amount), installments, pix);
+                onRequest(parseFloat(amount), installments, currentUser?.pixKey || '');
               }}
-              disabled={!amount || !pix}
+              disabled={!amount || !currentUser?.pixKey}
               className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-3 rounded-xl mt-4 transition"
             >
               Solicitar Agora
@@ -1831,18 +1849,41 @@ const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalance }: {
               {userBalance < selectedLoan.totalRepayment ? 'Saldo Insuficiente' : 'Pagar com Saldo'}
             </button>
 
-            <div className="relative my-4">
+            <div className="relative my-6">
               <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-zinc-700"></div></div>
-              <div className="relative flex justify-center"><span className="bg-surface px-2 text-xs text-zinc-500 uppercase">Ou via PIX</span></div>
+              <div className="relative flex justify-center"><span className="bg-surface px-2 text-xs text-zinc-500 uppercase">Pagamento Externo</span></div>
             </div>
 
-            <div className="bg-background p-3 rounded-xl border border-surfaceHighlight mb-4 text-center">
-              <p className="text-xs text-zinc-500 mb-1">Chave PIX Admin</p>
-              <p className="text-white font-mono text-sm select-all">{ADMIN_PIX_KEY}</p>
+            <div className="bg-background rounded-xl p-1 mb-4 flex gap-1">
+              <button onClick={() => setPayMethod('pix')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${payMethod === 'pix' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`}>PIX</button>
+              <button onClick={() => setPayMethod('card')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${payMethod === 'card' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`}>CARTÃO</button>
             </div>
 
-            <button onClick={() => { onPay(selectedLoan.id, false); setPayModalId(null); }} className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-3 rounded-xl mb-3">
-              Já enviei o PIX
+            <div className="bg-background p-4 rounded-xl border border-surfaceHighlight mb-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-zinc-400">Total Dívida</span>
+                <span className="text-white">{selectedLoan.totalRepayment.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+              </div>
+              {payMethod === 'card' && (
+                <div className="flex justify-between text-sm text-yellow-500/80">
+                  <span>Taxa de Serviço</span>
+                  <span>{(selectedLoan.totalRepayment * 0.0499 + 0.40).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                </div>
+              )}
+              <div className="h-px bg-zinc-800 my-1"></div>
+              <div className="flex justify-between text-lg font-bold">
+                <span className="text-white">Total a Pagar</span>
+                <span className="text-primary-400">
+                  {(payMethod === 'card'
+                    ? selectedLoan.totalRepayment + (selectedLoan.totalRepayment * 0.0499 + 0.40)
+                    : selectedLoan.totalRepayment
+                  ).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
+            </div>
+
+            <button onClick={() => { onPay(selectedLoan.id, false, payMethod); setPayModalId(null); }} className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 rounded-xl mb-3">
+              Confirmar Pagamento {payMethod.toUpperCase()}
             </button>
 
             <button onClick={() => setPayModalId(null)} className="w-full text-zinc-500 py-2 text-sm">Cancelar</button>
@@ -1874,27 +1915,50 @@ const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalance }: {
               disabled={userBalance < installmentModalData.installmentAmount}
               className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl mb-3"
             >
-              {userBalance < installmentModalData.installmentAmount ? 'Saldo Insuficiente' : 'Pagar Parcela com Saldo'}
+              {userBalance < installmentModalData.installmentAmount ? 'Saldo Insuficiente' : 'Pagar com Saldo'}
             </button>
 
-            <div className="relative my-4">
+            <div className="relative my-6">
               <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-zinc-700"></div></div>
-              <div className="relative flex justify-center"><span className="bg-surface px-2 text-xs text-zinc-500 uppercase">Ou via PIX</span></div>
+              <div className="relative flex justify-center"><span className="bg-surface px-2 text-xs text-zinc-500 uppercase">Pagamento Externo</span></div>
             </div>
 
-            <div className="bg-background p-3 rounded-xl border border-surfaceHighlight mb-4 text-center">
-              <p className="text-xs text-zinc-500 mb-1">Chave PIX Admin</p>
-              <p className="text-white font-mono text-sm select-all">{ADMIN_PIX_KEY}</p>
+            <div className="bg-background rounded-xl p-1 mb-4 flex gap-1">
+              <button onClick={() => setPayMethod('pix')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${payMethod === 'pix' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`}>PIX</button>
+              <button onClick={() => setPayMethod('card')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${payMethod === 'card' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`}>CARTÃO</button>
+            </div>
+
+            <div className="bg-background p-4 rounded-xl border border-surfaceHighlight mb-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-zinc-400">Valor Parcela</span>
+                <span className="text-white">{installmentModalData.installmentAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+              </div>
+              {payMethod === 'card' && (
+                <div className="flex justify-between text-sm text-yellow-500/80">
+                  <span>Taxa de Serviço</span>
+                  <span>{(installmentModalData.installmentAmount * 0.0499 + 0.40).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                </div>
+              )}
+              <div className="h-px bg-zinc-800 my-1"></div>
+              <div className="flex justify-between text-lg font-bold">
+                <span className="text-white">Total a Pagar</span>
+                <span className="text-primary-400">
+                  {(payMethod === 'card'
+                    ? installmentModalData.installmentAmount + (installmentModalData.installmentAmount * 0.0499 + 0.40)
+                    : installmentModalData.installmentAmount
+                  ).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
             </div>
 
             <button
               onClick={() => {
-                onPayInstallment(installmentModalData.loanId, installmentModalData.installmentAmount, false);
+                onPayInstallment(installmentModalData.loanId, installmentModalData.installmentAmount, false, payMethod);
                 setInstallmentModalData(null);
               }}
-              className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-3 rounded-xl mb-3"
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl mb-3"
             >
-              Já enviei o PIX da Parcela
+              Confirmar Pagamento {payMethod.toUpperCase()}
             </button>
 
             <button onClick={() => setInstallmentModalData(null)} className="w-full text-zinc-500 py-2 text-sm">Cancelar</button>
@@ -1905,12 +1969,12 @@ const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalance }: {
   );
 };
 
-const WithdrawView = ({ balance, onRequest }: {
+const WithdrawView = ({ balance, onRequest, currentUser }: {
   balance: number,
-  onRequest: (val: number, key: string) => void
+  onRequest: (val: number, key: string) => void,
+  currentUser: User | null
 }) => {
   const [val, setVal] = useState('');
-  const [key, setKey] = useState('');
 
   // Quick amount options
   const quickAmounts = [50, 100, 200, 500];
@@ -1992,21 +2056,16 @@ const WithdrawView = ({ balance, onRequest }: {
             )}
           </div>
 
-          <div>
-            <label className="text-xs text-zinc-400 block mb-1">Chave PIX de Destino</label>
-            <input
-              type="text"
-              value={key}
-              onChange={e => setKey(e.target.value)}
-              className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 px-4 text-white outline-none focus:border-primary-500 transition"
-              placeholder="CPF, Email, Telefone ou Chave Aleatória"
-            />
+          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+            <label className="text-xs text-emerald-400 block mb-1 font-medium italic">Depósito automático via PIX</label>
+            <p className="text-white text-sm font-mono break-all line-clamp-1">{currentUser?.pixKey || 'Chave não cadastrada'}</p>
+            <p className="text-emerald-500/60 text-[10px] mt-1 line-clamp-2 leading-tight">O valor será enviado para sua chave principal cadastrada no perfil.</p>
           </div>
         </div>
 
         <button
-          onClick={() => onRequest(parseFloat(val), key)}
-          disabled={!isValidAmount || !key}
+          onClick={() => onRequest(parseFloat(val), currentUser?.pixKey || '')}
+          disabled={!isValidAmount || !currentUser?.pixKey}
           className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] mt-6"
         >
           Confirmar Saque
@@ -2098,6 +2157,31 @@ export default function App() {
   const [currentView, setCurrentView] = useState<'dashboard' | 'invest' | 'portfolio' | 'loans' | 'admin' | 'games' | 'store'>('dashboard');
   const [showReferral, setShowReferral] = useState(false);
   const [showVip, setShowVip] = useState(false);
+  const [pixModalData, setPixModalData] = useState<{
+    isOpen: boolean,
+    qrCode: string,
+    qrCodeBase64: string,
+    amount: number,
+    description: string
+  }>({
+    isOpen: false,
+    qrCode: '',
+    qrCodeBase64: '',
+    amount: 0,
+    description: ''
+  });
+
+  const [cardModalData, setCardModalData] = useState<{
+    isOpen: boolean,
+    amount: number,
+    type: 'QUOTA' | 'LOAN' | 'INSTALLMENT',
+    details: any
+  }>({
+    isOpen: false,
+    amount: 0,
+    type: 'QUOTA',
+    details: {}
+  });
 
   useEffect(() => {
     loadData();
@@ -2126,12 +2210,36 @@ export default function App() {
     setState(prev => ({ ...prev, currentUser: null }));
   };
 
-  const handleBuyQuota = async (qty: number, method: 'PIX' | 'BALANCE') => {
+  const handleBuyQuota = async (qty: number, method: 'PIX' | 'BALANCE' | 'CARD') => {
     try {
-      await buyQuota(qty, method === 'BALANCE');
+      if (method === 'CARD') {
+        const baseCost = qty * QUOTA_PRICE;
+        const fee = (baseCost * 0.0499) + 0.40;
+        setCardModalData({
+          isOpen: true,
+          amount: baseCost + fee,
+          type: 'QUOTA',
+          details: { qty }
+        });
+        return;
+      }
+
+      const pm = method.toLowerCase() as any;
+      const response = await buyQuota(qty, method === 'BALANCE', pm !== 'balance' ? pm : undefined);
       await refreshState();
-      alert('Cotas compradas com sucesso!');
-      setCurrentView('portfolio');
+
+      if (response && response.pixData) {
+        setPixModalData({
+          isOpen: true,
+          qrCode: response.pixData.qr_code,
+          qrCodeBase64: response.pixData.qr_code_base64,
+          amount: response.finalCost || response.cost,
+          description: `Compra de ${qty} cota(s)`
+        });
+      } else {
+        alert('Operação realizada com sucesso!');
+        setCurrentView('portfolio');
+      }
     } catch (error: any) {
       alert(error.message);
     }
@@ -2168,28 +2276,80 @@ export default function App() {
     try {
       await requestLoan(amount, installments, pixKey);
       await refreshState();
-      alert('Empréstimo solicitado! Aguarde aprovação.');
+      alert('Empréstimo aprovado e creditado com sucesso!');
     } catch (e: any) { alert(e.message); }
   };
 
-  const handlePayLoan = async (loanId: string, useBalance: boolean) => {
+  const handlePayLoan = async (loanId: string, useBalance: boolean, method?: 'pix' | 'card') => {
     try {
-      await repayLoan(loanId, useBalance);
+      if (method === 'card') {
+        const loan = state.loans.find(l => l.id === loanId);
+        if (!loan) return;
+        const baseCost = parseFloat(loan.totalRepayment as any);
+        const fee = (baseCost * 0.0499) + 0.40;
+        setCardModalData({
+          isOpen: true,
+          amount: baseCost + fee,
+          type: 'LOAN',
+          details: { loanId }
+        });
+        return;
+      }
+
+      const response = await repayLoan(loanId, useBalance, method);
       await refreshState();
-      alert('Pagamento enviado!');
+
+      if (response && response.pixData) {
+        setPixModalData({
+          isOpen: true,
+          qrCode: response.pixData.qr_code,
+          qrCodeBase64: response.pixData.qr_code_base64,
+          amount: response.finalCost || response.amount || 0,
+          description: `Pagamento de Empréstimo`
+        });
+      } else {
+        alert('Pagamento enviado!');
+      }
     } catch (e: any) { alert(e.message); }
   };
 
-  // Adaptação para interface do LoansView que espera (id, amount, useBalance)
-  const handlePayInstallment = async (id: string, amount: number, useBalance: boolean) => {
+  // Adaptação para interface do LoansView que espera (id, amount, useBalance, method)
+  const handlePayInstallment = async (id: string, amount: number, useBalance: boolean, method?: 'pix' | 'card') => {
     try {
-      // Usa repayLoan mesmo que seja parcela, ou implementa repayInstallment se existir
-      // Assumindo que repayLoan(id) paga a próxima parcela ou o total
-      // Se LoansView espera pagar parcela específica, precisamos ver a API.
-      // Vou usar repayLoan genérico com flag
-      await repayLoan(id, useBalance);
+      if (method === 'card') {
+        const baseCost = amount;
+        const fee = (baseCost * 0.0499) + 0.40;
+        setCardModalData({
+          isOpen: true,
+          amount: baseCost + fee,
+          type: 'INSTALLMENT',
+          details: { loanId: id, amount }
+        });
+        return;
+      }
+
+      const response = await repayInstallment(id, amount, useBalance, method);
       await refreshState();
-      alert('Pagamento processado!');
+
+      if (response && response.pixData) {
+        setPixModalData({
+          isOpen: true,
+          qrCode: response.pixData.qr_code,
+          qrCodeBase64: response.pixData.qr_code_base64,
+          amount: response.finalCost || amount,
+          description: `Pagamento de Parcela`
+        });
+      } else {
+        alert('Pagamento processado!');
+      }
+    } catch (e: any) { alert(e.message); }
+  }
+
+  const handleWithdraw = async (amount: number, pixKey: string) => {
+    try {
+      await requestWithdrawal(amount, pixKey);
+      await refreshState();
+      alert('Solicitação de saque enviada! Aguarde processamento.');
     } catch (e: any) { alert(e.message); }
   }
 
@@ -2259,6 +2419,7 @@ export default function App() {
                   onPay={handlePayLoan}
                   onPayInstallment={handlePayInstallment}
                   userBalance={state.currentUser.balance}
+                  currentUser={state.currentUser}
                 />
               } />
               <Route path="settings" element={
@@ -2268,7 +2429,13 @@ export default function App() {
                   onLogout={handleLogout}
                 />
               } />
-              <Route path="withdraw" element={<Navigate to="/app/dashboard" replace />} />
+              <Route path="withdraw" element={
+                <WithdrawView
+                  balance={state.currentUser.balance}
+                  onRequest={handleWithdraw}
+                  currentUser={state.currentUser}
+                />
+              } />
               <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
             </Routes>
 
@@ -2290,6 +2457,40 @@ export default function App() {
                 </div>
               </div>
             )}
+
+            <PIXModal
+              isOpen={pixModalData.isOpen}
+              onClose={() => setPixModalData(prev => ({ ...prev, isOpen: false }))}
+              qrCode={pixModalData.qrCode}
+              qrCodeBase64={pixModalData.qrCodeBase64}
+              amount={pixModalData.amount}
+              description={pixModalData.description}
+            />
+
+            <CardModal
+              isOpen={cardModalData.isOpen}
+              onClose={() => setCardModalData(prev => ({ ...prev, isOpen: false }))}
+              amount={cardModalData.amount}
+              onSubmit={async (formData) => {
+                try {
+                  console.log('Finalizando pagamento com cartão...', formData);
+                  if (cardModalData.type === 'QUOTA') {
+                    await buyQuota(cardModalData.details.qty, false, 'card', formData);
+                  } else if (cardModalData.type === 'LOAN') {
+                    await repayLoan(cardModalData.details.loanId, false, 'card', formData);
+                  } else if (cardModalData.type === 'INSTALLMENT') {
+                    await repayInstallment(cardModalData.details.loanId, cardModalData.details.amount, false, 'card', formData);
+                  }
+
+                  await refreshState();
+                  alert('Pagamento realizado com sucesso! Aguarde a aprovação automática do sistema.');
+                  setCardModalData(prev => ({ ...prev, isOpen: false }));
+                  if (cardModalData.type === 'QUOTA') setCurrentView('portfolio');
+                } catch (e: any) {
+                  throw new Error(e.message || 'Erro ao processar pagamento com cartão');
+                }
+              }}
+            />
           </Layout>
         } />
       </Routes>

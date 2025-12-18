@@ -77,7 +77,7 @@ authRoutes.post('/login', async (c) => {
     // Gerar token JWT
     const token = sign(
       { userId: user.id, isAdmin: user.is_admin },
-      process.env.JWT_SECRET || 'default_secret',
+      process.env.JWT_SECRET as string,
       { expiresIn: '7d' }
     );
 
@@ -195,7 +195,7 @@ authRoutes.post('/register', async (c) => {
     // Gerar token JWT
     const token = sign(
       { userId: newUser.id, isAdmin: newUser.is_admin },
-      process.env.JWT_SECRET || 'default_secret',
+      process.env.JWT_SECRET as string,
       { expiresIn: '7d' }
     );
 

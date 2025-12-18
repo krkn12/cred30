@@ -8,6 +8,8 @@ import { UserContext } from '../../../shared/types/hono.types';
 import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction } from '../../../domain/services/transaction.service';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
 import { financialRateLimit } from '../middleware/rate-limit.middleware';
+import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/mercadopago.service';
+import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
 
 // Função auxiliar para registrar auditoria financeira
 const logFinancialAudit = (operation: string, userId: string, details: any) => {
@@ -30,6 +32,10 @@ quotaRoutes.use('/sell-all', financialRateLimit);
 const buyQuotaSchema = z.object({
   quantity: z.number().int().positive(),
   useBalance: z.boolean(),
+  paymentMethod: z.enum(['pix', 'card']).optional().default('pix'),
+  token: z.string().optional(),
+  issuer_id: z.union([z.string(), z.number()]).optional(),
+  installments: z.number().optional(),
 });
 
 // Esquema de validação para venda de cotas
@@ -75,12 +81,15 @@ quotaRoutes.get('/', authMiddleware, async (c) => {
 quotaRoutes.post('/buy', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
-    const { quantity, useBalance } = buyQuotaSchema.parse(body);
+    const { quantity, useBalance, paymentMethod, token, issuer_id, installments } = buyQuotaSchema.parse(body);
+
+    // Calcular valores com taxas conforme o método
+    const baseCost = quantity * QUOTA_PRICE;
+    const method: PaymentMethod = useBalance ? 'balance' : (paymentMethod as PaymentMethod);
+    const { total: finalCost, fee: userFee } = calculateTotalToPay(baseCost, method);
 
     const user = c.get('user') as UserContext;
     const pool = getDbPool(c);
-
-    const cost = quantity * QUOTA_PRICE;
 
     // Validar limites
     if (quantity > 100) {
@@ -90,7 +99,7 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
       }, 400);
     }
 
-    if (cost > 50000) {
+    if (baseCost > 50000) {
       return c.json({
         success: false,
         message: 'Valor máximo por compra é R$ 50.000,00'
@@ -101,13 +110,13 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
     const result = await executeInTransaction(pool, async (client) => {
       // Se estiver usando saldo, verificar e bloquear
       if (useBalance) {
-        const balanceCheck = await lockUserBalance(client, user.id, cost);
+        const balanceCheck = await lockUserBalance(client, user.id, baseCost);
         if (!balanceCheck.success) {
           throw new Error(balanceCheck.error);
         }
 
         // Deduzir saldo
-        const updateResult = await updateUserBalance(client, user.id, cost, 'debit');
+        const updateResult = await updateUserBalance(client, user.id, baseCost, 'debit');
         if (!updateResult.success) {
           throw new Error(updateResult.error);
         }
@@ -126,10 +135,10 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
           client,
           user.id,
           'BUY_QUOTA',
-          cost,
+          baseCost,
           `Compra de ${quantity} cota(s) - APROVADA`,
           'APPROVED',
-          { quantity, useBalance }
+          { quantity, useBalance, paymentMethod: 'balance' }
         );
 
         if (!transactionResult.success) {
@@ -141,20 +150,58 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
 
         return {
           transactionId: transactionResult.transactionId,
-          cost,
+          cost: baseCost,
           quantity,
           immediateApproval: true
         };
       } else {
-        // Criar transação pendente (compra via PIX)
+        // Criar transação pendente (compra via PIX/Cartão)
+        const external_reference = `BUY_QUOTA_${user.id}_${Date.now()}`;
+
+        let mpData = null;
+        try {
+          if (paymentMethod === 'card' && token) {
+            mpData = await createCardPayment({
+              amount: finalCost,
+              description: `Compra de ${quantity} cota(s) no Cred30`,
+              email: user.email,
+              external_reference,
+              token,
+              issuer_id: issuer_id ? Number(issuer_id) : undefined,
+              installments: installments,
+              payment_method_id: 'master' // O Brick enviará o ID correto se necessário, mas para o SDKv2 o token já contém a info
+            });
+          } else {
+            mpData = await createPixPayment({
+              amount: finalCost,
+              description: `Compra de ${quantity} cota(s) no Cred30`,
+              email: user.email,
+              external_reference
+            });
+          }
+        } catch (mpError) {
+          console.error('Erro ao gerar cobrança Mercado Pago:', mpError);
+          // Prosseguir mesmo sem MP automático, admin verá como pendente normal
+        }
+
         const transactionResult = await createTransaction(
           client,
           user.id,
           'BUY_QUOTA',
-          cost,
-          `Compra de ${quantity} cota(s) - Aguardando Aprovação`,
+          finalCost,
+          `Compra de ${quantity} cota(s) - ${mpData ? 'Mercado Pago' : 'Aguardando Aprovação'}`,
           'PENDING',
-          { quantity, useBalance }
+          {
+            quantity,
+            useBalance,
+            paymentMethod: paymentMethod,
+            mp_id: mpData?.id,
+            qr_code: mpData?.qr_code,
+            qr_code_base64: mpData?.qr_code_base64,
+            external_reference,
+            baseCost,
+            userFee
+          }
         );
 
         if (!transactionResult.success) {
@@ -163,9 +210,13 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
 
         return {
           transactionId: transactionResult.transactionId,
-          cost,
+          cost: baseCost,
+          finalCost: finalCost,
+          userFee: userFee,
           quantity,
-          immediateApproval: false
+          immediateApproval: false,
+          pixData: mpData?.qr_code ? mpData : null,
+          cardData: paymentMethod === 'card' ? mpData : null
         };
       }
     });
@@ -187,8 +238,12 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
       data: {
         transactionId: result.data?.transactionId,
         cost: result.data?.cost,
+        finalCost: result.data?.finalCost,
+        userFee: result.data?.userFee,
         quantity: result.data?.quantity,
-        immediateApproval: result.data?.immediateApproval
+        immediateApproval: result.data?.immediateApproval,
+        pixData: result.data?.pixData,
+        cardData: result.data?.cardData
       },
     });
   } catch (error) {

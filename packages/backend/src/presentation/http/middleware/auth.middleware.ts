@@ -21,7 +21,7 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
     let decoded: any = null;
 
     try {
-      decoded = verify(token, process.env.JWT_SECRET || 'default_secret') as any;
+      decoded = verify(token, process.env.JWT_SECRET as string) as any;
 
       console.log('authMiddleware - Token decodificado:', {
         userId: decoded?.userId,

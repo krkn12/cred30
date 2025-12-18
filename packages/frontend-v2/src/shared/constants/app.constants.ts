@@ -1,4 +1,4 @@
-export const ADMIN_PIX_KEY = 'josiassm701@gmail.com';
+export const MP_PUBLIC_KEY = (import.meta as any).env.VITE_MP_PUBLIC_KEY || 'TEST-2c2e7204-2706-4caa-8c8d-9241534bd123';
 export const QUOTA_PRICE = 50;
 export const VESTING_PERIOD_MS = 365 * 24 * 60 * 60 * 1000;
 

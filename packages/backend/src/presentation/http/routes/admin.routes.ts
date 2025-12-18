@@ -11,9 +11,10 @@ import {
   QUOTA_PRICE,
   REFERRAL_BONUS
 } from '../../../shared/constants/business.constants';
-import { executeInTransaction, updateUserBalance, createTransaction, updateTransactionStatus } from '../../../domain/services/transaction.service';
+import { executeInTransaction, updateUserBalance, createTransaction, updateTransactionStatus, processTransactionApproval, processLoanApproval } from '../../../domain/services/transaction.service';
 import { distributeProfits } from '../../../application/services/profit-distribution.service';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
+import { calculateGatewayCost } from '../../../shared/utils/financial.utils';
 
 interface PaymentApprovalResult {
   success: boolean;
@@ -104,6 +105,7 @@ adminRoutes.get('/dashboard', adminMiddleware, async (c) => {
     config.system_balance = parseFloat(String(config.system_balance || 0));
     config.profit_pool = parseFloat(String(config.profit_pool || 0));
     config.quota_price = parseFloat(String(config.quota_price || 0));
+    config.total_gateway_costs = parseFloat(String(config.total_gateway_costs || 0));
 
     // DEBUG: Verificar se há algum valor salvo no banco que possa estar sobrescrevendo
     const dbBalanceResult = await pool.query('SELECT system_balance FROM system_config LIMIT 1');
@@ -266,284 +268,11 @@ adminRoutes.post('/process-action', adminMiddleware, auditMiddleware('PROCESS_AC
     // Executar dentro de transação para garantir consistência
     const result = await executeInTransaction(pool, async (client) => {
       if (type === 'TRANSACTION') {
-        // Buscar transação com bloqueio
-        const transactionResult = await client.query(
-          'SELECT * FROM transactions WHERE id = $1 AND status = $2 FOR UPDATE',
-          [id, 'PENDING']
-        );
-
-        if (transactionResult.rows.length === 0) {
-          throw new Error('Transação não encontrada ou já processada');
-        }
-
-        const transaction = transactionResult.rows[0];
-
-        // Atualizar status com verificação de concorrência
-        const updateResult = await updateTransactionStatus(
-          client,
-          id,
-          'PENDING',
-          action === 'APPROVE' ? 'APPROVED' : 'REJECTED'
-        );
-
-        if (!updateResult.success) {
-          throw new Error(updateResult.error);
-        }
-
-        if (action === 'REJECT') {
-          // Estornar valores se necessário
-          if (transaction.type === 'WITHDRAWAL') {
-            await updateUserBalance(client, transaction.user_id, parseFloat(transaction.amount), 'credit');
-
-            // Devolver valor ao caixa operacional (saque foi rejeitado)
-            await client.query(
-              'UPDATE system_config SET system_balance = system_balance + $1',
-              [parseFloat(transaction.amount)]
-            );
-          }
-
-          if (transaction.type === 'BUY_QUOTA') {
-            let metadata: any = {};
-            try {
-              const metadataStr = String(transaction.metadata || '{}').trim();
-              if (metadataStr.startsWith('{') || metadataStr.startsWith('[')) {
-                metadata = JSON.parse(metadataStr);
-              } else {
-                metadata = {};
-              }
-            } catch (error) {
-              console.error('Erro ao fazer parse do metadata (BUY_QUOTA):', error);
-              metadata = {};
-            }
-
-            if (metadata.useBalance) {
-              await updateUserBalance(client, transaction.user_id, parseFloat(transaction.amount), 'credit');
-            }
-          }
-
-          if (transaction.type === 'LOAN_PAYMENT') {
-            let metadata: any = {};
-            try {
-              const metadataStr = String(transaction.metadata || '{}').trim();
-              if (metadataStr.startsWith('{') || metadataStr.startsWith('[')) {
-                metadata = JSON.parse(metadataStr);
-              } else {
-                metadata = {};
-              }
-            } catch (error) {
-              console.error('Erro ao fazer parse do metadata (LOAN_PAYMENT):', error);
-              metadata = {};
-            }
-
-            if (metadata.useBalance) {
-              await updateUserBalance(client, transaction.user_id, parseFloat(transaction.amount), 'credit');
-
-              // Reativar empréstimo
-              if (metadata.loanId) {
-                await client.query(
-                  'UPDATE loans SET status = $1 WHERE id = $2',
-                  ['APPROVED', metadata.loanId]
-                );
-              }
-            }
-          }
-        } else {
-          // Aprovar transação
-          if (transaction.type === 'BUY_QUOTA') {
-            // Criar cotas
-            let metadata: any = {};
-            try {
-              // Verificar se metadata já é um objeto
-              if (transaction.metadata && typeof transaction.metadata === 'object') {
-                metadata = transaction.metadata;
-                console.log('DEBUG - Metadata já é objeto:', metadata);
-              } else {
-                // Se for string, fazer parse
-                const metadataStr = String(transaction.metadata || '{}').trim();
-                console.log('DEBUG - Metadata original da transação BUY_QUOTA (string):', metadataStr);
-
-                if (metadataStr.startsWith('{') || metadataStr.startsWith('[')) {
-                  metadata = JSON.parse(metadataStr);
-                  console.log('DEBUG - Metadata parseado:', metadata);
-                } else {
-                  // Se não for JSON válido, tentar extrair quantity do amount
-                  console.log('DEBUG - Metadata não é JSON válido, calculando quantidade pelo amount:', transaction.amount);
-                  const calculatedQuantity = Math.floor(parseFloat(transaction.amount) / QUOTA_PRICE);
-                  metadata = { quantity: calculatedQuantity, useBalance: false };
-                  console.log('DEBUG - Quantidade calculada:', calculatedQuantity);
-                }
-              }
-            } catch (error) {
-              console.error('Erro ao fazer parse do metadata (BUY_QUOTA APPROVE):', error);
-              // Fallback: calcular quantidade pelo amount
-              const calculatedQuantity = Math.floor(parseFloat(transaction.amount) / QUOTA_PRICE);
-              metadata = { quantity: calculatedQuantity, useBalance: false };
-              console.log('DEBUG - Quantidade calculada no fallback:', calculatedQuantity);
-            }
-
-            // Garantir que quantity sempre exista e seja válida
-            let qty = metadata.quantity;
-            if (!qty || qty <= 0) {
-              qty = Math.floor(parseFloat(transaction.amount) / QUOTA_PRICE);
-              console.log('DEBUG - Quantidade final após validação:', qty);
-            }
-
-            for (let i = 0; i < qty; i++) {
-              await client.query(
-                `INSERT INTO quotas (user_id, purchase_price, current_value, purchase_date, status)
-                 VALUES ($1, $2, $3, $4, 'ACTIVE')`,
-                [transaction.user_id, QUOTA_PRICE, QUOTA_PRICE, new Date()]
-              );
-            }
-
-            // Atualizar Score por investimento (Aprovado pelo Admin)
-            await updateScore(client, transaction.user_id, SCORE_REWARDS.QUOTA_PURCHASE * qty, `Compra de ${qty} cotas (Aprovada)`);
-
-            // Adicionar ao saldo do sistema APENAS se a compra foi via PIX
-            // Se foi via saldo, o dinheiro já está no sistema
-            if (!metadata.useBalance) {
-              await client.query(
-                'UPDATE system_config SET system_balance = system_balance + $1',
-                [parseFloat(transaction.amount)]
-              );
-            }
-          }
-
-          if (transaction.type === 'LOAN_PAYMENT') {
-            // Processar pagamento de empréstimo
-            let metadata: any = {};
-            try {
-              const metadataStr = String(transaction.metadata || '{}').trim();
-              if (metadataStr.startsWith('{') || metadataStr.startsWith('[')) {
-                metadata = JSON.parse(metadataStr);
-              } else {
-                metadata = {};
-              }
-            } catch (error) {
-              console.error('Erro ao fazer parse do metadata (LOAN_PAYMENT):', error);
-              metadata = {};
-            }
-
-            // Garantir que metadata seja sempre um objeto válido antes de usar
-            if (!metadata || typeof metadata !== 'object') {
-              metadata = {};
-            }
-
-            if (metadata.loanId) {
-              const loanResult = await client.query(
-                'SELECT * FROM loans WHERE id = $1 FOR UPDATE',
-                [metadata.loanId]
-              );
-
-              if (loanResult.rows.length > 0) {
-                const loan = loanResult.rows[0];
-
-                await client.query(
-                  'UPDATE loans SET status = $1 WHERE id = $2',
-                  ['PAID', metadata.loanId]
-                );
-
-                // Atualizar Score por pagamento de empréstimo
-                await updateScore(client, transaction.user_id, SCORE_REWARDS.LOAN_PAYMENT_ON_TIME, 'Pagamento integral de empréstimo');
-
-                // Separar principal e juros
-                const principal = parseFloat(loan.amount);
-                const interest = parseFloat(loan.total_repayment) - principal;
-
-                // Devolver principal ao sistema
-                await client.query(
-                  'UPDATE system_config SET system_balance = system_balance + $1',
-                  [principal]
-                );
-
-                // Aplicar regra 85/15 para os juros
-                const interestForProfit = interest * 0.85; // 85% dos juros vai para o lucro
-                const interestForOperational = interest * 0.15; // 15% dos juros vai para o caixa operacional
-
-                // Adicionar 85% dos juros ao pool de lucros
-                await client.query(
-                  'UPDATE system_config SET profit_pool = profit_pool + $1',
-                  [interestForProfit]
-                );
-
-                // Adicionar 15% dos juros ao caixa operacional
-                await client.query(
-                  'UPDATE system_config SET system_balance = system_balance + $1',
-                  [interestForOperational]
-                );
-
-                console.log('DEBUG - Pagamento de empréstimo processado (regra 85/15):', {
-                  principalReturned: principal,
-                  totalInterest: interest,
-                  interestForProfit,
-                  interestForOperational,
-                  totalToOperational: principal + interestForOperational,
-                  totalToProfit: interestForProfit
-                });
-              }
-            }
-          }
-        }
+        return await processTransactionApproval(client, id, action);
       } else if (type === 'LOAN') {
-        // Buscar empréstimo com bloqueio
-        const loanResult = await client.query(
-          'SELECT * FROM loans WHERE id = $1 AND status = $2 FOR UPDATE',
-          [id, 'PENDING']
-        );
-
-        if (loanResult.rows.length === 0) {
-          throw new Error('Empréstimo não encontrado ou já processado');
-        }
-
-        const loan = loanResult.rows[0];
-
-        if (action === 'REJECT') {
-          // Rejeitar empréstimo
-          await client.query(
-            'UPDATE loans SET status = $1 WHERE id = $2',
-            ['REJECTED', id]
-          );
-        } else {
-          // Aprovar empréstimo - Creditar valor no saldo do usuário
-          await client.query(
-            'UPDATE loans SET status = $1 WHERE id = $2',
-            ['APPROVED', id]
-          );
-
-          // Creditar valor do empréstimo no saldo do usuário
-          await updateUserBalance(client, loan.user_id, parseFloat(loan.amount), 'credit');
-
-          // Criar transação de empréstimo aprovado com valor creditado
-          await createTransaction(
-            client,
-            loan.user_id,
-            'LOAN_APPROVED',
-            parseFloat(loan.amount), // Valor creditado no saldo
-            'Empréstimo Aprovado - Valor Creditado no Saldo',
-            'APPROVED',
-            {
-              loanId: id,
-              amount: parseFloat(loan.amount),
-              totalRepayment: parseFloat(loan.total_repayment),
-              installments: loan.installments,
-              interestRate: parseFloat(loan.interest_rate),
-              approvalDate: new Date().toISOString(),
-              type: 'LOAN_APPROVAL',
-              creditedToBalance: true // Indica que foi creditado no saldo
-            }
-          );
-
-          console.log('DEBUG - Empréstimo aprovado e valor creditado no saldo:', {
-            loanId: id,
-            amount: parseFloat(loan.amount),
-            userId: loan.user_id,
-            status: 'APPROVED',
-            creditedToBalance: true
-          });
-        }
+        return await processLoanApproval(client, id, action);
       }
-
-      return { success: true };
+      throw new Error('Tipo de ação não reconhecido');
     });
 
     if (!result.success) {
@@ -751,19 +480,40 @@ adminRoutes.post('/approve-payment', adminMiddleware, auditMiddleware('APPROVE_P
       // Separar valores baseado no tipo de pagamento
       if (metadata.paymentType === 'full_payment') {
         // Pagamento completo do empréstimo
-        // Devolver principal ao caixa operacional
-        await client.query(
-          'UPDATE system_config SET system_balance = system_balance + $1',
-          [principalAmount]
-        );
+        // Calcular custo do gateway se não for via saldo
+        let gatewayCost = 0;
+        if (!metadata.useBalance) {
+          const paymentMethod = metadata.paymentMethod || 'pix';
+          const baseAmount = metadata.baseAmount ? parseFloat(metadata.baseAmount) : principalAmount + totalInterest;
+          gatewayCost = calculateGatewayCost(baseAmount, paymentMethod);
 
-        // Enviar 100% dos juros para o pool (a divisão 85/15 ocorre na distribuição diária)
-        const interestForProfit = totalInterest;
+          await client.query(
+            'UPDATE transactions SET gateway_cost = $1 WHERE id = $2',
+            [gatewayCost, transaction.id]
+          );
+
+          await client.query(
+            'UPDATE system_config SET total_gateway_costs = total_gateway_costs + $1',
+            [gatewayCost]
+          );
+        }
+
+        // Devolver principal ao sistema
+        // Se for pagamento externo, o principal vem com a taxa inclusa? 
+        // Não, o system_balance deve aumentar pelo principal. O lucro de juros deve aumentar pelo juro.
+        // Mas se houve custo de gateway, quem paga?
+        // Se for PIX, o sistema absorve (diminui system_balance).
+        // Se for CARTÃO, o usuário pagou extra (transaction.amount > baseAmount).
+
+        await client.query(
+          'UPDATE system_config SET system_balance = system_balance + $1 - $2',
+          [principalAmount, metadata.useBalance ? 0 : gatewayCost]
+        );
 
         // Adicionar juros ao pool de lucros
         await client.query(
           'UPDATE system_config SET profit_pool = profit_pool + $1',
-          [interestForProfit]
+          [totalInterest]
         );
 
         // Marcar empréstimo como PAGO
@@ -775,7 +525,7 @@ adminRoutes.post('/approve-payment', adminMiddleware, auditMiddleware('APPROVE_P
         console.log('DEBUG - Pagamento completo processado (100% juros para pool):', {
           principalReturned: principalAmount,
           totalInterest,
-          totalToProfit: interestForProfit
+          totalToProfit: totalInterest
         });
 
       } else if (metadata.paymentType === 'installment' && metadata.installmentAmount) {
@@ -789,20 +539,28 @@ adminRoutes.post('/approve-payment', adminMiddleware, auditMiddleware('APPROVE_P
         // Enviar 100% dos juros da parcela para o pool
         const interestForProfit = interestPortion;
 
-        // Devolver parte do principal ao caixa operacional
+        // Devolver parte do principal ao caixa operacional descontando o custo do gateway
+        const paymentMethod = metadata.paymentMethod || 'pix';
+        const baseAmount = metadata.baseAmount ? parseFloat(metadata.baseAmount) : installmentAmount;
+        const gatewayCost = calculateGatewayCost(baseAmount, paymentMethod);
+
+        // Atualizar transação com o custo (apenas uma vez se múltiplos blocos lerem)
         await client.query(
-          'UPDATE system_config SET system_balance = system_balance + $1',
-          [principalPortion]
+          'UPDATE transactions SET gateway_cost = $1 WHERE id = $2',
+          [gatewayCost, transaction.id]
         );
 
-        console.log('DEBUG - Parcela processada (regra 85/15):', {
+        // Subtrair do caixa operacional e registrar custo total
+        await client.query(
+          'UPDATE system_config SET system_balance = system_balance + $1 - $2, total_gateway_costs = total_gateway_costs + $2',
+          [principalPortion, gatewayCost]
+        );
+
+        console.log('DEBUG - Parcela processada:', {
           installmentAmount,
           principalPortion,
           interestPortion,
-          interestForProfit,
-          interestForOperational,
-          totalToOperational: principalPortion + interestForOperational,
-          totalToProfit: interestForProfit
+          gatewayCost
         });
 
         // Registrar pagamento da parcela na tabela de installments (IMPORTANTE: PIX não registra antes)

@@ -21,9 +21,9 @@ if (process.env.DATABASE_URL) {
   // Configuração local de fallback
   poolConfig.host = process.env.DB_HOST || 'localhost';
   poolConfig.port = parseInt(process.env.DB_PORT || '5432');
-  poolConfig.user = process.env.DB_USER || 'cred30user';
-  poolConfig.password = process.env.DB_PASSWORD || 'cred30pass';
-  poolConfig.database = process.env.DB_DATABASE || 'cred30';
+  poolConfig.user = process.env.DB_USER || 'admin';
+  poolConfig.password = process.env.DB_PASSWORD || 'password';
+  poolConfig.database = process.env.DB_DATABASE || 'cred30_local';
 }
 
 // Criar o pool de conexões
@@ -355,6 +355,7 @@ export const initializeDatabase = async () => {
         user_id INTEGER REFERENCES users(id),
         type VARCHAR(20) NOT NULL,
         amount DECIMAL(10,2) NOT NULL,
+        gateway_cost DECIMAL(10,2) DEFAULT 0,
         description TEXT,
         status VARCHAR(20) DEFAULT 'PENDING',
         metadata JSONB,
@@ -363,12 +364,27 @@ export const initializeDatabase = async () => {
       );
     `);
 
+    // Verificar se a coluna gateway_cost existe na tabela transactions
+    const gatewayCostColumnExists = await client.query(`
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'transactions' AND column_name = 'gateway_cost'
+      );
+    `);
+
+    if (!gatewayCostColumnExists.rows[0].exists) {
+      await client.query('ALTER TABLE transactions ADD COLUMN gateway_cost DECIMAL(10,2) DEFAULT 0');
+      console.log('Coluna gateway_cost adicionada à tabela transactions');
+    }
+
     // Criar tabela de configuração do sistema
     await client.query(`
       CREATE TABLE IF NOT EXISTS system_config (
         id SERIAL PRIMARY KEY,
         system_balance DECIMAL(15,2) DEFAULT 0,
         profit_pool DECIMAL(15,2) DEFAULT 0,
+        total_gateway_costs DECIMAL(15,2) DEFAULT 0,
         quota_price DECIMAL(10,2) DEFAULT 100,
         loan_interest_rate DECIMAL(5,2) DEFAULT 0.2,
         penalty_rate DECIMAL(5,2) DEFAULT 0.4,
@@ -376,6 +392,20 @@ export const initializeDatabase = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Verificar se a coluna total_gateway_costs existe na tabela system_config
+    const totalGatewayCostsColumnExists = await client.query(`
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'system_config' AND column_name = 'total_gateway_costs'
+      );
+    `);
+
+    if (!totalGatewayCostsColumnExists.rows[0].exists) {
+      await client.query('ALTER TABLE system_config ADD COLUMN total_gateway_costs DECIMAL(15,2) DEFAULT 0');
+      console.log('Coluna total_gateway_costs adicionada à tabela system_config');
+    }
 
     // Verificar se a coluna updated_at existe na tabela system_config
     const updatedAtColumnExists = await client.query(`

@@ -10,6 +10,7 @@ import { adminRoutes } from './presentation/http/routes/admin.routes';
 import { withdrawalRoutes } from './presentation/http/routes/withdrawals.routes';
 import { gamesRoutes } from './presentation/http/routes/games.routes';
 import { productsRoutes } from './presentation/http/routes/products.routes';
+import { webhookRoutes } from './presentation/http/routes/webhooks.routes';
 import { pool, initializeDatabase, setDbPool } from './infrastructure/database/postgresql/connection/pool';
 import { initializeScheduler } from './scheduler';
 
@@ -90,6 +91,7 @@ async function startServer() {
     app.route('/api/withdrawals', withdrawalRoutes);
     app.route('/api/games', gamesRoutes);
     app.route('/api/products', productsRoutes);
+    app.route('/api/webhooks', webhookRoutes);
     // Rota de health check
     app.get('/api/health', (c) => {
       return c.json({ status: 'ok', timestamp: new Date().toISOString() });
