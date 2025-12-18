@@ -474,3 +474,11 @@ export const getCurrentUser = async (): Promise<User | null> => {
 export const fixLoanPix = async (loanId: string, pixKey: string): Promise<any> => {
   return await apiService.fixLoanPix(loanId, pixKey);
 };
+
+export const deleteUserAccount = async (): Promise<any> => {
+  const result = await apiService.deleteAccount();
+  if (result.success) {
+    await logoutUser();
+  }
+  return result;
+};

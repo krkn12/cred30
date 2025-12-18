@@ -424,6 +424,22 @@ export const initializeDatabase = async () => {
       )
     `);
 
+    // Criar tabela de produtos (Loja de Afiliados)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS products (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        image_url TEXT,
+        affiliate_url TEXT NOT NULL,
+        price DECIMAL(10, 2),
+        category VARCHAR(50) DEFAULT 'geral',
+        active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log('Tabelas criadas/verificadas com sucesso!');
 
     // Criar índices de performance

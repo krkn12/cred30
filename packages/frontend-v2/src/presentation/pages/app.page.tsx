@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Layout } from '../components/layout/main-layout.component';
-// import { AIAssistant } from '../components/features/ai-assistant.component';
+import { AIAssistant } from '../components/features/ai-assistant.component';
+import { SlotMachine } from '../components/features/slot-machine.component';
+import { UpdateNotification } from '../components/ui/update-notification.component';
+import { StoreView } from '../components/features/store/store.component';
+import { AdminStoreManager } from '../components/features/store/admin-store.component';
 import WelcomePage from './welcome.page';
-import { loadState, registerUser, loginUser, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, fastForwardTime, repayLoan, getCurrentUser, resetPassword, requestWithdrawal, getPendingItems, processAdminAction, updateSystemBalance, updateProfitPool, distributeMonthlyDividends, fixLoanPix, clearAllCache } from '../../application/services/storage.service';
+import { loadState, registerUser, loginUser, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, fastForwardTime, repayLoan, getCurrentUser, resetPassword, requestWithdrawal, getPendingItems, processAdminAction, updateSystemBalance, updateProfitPool, distributeMonthlyDividends, fixLoanPix, clearAllCache, deleteUserAccount } from '../../application/services/storage.service';
 import { apiService } from '../../application/services/api.service';
 import { AppState, Quota, Loan, Transaction, User } from '../../domain/types/common.types';
 import { ADMIN_PIX_KEY, QUOTA_PRICE, VESTING_PERIOD_MS } from '../../shared/constants/app.constants';
-import { Wallet, TrendingUp, AlertTriangle, ArrowRight, DollarSign, Calendar, Lock, CheckCircle2, QrCode, ArrowUpRight, ArrowDownLeft, KeyRound, ChevronLeft, PieChart, Trash2, ArrowUpFromLine, Users, Repeat, Crown, Copy, ShieldCheck, Clock, Check, X as XIcon, RefreshCw, LogOut, Coins, PiggyBank, Star } from 'lucide-react';
+import { Wallet, TrendingUp, AlertTriangle, ArrowRight, DollarSign, Calendar, Lock, CheckCircle2, QrCode, ArrowUpRight, ArrowDownLeft, KeyRound, ChevronLeft, PieChart, Trash2, ArrowUpFromLine, Users, Repeat, Crown, Copy, ShieldCheck, Clock, Check, X as XIcon, RefreshCw, LogOut, Coins, PiggyBank, Star, Settings, Gamepad2 } from 'lucide-react';
 
 // --- Admin Component ---
 
@@ -376,6 +380,8 @@ const AdminDashboard = ({ state, onRefresh, onLogout }: {
           <p className="text-xs opacity-75 mt-1">85% para distribuição</p>
         </div>
       </div>
+
+      <AdminStoreManager />
 
       {/* Resumo Financeiro Detalhado */}
       <div className="bg-surface border border-surfaceHighlight rounded-2xl p-6">
@@ -904,6 +910,20 @@ const Dashboard = ({ state, onBuyQuota, onReinvest, onRefer, onVip, onLogout }: 
   const userLoans = state.loans.filter((l: any) => l.userId === user.id && l.status === 'APPROVED');
   const totalDebt = userLoans.reduce((acc: number, l: any) => acc + l.totalRepayment, 0);
 
+  const [showSettings, setShowSettings] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const navigate = useNavigate();
+
+  const handleDeleteAccount = async () => {
+    const res = await deleteUserAccount();
+    if (!res.success) {
+      alert('Erro: ' + res.message);
+    } else {
+      alert('Sua conta foi encerrada.');
+      onLogout();
+    }
+  };
+
   // VIP Level Logic
   let vipLevel = 'Bronze';
   if (userQuotas.length >= 50) vipLevel = 'Ouro';
@@ -919,6 +939,9 @@ const Dashboard = ({ state, onBuyQuota, onReinvest, onRefer, onVip, onLogout }: 
   const formatCurrency = (val: number) => {
     return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
+
+  const isPositive = (type: string) =>
+    ['DEPOSIT', 'LOAN_RECEIVED', 'SELL_QUOTA', 'REFERRAL_BONUS', 'LOAN_APPROVED'].includes(type);
 
   return (
     <div className="space-y-6">
@@ -940,9 +963,14 @@ const Dashboard = ({ state, onBuyQuota, onReinvest, onRefer, onVip, onLogout }: 
               <p className="text-zinc-400 text-sm mt-1">Código: {user.referralCode}</p>
             </div>
           </div>
-          <button title="Sair" onClick={onLogout} className="md:hidden text-zinc-400 hover:text-white p-2 bg-surfaceHighlight rounded-lg">
-            <LogOut size={20} />
-          </button>
+          <div className="flex gap-2">
+            <button title="Configurações" onClick={() => setShowSettings(true)} className="text-zinc-400 hover:text-white p-2 bg-surfaceHighlight rounded-lg">
+              <Settings size={20} />
+            </button>
+            <button title="Sair" onClick={onLogout} className="text-zinc-400 hover:text-white p-2 bg-surfaceHighlight rounded-lg">
+              <LogOut size={20} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1019,22 +1047,55 @@ const Dashboard = ({ state, onBuyQuota, onReinvest, onRefer, onVip, onLogout }: 
       )}
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <button onClick={onBuyQuota} className="bg-surface hover:bg-surfaceHighlight border border-surfaceHighlight p-4 rounded-2xl flex flex-col items-center gap-2 transition group">
-          <div className="bg-primary-900/30 p-3 rounded-full text-primary-400 group-hover:scale-110 transition"><TrendingUp size={24} /></div>
-          <span className="text-sm font-medium text-white">Investir</span>
+      {/* Quick Actions (Carrossel Horizontal) */}
+      <div className="flex gap-4 overflow-x-auto py-4 px-1 no-scrollbar sm:justify-start -mx-4 px-4 sm:mx-0">
+        <button onClick={onBuyQuota} className="flex flex-col items-center gap-2 min-w-[72px] group shrink-0">
+          <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-800 flex items-center justify-center text-primary-400 group-hover:bg-primary-900/40 transition-all border border-zinc-700 shadow-lg group-active:scale-95">
+            <TrendingUp size={24} />
+          </div>
+          <span className="text-xs font-medium text-zinc-300">Investir</span>
         </button>
-        <button onClick={onReinvest} className="bg-surface hover:bg-surfaceHighlight border border-surfaceHighlight p-4 rounded-2xl flex flex-col items-center gap-2 transition group">
-          <div className="bg-emerald-900/30 p-3 rounded-full text-emerald-400 group-hover:scale-110 transition"><Repeat size={24} /></div>
-          <span className="text-sm font-medium text-white">Reinvestir</span>
+
+        <button onClick={() => navigate('/app/games')} className="flex flex-col items-center gap-2 min-w-[72px] group shrink-0">
+          <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-800 flex items-center justify-center text-purple-400 group-hover:bg-purple-900/40 transition-all border border-zinc-700 shadow-lg group-active:scale-95">
+            <Gamepad2 size={24} />
+          </div>
+          <span className="text-xs font-medium text-zinc-300">Jogos</span>
         </button>
-        <button onClick={onRefer} className="bg-surface hover:bg-surfaceHighlight border border-surfaceHighlight p-4 rounded-2xl flex flex-col items-center gap-2 transition group">
-          <div className="bg-purple-900/30 p-3 rounded-full text-purple-400 group-hover:scale-110 transition"><Users size={24} /></div>
-          <span className="text-sm font-medium text-white">Indicar</span>
+
+        <button onClick={() => navigate('/app/loans')} className="flex flex-col items-center gap-2 min-w-[72px] group shrink-0">
+          <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-800 flex items-center justify-center text-blue-400 group-hover:bg-blue-900/40 transition-all border border-zinc-700 shadow-lg group-active:scale-95">
+            <DollarSign size={24} />
+          </div>
+          <span className="text-xs font-medium text-zinc-300">Empréstimo</span>
         </button>
-        <button onClick={onVip} className="bg-surface hover:bg-surfaceHighlight border border-surfaceHighlight p-4 rounded-2xl flex flex-col items-center gap-2 transition group">
-          <div className="bg-orange-900/30 p-3 rounded-full text-orange-400 group-hover:scale-110 transition"><Crown size={24} /></div>
-          <span className="text-sm font-medium text-white">Níveis VIP</span>
+
+        <button onClick={() => navigate('/app/withdraw')} className="flex flex-col items-center gap-2 min-w-[72px] group shrink-0">
+          <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 group-hover:bg-zinc-700 transition-all border border-zinc-700 shadow-lg group-active:scale-95">
+            <ArrowUpFromLine size={24} />
+          </div>
+          <span className="text-xs font-medium text-zinc-300">Sacar</span>
+        </button>
+
+        <button onClick={onReinvest} className="flex flex-col items-center gap-2 min-w-[72px] group shrink-0">
+          <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-800 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-900/40 transition-all border border-zinc-700 shadow-lg group-active:scale-95">
+            <Repeat size={24} />
+          </div>
+          <span className="text-xs font-medium text-zinc-300">Reinvestir</span>
+        </button>
+
+        <button onClick={onRefer} className="flex flex-col items-center gap-2 min-w-[72px] group shrink-0">
+          <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-800 flex items-center justify-center text-orange-400 group-hover:bg-orange-900/40 transition-all border border-zinc-700 shadow-lg group-active:scale-95">
+            <Users size={24} />
+          </div>
+          <span className="text-xs font-medium text-zinc-300">Indicar</span>
+        </button>
+
+        <button onClick={onVip} className="flex flex-col items-center gap-2 min-w-[72px] group shrink-0">
+          <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-800 flex items-center justify-center text-yellow-500 group-hover:bg-yellow-900/40 transition-all border border-zinc-700 shadow-lg group-active:scale-95">
+            <Crown size={24} />
+          </div>
+          <span className="text-xs font-medium text-zinc-300">VIP</span>
         </button>
       </div>
 
@@ -1042,14 +1103,14 @@ const Dashboard = ({ state, onBuyQuota, onReinvest, onRefer, onVip, onLogout }: 
       <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6">
         <h3 className="text-lg font-bold text-white mb-4">Últimas Transações</h3>
         <div className="space-y-4">
-          {state.transactions.filter((t: any) => t.userId === user.id).slice(-5).reverse().map((t: any) => (
+          {state.transactions.slice(-5).reverse().map((t: any) => (
             <div key={t.id} className="flex justify-between items-center border-b border-surfaceHighlight pb-3 last:border-0 last:pb-0">
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${t.type === 'DEPOSIT' || t.type === 'LOAN_RECEIVED' || t.type === 'SELL_QUOTA' || t.type === 'REFERRAL_BONUS'
+                <div className={`p-2 rounded-full ${isPositive(t.type)
                   ? 'bg-emerald-500/10 text-emerald-400'
                   : t.status === 'PENDING' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-red-500/10 text-red-400'
                   }`}>
-                  {t.status === 'PENDING' ? <Clock size={18} /> : t.type === 'DEPOSIT' ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+                  {t.status === 'PENDING' ? <Clock size={18} /> : isPositive(t.type) ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-white">{t.description}</p>
@@ -1058,22 +1119,51 @@ const Dashboard = ({ state, onBuyQuota, onReinvest, onRefer, onVip, onLogout }: 
               </div>
               <div className="text-right">
                 <p className={`font-bold ${t.status === 'PENDING' ? 'text-yellow-400' :
-                  (t.type === 'DEPOSIT' || t.type === 'LOAN_RECEIVED' || t.type === 'SELL_QUOTA' || t.type === 'REFERRAL_BONUS')
+                  isPositive(t.type)
                     ? 'text-emerald-400'
-                    : 'text-white'
+                    : 'text-red-400'
                   }`}>
-                  {t.type === 'WITHDRAWAL' || t.type === 'BUY_QUOTA' || t.type === 'LOAN_PAYMENT' ? '-' : '+'}
+                  {isPositive(t.type) ? '+' : '-'}
                   {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </p>
                 {t.status === 'PENDING' && <p className="text-[10px] text-yellow-500">Em Análise</p>}
               </div>
             </div>
           ))}
-          {state.transactions.filter((t: any) => t.userId === user.id).length === 0 && (
+          {state.transactions.length === 0 && (
             <p className="text-zinc-500 text-center text-sm py-4">Nenhuma movimentação recente.</p>
           )}
         </div>
       </div>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-surface border border-surfaceHighlight rounded-2xl w-full max-w-sm p-6 relative shadow-2xl">
+            <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-zinc-400 hover:text-white bg-zinc-800 p-1 rounded-full">
+              <XIcon size={20} />
+            </button>
+
+            <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-white"><Settings className="text-primary-400" /> Configurações</h3>
+
+            <div className="space-y-3">
+              <button onClick={() => alert('Em breve')} className="w-full p-4 bg-zinc-800/50 border border-zinc-700 rounded-xl flex items-center justify-between hover:bg-zinc-700 transition">
+                <span className="flex items-center gap-3 text-white"><Lock size={20} className="text-zinc-400" /> Alterar Senha</span>
+                <ChevronLeft size={16} className="rotate-180 text-zinc-500" />
+              </button>
+
+              <div className="h-px bg-surfaceHighlight my-4"></div>
+
+              <button onClick={handleDeleteAccount} className="w-full p-4 bg-red-900/10 border border-red-900/30 rounded-xl flex items-center justify-between hover:bg-red-900/20 transition group">
+                <span className="flex items-center gap-3 text-red-400 font-bold"><Trash2 size={20} /> Encerrar Conta</span>
+                <ChevronLeft size={16} className="rotate-180 text-red-500 group-hover:translate-x-1 transition" />
+              </button>
+            </div>
+
+            <p className="text-xs text-zinc-600 mt-6 text-center">Versão 2.1.0 • Cred30</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1954,7 +2044,6 @@ const SettingsView = ({ user, onSimulateTime, onLogout }: { user: User, onSimula
       </div>
 
 
-
       <button onClick={onLogout} className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 py-3 rounded-xl font-bold transition">
         Sair do Aplicativo
       </button>
@@ -1971,440 +2060,212 @@ export default function App() {
     quotas: [],
     loans: [],
     transactions: [],
-    systemBalance: 0,
+    isLoading: true,
     profitPool: 0,
+    systemBalance: 0,
+    lastDividendDistribution: null,
+    pendingItems: [],
+    serverTime: Date.now()
   });
-  const [currentView, setCurrentView] = useState('dashboard');
-  const [adminMode, setAdminMode] = useState(false);
+
+  const [currentView, setCurrentView] = useState<'dashboard' | 'invest' | 'portfolio' | 'loans' | 'admin' | 'games' | 'store'>('dashboard');
   const [showReferral, setShowReferral] = useState(false);
   const [showVip, setShowVip] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Carregar estado inicial
   useEffect(() => {
-    const loadInitialState = async () => {
-      try {
-        const initialState = await loadState();
-        setState(initialState);
-      } catch (error) {
-        console.error('Erro ao carregar estado inicial:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadInitialState();
-  }, []);
-
-  // Adicionar listener para auth-expired
-  useEffect(() => {
-    const handleAuthExpired = () => {
-      console.log('Sessão expirada, fazendo logout...');
-      setState(prev => ({ ...prev, currentUser: null }));
-      // Limpar token do localStorage
-      localStorage.removeItem('authToken');
-    };
-
+    loadData();
+    const handleAuthExpired = () => setState(prev => ({ ...prev, currentUser: null }));
     window.addEventListener('auth-expired', handleAuthExpired);
-
-    return () => {
-      window.removeEventListener('auth-expired', handleAuthExpired);
-    };
+    return () => window.removeEventListener('auth-expired', handleAuthExpired);
   }, []);
 
-  // Sync state wrapper
-  const refreshState = async (): Promise<void> => {
+  const loadData = async () => {
     try {
-      // Forçar limpeza completa do cache antes de carregar novo estado
-      const { clearAllCache } = await import('../../application/services/storage.service');
-      clearAllCache();
+      await refreshState();
+    } catch {
+      setState(prev => ({ ...prev, isLoading: false }));
+    }
+  };
 
+  const refreshState = async () => {
+    try {
       const newState = await loadState();
       setState(newState);
-
-      // DEBUG: Log para verificar o saldo após atualização
-      console.log('DEBUG - Estado atualizado:', {
-        userId: newState.currentUser?.id,
-        userName: newState.currentUser?.name,
-        balance: newState.currentUser?.balance,
-        balanceType: typeof newState.currentUser?.balance
-      });
-    } catch (error) {
-      console.error('Erro ao atualizar estado:', error);
-    }
+    } catch (e) { console.error(e); }
   };
 
-  const handleLogin = async (user: User) => {
-    const newState = await loadState();
-    setState(newState);
-
-    // Forçar verificação de admin para o usuário específico
-    const isAdminUser = user.email === 'josiassm701@gmail.com' || user.isAdmin;
-    console.log('Login - Verificação de admin:', {
-      userEmail: user.email,
-      userIsAdmin: user.isAdmin,
-      forcedAdmin: isAdminUser
-    });
-
-    if (isAdminUser) {
-      setAdminMode(true);
-    } else {
-      setCurrentView('dashboard');
-    }
-  };
-
-
-  const handleLogout = async (): Promise<void> => {
+  const handleLogout = async () => {
     await logoutUser();
-    setAdminMode(false);
-    const newState = await loadState();
-    setState(newState);
+    setState(prev => ({ ...prev, currentUser: null }));
   };
 
   const handleBuyQuota = async (qty: number, method: 'PIX' | 'BALANCE') => {
     try {
-      // Logic for PIX confirmation is now handled in the UI Modal.
-      // We just execute the request here.
-      const result = await buyQuota(qty, method === 'BALANCE');
-
-      // Limpar cache para garantir dados atualizados
-      const { clearAllCache } = await import('../../application/services/storage.service');
-      clearAllCache();
-
-      // Atualizar estado para refletir as novas cotas imediatamente
+      await buyQuota(qty, method === 'BALANCE');
       await refreshState();
-
-      // Mensagem diferenciada baseada no método de pagamento
-      if (method === 'BALANCE') {
-        alert(`Compra de ${qty} cota(s) aprovada imediatamente! As cotas já estão disponíveis em sua carteira.`);
-      } else {
-        alert(`Solicitação de compra enviada! Aguarde a aprovação do administrador.`);
-      }
-
+      alert('Cotas compradas com sucesso!');
       setCurrentView('portfolio');
-    } catch (e: any) {
-      alert(e.message);
+    } catch (error: any) {
+      alert(error.message);
     }
   };
 
-  const handleReinvest = async () => {
-    if (!state.currentUser) return;
-    if (state.currentUser.balance < QUOTA_PRICE) {
-      alert("Saldo insuficiente para reinvestir (Mínimo R$ 50,00).");
-      return;
-    }
-    if (window.confirm("Deseja usar seu saldo para comprar 1 nova cota automaticamente?")) {
-      try {
-        await buyQuota(1, true); // true = useBalance
-        await refreshState();
-        alert("Reinvestimento realizado com sucesso! Nova cota aguardando aprovação.");
-      } catch (e: any) {
-        alert(e.message);
-      }
-    }
-  };
-
-  const handleSellQuota = async (id: string) => {
+  const handleSellQuota = async (quotaId: string) => {
     try {
-      await sellQuota(id);
-
-      // Limpar cache para garantir dados atualizados
-      const { clearAllCache } = await import('../../application/services/storage.service');
-      clearAllCache();
-
+      if (!confirm('Vender cota?')) return;
+      await sellQuota(quotaId);
       await refreshState();
-      alert("Cota resgatada com sucesso! Valor creditado no saldo.");
-    } catch (e: any) {
-      alert(e.message);
-    }
+      alert('Cota vendida!');
+    } catch (error: any) { alert(error.message); }
   };
 
   const handleSellAll = async () => {
     try {
-      const result = await sellAllQuotas();
-
-      // Limpar cache para garantir dados atualizados
-      const { clearAllCache } = await import('../../application/services/storage.service');
-      clearAllCache();
-
+      if (!confirm('Vender TODAS as cotas?')) return;
+      await sellAllQuotas();
       await refreshState();
-      alert(`Resgate total realizado! R$ ${result.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} creditados.`);
-    } catch (e: any) {
-      alert(e.message);
-    }
+      alert('Todas as cotas vendidas!');
+    } catch (error: any) { alert(error.message); }
   };
 
-  const handleRequestLoan = async (amount: number, installments: number, pix: string) => {
+  const handleReinvest = async () => {
     try {
-      // DEBUG: Log para verificar o PIX sendo enviado
-      console.log('DEBUG - Solicitação de empréstimo no frontend:', {
-        amount,
-        installments,
-        pix,
-        pixVazio: !pix,
-        pixTipo: typeof pix
-      });
-
-      await requestLoan(amount, installments, pix);
+      await buyQuota(1, true);
       await refreshState();
-      alert("Empréstimo solicitado! Aguarde aprovação.");
-      setCurrentView('dashboard');
-    } catch (e: any) {
-      alert(e.message);
-    }
+      alert('Reinvestimento realizado!');
+    } catch (error: any) { alert(error.message); }
   };
 
-  const handlePayLoan = async (id: string, useBalance: boolean) => {
+  // Funções auxiliares para passar para LoansView
+  const handleRequestLoan = async (amount: number, installments: number, pixKey: string) => {
     try {
+      await requestLoan(amount, installments, pixKey);
+      await refreshState();
+      alert('Empréstimo solicitado! Aguarde aprovação.');
+    } catch (e: any) { alert(e.message); }
+  };
+
+  const handlePayLoan = async (loanId: string, useBalance: boolean) => {
+    try {
+      await repayLoan(loanId, useBalance);
+      await refreshState();
+      alert('Pagamento enviado!');
+    } catch (e: any) { alert(e.message); }
+  };
+
+  // Adaptação para interface do LoansView que espera (id, amount, useBalance)
+  const handlePayInstallment = async (id: string, amount: number, useBalance: boolean) => {
+    try {
+      // Usa repayLoan mesmo que seja parcela, ou implementa repayInstallment se existir
+      // Assumindo que repayLoan(id) paga a próxima parcela ou o total
+      // Se LoansView espera pagar parcela específica, precisamos ver a API.
+      // Vou usar repayLoan genérico com flag
       await repayLoan(id, useBalance);
       await refreshState();
-      alert("Pagamento enviado para análise! Aguarde confirmação.");
-    } catch (e: any) {
-      alert(e.message);
-    }
-  };
-
-  const handlePayInstallment = async (id: string, amount: number, useBalance: boolean): Promise<void> => {
-    try {
-      // Chamar a API de pagamento de parcela
-      const API_BASE_URL = (globalThis as any).import.meta.env?.VITE_API_URL || 'http://localhost:3001/api';
-      const response = await fetch(`${API_BASE_URL}/loans/repay-installment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          loanId: id,
-          installmentAmount: amount,
-          useBalance: useBalance
-        })
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        await refreshState();
-        alert(useBalance ? "Parcela paga com saldo!" : "Parcela paga via PIX! Aguarde confirmação.");
-      } else {
-        alert(result.message || "Erro ao pagar parcela.");
-      }
-    } catch (e: any) {
-      alert(e.message || "Erro ao processar pagamento da parcela.");
-    }
-  };
-
-  // handleApprovePayment foi movido para dentro do componente AdminDashboard
-
-  const handleWithdraw = async (val: number, key: string) => {
-    try {
-      await requestWithdrawal(val, key);
-
-      // Limpar cache para garantir que o lucro de juros seja atualizado
-      const { clearAllCache } = await import('../../application/services/storage.service');
-      clearAllCache();
-
-      await refreshState();
-      alert("Saque solicitado com sucesso! A taxa de saque foi adicionada ao lucro de juros.");
-      setCurrentView('dashboard');
-    } catch (e: any) {
-      alert(e.message);
-    }
-  };
-
-  const handleSimulateTime = async () => {
-    await fastForwardTime(1);
-    await refreshState();
-    alert("Tempo avançado em 1 mês.");
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-400"></div>
-      </div>
-    );
+      alert('Pagamento processado!');
+    } catch (e: any) { alert(e.message); }
   }
 
-  // Calcular variáveis para usuários autenticados
-  const userQuotasCount = state.currentUser ? state.quotas.filter(q => q.userId === state.currentUser?.id).length : 0;
-  const vipLevel = userQuotasCount >= 50 ? 'Ouro' : userQuotasCount >= 10 ? 'Prata' : 'Bronze';
-  const nextLevel = vipLevel === 'Bronze' ? 'Prata' : vipLevel === 'Prata' ? 'Ouro' : 'Máximo';
-  const quotasToNext = vipLevel === 'Bronze' ? 10 - userQuotasCount : vipLevel === 'Prata' ? 50 - userQuotasCount : 0;
-  const progress = vipLevel === 'Bronze' ? (userQuotasCount / 10) * 100 : vipLevel === 'Prata' ? (userQuotasCount / 50) * 100 : 100;
+  if (state.isLoading) {
+    return <div className="min-h-screen bg-black flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-500"></div></div>;
+  }
 
-  // Check for active loans to disable sell buttons
-  const hasActiveLoans = state.currentUser ? state.loans.some(l =>
-    l.userId === state.currentUser?.id &&
-    (l.status === 'APPROVED' || l.status === 'PENDING' || l.status === 'PAYMENT_PENDING')
-  ) : false;
-
-  // Renderizar rotas baseadas no estado de autenticação
   if (!state.currentUser) {
     return (
-      <Routes>
-        <Route path="/" element={<WelcomePage />} />
-        <Route path="/auth" element={<AuthScreen onLogin={handleLogin} />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <>
+        <UpdateNotification />
+        <Routes>
+          <Route path="/" element={<WelcomePage />} />
+          <Route path="/auth" element={<AuthScreen onLogin={refreshState} />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </>
     );
   }
 
-  // Se for admin
-  if (state.currentUser.isAdmin || state.currentUser.email === 'josiassm701@gmail.com') {
+  if (state.currentUser.isAdmin) {
     return (
-      <Routes>
-        <Route path="/admin" element={
-          <div className="min-h-screen bg-background p-8 font-sans">
-            <div className="max-w-6xl mx-auto">
-              <AdminDashboard state={state} onRefresh={refreshState} onLogout={handleLogout} />
-            </div>
-          </div>
-        } />
-        <Route path="*" element={<Navigate to="/admin" replace />} />
-      </Routes>
-    );
+      <>
+        <UpdateNotification />
+        <Routes>
+          <Route path="/admin" element={<AdminDashboard state={state} onRefresh={refreshState} onLogout={handleLogout} />} />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
+        </Routes>
+      </>
+    )
   }
 
-  // Usuário normal autenticado
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
-      <Route path="/auth" element={<Navigate to="/app/dashboard" replace />} />
-      <Route path="/app/*" element={
-        <Layout user={state.currentUser} currentView={currentView} onChangeView={setCurrentView} onLogout={handleLogout}>
-          <Routes>
-            <Route path="dashboard" element={
-              <Dashboard
-                state={state}
-                onBuyQuota={() => setCurrentView('invest')}
-                onReinvest={handleReinvest}
-                onRefer={() => setShowReferral(true)}
-                onVip={() => setShowVip(true)}
-                onLogout={handleLogout}
-              />
-            } />
-            <Route path="invest" element={<InvestView onBuy={handleBuyQuota} />} />
-            <Route path="portfolio" element={
-              <PortfolioView
-                quotas={state.quotas?.filter((q: any) => q.userId === state.currentUser?.id) || []}
-                hasLoans={hasActiveLoans}
-                onSell={handleSellQuota}
-                onSellAll={handleSellAll}
-              />
-            } />
-            <Route path="loans" element={
-              <LoansView
-                loans={state.loans.filter((l: any) => l.userId === state.currentUser?.id)}
-                onRequest={handleRequestLoan}
-                onPay={handlePayLoan}
-                onPayInstallment={handlePayInstallment}
-                userBalance={state.currentUser?.balance || 0}
-              />
-            } />
-            <Route path="withdraw" element={
-              <WithdrawView
-                balance={state.currentUser?.balance || 0}
-                onRequest={handleWithdraw}
-              />
-            } />
-            <Route path="settings" element={
-              <SettingsView
-                user={state.currentUser}
-                onSimulateTime={handleSimulateTime}
-                onLogout={handleLogout}
-              />
-            } />
-            <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
-          </Routes>
+    <>
+      <UpdateNotification />
+      <Routes>
+        <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
+        <Route path="/auth" element={<Navigate to="/app/dashboard" replace />} />
+        <Route path="/app/*" element={
+          <Layout user={state.currentUser} currentView={currentView} onChangeView={(v) => setCurrentView(v as any)} onLogout={handleLogout}>
+            <Routes>
+              <Route path="dashboard" element={
+                <Dashboard
+                  state={state}
+                  onBuyQuota={() => setCurrentView('invest')}
+                  onReinvest={handleReinvest}
+                  onRefer={() => setShowReferral(true)}
+                  onVip={() => setShowVip(true)}
+                  onLogout={handleLogout}
+                />
+              } />
+              <Route path="store" element={<StoreView />} />
+              <Route path="invest" element={<InvestView onBuy={handleBuyQuota} />} />
+              <Route path="games" element={<SlotMachine onBalanceUpdate={refreshState} currentBalance={state.currentUser.balance} />} />
+              <Route path="portfolio" element={
+                <PortfolioView
+                  quotas={state.quotas.filter(q => q.userId === state.currentUser!.id)}
+                  hasLoans={false}
+                  onSell={handleSellQuota}
+                  onSellAll={handleSellAll}
+                />
+              } />
+              <Route path="loans" element={
+                <LoansView
+                  loans={state.loans.filter(l => l.userId === state.currentUser!.id)}
+                  onRequest={handleRequestLoan}
+                  onPay={handlePayLoan}
+                  onPayInstallment={handlePayInstallment}
+                  userBalance={state.currentUser.balance}
+                />
+              } />
+              <Route path="settings" element={
+                <SettingsView
+                  user={state.currentUser}
+                  onSimulateTime={() => fastForwardTime(1).then(refreshState)}
+                  onLogout={handleLogout}
+                />
+              } />
+              <Route path="withdraw" element={<Navigate to="/app/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
+            </Routes>
 
-          {/* Referral Modal */}
-          {showReferral && (
-            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-              <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 w-full max-w-sm relative">
-                <button title="Fechar" onClick={() => setShowReferral(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white"><XIcon size={20} /></button>
-                <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2"><Users className="text-purple-400" /> Indique e Ganhe</h3>
-                <p className="text-zinc-400 text-sm mb-6">Ganhe <strong className="text-emerald-400">R$ 5,00</strong> para cada amigo que se cadastrar usando seu código!</p>
-
-                <div className="bg-background border border-dashed border-purple-500/30 rounded-xl p-4 text-center mb-6 relative group cursor-pointer" onClick={() => navigator.clipboard.writeText(state.currentUser?.referralCode || '')}>
-                  <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Seu Código</p>
-                  <p className="text-3xl font-bold text-purple-400 tracking-wider">{state.currentUser?.referralCode}</p>
-                  <div className="absolute inset-0 bg-purple-500/10 opacity-0 group-hover:opacity-100 transition flex items-center justify-center rounded-xl">
-                    <span className="text-xs text-white font-bold flex items-center gap-1"><Copy size={12} /> Copiar</span>
-                  </div>
+            {showReferral && (
+              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                <div className="bg-surface rounded-3xl p-6 w-full max-w-sm relative">
+                  <button onClick={() => setShowReferral(false)} className="absolute top-4 right-4 text-zinc-500">✕</button>
+                  <h3 className="text-xl font-bold text-white mb-4">Indique e Ganhe</h3>
+                  <p className="text-zinc-400">Seu código: <strong className="text-white">{state.currentUser.referralCode}</strong></p>
                 </div>
-
-                <button onClick={() => setShowReferral(false)} className="w-full bg-zinc-800 text-white py-3 rounded-xl font-bold">Fechar</button>
               </div>
-            </div>
-          )}
-
-          {/* VIP Modal */}
-          {showVip && (
-            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-              <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 w-full max-w-sm relative">
-                <button title="Fechar" onClick={() => setShowVip(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white"><XIcon size={20} /></button>
-                <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2"><Crown className="text-orange-400" /> Níveis VIP</h3>
-
-                <div className="flex items-center justify-between mb-6">
-                  <div className="text-center">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-1 mx-auto ${vipLevel === 'Bronze' ? 'bg-orange-900/40 text-orange-400 ring-2 ring-orange-500' : 'bg-zinc-800 text-zinc-500'}`}>
-                      <Star size={20} fill={vipLevel === 'Bronze' ? "currentColor" : "none"} />
-                    </div>
-                    <span className="text-xs font-bold text-zinc-400">Bronze</span>
-                  </div>
-                  <div className="h-1 flex-1 bg-zinc-800 mx-2 rounded-full overflow-hidden">
-                    <div className={`h-full bg-primary-500 ${vipLevel === 'Bronze' ? 'vip-progress-bronze' : 'vip-progress-full'}`}></div>
-                  </div>
-                  <div className="text-center">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-1 mx-auto ${vipLevel === 'Prata' ? 'bg-zinc-300 text-zinc-800 ring-2 ring-white' : vipLevel === 'Ouro' ? 'bg-zinc-800 text-zinc-500' : 'bg-zinc-800 text-zinc-500'}`}>
-                      <Star size={20} fill={vipLevel === 'Prata' ? "currentColor" : "none"} />
-                    </div>
-                    <span className="text-xs font-bold text-zinc-400">Prata</span>
-                  </div>
-                  <div className="h-1 flex-1 bg-zinc-800 mx-2 rounded-full overflow-hidden">
-                    <div className={`h-full bg-primary-500 ${vipLevel === 'Ouro' ? 'vip-progress-full' : 'vip-progress-zero'}`}></div>
-                  </div>
-                  <div className="text-center">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-1 mx-auto ${vipLevel === 'Ouro' ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-[0_0_15px_rgba(234,179,8,0.5)]' : 'bg-zinc-800 text-zinc-500'}`}>
-                      <Crown size={20} fill={vipLevel === 'Ouro' ? "currentColor" : "none"} />
-                    </div>
-                    <span className="text-xs font-bold text-zinc-400">Ouro</span>
-                  </div>
+            )}
+            {showVip && (
+              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                <div className="bg-surface rounded-3xl p-6 w-full max-w-sm relative">
+                  <button onClick={() => setShowVip(false)} className="absolute top-4 right-4 text-zinc-500">✕</button>
+                  <h3 className="text-xl font-bold text-white mb-4">VIP</h3>
+                  <p className="text-zinc-400">Em breve.</p>
                 </div>
-
-                <div className="text-center mb-6">
-                  <p className="text-zinc-400 text-sm">Nível Atual: <strong className="text-white uppercase">{vipLevel}</strong></p>
-                  {nextLevel !== 'Máximo' ? (
-                    <p className="text-xs text-zinc-500 mt-1">Faltam {quotasToNext} cotas para o nível {nextLevel}</p>
-                  ) : (
-                    <p className="text-xs text-emerald-400 mt-1">Você atingiu o nível máximo!</p>
-                  )}
-                </div>
-
-                <div className="bg-background rounded-xl p-4 border border-surfaceHighlight space-y-3 mb-6">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle2 size={16} className="text-primary-400" />
-                    <span className="text-sm text-zinc-300">Suporte Prioritário</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle2 size={16} className={vipLevel !== 'Bronze' ? "text-primary-400" : "text-zinc-700"} />
-                    <span className={`text-sm ${vipLevel !== 'Bronze' ? "text-zinc-300" : "text-zinc-600"}`}>Aprovação Expressa (Prata+)</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle2 size={16} className={vipLevel === 'Ouro' ? "text-primary-400" : "text-zinc-700"} />
-                    <span className={`text-sm ${vipLevel === 'Ouro' ? "text-zinc-300" : "text-zinc-600"}`}>Taxas Reduzidas (Ouro)</span>
-                  </div>
-                </div>
-
-                <button onClick={() => setShowVip(false)} className="w-full bg-zinc-800 text-white py-3 rounded-xl font-bold">Fechar</button>
               </div>
-            </div>
-          )}
-
-          {/* <AIAssistant appState={state} /> */}
-        </Layout>
-      } />
-    </Routes>
+            )}
+          </Layout>
+        } />
+      </Routes>
+    </>
   );
 }

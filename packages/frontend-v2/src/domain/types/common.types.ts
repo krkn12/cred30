@@ -66,9 +66,25 @@ export interface AppState {
   transactions: Transaction[];
   systemBalance: number;
   profitPool: number;
+  isLoading?: boolean;
+  pendingItems?: any[];
+  serverTime?: number;
+  lastDividendDistribution?: any;
   stats?: {
     quotasCount?: number;
     totalLoaned?: number;
     totalToReceive?: number;
   };
+}
+
+export interface Product {
+  id: string;
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  affiliateUrl: string;
+  price?: number;
+  category: string;
+  active: boolean;
+  createdAt: string;
 }
