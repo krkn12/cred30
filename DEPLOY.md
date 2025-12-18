@@ -55,17 +55,36 @@ Para que o deploy funcione corretamente, as seguintes variáveis **devem** ser c
 
 ---
 
-## 4. Deploy Manual (Emergência)
+## 4. Deploy Manual
 
-Caso o fluxo automático falhe:
+Caso a automação falhe ou você prefira fazer manualmente:
 
-**Frontend (Local para Firebase):**
+### Frontend (Local para Firebase)
+Execute estes comandos na raiz do projeto:
 ```bash
-cd packages/frontend-v2
-npm install
-npm run build
-firebase deploy
+# 1. Gerar os arquivos de produção
+npm run build:frontend
+
+# 2. Enviar para o Firebase Hosting
+firebase deploy --only hosting
 ```
 
-**Backend (Local):**
-Não há deploy manual direto para o Render. Se o deploy travar, vá no painel do Render e clique em **"Manual Deploy" -> "Clear Cache and Deploy"**.
+### Backend (Render)
+O Render não permite um comando direto de terminal como o Firebase, mas você pode forçar o deploy pelo painel:
+1. Acesse o dashboard do [Render](https://dashboard.render.com/).
+2. Abra o seu projeto de Backend.
+3. Clique no botão azul **"Manual Deploy"**.
+4. Escolha **"Clear Cache and Deploy"** (recomendado para garantir que pegue as novas variáveis de ambiente).
+
+---
+
+## 5. Como saber se foi atualizado?
+
+### No Frontend
+- Abra o site e aperte `F12` -> aba `Network`.
+- Recarregue a página (`Ctrl + F5`) para garantir que não está pegando cache antigo.
+- O horário do arquivo `index.html` ou as novas funcionalidades (como o pagamento por cartão) devem aparecer.
+
+### No Backend
+- No painel do Render, vá em **Logs**.
+- Se você vir mensagens novas (ex: `[WEBHOOK MP] Assinatura Validada`), significa que a nova versão está ativa.
