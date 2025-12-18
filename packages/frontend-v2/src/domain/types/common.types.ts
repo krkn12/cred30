@@ -75,6 +75,7 @@ export interface AppState {
     quotasCount?: number;
     totalLoaned?: number;
     totalToReceive?: number;
+    totalGatewayCosts?: number;
   };
 }
 

@@ -14,11 +14,16 @@ export const VESTING_PERIOD_MS = (Number(process.env.VESTING_PERIOD_DAYS) || 365
 export const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
 // Chave PIX do administrador
-export const ADMIN_PIX_KEY = process.env.ADMIN_PIX_KEY || '91980177874';
-
 // Porcentagens para distribuição de dividendos
 export const DIVIDEND_USER_SHARE = 0.85; // 85% para os usuários
 export const DIVIDEND_MAINTENANCE_SHARE = 0.15; // 15% para manutenção
 
 // Bônus por indicação
 export const REFERRAL_BONUS = 5.00; // R$ 5,00
+
+// Taxas do Mercado Pago (Gateway)
+export const MERCADO_PAGO_PIX_FEE_PERCENT = 0.0099; // 0.99% para PIX
+export const MERCADO_PAGO_FIXED_FEE = 0.00; // R$ 0,00 fixo
+
+export const MERCADO_PAGO_CARD_FEE_PERCENT = 0.0499; // 4.99% para Cartão
+export const MERCADO_PAGO_CARD_FIXED_FEE = 0.40; // R$ 0,40 fixo

@@ -4,6 +4,10 @@ import { authMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { LOAN_INTEREST_RATE, ONE_MONTH_MS, PENALTY_RATE } from '../../../shared/constants/business.constants';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
+import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/mercadopago.service';
+import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
+import { executeInTransaction, processLoanApproval } from '../../../domain/services/transaction.service';
+import { PoolClient } from 'pg';
 
 const loanRoutes = new Hono();
 
@@ -23,6 +27,10 @@ const repayLoanSchema = z.object({
     return val;
   }),
   useBalance: z.boolean(),
+  paymentMethod: z.enum(['pix', 'card']).optional().default('pix'),
+  token: z.string().optional(),
+  issuer_id: z.union([z.string(), z.number()]).optional(),
+  installments: z.number().optional(),
 });
 
 // Esquema de validação para pagamento parcelado
@@ -35,6 +43,10 @@ const repayInstallmentSchema = z.object({
   }),
   installmentAmount: z.number().positive(),
   useBalance: z.boolean(),
+  paymentMethod: z.enum(['pix', 'card']).optional().default('pix'),
+  token: z.string().optional(),
+  issuer_id: z.union([z.string(), z.number()]).optional(),
+  installments: z.number().optional(),
 });
 
 // Listar empréstimos do usuário
@@ -144,34 +156,38 @@ loanRoutes.post('/request', authMiddleware, async (c) => {
     // Calcular valor total com juros
     const totalWithInterest = amount * (1 + LOAN_INTEREST_RATE);
 
-    // Criar empréstimo
-    const result = await pool.query(
-      `INSERT INTO loans (user_id, amount, total_repayment, installments, interest_rate, penalty_rate, status, due_date, pix_key_to_receive, term_days)
-       VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', $7, $8, $9)
-       RETURNING id`,
-      [
-        user.id,
-        amount,
-        totalWithInterest,
-        installments,
-        LOAN_INTEREST_RATE,
-        PENALTY_RATE,
-        new Date(Date.now() + (installments * ONE_MONTH_MS)),
-        pixKeyToSave,
-        installments * 30 // Calculando term_days
-      ]
-    );
+    // Criar empréstimo e APROVAR AUTOMATICAMENTE
+    const loanId = await executeInTransaction(pool, async (client: PoolClient) => {
+      const result = await client.query(
+        `INSERT INTO loans (user_id, amount, total_repayment, installments, interest_rate, penalty_rate, status, due_date, pix_key_to_receive, term_days)
+         VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', $7, $8, $9)
+         RETURNING id`,
+        [
+          user.id,
+          amount,
+          totalWithInterest,
+          installments,
+          LOAN_INTEREST_RATE,
+          PENALTY_RATE,
+          new Date(Date.now() + (installments * ONE_MONTH_MS)),
+          pixKeyToSave,
+          installments * 30
+        ]
+      );
 
-    console.log('DEBUG - Empréstimo criado com PIX:', {
-      loanId: result.rows[0].id,
-      pixKeyToSave
+      const newLoanId = result.rows[0].id;
+
+      // Chamar aprovação automática
+      await processLoanApproval(client, newLoanId, 'APPROVE');
+
+      return newLoanId;
     });
 
     return c.json({
       success: true,
-      message: 'Empréstimo solicitado! Aguarde aprovação do administrador.',
+      message: 'Empréstimo concedido e creditado no seu saldo!',
       data: {
-        loanId: result.rows[0].id,
+        loanId: loanId.data,
         totalRepayment: totalWithInterest,
       },
     });
@@ -189,7 +205,7 @@ loanRoutes.post('/request', authMiddleware, async (c) => {
 loanRoutes.post('/repay', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
-    const { loanId, useBalance } = repayLoanSchema.parse(body);
+    const { loanId, useBalance, paymentMethod, token, issuer_id, installments } = repayLoanSchema.parse(body);
 
     const user = c.get('user');
     const pool = getDbPool(c);
@@ -215,11 +231,15 @@ loanRoutes.post('/repay', authMiddleware, async (c) => {
     const principalAmount = parseFloat(loan.amount);
     const totalInterest = totalRepayment - principalAmount;
 
+    // Calcular valores com taxas conforme o método
+    const method: PaymentMethod = useBalance ? 'balance' : (paymentMethod as PaymentMethod);
+    const { total: finalCost, fee: userFee } = calculateTotalToPay(totalRepayment, method);
+
     console.log('DEBUG - Pagamento completo do empréstimo:', {
       loanId,
       totalRepayment,
-      principalAmount,
-      totalInterest,
+      finalCost,
+      userFee,
       useBalance
     });
 
@@ -242,6 +262,33 @@ loanRoutes.post('/repay', authMiddleware, async (c) => {
       ['PAYMENT_PENDING', loanId]
     );
 
+    // Se for externo (não usa saldo), gerar pagamento MP
+    let mpData = null;
+    if (!useBalance) {
+      try {
+        if (paymentMethod === 'card' && token) {
+          mpData = await createCardPayment({
+            amount: finalCost,
+            description: `Pagamento total de emprestimo no Cred30`,
+            email: user.email,
+            external_reference: `REPAY_${loanId}_${Date.now()}`,
+            token,
+            issuer_id: issuer_id ? Number(issuer_id) : undefined,
+            installments: installments
+          });
+        } else {
+          mpData = await createPixPayment({
+            amount: finalCost,
+            description: `Pagamento total de emprestimo no Cred30`,
+            email: user.email,
+            external_reference: `REPAY_${loanId}_${Date.now()}`
+          });
+        }
+      } catch (mpError) {
+        console.error('Erro ao gerar cobrança Mercado Pago:', mpError);
+      }
+    }
+
     // Criar transação de pagamento
     const transaction = await pool.query(
       `INSERT INTO transactions (user_id, type, amount, description, status, metadata)
@@ -249,14 +296,20 @@ loanRoutes.post('/repay', authMiddleware, async (c) => {
          RETURNING id`,
       [
         user.id,
-        totalRepayment,
-        `Pagamento de empréstimo (${useBalance ? 'Saldo' : 'PIX Externo'}) - Aguardando Confirmação`,
+        finalCost,
+        `Pagamento de empréstimo (${useBalance ? 'Saldo' : (mpData ? 'Mercado Pago' : 'Externo')}) - Aguardando Confirmação`,
         JSON.stringify({
           loanId,
           useBalance,
+          paymentMethod: paymentMethod,
           principalAmount,
           interestAmount: totalInterest,
-          paymentType: 'full_payment'
+          paymentType: 'full_payment',
+          baseAmount: totalRepayment,
+          userFee,
+          mp_id: mpData?.id,
+          qr_code: mpData?.qr_code,
+          qr_code_base64: mpData?.qr_code_base64
         })
       ]
     );
@@ -268,6 +321,11 @@ loanRoutes.post('/repay', authMiddleware, async (c) => {
         transactionId: transaction.rows[0].id,
         principalAmount,
         interestAmount: totalInterest,
+        baseAmount: totalRepayment,
+        userFee,
+        finalCost,
+        pixData: mpData?.qr_code ? mpData : null,
+        cardData: paymentMethod === 'card' ? mpData : null
       },
     });
   } catch (error) {
@@ -284,7 +342,7 @@ loanRoutes.post('/repay', authMiddleware, async (c) => {
 loanRoutes.post('/repay-installment', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
-    const { loanId, installmentAmount, useBalance } = repayInstallmentSchema.parse(body);
+    const { loanId, installmentAmount, useBalance, paymentMethod, token, issuer_id, installments } = repayInstallmentSchema.parse(body);
 
     const user = c.get('user');
     const pool = getDbPool(c);
@@ -312,44 +370,83 @@ loanRoutes.post('/repay-installment', authMiddleware, async (c) => {
     );
 
     const paidAmount = parseFloat(paidInstallmentsResult.rows[0].paid_amount);
-    const remainingAmount = parseFloat(loan.total_repayment) - paidAmount;
+    const remainingAmountPre = parseFloat(loan.total_repayment) - paidAmount;
+
+    // Calcular valores com taxas conforme o método
+    const method: PaymentMethod = useBalance ? 'balance' : (paymentMethod as PaymentMethod);
+    const { total: finalInstallmentCost, fee: userFee } = calculateTotalToPay(installmentAmount, method);
 
     // Validar valor da parcela
-    if (installmentAmount > remainingAmount) {
+    if (installmentAmount > remainingAmountPre) {
       return c.json({ success: false, message: 'Valor da parcela excede o valor restante' }, 400);
     }
 
     // Calcular novo valor pago (incluindo esta parcela)
     const newPaidAmount = paidAmount + installmentAmount;
 
-    // Se for pagamento via PIX (não usa saldo), criar transação PENDENTE e NÃO registrar parcela ainda
+    // Se for pagamento via PIX/Cartão (não usa saldo), criar transação PENDENTE e NÃO registrar parcela ainda
     if (!useBalance) {
+      let mpData = null;
+      try {
+        if (paymentMethod === 'card' && token) {
+          mpData = await createCardPayment({
+            amount: finalInstallmentCost,
+            description: `Pagamento de parcela de emprestimo no Cred30`,
+            email: user.email,
+            external_reference: `INSTALLMENT_${loanId}_${Date.now()}`,
+            token,
+            issuer_id: issuer_id ? Number(issuer_id) : undefined,
+            installments: installments
+          });
+        } else {
+          mpData = await createPixPayment({
+            amount: finalInstallmentCost,
+            description: `Pagamento de parcela de emprestimo no Cred30`,
+            email: user.email,
+            external_reference: `INSTALLMENT_${loanId}_${Date.now()}`
+          });
+        }
+      } catch (mpError) {
+        console.error('Erro ao gerar cobrança Mercado Pago:', mpError);
+      }
+
       const transaction = await pool.query(
         `INSERT INTO transactions (user_id, type, amount, description, status, metadata)
          VALUES ($1, 'LOAN_PAYMENT', $2, $3, 'PENDING', $4)
          RETURNING id`,
         [
           user.id,
-          installmentAmount,
-          `Pagamento parcela (PIX Externo) - Aguardando Confirmação`,
+          finalInstallmentCost,
+          `Pagamento parcela (${mpData ? 'Mercado Pago' : 'Externo'}) - Aguardando Confirmação`,
           JSON.stringify({
             loanId,
             installmentAmount,
             useBalance: false,
+            paymentMethod: paymentMethod,
             paymentType: 'installment', // Identificador importante para o admin
             isInstallment: true,
-            remainingAmount: remainingAmount - installmentAmount
+            remainingAmount: remainingAmountPre - installmentAmount,
+            baseAmount: installmentAmount,
+            userFee,
+            mp_id: mpData?.id,
+            qr_code: mpData?.qr_code,
+            qr_code_base64: mpData?.qr_code_base64
           })
         ]
       );
 
       return c.json({
         success: true,
-        message: 'Código de pagamento gerado via PIX! Aguarde confirmação do administrador.',
+        message: 'Código de pagamento gerado! Aguarde confirmação do administrador.',
         data: {
           transactionId: transaction.rows[0].id,
-          remainingAmount: remainingAmount, // Valor não muda visualmente até aprovação
-          isFullyPaid: false
+          remainingAmount: remainingAmountPre,
+          isFullyPaid: false,
+          baseAmount: installmentAmount,
+          userFee,
+          finalCost: finalInstallmentCost,
+          pixData: mpData?.qr_code ? mpData : null,
+          cardData: paymentMethod === 'card' ? mpData : null
         },
       });
     }

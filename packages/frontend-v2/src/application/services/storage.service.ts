@@ -141,6 +141,10 @@ export const loadState = async (): Promise<AppState> => {
           profitPool = dashboard.data?.systemConfig?.profit_pool || dashboard.systemConfig?.profit_pool || 0;
           stats = dashboard.data?.stats || dashboard.stats || null;
 
+          if (stats) {
+            stats.totalGatewayCosts = dashboard.data?.systemConfig?.total_gateway_costs || dashboard.systemConfig?.total_gateway_costs || 0;
+          }
+
           // DEBUG: Verificar valores extraídos
           console.log('DEBUG - Valores extraídos:', {
             systemBalance,
@@ -382,8 +386,8 @@ export const distributeMonthlyDividends = async () => {
 
 // --- User Logic ---
 
-export const buyQuota = async (quantity: number, useBalance: boolean = false): Promise<void> => {
-  await apiService.buyQuotas(quantity, useBalance);
+export const buyQuota = async (quantity: number, useBalance: boolean = false, paymentMethod?: 'pix' | 'card', cardData?: any): Promise<any> => {
+  return await apiService.buyQuotas(quantity, useBalance, paymentMethod, cardData);
 };
 
 export const sellQuota = async (quotaId: string): Promise<void> => {
@@ -403,8 +407,12 @@ export const requestLoan = async (
   return await apiService.requestLoan(amount, installments, receivePixKey);
 };
 
-export const repayLoan = async (loanId: string, useBalance: boolean): Promise<void> => {
-  await apiService.repayLoan(loanId, useBalance);
+export const repayLoan = async (loanId: string, useBalance: boolean, paymentMethod?: 'pix' | 'card', cardData?: any): Promise<any> => {
+  return await apiService.repayLoan(loanId, useBalance, paymentMethod, cardData);
+};
+
+export const repayInstallment = async (loanId: string, amount: number, useBalance: boolean, paymentMethod?: 'pix' | 'card', cardData?: any): Promise<any> => {
+  return await apiService.repayInstallment(loanId, amount, useBalance, paymentMethod, cardData);
 };
 
 export const requestWithdrawal = async (amount: number, pixKey: string): Promise<void> => {

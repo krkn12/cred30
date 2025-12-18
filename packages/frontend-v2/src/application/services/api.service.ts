@@ -99,8 +99,9 @@ class ApiService {
       }
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro na requisição:', error);
+      alert(error.message);
       throw error;
     }
   }
@@ -206,12 +207,14 @@ class ApiService {
   }
 
   // Método para comprar cotas
-  async buyQuotas(quantity: number, useBalance: boolean): Promise<any> {
+  async buyQuotas(quantity: number, useBalance: boolean, paymentMethod?: 'pix' | 'card', cardData?: any): Promise<any> {
     const response = await this.request<any>('/quotas/buy', {
       method: 'POST',
       body: JSON.stringify({
         quantity,
-        useBalance
+        useBalance,
+        paymentMethod,
+        ...cardData
       }),
     });
     return response.data;
@@ -264,22 +267,24 @@ class ApiService {
   }
 
   // Método para pagar empréstimo
-  async repayLoan(loanId: string, useBalance: boolean): Promise<any> {
+  async repayLoan(loanId: string, useBalance: boolean, paymentMethod?: 'pix' | 'card', cardData?: any): Promise<any> {
     const response = await this.request<any>('/loans/repay', {
       method: 'POST',
-      body: JSON.stringify({ loanId, useBalance }),
+      body: JSON.stringify({ loanId, useBalance, paymentMethod, ...cardData }),
     });
     return response.data;
   }
 
   // Método para pagar parcela de empréstimo
-  async repayInstallment(loanId: string, installmentAmount: number, useBalance: boolean): Promise<any> {
+  async repayInstallment(loanId: string, amount: number, useBalance: boolean, paymentMethod?: 'pix' | 'card', cardData?: any): Promise<any> {
     const response = await this.request<any>('/loans/repay-installment', {
       method: 'POST',
       body: JSON.stringify({
         loanId,
-        installmentAmount,
-        useBalance
+        installmentAmount: amount,
+        useBalance,
+        paymentMethod,
+        ...cardData
       }),
     });
     return response.data;
