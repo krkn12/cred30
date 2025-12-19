@@ -143,6 +143,47 @@ withdrawalRoutes.post('/request', authMiddleware, async (c) => {
   }
 });
 
+// Reenviar código de confirmação de saque
+withdrawalRoutes.post('/resend-confirmation', authMiddleware, async (c) => {
+  try {
+    const { transactionId } = await c.req.json();
+    const user = c.get('user');
+    const pool = getDbPool(c);
+
+    const result = await pool.query(
+      `SELECT id, metadata, amount FROM transactions 
+       WHERE id = $1 AND user_id = $2 AND status = 'PENDING_CONFIRMATION'`,
+      [transactionId, user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return c.json({ success: false, message: 'Solicitação não encontrada ou não está aguardando confirmação' }, 404);
+    }
+
+    const transaction = result.rows[0];
+    const metadata = transaction.metadata || {};
+
+    // Gerar novo código
+    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Atualizar metadata
+    const newMetadata = { ...metadata, confirmationCode: newCode };
+
+    await pool.query(
+      'UPDATE transactions SET metadata = $1 WHERE id = $2',
+      [JSON.stringify(newMetadata), transactionId]
+    );
+
+    // Enviar email
+    await emailService.sendWithdrawalToken(user.email, newCode, parseFloat(transaction.amount));
+
+    return c.json({ success: true, message: 'Novo código de confirmação enviado para seu email!' });
+  } catch (error) {
+    console.error('Erro ao reenviar confirmação de saque:', error);
+    return c.json({ success: false, message: 'Erro interno ao reenviar código' }, 500);
+  }
+});
+
 // Confirmar saque
 withdrawalRoutes.post('/confirm', authMiddleware, async (c) => {
   try {

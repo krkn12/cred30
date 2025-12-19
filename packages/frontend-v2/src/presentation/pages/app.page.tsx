@@ -1,15 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from '../components/layout/main-layout.component';
-import { AIAssistant } from '../components/features/ai-assistant.component';
-import { SlotMachine } from '../components/features/slot-machine.component';
 import { UpdateNotification } from '../components/ui/update-notification.component';
-import { StoreView } from '../components/features/store/store.component';
 import { AdminStoreManager } from '../components/features/store/admin-store.component';
-import WelcomePage from './welcome.page';
-import TermsPage from './terms.page';
-import PrivacyPage from './privacy.page';
-import SecurityPage from './security.page';
 import { loadState, registerUser, loginUser, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, fastForwardTime, repayLoan, repayInstallment, getCurrentUser, resetPassword, requestWithdrawal, getPendingItems, processAdminAction, updateSystemBalance, updateProfitPool, distributeMonthlyDividends, fixLoanPix, clearAllCache, deleteUserAccount, changePassword, verifyEmail, confirmWithdrawal } from '../../application/services/storage.service';
 import { apiService } from '../../application/services/api.service';
 import { AppState, Quota, Loan, Transaction, User } from '../../domain/types/common.types';
@@ -18,13 +11,24 @@ import { ArrowRight, TrendingUp, Shield, Zap, Users, Star, ChevronRight, Check, 
 import { PIXModal } from '../components/ui/pix-modal.component';
 import { CardModal } from '../components/ui/card-modal.component';
 import { AuthScreen } from '../components/views/AuthScreen';
-import { SettingsView } from '../components/views/SettingsView';
-import { Dashboard } from '../components/views/Dashboard';
-import { InvestView } from '../components/views/InvestView';
-import { PortfolioView } from '../components/views/PortfolioView';
-import { LoansView } from '../components/views/LoansView';
-import { WithdrawView } from '../components/views/WithdrawView';
-import { AdminView } from '../components/views/AdminView';
+
+// Lazy imports for views
+const WelcomePage = lazy(() => import('./welcome.page'));
+const TermsPage = lazy(() => import('./terms.page'));
+const PrivacyPage = lazy(() => import('./privacy.page'));
+const SecurityPage = lazy(() => import('./security.page'));
+const Dashboard = lazy(() => import('../components/views/Dashboard').then(m => ({ default: m.Dashboard })));
+const SettingsView = lazy(() => import('../components/views/SettingsView').then(m => ({ default: m.SettingsView })));
+const InvestView = lazy(() => import('../components/views/InvestView').then(m => ({ default: m.InvestView })));
+const PortfolioView = lazy(() => import('../components/views/PortfolioView').then(m => ({ default: m.PortfolioView })));
+const LoansView = lazy(() => import('../components/views/LoansView').then(m => ({ default: m.LoansView })));
+const WithdrawView = lazy(() => import('../components/views/WithdrawView').then(m => ({ default: m.WithdrawView })));
+const AdminView = lazy(() => import('../components/views/AdminView').then(m => ({ default: m.AdminView })));
+const StoreView = lazy(() => import('../components/features/store/store.component').then(m => ({ default: m.StoreView })));
+const SlotMachine = lazy(() => import('../components/features/slot-machine.component').then(m => ({ default: m.SlotMachine })));
+const AIAssistant = lazy(() => import('../components/features/ai-assistant.component').then(m => ({ default: m.AIAssistant })));
+
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 
 
 
@@ -56,7 +60,9 @@ export default function App() {
     serverTime: Date.now()
   });
 
-  const [currentView, setCurrentView] = useState<'dashboard' | 'invest' | 'portfolio' | 'loans' | 'admin' | 'games' | 'store'>('dashboard');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const currentView = location.pathname.split('/').pop() || 'dashboard';
   const [showReferral, setShowReferral] = useState(false);
   const [showVip, setShowVip] = useState(false);
   const [pixModalData, setPixModalData] = useState<{
@@ -96,6 +102,7 @@ export default function App() {
     message: ''
   });
 
+  const [confirmState, setConfirmState] = useState<{ id?: string, type: 'SELL' | 'SELL_ALL' } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
@@ -171,33 +178,37 @@ export default function App() {
           title: 'Sucesso!',
           message: 'Suas cotas foram adquiridas e já estão rendendo!'
         });
-        setCurrentView('portfolio');
+        navigate('/app/portfolio');
       }
     } catch (error: any) {
       setShowError({ isOpen: true, title: 'Erro na Compra', message: error.message });
     }
   };
 
-  const handleSellQuota = async (quotaId: string) => {
-    try {
-      if (!confirm('Vender cota?')) return;
-      await sellQuota(quotaId);
-      await refreshState();
-      setShowSuccess({
-        isOpen: true,
-        title: 'Venda Realizada',
-        message: 'O valor foi creditado no seu saldo.'
-      });
-    } catch (error: any) { setShowError({ isOpen: true, title: 'Erro', message: error.message }); }
+  const handleSellQuota = (quotaId: string) => {
+    setConfirmState({ id: quotaId, type: 'SELL' });
   };
 
-  const handleSellAll = async () => {
+  const handleSellAll = () => {
+    setConfirmState({ type: 'SELL_ALL' });
+  };
+
+  const executeConfirmedSell = async () => {
+    if (!confirmState) return;
     try {
-      if (!confirm('Vender TODAS as cotas?')) return;
-      await sellAllQuotas();
+      if (confirmState.type === 'SELL' && confirmState.id) {
+        await sellQuota(confirmState.id);
+        setShowSuccess({ isOpen: true, title: 'Venda Realizada', message: 'O valor foi creditado no seu saldo.' });
+      } else if (confirmState.type === 'SELL_ALL') {
+        await sellAllQuotas();
+        setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Todas as cotas vendidas!' });
+      }
       await refreshState();
-      setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Todas as cotas vendidas!' });
-    } catch (error: any) { setShowError({ isOpen: true, title: 'Erro', message: error.message }); }
+    } catch (error: any) {
+      setShowError({ isOpen: true, title: 'Erro', message: error.message });
+    } finally {
+      setConfirmState(null);
+    }
   };
 
   const handleReinvest = async () => {
@@ -306,14 +317,16 @@ export default function App() {
     return (
       <>
         <UpdateNotification />
-        <Routes>
-          <Route path="/" element={<WelcomePage />} />
-          <Route path="/auth" element={<AuthScreen onLogin={refreshState} />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/security" element={<SecurityPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><RefreshCw className="animate-spin text-primary-500" /></div>}>
+          <Routes>
+            <Route path="/" element={<WelcomePage />} />
+            <Route path="/auth" element={<AuthScreen onLogin={refreshState} />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/security" element={<SecurityPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </>
     );
   }
@@ -322,10 +335,12 @@ export default function App() {
     return (
       <>
         <UpdateNotification />
-        <Routes>
-          <Route path="/admin" element={<AdminView state={state} onRefresh={refreshState} onLogout={handleLogout} onSuccess={(title, msg) => { setShowSuccess({ isOpen: true, title, message: msg }); }} onError={(title, msg) => { setShowError({ isOpen: true, title, message: msg }); }} />} />
-          <Route path="*" element={<Navigate to="/admin" replace />} />
-        </Routes>
+        <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><RefreshCw className="animate-spin text-primary-500" /></div>}>
+          <Routes>
+            <Route path="/admin" element={<AdminView state={state} onRefresh={refreshState} onLogout={handleLogout} onSuccess={(title, msg) => { setShowSuccess({ isOpen: true, title, message: msg }); }} onError={(title, msg) => { setShowError({ isOpen: true, title, message: msg }); }} />} />
+            <Route path="*" element={<Navigate to="/admin" replace />} />
+          </Routes>
+        </Suspense>
       </>
     )
   }
@@ -337,77 +352,90 @@ export default function App() {
         <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
         <Route path="/auth" element={<Navigate to="/app/dashboard" replace />} />
         <Route path="/app/*" element={
-          <Layout user={state.currentUser} currentView={currentView} onChangeView={(v) => setCurrentView(v as any)} onLogout={handleLogout}>
+          <Layout user={state.currentUser} currentView={currentView} onChangeView={(v) => navigate(`/app/${v}`)} onLogout={handleLogout}>
             <Routes>
               <Route path="dashboard" element={
-                <Dashboard
-                  state={state}
-                  onBuyQuota={() => setCurrentView('invest')}
-                  onReinvest={handleReinvest}
-                  onRefer={() => setShowReferral(true)}
-                  onVip={() => setShowVip(true)}
-                  onLogout={handleLogout}
-                  onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
-                  onError={(title, message) => setShowError({ isOpen: true, title, message })}
-                  onChangePassword={async (oldPass, newPass) => {
-                    await changePassword(oldPass, newPass);
-                    setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Senha alterada com sucesso!' });
-                  }}
-                />
+                <Suspense fallback={<div className="flex justify-center p-12"><RefreshCw className="animate-spin text-primary-500" /></div>}>
+                  <Dashboard
+                    state={state}
+                    onBuyQuota={() => navigate('/app/invest')}
+                    onGames={() => navigate('/app/games')}
+                    onLoans={() => navigate('/app/loans')}
+                    onWithdraw={() => navigate('/app/withdraw')}
+                    onReinvest={handleReinvest}
+                    onRefer={() => setShowReferral(true)}
+                    onVip={() => setShowVip(true)}
+                    onLogout={handleLogout}
+                    onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                    onError={(title, message) => setShowError({ isOpen: true, title, message })}
+                    onChangePassword={async (oldPass, newPass) => {
+                      await changePassword(oldPass, newPass);
+                      setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Senha alterada com sucesso!' });
+                    }}
+                  />
+                </Suspense>
               } />
-              <Route path="store" element={<StoreView />} />
-              <Route path="invest" element={<InvestView onBuy={handleBuyQuota} />} />
-              <Route path="games" element={<SlotMachine onBalanceUpdate={refreshState} currentBalance={state.currentUser.balance} />} />
+              <Route path="store" element={<Suspense fallback={null}><StoreView /></Suspense>} />
+              <Route path="invest" element={<Suspense fallback={null}><InvestView onBuy={handleBuyQuota} /></Suspense>} />
+              <Route path="games" element={<Suspense fallback={null}><SlotMachine onBalanceUpdate={refreshState} currentBalance={state.currentUser.balance} /></Suspense>} />
               <Route path="portfolio" element={
-                <PortfolioView
-                  quotas={state.quotas.filter(q => q.userId === state.currentUser!.id)}
-                  hasLoans={false}
-                  onSell={handleSellQuota}
-                  onSellAll={handleSellAll}
-                />
+                <Suspense fallback={null}>
+                  <PortfolioView
+                    quotas={state.quotas.filter(q => q.userId === state.currentUser!.id)}
+                    hasLoans={false}
+                    onSell={handleSellQuota}
+                    onSellAll={handleSellAll}
+                  />
+                </Suspense>
               } />
               <Route path="loans" element={
-                <LoansView
-                  loans={state.loans.filter(l => l.userId === state.currentUser!.id)}
-                  onRequest={handleRequestLoan}
-                  onPay={handlePayLoan}
-                  onPayInstallment={handlePayInstallment}
-                  userBalance={state.currentUser.balance}
-                  currentUser={state.currentUser}
-                />
+                <Suspense fallback={null}>
+                  <LoansView
+                    loans={state.loans.filter(l => l.userId === state.currentUser!.id)}
+                    onRequest={handleRequestLoan}
+                    onPay={handlePayLoan}
+                    onPayInstallment={handlePayInstallment}
+                    userBalance={state.currentUser.balance}
+                    currentUser={state.currentUser}
+                  />
+                </Suspense>
               } />
               <Route path="settings" element={
-                <SettingsView
-                  user={state.currentUser}
-                  onSimulateTime={() => fastForwardTime(1).then(refreshState)}
-                  onLogout={handleLogout}
-                  onDeleteAccount={async () => {
-                    const res = await deleteUserAccount();
-                    if (!res.success) {
-                      setShowError({ isOpen: true, title: 'Erro ao Encerrar Conta', message: res.message });
-                    } else {
-                      setShowSuccess({ isOpen: true, title: 'Conta Encerrada', message: 'Sua conta foi encerrada com sucesso.' });
-                      handleLogout();
-                    }
-                  }}
-                  onChangePassword={async (oldPass, newPass) => {
-                    await changePassword(oldPass, newPass);
-                    setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Senha alterada com sucesso!' });
-                  }}
-                />
+                <Suspense fallback={null}>
+                  <SettingsView
+                    user={state.currentUser}
+                    onSimulateTime={() => fastForwardTime(1).then(refreshState)}
+                    onLogout={handleLogout}
+                    onDeleteAccount={async () => {
+                      const res = await deleteUserAccount();
+                      if (!res.success) {
+                        setShowError({ isOpen: true, title: 'Erro ao Encerrar Conta', message: res.message });
+                      } else {
+                        setShowSuccess({ isOpen: true, title: 'Conta Encerrada', message: 'Sua conta foi encerrada com sucesso.' });
+                        handleLogout();
+                      }
+                    }}
+                    onChangePassword={async (oldPass, newPass) => {
+                      await changePassword(oldPass, newPass);
+                      setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Senha alterada com sucesso!' });
+                    }}
+                  />
+                </Suspense>
               } />
               <Route path="withdraw" element={
-                <WithdrawView
-                  balance={state.currentUser.balance}
-                  currentUser={state.currentUser}
-                  onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
-                  onError={(title, message) => setShowError({ isOpen: true, title, message })}
-                  onRefresh={refreshState}
-                  totalQuotaValue={state.quotas
-                    .filter(q => q.userId === state.currentUser!.id)
-                    .reduce((acc, q) => acc + (q.currentValue || 0), 0)
-                  }
-                />
+                <Suspense fallback={null}>
+                  <WithdrawView
+                    balance={state.currentUser.balance}
+                    currentUser={state.currentUser}
+                    onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                    onError={(title, message) => setShowError({ isOpen: true, title, message })}
+                    onRefresh={refreshState}
+                    totalQuotaValue={state.quotas
+                      .filter(q => q.userId === state.currentUser!.id)
+                      .reduce((acc, q) => acc + (q.currentValue || 0), 0)
+                    }
+                  />
+                </Suspense>
               } />
               <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
             </Routes>
@@ -463,7 +491,7 @@ export default function App() {
                     title: 'Pagamento Recebido!',
                     message: 'Seu pagamento com cartão foi processado. A ativação no sistema ocorre em instantes.'
                   });
-                  if (cardModalData.type === 'QUOTA') setCurrentView('portfolio');
+                  if (cardModalData.type === 'QUOTA') navigate('/app/portfolio');
                 } catch (e: any) {
                   throw new Error(e.message || 'Erro ao processar pagamento com cartão');
                 }
@@ -488,6 +516,16 @@ export default function App() {
                 </div>
               </div>
             )}
+
+            <ConfirmModal
+              isOpen={!!confirmState}
+              onClose={() => setConfirmState(null)}
+              onConfirm={executeConfirmedSell}
+              title={confirmState?.type === 'SELL_ALL' ? 'Vender Tudo' : 'Vender Cota'}
+              message={confirmState?.type === 'SELL_ALL' ? 'Tem certeza que deseja vender todas as suas cotas?' : 'Tem certeza que deseja vender esta cota?'}
+              type="warning"
+              confirmText="Confirmar Venda"
+            />
           </Layout>
         } />
       </Routes>

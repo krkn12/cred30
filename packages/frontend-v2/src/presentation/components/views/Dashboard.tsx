@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Users, Gamepad2, TrendingUp, DollarSign, ArrowUpFromLine,
@@ -13,6 +13,9 @@ import { SettingsView } from './SettingsView';
 interface DashboardProps {
     state: AppState;
     onBuyQuota: () => void;
+    onGames: () => void;
+    onLoans: () => void;
+    onWithdraw: () => void;
     onReinvest: () => void;
     onRefer: () => void;
     onVip: () => void;
@@ -22,16 +25,23 @@ interface DashboardProps {
     onChangePassword: (oldPass: string, newPass: string) => Promise<void>;
 }
 
-export const Dashboard = ({ state, onBuyQuota, onReinvest, onRefer, onVip, onLogout, onSuccess, onError, onChangePassword }: DashboardProps) => {
+export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onReinvest, onRefer, onVip, onLogout, onSuccess, onError, onChangePassword }: DashboardProps) => {
     const user = state.currentUser!;
-    const userQuotas = state.quotas.filter((q: any) => q.userId === user.id);
-    const totalInvested = userQuotas.reduce((acc: number, q: any) => acc + q.purchasePrice, 0);
-    const userLoans = state.loans.filter((l: any) => l.userId === user.id && l.status === 'APPROVED');
-    const totalDebt = userLoans.reduce((acc: number, l: any) => acc + l.totalRepayment, 0);
 
-    const totalCurrentValue = userQuotas.reduce((acc: number, q: any) => acc + (q.currentValue || q.purchasePrice), 0);
-    const totalEarnings = totalCurrentValue - totalInvested;
-    const earningsPercentage = totalInvested > 0 ? (totalEarnings / totalInvested) * 100 : 0;
+    const { userQuotas, totalInvested, totalCurrentValue, totalEarnings, earningsPercentage } = useMemo(() => {
+        const quotas = state.quotas.filter((q: any) => q.userId === user.id);
+        const invested = quotas.reduce((acc: number, q: any) => acc + q.purchasePrice, 0);
+        const current = quotas.reduce((acc: number, q: any) => acc + (q.currentValue || q.purchasePrice), 0);
+        const earnings = current - invested;
+        const percentage = invested > 0 ? (earnings / invested) * 100 : 0;
+        return { userQuotas: quotas, totalInvested: invested, totalCurrentValue: current, totalEarnings: earnings, earningsPercentage: percentage };
+    }, [state.quotas, user.id]);
+
+    const { userLoans, totalDebt } = useMemo(() => {
+        const loans = state.loans.filter((l: any) => l.userId === user.id && l.status === 'APPROVED');
+        const debt = loans.reduce((acc: number, l: any) => acc + l.totalRepayment, 0);
+        return { userLoans: loans, totalDebt: debt };
+    }, [state.loans, user.id]);
 
     const [showSettings, setShowSettings] = useState(false);
     const navigate = useNavigate();
@@ -98,7 +108,7 @@ export const Dashboard = ({ state, onBuyQuota, onReinvest, onRefer, onVip, onLog
                         </div>
                         <h2 className="text-4xl font-bold tracking-tight mb-4">{formatCurrency(user.balance)}</h2>
                         <div className="flex gap-3">
-                            <button onClick={() => navigate('/app/withdraw')} className="bg-black/20 hover:bg-black/40 text-white text-xs font-bold py-2 px-4 rounded-lg backdrop-blur-sm transition flex items-center gap-2 border border-white/10">
+                            <button onClick={onWithdraw} className="bg-black/20 hover:bg-black/40 text-white text-xs font-bold py-2 px-4 rounded-lg backdrop-blur-sm transition flex items-center gap-2 border border-white/10">
                                 <ArrowUpFromLine size={14} /> Sacar
                             </button>
                             <button onClick={onBuyQuota} className="bg-white text-primary-900 hover:bg-zinc-100 text-xs font-bold py-2 px-4 rounded-lg shadow-lg transition flex items-center gap-2">
@@ -176,21 +186,21 @@ export const Dashboard = ({ state, onBuyQuota, onReinvest, onRefer, onVip, onLog
                     <span className="text-xs font-medium text-zinc-300">Investir</span>
                 </button>
 
-                <button onClick={() => navigate('/app/games')} className="flex flex-col items-center gap-2 min-w-[72px] group shrink-0">
+                <button onClick={onGames} className="flex flex-col items-center gap-2 min-w-[72px] group shrink-0">
                     <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-800 flex items-center justify-center text-purple-400 group-hover:bg-purple-900/40 transition-all border border-zinc-700 shadow-lg group-active:scale-95">
                         <Gamepad2 size={24} />
                     </div>
                     <span className="text-xs font-medium text-zinc-300">Jogos</span>
                 </button>
 
-                <button onClick={() => navigate('/app/loans')} className="flex flex-col items-center gap-2 min-w-[72px] group shrink-0">
+                <button onClick={onLoans} className="flex flex-col items-center gap-2 min-w-[72px] group shrink-0">
                     <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-800 flex items-center justify-center text-blue-400 group-hover:bg-blue-900/40 transition-all border border-zinc-700 shadow-lg group-active:scale-95">
                         <DollarSign size={24} />
                     </div>
                     <span className="text-xs font-medium text-zinc-300">Empréstimo</span>
                 </button>
 
-                <button onClick={() => navigate('/app/withdraw')} className="flex flex-col items-center gap-2 min-w-[72px] group shrink-0">
+                <button onClick={onWithdraw} className="flex flex-col items-center gap-2 min-w-[72px] group shrink-0">
                     <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 group-hover:bg-zinc-700 transition-all border border-zinc-700 shadow-lg group-active:scale-95">
                         <ArrowUpFromLine size={24} />
                     </div>

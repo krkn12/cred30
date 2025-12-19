@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star, Copy, Lock, ChevronRight, LogOut, Trash2, X as XIcon } from 'lucide-react';
 import { User } from '../../../domain/types/common.types';
+import { ConfirmModal } from '../ui/ConfirmModal';
 
 export const SettingsView = ({ user, onSimulateTime, onLogout, onDeleteAccount, onChangePassword }: {
     user: User,
@@ -9,6 +10,7 @@ export const SettingsView = ({ user, onSimulateTime, onLogout, onDeleteAccount, 
     onDeleteAccount: () => void,
     onChangePassword: (oldPass: string, newPass: string) => Promise<void>
 }) => {
+    const [showConfirmDelete, setShowConfirmDelete] = React.useState(false);
     const [showChangePassword, setShowChangePassword] = React.useState(false);
     const [oldPassword, setOldPassword] = React.useState('');
     const [newPassword, setNewPassword] = React.useState('');
@@ -105,17 +107,23 @@ export const SettingsView = ({ user, onSimulateTime, onLogout, onDeleteAccount, 
                     <ChevronRight size={16} className="text-zinc-600 group-hover:text-white transition-colors" />
                 </button>
 
-                <button onClick={() => {
-                    if (confirm('Tem certeza? Essa ação não pode ser desfeita.')) {
-                        onDeleteAccount();
-                    }
-                }} className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group">
+                <button onClick={() => setShowConfirmDelete(true)} className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group">
                     <span className="flex items-center gap-3">
                         <Trash2 size={18} className="text-red-500/60 group-hover:text-red-500 transition-colors" />
                         Encerrar Conta
                     </span>
                 </button>
             </div>
+
+            <ConfirmModal
+                isOpen={showConfirmDelete}
+                onClose={() => setShowConfirmDelete(false)}
+                onConfirm={onDeleteAccount}
+                title="Encerrar Conta"
+                message="Tem certeza? Essa ação não pode ser desfeita e todos os seus dados serão anonimizados."
+                confirmText="Sim, Encerrar Conta"
+                type="danger"
+            />
 
             {/* Change Password Modal */}
             {showChangePassword && (

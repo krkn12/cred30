@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, KeyRound, Lock, QrCode, Repeat, ArrowLeft, Mail, ShieldCheck, XCircle, ChevronRight, Check } from 'lucide-react';
-import { loginUser, registerUser, resetPassword, verifyEmail } from '../../../application/services/storage.service';
+import { loginUser, registerUser, resetPassword, verifyEmail, apiService } from '../../../application/services/storage.service';
+import { TermsAcceptanceModal } from '../ui/TermsAcceptanceModal';
 import { User } from '../../../domain/types/common.types';
 
 export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
@@ -25,6 +26,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
     // Error/Success States for Custom Alerts
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [showTerms, setShowTerms] = useState(false);
 
     const navigate = useNavigate();
 
@@ -33,8 +35,8 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
         setError(null);
         setSuccess(null);
 
-        try {
-            if (isForgot) {
+        if (isForgot) {
+            try {
                 await resetPassword(email, secretPhrase, newPassword);
                 setSuccess('Senha redefinida com sucesso! Faça login.');
                 setTimeout(() => {
@@ -42,23 +44,58 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                     setNewPassword('');
                     setSuccess(null);
                 }, 2000);
+            } catch (error: any) {
+                setError(error.message);
+            }
+            return;
+        }
+
+        if (isRegister) {
+            // Validar campos básicos antes de mostrar os termos
+            if (!name || !email || !password || !pixKey || !secretPhrase) {
+                setError("Por favor, preencha todos os campos obrigatórios.");
                 return;
             }
+            setShowTerms(true);
+            return;
+        }
 
-            if (isRegister) {
-                try {
-                    await registerUser(name, email, password, pixKey, secretPhrase, referralCode);
-                    setVerifyEmailAddr(email);
-                    setShowVerifyModal(true);
-                } catch (e: any) {
-                    setError(e.message);
-                }
-            } else {
-                const user = await loginUser(email, password, secretPhrase);
-                onLogin(user);
-            }
+        try {
+            const user = await loginUser(email, password, secretPhrase);
+            onLogin(user);
         } catch (error: any) {
-            setError(error.message);
+            // Se o backend indicar que o email não está verificado
+            if (error.requiresVerification) {
+                setVerifyEmailAddr(error.email || email);
+                setShowVerifyModal(true);
+                setError(error.message);
+            } else {
+                setError(error.message);
+            }
+        }
+    };
+
+    const handleConfirmRegistration = async () => {
+        setShowTerms(false);
+        setError(null);
+        try {
+            await registerUser(name, email, password, pixKey, secretPhrase, referralCode);
+            setVerifyEmailAddr(email);
+            setShowVerifyModal(true);
+        } catch (e: any) {
+            setError(e.message);
+        }
+    };
+
+    const handleResendCode = async () => {
+        if (!verifyEmailAddr) return;
+        setSuccess(null);
+        setError(null);
+        try {
+            await apiService.resendVerificationCode(verifyEmailAddr);
+            setSuccess("Um novo código foi enviado para seu email.");
+        } catch (e: any) {
+            setError(e.message);
         }
     };
 
@@ -203,8 +240,8 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
 
             {/* Email Verification Modal */}
             {showVerifyModal && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
-                    <div className="bg-surface rounded-3xl p-6 w-full max-w-sm relative border border-surfaceHighlight shadow-2xl">
+                <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300 backdrop-blur-sm">
+                    <div className="bg-zinc-950 border border-zinc-800 rounded-[2rem] p-8 md:p-10 w-full max-w-md relative shadow-[0_0_50px_rgba(6,182,212,0.1)]">
                         <button onClick={() => setShowVerifyModal(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white">✕</button>
                         <div className="text-center mb-6">
                             <div className="w-16 h-16 bg-primary-500/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
@@ -246,11 +283,17 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                             </button>
                         </form>
                         <p className="text-center mt-4">
-                            <button onClick={() => setSuccess("Código reenviado (simulação).")} className="text-xs text-primary-400 hover:underline">Reenviar Código</button>
+                            <button onClick={handleResendCode} className="text-xs text-primary-400 hover:underline">Reenviar Código</button>
                         </p>
                     </div>
                 </div>
             )}
+
+            <TermsAcceptanceModal
+                isOpen={showTerms}
+                onClose={() => setShowTerms(false)}
+                onAccept={handleConfirmRegistration}
+            />
         </div>
     );
 };

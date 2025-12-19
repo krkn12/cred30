@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, ExternalLink, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { Product } from '../../../../domain/types/common.types';
 import { apiService } from '../../../../application/services/api.service';
+import { ConfirmModal } from '../../ui/ConfirmModal';
 
 export const AdminStoreManager: React.FC<{ onSuccess: (title: string, msg: string) => void, onError: (title: string, msg: string) => void }> = ({ onSuccess, onError }) => {
     const [products, setProducts] = useState<Product[]>([]);
@@ -9,6 +10,7 @@ export const AdminStoreManager: React.FC<{ onSuccess: (title: string, msg: strin
     const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
     const [loading, setLoading] = useState(false);
     const [fetchingMeta, setFetchingMeta] = useState(false);
+    const [productToDelete, setProductToDelete] = useState<string | null>(null);
 
     // Form states
     const [title, setTitle] = useState('');
@@ -90,12 +92,19 @@ export const AdminStoreManager: React.FC<{ onSuccess: (title: string, msg: strin
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Tem certeza?')) return;
+        setProductToDelete(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!productToDelete) return;
         try {
-            await apiService.deleteProduct(id);
+            await apiService.deleteProduct(productToDelete);
             loadProducts();
+            onSuccess('Sucesso', 'Produto removido com sucesso!');
         } catch (error) {
             onError('Erro', 'Erro ao deletar o produto');
+        } finally {
+            setProductToDelete(null);
         }
     };
 
@@ -198,6 +207,15 @@ export const AdminStoreManager: React.FC<{ onSuccess: (title: string, msg: strin
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={!!productToDelete}
+                onClose={() => setProductToDelete(null)}
+                onConfirm={confirmDelete}
+                title="Remover Produto"
+                message="Tem certeza que deseja remover este produto da loja?"
+                type="danger"
+            />
         </div>
     );
 };

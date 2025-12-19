@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ArrowUpFromLine, ShieldCheck, Clock } from 'lucide-react';
 import { User } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
@@ -19,13 +19,29 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
 
     // Quick amount options
     const quickAmounts = [50, 100, 200, 500];
-    const isValidAmount = val && parseFloat(val) > 0 && parseFloat(val) <= balance;
 
-    // Taxa de saque: Grátis se Valor Total de Cotas >= Valor do Saque
-    const withdrawalAmount = parseFloat(val) || 0;
-    const isFree = totalQuotaValue >= withdrawalAmount;
-    const fee = (isValidAmount && !isFree) ? Math.max(5, withdrawalAmount * 0.02) : 0;
-    const netAmount = isValidAmount ? withdrawalAmount - fee : 0;
+    const { isValidAmount, withdrawalAmount, isFree, fee, netAmount } = useMemo(() => {
+        const amount = parseFloat(val) || 0;
+        const valid = val !== '' && amount > 0 && amount <= balance;
+        const free = totalQuotaValue >= amount;
+        const f = (valid && !free) ? Math.max(5, amount * 0.02) : 0;
+        const net = valid ? amount - f : 0;
+        return { isValidAmount: valid, withdrawalAmount: amount, isFree: free, fee: f, netAmount: net };
+    }, [val, balance, totalQuotaValue]);
+
+    const handleResendWithdrawalCode = async () => {
+        if (!confirmModal.transactionId) return;
+        try {
+            const res = await apiService.resendWithdrawalConfirmation(confirmModal.transactionId);
+            if (res.success) {
+                onSuccess('Código Reenviado', 'Um novo código foi enviado para seu email.');
+            } else {
+                onError('Erro ao Reenviar', res.message);
+            }
+        } catch (e: any) {
+            onError('Erro ao Reenviar', e.message);
+        }
+    };
 
     const handleConfirmWithCode = async () => {
         if (!confirmModal.transactionId) return;
@@ -180,6 +196,9 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                             >
                                 Confirmar e Sacar
                             </button>
+                            <p className="text-center mt-4">
+                                <button onClick={handleResendWithdrawalCode} className="text-xs text-primary-400 hover:underline">Reenviar Código</button>
+                            </p>
                         </div>
                     </div>
                 )}
