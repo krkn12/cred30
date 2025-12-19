@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ScrollText, ShieldCheck, Scale, Users, Gavel } from 'lucide-react';
+import { ArrowLeft, ScrollText, ShieldCheck, Scale, Users, Gavel, AlertTriangle, CreditCard, ClockIcon, FileText } from 'lucide-react';
 
 const TermsPage = () => {
     const navigate = useNavigate();
@@ -12,10 +12,10 @@ const TermsPage = () => {
     return (
         <div className="min-h-screen bg-zinc-950 text-white selection:bg-cyan-500/30">
             {/* Navigation */}
-            <nav className="fixed top-0 left-0 w-full z-50 bg-zinc-950/50 backdrop-blur-xl border-b border-white/5 px-6 py-4">
+            <nav className="fixed top-0 left-0 w-full z-50 bg-zinc-950/50 backdrop-blur-xl border-b border-white/5 px-4 sm:px-6 py-3 sm:py-4">
                 <div className="max-w-4xl mx-auto flex justify-between items-center">
                     <button
-                        onClick={() => navigate('/')}
+                        onClick={() => navigate(-1)}
                         className="text-zinc-500 hover:text-white transition-colors flex items-center gap-2 text-sm font-bold group"
                     >
                         <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
@@ -30,78 +30,155 @@ const TermsPage = () => {
                 </div>
             </nav>
 
-            <main className="max-w-4xl mx-auto px-6 pt-32 pb-20">
-                <div className="mb-12">
-                    <div className="inline-flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 rounded-full text-cyan-400 text-sm font-bold mb-6">
-                        <ScrollText size={16} /> Documento Oficial
+            <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-24 sm:pt-32 pb-20">
+                <div className="mb-8 sm:mb-12">
+                    <div className="inline-flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/20 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-cyan-400 text-xs sm:text-sm font-bold mb-4 sm:mb-6">
+                        <ScrollText size={14} /> Documento Oficial
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">Termos de Uso</h1>
-                    <p className="text-zinc-400 text-lg">Atualizado em 18 de Dezembro de 2024</p>
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-3 sm:mb-4 tracking-tight">Termos de Uso</h1>
+                    <p className="text-zinc-400 text-sm sm:text-lg">Última atualização: 19 de Dezembro de 2024</p>
                 </div>
 
-                <div className="space-y-12">
-                    <section className="bg-zinc-900/30 border border-white/5 p-8 rounded-3xl">
-                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-3 text-cyan-400">
-                            <Users size={24} /> 1. Natureza da Cooperativa
+                <div className="space-y-8 sm:space-y-12">
+                    {/* Seção 1 */}
+                    <section className="bg-zinc-900/30 border border-white/5 p-5 sm:p-8 rounded-2xl sm:rounded-3xl">
+                        <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-3 text-cyan-400">
+                            <FileText size={22} /> 1. Aceite e Vigência
                         </h2>
-                        <p className="text-zinc-300 leading-relaxed mb-4">
-                            O Cred30 é um sistema de cooperação financeira mútua. Ao se cadastrar, você não está apenas abrindo uma conta, mas tornando-se um membro participante de uma comunidade de crédito cooperativo.
+                        <p className="text-zinc-300 text-sm sm:text-base leading-relaxed mb-4">
+                            Ao criar uma conta no Cred30, você declara ter lido, compreendido e aceito integralmente os presentes Termos de Uso. Este documento constitui um contrato vinculante entre você ("Usuário" ou "Membro") e a plataforma Cred30 ("Sistema" ou "Cooperativa").
                         </p>
-                        <ul className="list-disc list-inside text-zinc-400 space-y-2 ml-4">
-                            <li>A participação é voluntária e baseada na confiança mútua.</li>
-                            <li>O capital da cooperativa é formado pelo aporte dos seus membros.</li>
-                            <li>Todas as operações são transparentes e auditáveis pelo sistema.</li>
+                        <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl">
+                            <div className="flex items-start gap-3">
+                                <AlertTriangle className="text-yellow-400 shrink-0 mt-0.5" size={20} />
+                                <p className="text-yellow-200 text-xs sm:text-sm">
+                                    <strong>AVISO IMPORTANTE:</strong> Se você não concorda com qualquer cláusula deste documento, não utilize a plataforma.
+                                </p>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Seção 2 */}
+                    <section className="bg-zinc-900/30 border border-white/5 p-5 sm:p-8 rounded-2xl sm:rounded-3xl">
+                        <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-3 text-cyan-400">
+                            <Users size={22} /> 2. Natureza da Cooperativa
+                        </h2>
+                        <p className="text-zinc-300 text-sm sm:text-base leading-relaxed mb-4">
+                            O Cred30 é um sistema de cooperação financeira mútua. Ao se cadastrar, você se torna um membro participante de uma comunidade de crédito cooperativo, sujeito às seguintes condições:
+                        </p>
+                        <ul className="list-disc list-inside text-zinc-400 text-sm sm:text-base space-y-2 ml-2 sm:ml-4">
+                            <li>A participação é voluntária e baseada na confiança mútua entre os membros.</li>
+                            <li>O capital da cooperativa é formado exclusivamente pelo aporte dos seus membros (cotas).</li>
+                            <li>Todas as operações são transparentes e registradas no sistema para auditoria.</li>
+                            <li>A cooperativa não é uma instituição financeira regulamentada pelo Banco Central do Brasil.</li>
                         </ul>
                     </section>
 
-                    <section className="space-y-6">
-                        <h2 className="text-2xl font-bold flex items-center gap-3">
-                            <Scale size={24} className="text-cyan-400" /> 2. Regras de Investimento (Cotas)
+                    {/* Seção 3 */}
+                    <section className="space-y-4 sm:space-y-6">
+                        <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-3">
+                            <Scale size={22} className="text-cyan-400" /> 3. Cotas de Participação
                         </h2>
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div className="bg-zinc-900/50 p-6 rounded-2xl border border-white/5">
-                                <h3 className="font-bold mb-2">Valor da Cota</h3>
-                                <p className="text-zinc-400 text-sm">Cada cota de participação possui o valor nominal fixado em R$ 50,00, podendo ser reajustado conforme deliberação do sistema.</p>
+                        <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
+                            <div className="bg-zinc-900/50 p-5 sm:p-6 rounded-xl sm:rounded-2xl border border-white/5">
+                                <h3 className="font-bold mb-2 text-white">Valor e Aquisição</h3>
+                                <p className="text-zinc-400 text-xs sm:text-sm">Cada cota tem valor nominal de R$ 50,00. A aquisição pode ser feita via PIX ou cartão de crédito, sujeita a taxas do gateway de pagamento.</p>
                             </div>
-                            <div className="bg-zinc-900/50 p-6 rounded-2xl border border-white/5">
-                                <h3 className="font-bold mb-2">Distribuição de Lucros</h3>
-                                <p className="text-zinc-400 text-sm">85% de todo o lucro gerado pela cooperativa é distribuído proporcionalmente entre os detentores de cotas ativas.</p>
+                            <div className="bg-zinc-900/50 p-5 sm:p-6 rounded-xl sm:rounded-2xl border border-white/5">
+                                <h3 className="font-bold mb-2 text-white">Dividendos</h3>
+                                <p className="text-zinc-400 text-xs sm:text-sm">85% do lucro gerado é distribuído proporcionalmente entre os membros elegíveis. 15% é destinado à manutenção e reserva operacional.</p>
+                            </div>
+                            <div className="bg-zinc-900/50 p-5 sm:p-6 rounded-xl sm:rounded-2xl border border-white/5">
+                                <h3 className="font-bold mb-2 text-white">Venda de Cotas</h3>
+                                <p className="text-zinc-400 text-xs sm:text-sm">Cotas podem ser resgatadas a qualquer momento pelo valor atualizado. O valor é creditado no saldo do usuário para saque.</p>
+                            </div>
+                            <div className="bg-zinc-900/50 p-5 sm:p-6 rounded-xl sm:rounded-2xl border border-white/5">
+                                <h3 className="font-bold mb-2 text-white">Elegibilidade</h3>
+                                <p className="text-zinc-400 text-xs sm:text-sm">Para receber dividendos, o membro deve ter utilizado o sistema (empréstimos, jogos ou transações) no período de distribuição.</p>
                             </div>
                         </div>
                     </section>
 
-                    <section className="bg-zinc-900/30 border border-white/5 p-8 rounded-3xl">
-                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-3 text-cyan-400">
-                            <ShieldCheck size={24} /> 3. Resgates e Saques
+                    {/* Seção 4 */}
+                    <section className="bg-zinc-900/30 border border-white/5 p-5 sm:p-8 rounded-2xl sm:rounded-3xl">
+                        <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-3 text-cyan-400">
+                            <CreditCard size={22} /> 4. Empréstimos
                         </h2>
-                        <p className="text-zinc-300 leading-relaxed mb-4">
-                            Os membros podem solicitar o resgate de seus lucros e capitais via PIX, respeitando as seguintes condições:
+                        <p className="text-zinc-300 text-sm sm:text-base leading-relaxed mb-4">
+                            Os membros podem solicitar empréstimos dentro do seu limite de crédito aprovado. As condições são:
                         </p>
-                        <div className="space-y-4">
+                        <div className="space-y-3 sm:space-y-4">
                             <div className="flex items-start gap-3">
-                                <div className="w-6 h-6 bg-cyan-500/20 rounded-full flex items-center justify-center text-cyan-400 flex-shrink-0 mt-1">1</div>
-                                <p className="text-zinc-400 text-sm">Saques são processados por ordem de prioridade (membros com mais cotas possuem preferência na fila).</p>
+                                <div className="w-6 h-6 bg-cyan-500/20 rounded-full flex items-center justify-center text-cyan-400 flex-shrink-0 text-xs font-bold">1</div>
+                                <p className="text-zinc-400 text-xs sm:text-sm"><strong className="text-white">Limite Dinâmico:</strong> O limite é calculado com base no score, patrimônio em cotas, histórico de pagamentos e disponibilidade do caixa operacional.</p>
                             </div>
                             <div className="flex items-start gap-3">
-                                <div className="w-6 h-6 bg-cyan-500/20 rounded-full flex items-center justify-center text-cyan-400 flex-shrink-0 mt-1">2</div>
-                                <p className="text-zinc-400 text-sm">Resgates antecipados de cotas antes do período de carência podem estar sujeitos a taxas de manutenção da cooperativa.</p>
+                                <div className="w-6 h-6 bg-cyan-500/20 rounded-full flex items-center justify-center text-cyan-400 flex-shrink-0 text-xs font-bold">2</div>
+                                <p className="text-zinc-400 text-xs sm:text-sm"><strong className="text-white">Juros:</strong> Taxa fixa de 20% sobre o valor emprestado, independente do prazo.</p>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <div className="w-6 h-6 bg-cyan-500/20 rounded-full flex items-center justify-center text-cyan-400 flex-shrink-0 text-xs font-bold">3</div>
+                                <p className="text-zinc-400 text-xs sm:text-sm"><strong className="text-white">Inadimplência:</strong> Atrasos resultam em bloqueio de novos empréstimos, penalização de score e possível exclusão da cooperativa.</p>
                             </div>
                         </div>
                     </section>
 
-                    <section className="space-y-6">
-                        <h2 className="text-2xl font-bold flex items-center gap-3">
-                            <Gavel size={24} className="text-cyan-400" /> 4. Conduta e Responsabilidades
+                    {/* Seção 5 */}
+                    <section className="bg-zinc-900/30 border border-white/5 p-5 sm:p-8 rounded-2xl sm:rounded-3xl">
+                        <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-3 text-cyan-400">
+                            <ShieldCheck size={22} /> 5. Saques
                         </h2>
-                        <p className="text-zinc-300 leading-relaxed">
-                            É estritamente proibido o uso da plataforma para lavagem de dinheiro ou qualquer atividade ilícita. A cooperativa reserva-se o direito de banir membros que violarem as regras de boa convivência ou tentarem fraudar o sistema de score.
+                        <p className="text-zinc-300 text-sm sm:text-base leading-relaxed mb-4">
+                            Os saques são processados exclusivamente via PIX para a chave cadastrada. As regras aplicáveis são:
+                        </p>
+                        <ul className="list-disc list-inside text-zinc-400 text-xs sm:text-sm space-y-2 ml-2 sm:ml-4">
+                            <li>Saques requerem autenticação de dois fatores (2FA) para segurança.</li>
+                            <li>Membros com cotas ativas em valor igual ou superior ao saque estão isentos de taxa.</li>
+                            <li>Caso contrário, aplica-se uma taxa de 2% (mínimo R$ 5,00) sobre o valor do saque.</li>
+                            <li>85% da taxa de saque retorna ao caixa operacional e 15% vai para o pool de dividendos.</li>
+                            <li>Saques estão sujeitos à disponibilidade de caixa e podem ser enfileirados.</li>
+                        </ul>
+                    </section>
+
+                    {/* Seção 6 */}
+                    <section className="space-y-4 sm:space-y-6">
+                        <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-3">
+                            <Gavel size={22} className="text-cyan-400" /> 6. Conduta e Penalidades
+                        </h2>
+                        <div className="bg-red-500/10 border border-red-500/20 p-4 sm:p-6 rounded-xl sm:rounded-2xl">
+                            <h3 className="font-bold mb-2 text-red-400">Condutas Proibidas</h3>
+                            <ul className="text-red-200 text-xs sm:text-sm space-y-1">
+                                <li>• Utilizar a plataforma para lavagem de dinheiro ou atividades ilícitas.</li>
+                                <li>• Criar múltiplas contas para obter vantagens indevidas.</li>
+                                <li>• Tentar fraudar o sistema de score ou manipular transações.</li>
+                                <li>• Fornecer dados falsos ou de terceiros sem autorização.</li>
+                            </ul>
+                        </div>
+                        <p className="text-zinc-300 text-sm sm:text-base leading-relaxed">
+                            A violação de qualquer regra pode resultar em suspensão ou exclusão permanente da cooperativa, sem direito a ressarcimento de valores investidos em cotas.
+                        </p>
+                    </section>
+
+                    {/* Seção 7 */}
+                    <section className="bg-zinc-900/30 border border-white/5 p-5 sm:p-8 rounded-2xl sm:rounded-3xl">
+                        <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-3 text-cyan-400">
+                            <ClockIcon size={22} /> 7. Modificações e Foro
+                        </h2>
+                        <p className="text-zinc-300 text-sm sm:text-base leading-relaxed mb-4">
+                            A Cred30 reserva-se o direito de modificar estes Termos a qualquer momento. As alterações entram em vigor imediatamente após a publicação. O uso continuado da plataforma após modificações implica aceitação dos novos termos.
+                        </p>
+                        <p className="text-zinc-400 text-xs sm:text-sm">
+                            Fica eleito o foro da comarca de residência do Usuário para dirimir quaisquer controvérsias oriundas deste contrato.
                         </p>
                     </section>
                 </div>
 
-                <footer className="mt-20 pt-10 border-t border-white/5 text-center">
-                    <p className="text-zinc-500 text-sm italic">
+                <footer className="mt-12 sm:mt-20 pt-8 sm:pt-10 border-t border-white/5 text-center">
+                    <p className="text-zinc-500 text-xs sm:text-sm italic">
                         Ao utilizar o Cred30, você declara estar ciente e de acordo com todas as regras aqui estabelecidas.
+                    </p>
+                    <p className="text-zinc-600 text-xs mt-4">
+                        Cred30 © 2024 - Todos os direitos reservados.
                     </p>
                 </footer>
             </main>

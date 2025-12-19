@@ -27,6 +27,7 @@ const AdminView = lazy(() => import('../components/views/AdminView').then(m => (
 const StoreView = lazy(() => import('../components/features/store/store.component').then(m => ({ default: m.StoreView })));
 const SlotMachine = lazy(() => import('../components/features/slot-machine.component').then(m => ({ default: m.SlotMachine })));
 const AIAssistant = lazy(() => import('../components/features/ai-assistant.component').then(m => ({ default: m.AIAssistant })));
+const HistoryView = lazy(() => import('../components/views/HistoryView').then(m => ({ default: m.HistoryView })));
 
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 
@@ -451,6 +452,11 @@ export default function App() {
                       .reduce((acc, q) => acc + (q.currentValue || 0), 0)
                     }
                   />
+                </Suspense>
+              } />
+              <Route path="history" element={
+                <Suspense fallback={null}>
+                  <HistoryView transactions={state.transactions.filter(t => t.userId === state.currentUser!.id)} />
                 </Suspense>
               } />
               <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
