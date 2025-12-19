@@ -2,6 +2,7 @@ import { Pool, PoolClient } from 'pg';
 import { QUOTA_PRICE } from '../../shared/constants/business.constants';
 import { calculateGatewayCost } from '../../shared/utils/financial.utils';
 import { updateScore, SCORE_REWARDS } from '../../application/services/score.service';
+import { logAudit } from '../../application/services/audit.service';
 
 export interface TransactionResult<T = any> {
   success: boolean;
@@ -223,6 +224,16 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
       ['REJECTED', new Date(), id]
     );
 
+    // Audit Log
+    await logAudit(client, {
+      userId: transaction.user_id,
+      action: 'TRANSACTION_REJECTED',
+      entityType: 'transaction',
+      entityId: id,
+      oldValues: { status: 'PENDING' },
+      newValues: { status: 'REJECTED' }
+    });
+
     return { success: true, status: 'REJECTED' };
   }
 
@@ -320,6 +331,16 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
     ['APPROVED', new Date(), id]
   );
 
+  // Audit Log
+  await logAudit(client, {
+    userId: transaction.user_id,
+    action: 'TRANSACTION_APPROVED',
+    entityType: 'transaction',
+    entityId: id,
+    oldValues: { status: 'PENDING' },
+    newValues: { status: 'APPROVED', type: transaction.type }
+  });
+
   return { success: true, status: 'APPROVED' };
 };
 
@@ -340,10 +361,32 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
 
   if (action === 'REJECT') {
     await client.query('UPDATE loans SET status = $1, approved_at = $2 WHERE id = $3', ['REJECTED', new Date(), id]);
+
+    // Audit Log
+    await logAudit(client, {
+      userId: loan.user_id,
+      action: 'LOAN_REJECTED',
+      entityType: 'loan',
+      entityId: id,
+      oldValues: { status: 'PENDING' },
+      newValues: { status: 'REJECTED' }
+    });
+
     return { success: true, status: 'REJECTED' };
   }
 
   await client.query('UPDATE loans SET status = $1, approved_at = $2 WHERE id = $3', ['APPROVED', new Date(), id]);
+
+  // Audit Log
+  await logAudit(client, {
+    userId: loan.user_id,
+    action: 'LOAN_APPROVED',
+    entityType: 'loan',
+    entityId: id,
+    oldValues: { status: 'PENDING' },
+    newValues: { status: 'APPROVED', amount: loan.amount }
+  });
+
   await updateUserBalance(client, loan.user_id, parseFloat(loan.amount), 'credit');
 
   await createTransaction(

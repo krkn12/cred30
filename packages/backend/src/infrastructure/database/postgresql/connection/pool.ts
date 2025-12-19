@@ -504,42 +504,50 @@ export const initializeDatabase = async () => {
     // Criar índices de performance
     console.log('Criando índices de performance...');
 
-    // Índices para tabela users
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
       CREATE INDEX IF NOT EXISTS idx_users_is_admin ON users(is_admin);
-    `);
-
-    // Índices para tabela quotas
-    await client.query(`
       CREATE INDEX IF NOT EXISTS idx_quotas_user_id ON quotas(user_id);
       CREATE INDEX IF NOT EXISTS idx_quotas_status ON quotas(status);
-    `);
-
-    // Índices para tabela loans
-    await client.query(`
       CREATE INDEX IF NOT EXISTS idx_loans_user_id ON loans(user_id);
       CREATE INDEX IF NOT EXISTS idx_loans_status ON loans(status);
-      CREATE INDEX IF NOT EXISTS idx_loans_pending_status ON loans(status) WHERE status = 'PENDING';
-    `);
-
-    // Índices para tabela transactions
-    await client.query(`
       CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
       CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
       CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
-      CREATE INDEX IF NOT EXISTS idx_transactions_pending ON transactions(status) WHERE status = 'PENDING';
     `);
 
-    // Índices para tabelas de log
+    // Criar tabelas de auditoria e webhooks
     await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_admin_logs_admin_id ON admin_logs(admin_id);
-      CREATE INDEX IF NOT EXISTS idx_admin_logs_created_at ON admin_logs(created_at);
-      CREATE INDEX IF NOT EXISTS idx_rate_limit_identifier ON rate_limit_logs(identifier);
+      CREATE TABLE IF NOT EXISTS audit_logs (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id),
+          action VARCHAR(100) NOT NULL,
+          entity_type VARCHAR(50),
+          entity_id VARCHAR(100),
+          old_values JSONB,
+          new_values JSONB,
+          ip_address VARCHAR(45),
+          user_agent TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS webhook_logs (
+          id SERIAL PRIMARY KEY,
+          provider VARCHAR(50) NOT NULL,
+          payload JSONB NOT NULL,
+          status VARCHAR(20) DEFAULT 'PENDING',
+          error_message TEXT,
+          processed_at TIMESTAMP WITH TIME ZONE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_audit_user_id ON audit_logs(user_id);
+      CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);
+      CREATE INDEX IF NOT EXISTS idx_webhook_status ON webhook_logs(status);
     `);
 
-    console.log('Índices criados com sucesso!');
+    console.log('Audit logs and performance indexes updated successfully!');
 
     // Inicializar tabelas de auditoria e rate limiting
     // Comentado para evitar dependência circular
