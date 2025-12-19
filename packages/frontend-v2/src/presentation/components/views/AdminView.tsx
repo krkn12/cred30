@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-    ShieldCheck, RefreshCw, LogOut, Users, PieChart, DollarSign, PiggyBank, Coins, ArrowUpFromLine, ArrowDownLeft, TrendingUp, Clock, ArrowUpRight, Check, X as XIcon
+    ShieldCheck, RefreshCw, LogOut, Users, PieChart, DollarSign, PiggyBank, Coins, ArrowUpFromLine, ArrowDownLeft, TrendingUp, Clock, ArrowUpRight, Check, X as XIcon, AlertTriangle
 } from 'lucide-react';
+import { ConfirmModal } from '../ui/ConfirmModal';
+import { PromptModal } from '../ui/PromptModal';
 import { AppState } from '../../../domain/types/common.types';
 import {
     getPendingItems, updateProfitPool, clearAllCache, processAdminAction, distributeMonthlyDividends, fixLoanPix
@@ -20,6 +22,8 @@ interface AdminViewProps {
 export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: AdminViewProps) => {
     const [pending, setPending] = useState<{ transactions: any[], loans: any[] }>({ transactions: [], loans: [] });
     const [isLoading, setIsLoading] = useState(true);
+    const [confirmMP, setConfirmMP] = useState<{ id: string, tid: string } | null>(null);
+    const [showFixPix, setShowFixPix] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchPending = async () => {
@@ -124,9 +128,13 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     };
 
     const handleSimulateMpPayment = async (paymentId: string, transactionId: string) => {
-        try {
-            if (!confirm('Deseja simular a aprovação deste pagamento no Mercado Pago Sandbox?')) return;
+        setConfirmMP({ id: paymentId, tid: transactionId });
+    };
 
+    const confirmSimulateMpPayment = async () => {
+        if (!confirmMP) return;
+        const { id: paymentId, tid: transactionId } = confirmMP;
+        try {
             const response = await apiService.post('/admin/simulate-mp-payment', { paymentId, transactionId });
 
             if (response.success) {
@@ -296,11 +304,14 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         }
     };
 
-    const handleFixPix = async (loanId: string) => {
-        const newPix = prompt("Digite a nova Chave PIX:");
-        if (!newPix) return;
+    const handleFixPix = (loanId: string) => {
+        setShowFixPix(loanId);
+    };
+
+    const onConfirmFixPix = async (newPix: string) => {
+        if (!showFixPix || !newPix) return;
         try {
-            await fixLoanPix(loanId, newPix);
+            await fixLoanPix(showFixPix, newPix);
             clearAllCache();
             onRefresh();
             onSuccess("Sucesso", "Chave PIX atualizada com sucesso!");
@@ -736,6 +747,23 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                     </div>
                 </div>
             </div>
+
+            <ConfirmModal
+                isOpen={!!confirmMP}
+                onClose={() => setConfirmMP(null)}
+                onConfirm={confirmSimulateMpPayment}
+                title="Simular Pagamento"
+                message="Deseja realmente simular a aprovação deste pagamento no Mercado Pago Sandbox?"
+            />
+
+            <PromptModal
+                isOpen={!!showFixPix}
+                onClose={() => setShowFixPix(null)}
+                onConfirm={onConfirmFixPix}
+                title="Corrigir Chave PIX"
+                message="Digite a nova chave PIX para o recebimento deste empréstimo."
+                placeholder="Chave PIX (CPF, Email, Telefone ou Aleatória)"
+            />
         </div>
     );
 };

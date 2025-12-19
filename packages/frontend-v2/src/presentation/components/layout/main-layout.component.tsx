@@ -36,10 +36,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
     navigate(`/app/${view}`);
   }
 
-  // Sincronizar URL inicial com estado
-  useEffect(() => {
-    navigate(`/app/${currentView}`);
-  }, []);
+  // Sincronizar URL inicial com estado removido para evitar loops e permitindo navegação direta via URL
 
   if (!user) return <div className="min-h-screen bg-background text-white flex flex-col justify-center py-12 sm:px-6 lg:px-8">{children}</div>;
 
@@ -138,7 +135,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
 
       {/* Mobile Bottom Nav - Floating Dock */}
       <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/50 rounded-2xl flex justify-between items-center px-4 py-3 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] z-30">
-        {navItems.slice(0, 5).map((item) => (
+        {navItems.map((item) => (
           <button
             key={item.id}
             onClick={() => handleNavigation(item.id)}

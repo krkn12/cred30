@@ -1,6 +1,7 @@
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { compress } from 'hono/compress';
 import { authRoutes } from './presentation/http/routes/auth.routes';
 import { userRoutes } from './presentation/http/routes/users.routes';
 import { quotaRoutes } from './presentation/http/routes/quotas.routes';
@@ -15,6 +16,9 @@ import { pool, initializeDatabase, setDbPool } from './infrastructure/database/p
 import { initializeScheduler } from './scheduler';
 
 const app = new Hono();
+
+// Middleware para compressão
+app.use('*', compress());
 
 // Middleware para CORS
 app.use('*', cors({

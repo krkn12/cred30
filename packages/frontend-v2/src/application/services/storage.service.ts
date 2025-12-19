@@ -1,5 +1,6 @@
 import { User, Quota, Loan, Transaction, AppState } from '../../domain/types/common.types';
 import { apiService } from './api.service';
+export { apiService };
 import { QUOTA_PRICE, LOAN_INTEREST_RATE, PENALTY_RATE, VESTING_PERIOD_MS } from '../../shared/constants/app.constants';
 
 // Função para converter dados da API para o formato esperado pelo frontend

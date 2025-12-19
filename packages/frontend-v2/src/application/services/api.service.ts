@@ -5,7 +5,7 @@ const getApiBaseUrl = () => {
     // Se estiver acessando via ngrok, usa a mesma URL base para a API
     return currentUrl + '/api';
   }
-  return (import.meta as any).env.VITE_API_URL || 'http://localhost:3001/api';
+  return (import.meta as any).env.VITE_API_URL || '/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -95,7 +95,10 @@ class ApiService {
           // Disparar evento para notificar o app sobre o logout
           window.dispatchEvent(new CustomEvent('auth-expired'));
         }
-        throw new Error(data.message || 'Erro na requisição');
+        // Lançar um erro que contenha as informações extras da resposta (ex: requiresVerification)
+        const error: any = new Error(data.message || 'Erro na requisição');
+        Object.assign(error, data);
+        throw error;
       }
 
       return data;
@@ -322,14 +325,14 @@ class ApiService {
 
   // Método para solicitar saque
   async requestWithdrawal(amount: number, pixKey: string): Promise<any> {
-    const response = await this.request<any>('/transactions/withdraw', {
+    const response = await this.request<any>('/withdrawals/request', {
       method: 'POST',
       body: JSON.stringify({
         amount,
         pixKey
       }),
     });
-    return response.data;
+    return response; // Return full response to check requiresConfirmation
   }
 
   // Método para jogar Caça-Níquel
@@ -461,10 +464,26 @@ class ApiService {
   }
 
   // Método para confirmar saque
-  async confirmWithdrawal(transactionId: number, code: string): Promise<any> { // Changed ApiResponse<void> to any for consistency
-    return this.request<any>('/withdrawals/confirm', { // Changed this.post to this.request for consistency
+  async confirmWithdrawal(transactionId: number, code: string): Promise<any> {
+    return this.request<any>('/withdrawals/confirm', {
       method: 'POST',
       body: JSON.stringify({ transactionId, code })
+    });
+  }
+
+  // Novo método para reenviar código de verificação
+  async resendVerificationCode(email: string): Promise<any> {
+    return this.request<any>('/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+  }
+
+  // Novo método para reenviar código de saque
+  async resendWithdrawalConfirmation(transactionId: number): Promise<any> {
+    return this.request<any>('/withdrawals/resend-confirmation', {
+      method: 'POST',
+      body: JSON.stringify({ transactionId })
     });
   }
 

@@ -46,7 +46,7 @@ authRoutes.post('/login', async (c) => {
     // Buscar usuário no banco
     console.log('Buscando usuário com email:', validatedData.email);
     const result = await pool.query(
-      'SELECT id, name, email, password_hash, secret_phrase, pix_key, referral_code, is_admin, balance, score, created_at FROM users WHERE email = $1',
+      'SELECT id, name, email, password_hash, secret_phrase, pix_key, referral_code, is_admin, balance, score, created_at, is_email_verified FROM users WHERE email = $1',
       [validatedData.email]
     );
 
@@ -73,6 +73,16 @@ authRoutes.post('/login', async (c) => {
     if (!isPasswordValid || user.secret_phrase !== validatedData.secretPhrase) {
       console.log('Credenciais inválidas');
       return c.json({ success: false, message: 'Credenciais inválidas' }, 401);
+    }
+
+    if (!user.is_email_verified) {
+      console.log('Email não verificado para:', user.email);
+      return c.json({
+        success: false,
+        message: 'Por favor, verifique seu email para acessar a conta.',
+        requiresVerification: true,
+        email: user.email
+      }, 403);
     }
 
     // Gerar token JWT
@@ -273,6 +283,45 @@ authRoutes.post('/reset-password', async (c) => {
       return c.json({ success: false, message: error.errors[0].message }, 400);
     }
     return c.json({ success: false, message: 'Erro ao redefinir senha' }, 500);
+  }
+});
+
+// Rota para reenviar código de verificação
+authRoutes.post('/resend-verification', async (c) => {
+  try {
+    const { email } = await c.req.json();
+    const pool = getDbPool(c);
+
+    // Buscar usuário
+    const result = await pool.query(
+      'SELECT id, is_email_verified FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return c.json({ success: false, message: 'Usuário não encontrado' }, 404);
+    }
+
+    if (result.rows[0].is_email_verified) {
+      return c.json({ success: false, message: 'Email já verificado' }, 400);
+    }
+
+    // Gerar novo código
+    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Atualizar no banco
+    await pool.query(
+      'UPDATE users SET verification_code = $1 WHERE email = $2',
+      [newCode, email]
+    );
+
+    // Enviar email
+    await emailService.sendVerificationCode(email, newCode);
+
+    return c.json({ success: true, message: 'Novo código enviado com sucesso!' });
+  } catch (error) {
+    console.error('Erro ao reenviar código:', error);
+    return c.json({ success: false, message: 'Erro ao reenviar código' }, 500);
   }
 });
 
