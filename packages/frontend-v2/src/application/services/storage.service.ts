@@ -97,13 +97,6 @@ export const loadState = async (): Promise<AppState> => {
     const userProfile = await apiService.getUserProfile();
     const currentUser = convertApiUserToUser(userProfile.user);
 
-    // DEBUG: Log para verificar o saldo do usuário
-    console.log('DEBUG - Saldo do usuário carregado:', {
-      userId: currentUser.id,
-      userName: currentUser.name,
-      balance: currentUser.balance,
-      balanceType: typeof currentUser.balance
-    });
 
     // Obter transações do usuário
     const transactionsResponse = await apiService.getUserTransactions();
