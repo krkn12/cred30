@@ -1,9 +1,10 @@
 
 import { Pool, PoolClient } from 'pg';
+import { QUOTA_PRICE } from '../../shared/constants/business.constants';
 
 /**
  * Serviço de Análise de Crédito (Estilo Nubank)
- * Calcula limites dinâmicos baseados no comportamento do usuário
+ * Calcula limites dinâmicos baseados no comportamento do usuário E na disponibilidade do caixa
  */
 export const calculateUserLoanLimit = async (pool: Pool | PoolClient, userId: string): Promise<number> => {
     try {
@@ -16,7 +17,6 @@ export const calculateUserLoanLimit = async (pool: Pool | PoolClient, userId: st
         const user = userRes.rows[0];
 
         // 2. Patrimônio no sistema (Cotas ATIVAS)
-        // Isso é o "investimento" do usuário que gera confiança
         const quotasRes = await pool.query(
             "SELECT COALESCE(SUM(current_value), 0) as total FROM quotas WHERE user_id = $1 AND status = 'ACTIVE'",
             [userId]
@@ -36,41 +36,62 @@ export const calculateUserLoanLimit = async (pool: Pool | PoolClient, userId: st
         const hasOverdue = parseInt(stats.overdue_loans) > 0;
         const paidCount = parseInt(stats.paid_loans);
 
+        // 4. CAIXA OPERACIONAL DISPONÍVEL (Nova Trava)
+        // Caixa = (Total de Cotas ATIVAS * QUOTA_PRICE) - (Total Emprestado Ativo)
+        const systemQuotasRes = await pool.query(
+            "SELECT COUNT(*) as count FROM quotas WHERE status = 'ACTIVE'"
+        );
+        const systemActiveLoansRes = await pool.query(
+            "SELECT COALESCE(SUM(amount), 0) as total FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING')"
+        );
+        const systemQuotasCount = parseInt(systemQuotasRes.rows[0].count);
+        const systemTotalLoaned = parseFloat(systemActiveLoansRes.rows[0].total);
+        const operationalCash = (systemQuotasCount * QUOTA_PRICE) - systemTotalLoaned;
+
         // --- LÓGICA DE CÁLCULO (ESTILO NUBANK) ---
 
         // Se tiver dívida atrasada, limite é ZERO
         if (hasOverdue) return 0;
 
         // A. Limite Base por Score
-        // 0 pontos = R$ 50
-        // 1000 pontos = R$ 5.000
         const scoreLimit = (user.score || 0) * 5;
 
-        // B. Alavancagem por Cotas (O Nubank ama quem investe)
-        // Cada R$ 1 em cotas libera R$ 2 de limite extra
+        // B. Alavancagem por Cotas
         const quotaMultiplier = 2.0;
         const assetsLimit = totalQuotasValue * quotaMultiplier;
 
-        // C. Bônus por Fidelidade (Pagamentos em dia)
-        // A cada empréstimo pago, o limite sobe 20%
+        // C. Bônus por Fidelidade
         const fidelityBonus = 1 + (paidCount * 0.20);
 
-        // D. Cálculo Final
-        let totalLimit = (50 + scoreLimit + assetsLimit) * fidelityBonus;
+        // D. Cálculo do Limite Pessoal
+        let personalLimit = (50 + scoreLimit + assetsLimit) * fidelityBonus;
 
         // E. Travas de Segurança (Anti-Fraude)
-        // Usuário novo (menos de 100 pontos) não passa de R$ 300
-        if (user.score < 100 && totalLimit > 300) {
-            totalLimit = 300;
+        if (user.score < 100 && personalLimit > 300) {
+            personalLimit = 300;
         }
 
-        // Teto absoluto para evitar desequilíbrio no pool do sistema (Ex: 50k)
         const ABSOLUTE_MAX = 50000;
-        if (totalLimit > ABSOLUTE_MAX) totalLimit = ABSOLUTE_MAX;
+        if (personalLimit > ABSOLUTE_MAX) personalLimit = ABSOLUTE_MAX;
 
-        return Math.floor(totalLimit);
+        // F. TRAVA CRÍTICA: O limite final é o MENOR entre:
+        //    - O limite pessoal do usuário
+        //    - O dinheiro disponível no caixa operacional do sistema
+        const finalLimit = Math.min(Math.floor(personalLimit), Math.max(0, operationalCash));
+
+        console.log('DEBUG - Análise de Crédito:', {
+            userId,
+            scoreLimit,
+            assetsLimit,
+            fidelityBonus,
+            personalLimit,
+            operationalCash,
+            finalLimit
+        });
+
+        return finalLimit;
     } catch (error) {
         console.error('Erro na análise de crédito:', error);
-        return 50; // Retorna limite mínimo em caso de erro
+        return 0; // Retorna zero em caso de erro (segurança)
     }
 };
