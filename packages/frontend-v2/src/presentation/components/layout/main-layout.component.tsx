@@ -24,6 +24,42 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
+  // Timer de Logout Automático (5 minutos de inatividade)
+  useEffect(() => {
+    if (!user) return;
+
+    let logoutTimer: NodeJS.Timeout;
+
+    const resetTimer = () => {
+      if (logoutTimer) clearTimeout(logoutTimer);
+      logoutTimer = setTimeout(() => {
+        console.log('Sessão expirada por inatividade (5 minutos)');
+        onLogout();
+      }, 5 * 60 * 1000); // 5 minutos
+    };
+
+    // Eventos que indicam atividade do usuário
+    const activityEvents = [
+      'mousedown', 'mousemove', 'keypress',
+      'scroll', 'touchstart', 'click'
+    ];
+
+    // Inicializar timer
+    resetTimer();
+
+    // Adicionar ouvintes
+    activityEvents.forEach(event => {
+      window.addEventListener(event, resetTimer);
+    });
+
+    return () => {
+      if (logoutTimer) clearTimeout(logoutTimer);
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, resetTimer);
+      });
+    };
+  }, [user, onLogout]);
+
   const handleInstallClick = () => {
     if (installPrompt) {
       installPrompt.prompt();
