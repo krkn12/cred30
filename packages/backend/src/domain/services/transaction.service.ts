@@ -196,6 +196,9 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
   const transaction = transactionResult.rows[0];
 
   if (action === 'REJECT') {
+    // Saques não debitam saldo na solicitação (usam limite de crédito), 
+    // portanto não há saldo para devolver nem caixa operacional para ajustar na rejeição.
+    /* 
     if (transaction.type === 'WITHDRAWAL') {
       await updateUserBalance(client, transaction.user_id, parseFloat(transaction.amount), 'credit');
       await client.query(
@@ -203,6 +206,7 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
         [parseFloat(transaction.amount)]
       );
     }
+    */
 
     if (transaction.type === 'BUY_QUOTA') {
       const metadata = transaction.metadata || {};
@@ -324,6 +328,46 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
         await updateScore(client, transaction.user_id, SCORE_REWARDS.LOAN_PAYMENT_ON_TIME, 'Pagamento de empréstimo');
       }
     }
+  }
+
+  // SAQUE (Dedução real do caixa operacional)
+  if (transaction.type === 'WITHDRAWAL') {
+    let metadata: any = transaction.metadata || {};
+    if (typeof metadata === 'string') {
+      try { metadata = JSON.parse(metadata); } catch { metadata = {}; }
+    }
+
+    const netAmount = parseFloat(metadata.netAmount || transaction.amount);
+    const feeAmount = parseFloat(metadata.feeAmount || '0');
+
+    // 1. Subtrair o valor enviado (líquido) do saldo real do sistema
+    await client.query(
+      'UPDATE system_config SET system_balance = system_balance - $1',
+      [netAmount]
+    );
+
+    // 2. Se houver taxa cobrada, aplicar a regra de divisão: 85% Volta pro Caixa / 15% Vai pros Lucros
+    if (feeAmount > 0) {
+      const feeForOperational = feeAmount * 0.85;
+      const feeForProfit = feeAmount * 0.15;
+
+      await client.query(
+        'UPDATE system_config SET system_balance = system_balance + $1',
+        [feeForOperational]
+      );
+
+      await client.query(
+        'UPDATE system_config SET profit_pool = profit_pool + $1',
+        [feeForProfit]
+      );
+    }
+
+    console.log('DEBUG - Saque processado contabilmente (Regra 85/15):', {
+      netAmount,
+      feeAmount,
+      feeForOperational,
+      feeForProfit
+    });
   }
 
   await client.query(
