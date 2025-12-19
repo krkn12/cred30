@@ -240,8 +240,8 @@ export const SettingsView = ({ user, onSimulateTime, onLogout, onDeleteAccount, 
             {/* 2FA Setup Modal */}
             {show2FASetup && (
                 <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[110] p-4 animate-in fade-in duration-300 backdrop-blur-md">
-                    <div className="bg-zinc-950 border border-zinc-800 rounded-[2.5rem] p-8 w-full max-w-md relative shadow-2xl">
-                        <button onClick={() => setShow2FASetup(false)} className="absolute top-6 right-6 text-zinc-400 hover:text-white"><XIcon size={24} /></button>
+                    <div className="bg-zinc-950 border border-zinc-800 rounded-[2.5rem] p-6 md:p-8 w-full max-w-md relative shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+                        <button onClick={() => setShow2FASetup(false)} className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors z-10"><XIcon size={24} /></button>
 
                         <div className="text-center mb-8">
                             <div className="w-16 h-16 bg-primary-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -268,24 +268,34 @@ export const SettingsView = ({ user, onSimulateTime, onLogout, onDeleteAccount, 
                             </div>
                         )}
 
-                        <div className="bg-surfaceHighlight p-4 rounded-xl mb-6 space-y-4">
-                            <div>
-                                <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Emissor</p>
-                                <p className="text-white font-medium">Cred30</p>
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-4 mb-6 space-y-4">
+                            <div className="flex justify-between items-start border-b border-white/5 pb-3">
+                                <div>
+                                    <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Emissor</p>
+                                    <p className="text-white font-medium">Cred30</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Conta</p>
+                                    <p className="text-white font-medium truncate max-w-[120px]">{user.email}</p>
+                                </div>
                             </div>
+
                             <div>
-                                <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Conta (Usuário)</p>
-                                <p className="text-white font-medium truncate">{user.email}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Chave Secreta</p>
-                                <div className="flex items-center justify-between">
-                                    <code className="text-primary-400 font-mono font-bold">{twoFactorData?.secret}</code>
-                                    <button onClick={() => {
-                                        navigator.clipboard.writeText(twoFactorData?.secret || '');
-                                        setSuccessMessage('Copiado!');
-                                        setTimeout(() => setSuccessMessage(''), 2000);
-                                    }}><Repeat size={16} className="text-zinc-500" /></button>
+                                <p className="text-[10px] text-zinc-500 uppercase font-bold mb-2">Chave Secreta</p>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 font-mono text-primary-400 text-sm font-bold tracking-wider overflow-x-auto whitespace-nowrap hide-scrollbar">
+                                        {twoFactorData?.secret}
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(twoFactorData?.secret || '');
+                                            setSuccessMessage('Copiado!');
+                                            setTimeout(() => setSuccessMessage(''), 2000);
+                                        }}
+                                        className="h-10 w-10 bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded-xl flex items-center justify-center transition-all active:scale-90"
+                                    >
+                                        <Copy size={16} />
+                                    </button>
                                 </div>
                             </div>
                         </div>

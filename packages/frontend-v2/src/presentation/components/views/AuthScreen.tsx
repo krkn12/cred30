@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, KeyRound, Lock, QrCode, Repeat, ArrowLeft, Mail, ShieldCheck, XCircle, ChevronRight, Check } from 'lucide-react';
+import { Users, KeyRound, Lock, QrCode, Repeat, ArrowLeft, Mail, ShieldCheck, XCircle, ChevronRight, Check, Copy } from 'lucide-react';
 import { loginUser, registerUser, resetPassword, verify2FA, apiService } from '../../../application/services/storage.service';
 import { TermsAcceptanceModal } from '../ui/TermsAcceptanceModal';
 import { User } from '../../../domain/types/common.types';
@@ -275,8 +275,8 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
             {/* Email Verification Modal */}
             {showVerifyModal && (
                 <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300 backdrop-blur-md">
-                    <div className="bg-zinc-950 border border-zinc-800 rounded-[2.5rem] p-8 md:p-10 w-full max-w-md relative shadow-[0_0_80px_rgba(6,182,212,0.15)]">
-                        <button onClick={() => setShowVerifyModal(false)} className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors">
+                    <div className="bg-zinc-950 border border-zinc-800 rounded-[2.5rem] p-6 md:p-10 w-full max-w-md relative shadow-[0_0_80px_rgba(6,182,212,0.15)] max-h-[90vh] overflow-y-auto custom-scrollbar">
+                        <button onClick={() => setShowVerifyModal(false)} className="absolute top-4 right-4 md:top-6 md:right-6 text-zinc-500 hover:text-white transition-colors z-10">
                             <XCircle size={24} />
                         </button>
 
@@ -308,28 +308,34 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                             </div>
                         )}
 
-                        <div className="bg-surfaceHighlight/30 border border-surfaceHighlight rounded-2xl p-4 mb-8 space-y-4">
-                            <div>
-                                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Emissor</p>
-                                <p className="text-white font-medium">Cred30</p>
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-5 mb-8 space-y-4">
+                            <div className="flex justify-between items-start border-b border-white/5 pb-3">
+                                <div>
+                                    <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Emissor</p>
+                                    <p className="text-white font-medium">Cred30</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Conta</p>
+                                    <p className="text-white font-medium truncate max-w-[120px]">{verifyEmailAddr}</p>
+                                </div>
                             </div>
+
                             <div>
-                                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Conta (Usuário)</p>
-                                <p className="text-white font-medium truncate">{verifyEmailAddr}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Chave Secreta</p>
-                                <div className="flex items-center justify-between gap-3">
-                                    <code className="text-primary-400 font-mono text-lg font-bold">{twoFactorData?.secret}</code>
+                                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-2">Chave Secreta</p>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 font-mono text-primary-400 text-lg font-bold tracking-wider overflow-x-auto whitespace-nowrap hide-scrollbar">
+                                        {twoFactorData?.secret}
+                                    </div>
                                     <button
                                         onClick={() => {
                                             navigator.clipboard.writeText(twoFactorData?.secret || '');
                                             setSuccess('Chave copiada!');
                                             setTimeout(() => setSuccess(null), 2000);
                                         }}
-                                        className="p-2 hover:bg-white/5 rounded-lg text-zinc-400 hover:text-white transition-all"
+                                        className="h-12 w-12 bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded-xl flex items-center justify-center transition-all active:scale-90"
+                                        title="Copiar Chave"
                                     >
-                                        <Repeat size={18} />
+                                        <Copy size={20} />
                                     </button>
                                 </div>
                             </div>

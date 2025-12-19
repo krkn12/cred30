@@ -158,9 +158,9 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                 </button>
 
                 {confirmModal.isOpen && (
-                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                        <div className="bg-surface rounded-3xl p-8 w-full max-w-sm relative border border-surfaceHighlight shadow-2xl">
-                            <button onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} className="absolute top-4 right-4 text-zinc-500 hover:text-white transition">
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                        <div className="bg-surface rounded-3xl p-6 md:p-8 w-full max-w-sm relative border border-surfaceHighlight shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+                            <button onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} className="absolute top-4 right-4 text-zinc-500 hover:text-white transition z-10">
                                 <XCircle size={24} />
                             </button>
 
