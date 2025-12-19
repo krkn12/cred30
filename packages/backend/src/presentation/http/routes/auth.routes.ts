@@ -138,6 +138,16 @@ authRoutes.post('/register', async (c) => {
       return c.json({ success: false, message: 'Email já cadastrado' }, 409);
     }
 
+    // Verificar se chave PIX já existe
+    const existingPix = await pool.query(
+      'SELECT id FROM users WHERE pix_key = $1',
+      [validatedData.pixKey]
+    );
+
+    if (existingPix.rows.length > 0) {
+      return c.json({ success: false, message: 'Esta chave PIX já está vinculada a outra conta' }, 409);
+    }
+
     // Verificar se já existe um administrador no sistema
     // Considerando tanto o admin hardcoded quanto usuários no banco
     const adminCheck = await pool.query(
