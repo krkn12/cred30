@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { Layout } from '../components/layout/main-layout.component';
 import { UpdateNotification } from '../components/ui/update-notification.component';
 import { AdminStoreManager } from '../components/features/store/admin-store.component';
-import { loadState, registerUser, loginUser, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, fastForwardTime, repayLoan, repayInstallment, getCurrentUser, resetPassword, requestWithdrawal, getPendingItems, processAdminAction, updateSystemBalance, updateProfitPool, distributeMonthlyDividends, fixLoanPix, clearAllCache, deleteUserAccount, changePassword, verifyEmail, confirmWithdrawal } from '../../application/services/storage.service';
+import { loadState, registerUser, loginUser, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, fastForwardTime, repayLoan, repayInstallment, getCurrentUser, resetPassword, requestWithdrawal, getPendingItems, processAdminAction, updateSystemBalance, updateProfitPool, distributeMonthlyDividends, fixLoanPix, clearAllCache, deleteUserAccount, changePassword, verify2FA, confirmWithdrawal } from '../../application/services/storage.service';
 import { apiService } from '../../application/services/api.service';
 import { AppState, Quota, Loan, Transaction, User } from '../../domain/types/common.types';
 import { QUOTA_PRICE, VESTING_PERIOD_MS } from '../../shared/constants/app.constants';
@@ -113,7 +113,6 @@ export default function App() {
       // Só atualiza se o usuário estiver logado e a aba estiver ativa (visível)
       if (state.currentUser && !document.hidden) {
         refreshState();
-        console.log('Dados atualizados automaticamente...');
       }
     }, 15000);
 
