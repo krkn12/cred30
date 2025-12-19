@@ -13,7 +13,7 @@ export class EmailService {
             this.transporter = nodemailer.createTransport({
                 host,
                 port: Number(process.env.SMTP_PORT) || 587,
-                secure: false, // true for 465, false for other ports
+                secure: Number(process.env.SMTP_PORT) === 465, // true para porta 465 (Gmail SSL)
                 auth: {
                     user,
                     pass,
