@@ -134,45 +134,45 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-4 sm:p-6 md:p-8 relative">
-            <div className="w-full max-w-[95vw] sm:max-w-md bg-surface border border-surfaceHighlight p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary-400 to-primary-600"></div>
+        <div className="min-h-screen flex items-center justify-center bg-background p-3 sm:p-6 md:p-8 relative">
+            <div className="w-full max-w-[98vw] sm:max-w-md bg-surface border border-surfaceHighlight p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-2xl relative overflow-hidden max-h-[95vh] overflow-y-auto">
+                <div className="absolute top-0 left-0 w-full h-1.5 sm:h-2 bg-gradient-to-r from-primary-400 to-primary-600"></div>
 
                 {/* Botão Voltar - Dentro do card */}
                 <button
                     onClick={() => navigate('/')}
-                    className="flex items-center gap-1.5 text-zinc-500 hover:text-white transition-colors text-xs sm:text-sm font-medium group mb-6"
+                    className="flex items-center gap-1.5 text-zinc-500 hover:text-white transition-colors text-xs font-medium group mb-4 sm:mb-6 mt-1"
                 >
-                    <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                    Voltar ao Início
+                    <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                    Voltar
                 </button>
 
-                <div className="text-center mb-6 sm:mb-8">
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-tr from-primary-400 to-primary-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-black font-bold text-2xl sm:text-3xl shadow-[0_0_20px_rgba(34,211,238,0.4)] mx-auto mb-3 sm:mb-4">
+                <div className="text-center mb-4 sm:mb-8">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-tr from-primary-400 to-primary-600 rounded-lg sm:rounded-2xl flex items-center justify-center text-black font-bold text-xl sm:text-3xl shadow-[0_0_20px_rgba(34,211,238,0.4)] mx-auto mb-2 sm:mb-4">
                         C
                     </div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Cred<span className="text-primary-400">30</span></h1>
-                    <p className="text-zinc-500 mt-1 sm:mt-2 text-xs sm:text-sm">Sua liberdade financeira começa aqui.</p>
+                    <h1 className="text-xl sm:text-3xl font-bold text-white tracking-tight">Cred<span className="text-primary-400">30</span></h1>
+                    <p className="text-zinc-500 mt-1 text-[10px] sm:text-sm">Sua liberdade financeira começa aqui.</p>
                 </div>
 
                 {/* Custom Error Alert */}
                 {error && (
-                    <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-                        <XCircle size={20} className="shrink-0" />
-                        <p className="text-sm font-medium">{error}</p>
-                        <button onClick={() => setError(null)} className="ml-auto hover:text-white"><XCircle size={16} /></button>
+                    <div className="mb-4 sm:mb-6 bg-red-500/10 border border-red-500/20 text-red-500 p-3 sm:p-4 rounded-xl flex items-center gap-2 sm:gap-3 animate-in fade-in slide-in-from-top-2">
+                        <XCircle size={18} className="shrink-0" />
+                        <p className="text-xs sm:text-sm font-medium flex-1">{error}</p>
+                        <button onClick={() => setError(null)} className="hover:text-white"><XCircle size={14} /></button>
                     </div>
                 )}
 
                 {/* Custom Success Alert */}
                 {success && (
-                    <div className="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 p-4 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-                        <Check size={20} className="shrink-0" />
-                        <p className="text-sm font-medium">{success}</p>
+                    <div className="mb-4 sm:mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 p-3 sm:p-4 rounded-xl flex items-center gap-2 sm:gap-3 animate-in fade-in slide-in-from-top-2">
+                        <Check size={18} className="shrink-0" />
+                        <p className="text-xs sm:text-sm font-medium">{success}</p>
                     </div>
                 )}
 
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-3 sm:space-y-4">
                     {isForgot ? (
                         <>
                             <h2 className="text-white text-lg font-medium text-center mb-4">Recuperar Senha</h2>
@@ -197,34 +197,34 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                         <>
                             {isRegister && (
                                 <div className="relative">
-                                    <Users className="absolute left-3 top-3 text-zinc-500" size={20} />
-                                    <input type="text" placeholder="Nome Completo" value={name} onChange={e => setName(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition" required />
+                                    <Users className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
+                                    <input type="text" placeholder="Nome Completo" value={name} onChange={e => setName(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition" required />
                                 </div>
                             )}
                             <div className="relative">
-                                <Users className="absolute left-3 top-3 text-zinc-500" size={20} />
-                                <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition" required />
+                                <Users className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
+                                <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition" required />
                             </div>
 
                             <div className="relative">
-                                <Lock className="absolute left-3 top-3 text-zinc-500" size={20} />
-                                <input type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition" required />
+                                <Lock className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
+                                <input type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition" required />
                             </div>
 
                             <div className="relative">
-                                <KeyRound className="absolute left-3 top-3 text-zinc-500" size={20} />
-                                <input type="text" placeholder={isRegister ? "Crie sua Frase Secreta" : "Frase Secreta"} value={secretPhrase} onChange={e => setSecretPhrase(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition" required />
+                                <KeyRound className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
+                                <input type="text" placeholder={isRegister ? "Crie sua Frase Secreta" : "Frase Secreta"} value={secretPhrase} onChange={e => setSecretPhrase(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition" required />
                             </div>
 
                             {isRegister && (
                                 <>
                                     <div className="relative">
-                                        <QrCode className="absolute left-3 top-3 text-zinc-500" size={20} />
-                                        <input type="text" placeholder="Sua Chave PIX" value={pixKey} onChange={e => setPixKey(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition" required />
+                                        <QrCode className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
+                                        <input type="text" placeholder="Sua Chave PIX" value={pixKey} onChange={e => setPixKey(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition" required />
                                     </div>
                                     <div className="relative">
-                                        <Repeat className="absolute left-3 top-3 text-zinc-500" size={20} />
-                                        <input type="text" placeholder="Código de Indicação (Opcional)" value={referralCode} onChange={e => setReferralCode(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition" />
+                                        <Repeat className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
+                                        <input type="text" placeholder="Código de Indicação (Opcional)" value={referralCode} onChange={e => setReferralCode(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition" />
                                     </div>
                                 </>
                             )}
