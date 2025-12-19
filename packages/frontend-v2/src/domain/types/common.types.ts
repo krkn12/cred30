@@ -9,6 +9,7 @@ export interface User {
   isAdmin?: boolean;
   score?: number;
   secretPhrase?: string;
+  twoFactorEnabled?: boolean;
 }
 
 export interface Quota {

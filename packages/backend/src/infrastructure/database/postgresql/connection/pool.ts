@@ -123,6 +123,17 @@ export const initializeDatabase = async () => {
           await client.query('ALTER TABLE users ADD COLUMN reset_password_token VARCHAR(255)');
         }
 
+        const tfaColumn = await client.query(`
+          SELECT column_name FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'two_factor_secret'
+        `);
+
+        if (tfaColumn.rows.length === 0) {
+          console.log('Adicionando colunas de 2FA à tabela users...');
+          await client.query('ALTER TABLE users ADD COLUMN two_factor_secret TEXT');
+          await client.query('ALTER TABLE users ADD COLUMN two_factor_enabled BOOLEAN DEFAULT FALSE');
+        }
+
         console.log('Tabela users verificada e atualizada com sucesso');
       }
     }
@@ -144,6 +155,8 @@ export const initializeDatabase = async () => {
         is_email_verified BOOLEAN DEFAULT FALSE,
         verification_code VARCHAR(10),
         reset_password_token VARCHAR(255),
+        two_factor_secret TEXT,
+        two_factor_enabled BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
