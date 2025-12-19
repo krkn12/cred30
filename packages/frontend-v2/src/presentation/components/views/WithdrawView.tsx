@@ -30,6 +30,23 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
     }, [val, balance, totalQuotaValue]);
 
 
+    const [twoFactorData, setTwoFactorData] = useState<{ otpUri: string } | null>(null);
+
+    useEffect(() => {
+        if (confirmModal.isOpen) {
+            fetch2FASetup();
+        }
+    }, [confirmModal.isOpen]);
+
+    const fetch2FASetup = async () => {
+        try {
+            const data = await apiService.get2FASetup();
+            setTwoFactorData(data);
+        } catch (e) {
+            console.error('Erro ao buscar setup 2FA:', e);
+        }
+    };
+
     const handleConfirmWithCode = async () => {
         if (!confirmModal.transactionId) return;
         try {
@@ -169,7 +186,17 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                                     <ShieldCheck size={32} className="text-primary-500" />
                                 </div>
                                 <h3 className="text-xl font-bold text-white">Autenticação 2FA</h3>
-                                <p className="text-zinc-400 text-sm mt-2">Insira o código de 6 dígitos do seu autenticador para confirmar o saque.</p>
+                                <p className="text-zinc-400 text-sm mt-2 mb-6">Insira o código de 6 dígitos do seu autenticador para confirmar o saque.</p>
+
+                                {twoFactorData?.otpUri && (
+                                    <a
+                                        href={twoFactorData.otpUri}
+                                        className="mb-6 w-full bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 border border-primary-500/30 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-all"
+                                    >
+                                        <ShieldCheck size={18} />
+                                        Abrir no Autenticador
+                                    </a>
+                                )}
                             </div>
 
                             <input
