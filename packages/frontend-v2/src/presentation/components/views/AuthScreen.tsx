@@ -33,6 +33,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [showTerms, setShowTerms] = useState(false);
+    const [pendingUser, setPendingUser] = useState<User | null>(null);
 
     const navigate = useNavigate();
 
@@ -97,6 +98,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
             if (res.twoFactor) {
                 setTwoFactorData(res.twoFactor);
                 setVerifyEmailAddr(email);
+                setPendingUser(res.user);
                 setIs2FASetup(true);
                 setShowVerifyModal(true);
             }
@@ -112,11 +114,15 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
         try {
             const res = await verify2FA(verifyEmailAddr, verifyCode);
             if (res.success) {
-                setSuccess('2FA ativado com sucesso!');
+                setSuccess('Conta ativada com sucesso! Entrando...');
                 setTimeout(() => {
                     setShowVerifyModal(false);
-                    setIsRegister(false);
-                    setIs2FASetup(false);
+                    if (pendingUser) {
+                        onLogin(pendingUser);
+                    } else {
+                        setIsRegister(false);
+                        setIs2FASetup(false);
+                    }
                     setSuccess(null);
                 }, 1500);
             } else {

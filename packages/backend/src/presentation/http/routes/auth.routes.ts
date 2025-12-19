@@ -66,7 +66,9 @@ authRoutes.post('/login', async (c) => {
         return c.json({
           success: false,
           message: 'Código de autenticação necessário',
-          requires2FA: true
+          data: {
+            requires2FA: true
+          }
         }, 200); // Retorna 200 com flag para o frontend mostrar o campo
       }
 
@@ -90,15 +92,6 @@ authRoutes.post('/login', async (c) => {
       return c.json({ success: false, message: 'Frase secreta incorreta' }, 401);
     }
 
-    if (!user.is_email_verified) {
-      console.log('Email não verificado para:', user.email);
-      return c.json({
-        success: false,
-        message: 'Por favor, verifique seu email para acessar a conta.',
-        requiresVerification: true,
-        email: user.email
-      }, 403);
-    }
 
     // Gerar token JWT
     const token = sign(
