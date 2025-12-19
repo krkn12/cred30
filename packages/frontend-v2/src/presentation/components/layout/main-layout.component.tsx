@@ -81,8 +81,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
     { id: 'store', label: 'Loja', icon: ShoppingBag },
     { id: 'invest', label: 'Investir', icon: TrendingUp },
     { id: 'games', label: 'Jogos', icon: Gamepad2 },
-    { id: 'portfolio', label: 'Carteira', icon: PieChart }, // Removi "Portfolio" duplicado se houver
-    { id: 'loans', label: 'Empréstimos', icon: DollarSign }, // Removi "Emprestimos" duplicado se houver
+    { id: 'portfolio', label: 'Carteira', icon: PieChart },
+    { id: 'loans', label: 'Empréstimos', icon: DollarSign },
     { id: 'withdraw', label: 'Sacar', icon: ArrowUpFromLine },
   ];
 

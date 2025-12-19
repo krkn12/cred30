@@ -264,6 +264,15 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                         <p className="text-zinc-500 text-center text-sm py-4">Nenhuma movimentação recente.</p>
                     )}
                 </div>
+                {state.transactions.length > 0 && (
+                    <button
+                        onClick={() => navigate('/app/history')}
+                        className="w-full mt-4 py-3 text-sm font-medium text-primary-400 hover:text-primary-300 transition-colors flex items-center justify-center gap-2"
+                    >
+                        Ver Extrato Completo
+                        <ArrowUpRight size={16} />
+                    </button>
+                )}
             </div>
 
             {/* Settings Modal - Using the consolidated SettingsView */}
