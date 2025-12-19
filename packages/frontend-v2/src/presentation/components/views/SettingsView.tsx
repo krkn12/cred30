@@ -8,7 +8,7 @@ export const SettingsView = ({ user, onSimulateTime, onLogout, onDeleteAccount, 
     user: User,
     onSimulateTime: () => void,
     onLogout: () => void,
-    onDeleteAccount: () => void,
+    onDeleteAccount: (code?: string) => void,
     onChangePassword: (oldPass: string, newPass: string) => Promise<void>,
     onRefresh?: () => void
 }) => {
@@ -18,6 +18,7 @@ export const SettingsView = ({ user, onSimulateTime, onLogout, onDeleteAccount, 
     const [newPassword, setNewPassword] = React.useState('');
     const [confirmPassword, setConfirmPassword] = React.useState('');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [deleteCode, setDeleteCode] = React.useState('');
     const [error, setError] = React.useState('');
 
     // 2FA Setup
@@ -186,13 +187,33 @@ export const SettingsView = ({ user, onSimulateTime, onLogout, onDeleteAccount, 
 
             <ConfirmModal
                 isOpen={showConfirmDelete}
-                onClose={() => setShowConfirmDelete(false)}
-                onConfirm={onDeleteAccount}
+                onClose={() => { setShowConfirmDelete(false); setDeleteCode(''); }}
+                onConfirm={() => onDeleteAccount(deleteCode)}
                 title="Encerrar Conta"
                 message="Tem certeza? Essa ação não pode ser desfeita e todos os seus dados serão anonimizados."
                 confirmText="Sim, Encerrar Conta"
                 type="danger"
-            />
+            >
+                {user.twoFactorEnabled && (
+                    <div className="mb-6 animate-in slide-in-from-top-2">
+                        <label className="text-xs text-zinc-500 mb-2 block font-bold uppercase tracking-widest">Código 2FA para Confirmar</label>
+                        <div className="relative">
+                            <ShieldCheck className="absolute left-3 top-3 text-zinc-500" size={18} />
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="one-time-code"
+                                placeholder="000 000"
+                                value={deleteCode}
+                                onChange={e => setDeleteCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-red-500 outline-none transition text-lg tracking-[0.3em] font-mono"
+                                autoFocus
+                            />
+                        </div>
+                        <p className="text-[10px] text-zinc-500 mt-2">Por segurança, insira o código do seu autenticador.</p>
+                    </div>
+                )}
+            </ConfirmModal>
 
             {/* Change Password Modal */}
             {showChangePassword && (

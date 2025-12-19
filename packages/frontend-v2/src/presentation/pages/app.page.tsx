@@ -405,8 +405,8 @@ export default function App() {
                     user={state.currentUser}
                     onSimulateTime={() => fastForwardTime(1).then(refreshState)}
                     onLogout={handleLogout}
-                    onDeleteAccount={async () => {
-                      const res = await deleteUserAccount();
+                    onDeleteAccount={async (code) => {
+                      const res = await deleteUserAccount(code);
                       if (!res.success) {
                         setShowError({ isOpen: true, title: 'Erro ao Encerrar Conta', message: res.message });
                       } else {

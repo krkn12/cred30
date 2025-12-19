@@ -495,8 +495,8 @@ export const verify2FA = (email: string, code: string) => apiService.verify2FA(e
 
 export const confirmWithdrawal = (transactionId: number, code: string) => apiService.confirmWithdrawal(transactionId, code);
 
-export const deleteUserAccount = async (): Promise<any> => {
-  const result = await apiService.deleteAccount();
+export const deleteUserAccount = async (twoFactorCode?: string): Promise<any> => {
+  const result = await apiService.deleteAccount(twoFactorCode);
   if (result.success) {
     await logoutUser();
   }

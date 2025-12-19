@@ -5,6 +5,7 @@ import { getDbPool } from '../../../infrastructure/database/postgresql/connectio
 import { User, UpdateUserRequest } from '../../../domain/entities/user.entity';
 import { UserContext } from '../../../shared/types/hono.types';
 import bcrypt from 'bcrypt';
+import { twoFactorService } from '../../../application/services/two-factor.service';
 
 const userRoutes = new Hono();
 
@@ -179,6 +180,23 @@ userRoutes.delete('/me', authMiddleware, async (c) => {
   const pool = getDbPool(c);
 
   try {
+    const body = await c.req.json().catch(() => ({}));
+    const { twoFactorCode } = body;
+
+    // Buscar status do 2FA no banco (para garantir que está atualizado)
+    const userRes = await pool.query('SELECT two_factor_enabled, two_factor_secret FROM users WHERE id = $1', [user.id]);
+    const dbUser = userRes.rows[0];
+
+    if (dbUser.two_factor_enabled) {
+      if (!twoFactorCode) {
+        return c.json({ success: false, message: 'Código de autenticação necessário para excluir a conta.' }, 400);
+      }
+
+      const isValid = twoFactorService.verifyToken(twoFactorCode, dbUser.two_factor_secret);
+      if (!isValid) {
+        return c.json({ success: false, message: 'Código de autenticação inválido.' }, 401);
+      }
+    }
     // 1. Verificar Pendências Financeiras
 
     // Empréstimos Ativos
