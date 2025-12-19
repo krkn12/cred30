@@ -1,7 +1,8 @@
 import React from 'react';
-import { Star, Copy, Lock, ChevronRight, LogOut, Trash2, X as XIcon } from 'lucide-react';
+import { Star, Copy, Lock, ChevronRight, LogOut, Trash2, X as XIcon, ShieldCheck, QrCode, Repeat } from 'lucide-react';
 import { User } from '../../../domain/types/common.types';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { get2FASetup, verify2FA } from '../../../application/services/storage.service';
 
 export const SettingsView = ({ user, onSimulateTime, onLogout, onDeleteAccount, onChangePassword }: {
     user: User,
@@ -17,6 +18,43 @@ export const SettingsView = ({ user, onSimulateTime, onLogout, onDeleteAccount, 
     const [confirmPassword, setConfirmPassword] = React.useState('');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [error, setError] = React.useState('');
+
+    // 2FA Setup
+    const [show2FASetup, setShow2FASetup] = React.useState(false);
+    const [twoFactorData, setTwoFactorData] = React.useState<{ secret: string, qrCode: string, otpUri: string } | null>(null);
+    const [verifyCode, setVerifyCode] = React.useState('');
+    const [successMessage, setSuccessMessage] = React.useState('');
+
+    const handle2FASetup = async () => {
+        try {
+            const data = await get2FASetup();
+            setTwoFactorData(data);
+            setShow2FASetup(true);
+        } catch (err: any) {
+            setError(err.message || 'Erro ao carregar dados 2FA');
+        }
+    };
+
+    const handleVerify2FA = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setIsSubmitting(true);
+        try {
+            const res = await verify2FA(user.email, verifyCode);
+            if (res.success) {
+                setSuccessMessage('2FA ativado com sucesso!');
+                setTimeout(() => {
+                    setShow2FASetup(false);
+                    setSuccessMessage('');
+                    window.location.reload(); // Recarregar para atualizar status do 2FA
+                }, 1500);
+            }
+        } catch (err: any) {
+            setError(err.message || 'Erro ao verificar código');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     const handlePasswordChange = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -99,6 +137,22 @@ export const SettingsView = ({ user, onSimulateTime, onLogout, onDeleteAccount, 
                     <ChevronRight size={16} className="text-zinc-600 group-hover:text-white transition-colors" />
                 </button>
 
+                <button
+                    onClick={handle2FASetup}
+                    className="w-full bg-surfaceHighlight hover:bg-zinc-800 text-white border border-white/5 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group"
+                >
+                    <span className="flex items-center gap-3">
+                        <ShieldCheck size={18} className={`${user.twoFactorEnabled ? 'text-emerald-400' : 'text-zinc-400'} group-hover:text-primary-400 transition-colors`} />
+                        2FA: {user.twoFactorEnabled ? 'Ativado' : 'Desativado'}
+                    </span>
+                    {!user.twoFactorEnabled && (
+                        <span className="text-[10px] bg-primary-500 text-black px-2 py-1 rounded-full font-extrabold animate-pulse">
+                            ATIVAR AGORA
+                        </span>
+                    )}
+                    <ChevronRight size={16} className="text-zinc-600 group-hover:text-white transition-colors" />
+                </button>
+
                 <button onClick={onLogout} className="w-full bg-surfaceHighlight hover:bg-zinc-800 text-white border border-white/5 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group">
                     <span className="flex items-center gap-3">
                         <LogOut size={18} className="text-zinc-400 group-hover:text-white transition-colors" />
@@ -177,6 +231,62 @@ export const SettingsView = ({ user, onSimulateTime, onLogout, onDeleteAccount, 
                                 className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 text-black font-bold py-3 rounded-xl mt-2 transition"
                             >
                                 {isSubmitting ? 'Alterando...' : 'Alterar Senha'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* 2FA Setup Modal */}
+            {show2FASetup && (
+                <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[110] p-4 animate-in fade-in duration-300 backdrop-blur-md">
+                    <div className="bg-zinc-950 border border-zinc-800 rounded-[2.5rem] p-8 w-full max-w-md relative shadow-2xl">
+                        <button onClick={() => setShow2FASetup(false)} className="absolute top-6 right-6 text-zinc-400 hover:text-white"><XIcon size={24} /></button>
+
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 bg-primary-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <ShieldCheck size={32} className="text-primary-500" />
+                            </div>
+                            <h3 className="text-2xl font-bold text-white mb-2">Segurança 2FA</h3>
+                            <p className="text-zinc-400 text-sm">Escaneie o QR Code abaixo no seu app de autenticação.</p>
+                        </div>
+
+                        {twoFactorData?.qrCode && (
+                            <div className="bg-white p-3 rounded-2xl mx-auto w-fit mb-6">
+                                <img src={twoFactorData.qrCode} alt="2FA QR Code" className="w-40 h-40" />
+                            </div>
+                        )}
+
+                        <div className="bg-surfaceHighlight p-3 rounded-xl mb-6">
+                            <p className="text-xs text-zinc-500 uppercase font-bold mb-1">Chave Manual</p>
+                            <div className="flex items-center justify-between">
+                                <code className="text-primary-400 font-mono font-bold">{twoFactorData?.secret}</code>
+                                <button onClick={() => {
+                                    navigator.clipboard.writeText(twoFactorData?.secret || '');
+                                    setSuccessMessage('Copiado!');
+                                    setTimeout(() => setSuccessMessage(''), 2000);
+                                }}><Repeat size={16} className="text-zinc-500" /></button>
+                            </div>
+                        </div>
+
+                        {error && <div className="mb-4 text-red-500 text-center text-xs">{error}</div>}
+                        {successMessage && <div className="mb-4 text-emerald-500 text-center text-xs font-bold animate-pulse">{successMessage}</div>}
+
+                        <form onSubmit={handleVerify2FA} className="space-y-4">
+                            <input
+                                type="text"
+                                placeholder="000000"
+                                value={verifyCode}
+                                onChange={e => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-4 text-center text-white text-3xl tracking-[0.3em] font-mono focus:border-primary-500 outline-none"
+                                required
+                            />
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-4 rounded-xl transition shadow-lg shadow-primary-500/20"
+                            >
+                                {isSubmitting ? 'Verificando...' : 'Ativar 2FA Agora'}
                             </button>
                         </form>
                     </div>

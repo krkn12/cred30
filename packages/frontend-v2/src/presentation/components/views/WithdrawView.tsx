@@ -29,19 +29,6 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
         return { isValidAmount: valid, withdrawalAmount: amount, isFree: free, fee: f, netAmount: net };
     }, [val, balance, totalQuotaValue]);
 
-    const handleResendWithdrawalCode = async () => {
-        if (!confirmModal.transactionId) return;
-        try {
-            const res = await apiService.resendWithdrawalConfirmation(confirmModal.transactionId);
-            if (res.success) {
-                onSuccess('Código Reenviado', 'Um novo código foi enviado para seu email.');
-            } else {
-                onError('Erro ao Reenviar', res.message);
-            }
-        } catch (e: any) {
-            onError('Erro ao Reenviar', e.message);
-        }
-    };
 
     const handleConfirmWithCode = async () => {
         if (!confirmModal.transactionId) return;
@@ -175,11 +162,8 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                         <div className="bg-surface rounded-3xl p-6 w-full max-w-sm relative border border-surfaceHighlight">
                             <button onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} className="absolute top-4 right-4 text-zinc-500">✕</button>
                             <div className="text-center mb-6">
-                                <div className="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <ShieldCheck size={24} className="text-orange-500" />
-                                </div>
-                                <h3 className="text-xl font-bold text-white">Confirmação de Segurança</h3>
-                                <p className="text-zinc-400 text-sm mt-2">Um código foi enviado para seu email para autorizar este saque.</p>
+                                <h3 className="text-xl font-bold text-white">Autenticação 2FA</h3>
+                                <p className="text-zinc-400 text-sm mt-2">Insira o código gerado no seu aplicativo autenticador.</p>
                             </div>
 
                             <input
@@ -192,13 +176,10 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
 
                             <button
                                 onClick={handleConfirmWithCode}
-                                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl"
+                                className="w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-3 rounded-xl transition-all"
                             >
                                 Confirmar e Sacar
                             </button>
-                            <p className="text-center mt-4">
-                                <button onClick={handleResendWithdrawalCode} className="text-xs text-primary-400 hover:underline">Reenviar Código</button>
-                            </p>
                         </div>
                     </div>
                 )}

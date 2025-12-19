@@ -140,11 +140,15 @@ class ApiService {
   }
 
   // Método para login
-  async login(email: string, password: string, secretPhrase: string): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>('/auth/login', {
+  async login(email: string, password: string, secretPhrase?: string, twoFactorCode?: string): Promise<AuthResponse & { requires2FA?: boolean }> {
+    const response = await this.request<AuthResponse & { requires2FA?: boolean }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password, secretPhrase }),
+      body: JSON.stringify({ email, password, secretPhrase, twoFactorCode }),
     });
+
+    if (response.data?.requires2FA) {
+      return response.data;
+    }
 
     // Armazenar token
     this.token = response.data?.token || null;
@@ -163,13 +167,13 @@ class ApiService {
     secretPhrase: string,
     pixKey: string,
     referralCode?: string
-  ): Promise<AuthResponse> {
+  ): Promise<AuthResponse & { twoFactor?: { secret: string, qrCode: string, otpUri: string } }> {
     const requestBody: any = { name, email, password, secretPhrase, pixKey };
     if (referralCode && referralCode.trim() !== '') {
       requestBody.referralCode = referralCode;
     }
 
-    const response = await this.request<AuthResponse>('/auth/register', {
+    const response = await this.request<AuthResponse & { twoFactor?: { secret: string, qrCode: string, otpUri: string } }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(requestBody),
     });
@@ -181,6 +185,12 @@ class ApiService {
     }
 
     return response.data!;
+  }
+
+  // Obter dados de configuração 2FA
+  async get2FASetup(): Promise<any> {
+    const response = await this.request<any>('/auth/2fa/setup');
+    return response.data;
   }
 
   // Método para reset de senha
@@ -455,35 +465,19 @@ class ApiService {
     return response.data || [];
   }
 
-  // Método para verificar email
-  async verifyEmail(email: string, code: string): Promise<any> { // Changed ApiResponse<void> to any for consistency
-    return this.request<any>('/auth/verify-email', { // Changed this.post to this.request for consistency
+  // Método para verificar 2FA (Ativação)
+  async verify2FA(email: string, code: string): Promise<any> {
+    return this.request<any>('/auth/verify-2fa', {
       method: 'POST',
       body: JSON.stringify({ email, code })
     });
   }
 
-  // Método para confirmar saque
+  // Método para confirmar saque via 2FA
   async confirmWithdrawal(transactionId: number, code: string): Promise<any> {
     return this.request<any>('/withdrawals/confirm', {
       method: 'POST',
       body: JSON.stringify({ transactionId, code })
-    });
-  }
-
-  // Novo método para reenviar código de verificação
-  async resendVerificationCode(email: string): Promise<any> {
-    return this.request<any>('/auth/resend-verification', {
-      method: 'POST',
-      body: JSON.stringify({ email })
-    });
-  }
-
-  // Novo método para reenviar código de saque
-  async resendWithdrawalConfirmation(transactionId: number): Promise<any> {
-    return this.request<any>('/withdrawals/resend-confirmation', {
-      method: 'POST',
-      body: JSON.stringify({ transactionId })
     });
   }
 

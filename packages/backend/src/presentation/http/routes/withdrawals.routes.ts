@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { executeInTransaction, updateUserBalance, createTransaction } from '../../../domain/services/transaction.service';
-import { emailService } from '../../../infrastructure/gateways/email.service';
+import { twoFactorService } from '../../../application/services/two-factor.service';
 
 const withdrawalRoutes = new Hono();
 
@@ -79,9 +79,6 @@ withdrawalRoutes.post('/request', authMiddleware, async (c) => {
 
     // Executar dentro de transação para consistência
     const result = await executeInTransaction(pool, async (client) => {
-      // Gerar código de confirmação
-      const confirmationCode = Math.floor(100000 + Math.random() * 900000).toString();
-
       // Criar transação de saque pendente de confirmação
       const transactionResult = await createTransaction(
         client,
@@ -89,27 +86,20 @@ withdrawalRoutes.post('/request', authMiddleware, async (c) => {
         'WITHDRAWAL',
         amount,
         `Solicitação de Saque - R$ ${netAmount.toFixed(2)} (Taxa: R$ ${feeAmount.toFixed(2)})`,
-        'PENDING_CONFIRMATION', // Novo status
+        'PENDING_CONFIRMATION',
         {
           pixKey,
           feeAmount,
           netAmount,
           totalLoanAmount,
           availableCredit,
-          type: 'CREDIT_WITHDRAWAL',
-          confirmationCode // Guardar código no metadata
+          type: 'CREDIT_WITHDRAWAL'
         }
       );
 
       if (!transactionResult.success) {
         throw new Error(transactionResult.error);
       }
-
-      // Enviar email (fora da transação para não bloquear, mas aqui é difícil se falhar. 
-      // Idealmente seria fila, mas vamos chamar direto e logar erro se falhar)
-      // O catch do transaction rollback não pega isso pois é async sem await se quisermos, 
-      // mas aqui vamos dar await para garantir envio
-      await emailService.sendWithdrawalToken(user.email, confirmationCode, amount);
 
       return {
         transactionId: transactionResult.transactionId,
@@ -122,7 +112,7 @@ withdrawalRoutes.post('/request', authMiddleware, async (c) => {
 
     return c.json({
       success: true,
-      message: 'Solicitação enviada! Verifique seu email para confirmar o saque.',
+      message: 'Solicitação criada! Use seu autenticador para confirmar o saque.',
       data: {
         transactionId: result.data?.transactionId,
         amount: result.data?.amount,
@@ -140,47 +130,6 @@ withdrawalRoutes.post('/request', authMiddleware, async (c) => {
 
     console.error('Erro ao solicitar saque:', error);
     return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
-  }
-});
-
-// Reenviar código de confirmação de saque
-withdrawalRoutes.post('/resend-confirmation', authMiddleware, async (c) => {
-  try {
-    const { transactionId } = await c.req.json();
-    const user = c.get('user');
-    const pool = getDbPool(c);
-
-    const result = await pool.query(
-      `SELECT id, metadata, amount FROM transactions 
-       WHERE id = $1 AND user_id = $2 AND status = 'PENDING_CONFIRMATION'`,
-      [transactionId, user.id]
-    );
-
-    if (result.rows.length === 0) {
-      return c.json({ success: false, message: 'Solicitação não encontrada ou não está aguardando confirmação' }, 404);
-    }
-
-    const transaction = result.rows[0];
-    const metadata = transaction.metadata || {};
-
-    // Gerar novo código
-    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Atualizar metadata
-    const newMetadata = { ...metadata, confirmationCode: newCode };
-
-    await pool.query(
-      'UPDATE transactions SET metadata = $1 WHERE id = $2',
-      [JSON.stringify(newMetadata), transactionId]
-    );
-
-    // Enviar email
-    await emailService.sendWithdrawalToken(user.email, newCode, parseFloat(transaction.amount));
-
-    return c.json({ success: true, message: 'Novo código de confirmação enviado para seu email!' });
-  } catch (error) {
-    console.error('Erro ao reenviar confirmação de saque:', error);
-    return c.json({ success: false, message: 'Erro interno ao reenviar código' }, 500);
   }
 });
 
@@ -203,22 +152,27 @@ withdrawalRoutes.post('/confirm', authMiddleware, async (c) => {
     }
 
     const transaction = result.rows[0];
-    const metadata = transaction.metadata || {};
 
-    if (metadata.confirmationCode !== code) {
-      return c.json({ success: false, message: 'Código de confirmação inválido' }, 400);
+    // Buscar segredo 2FA do usuário no banco
+    const userResult = await pool.query('SELECT two_factor_secret, two_factor_enabled FROM users WHERE id = $1', [user.id]);
+    const userData = userResult.rows[0];
+
+    if (!userData.two_factor_enabled) {
+      return c.json({ success: false, message: 'Autenticação de 2 fatores não está ativada na sua conta' }, 400);
+    }
+
+    const isValid = twoFactorService.verifyToken(code, userData.two_factor_secret);
+
+    if (!isValid) {
+      return c.json({ success: false, message: 'Código do autenticador inválido' }, 400);
     }
 
     // Atualizar status para PENDING (para admin ver)
-    // Remover código do metadata por segurança (opcional, mas bom)
-    const newMetadata = { ...metadata };
-    delete newMetadata.confirmationCode;
-
     await pool.query(
       `UPDATE transactions 
-       SET status = 'PENDING', metadata = $1 
-       WHERE id = $2`,
-      [newMetadata, transactionId]
+       SET status = 'PENDING'
+       WHERE id = $1`,
+      [transactionId]
     );
 
     return c.json({

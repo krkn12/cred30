@@ -16,6 +16,7 @@ const convertApiUserToUser = (apiUser: any): User => {
     referralCode: apiUser.referralCode,
     isAdmin: apiUser.isAdmin || false,
     score: apiUser.score || 300,
+    twoFactorEnabled: apiUser.twoFactorEnabled || false,
   };
 };
 
@@ -435,7 +436,7 @@ export const registerUser = async (
   pixKey: string,
   secretPhrase: string,
   referralCodeInput?: string
-): Promise<User> => {
+): Promise<any> => {
   const response = await apiService.register(
     name,
     email,
@@ -444,7 +445,10 @@ export const registerUser = async (
     pixKey,
     referralCodeInput
   );
-  return convertApiUserToUser(response.user);
+  return {
+    user: convertApiUserToUser(response.user),
+    twoFactor: response.twoFactor
+  };
 };
 
 export const changePassword = async (oldPass: string, newPass: string): Promise<void> => {
@@ -454,9 +458,11 @@ export const changePassword = async (oldPass: string, newPass: string): Promise<
 export const loginUser = async (
   email: string,
   password: string,
-  secretPhrase: string
-): Promise<User> => {
-  const response = await apiService.login(email, password, secretPhrase);
+  secretPhrase?: string,
+  twoFactorCode?: string
+): Promise<any> => {
+  const response = await apiService.login(email, password, secretPhrase, twoFactorCode);
+  if (response.requires2FA) return response;
   return convertApiUserToUser(response.user);
 };
 
@@ -490,7 +496,9 @@ export const fixLoanPix = async (loanId: string, pixKey: string): Promise<any> =
   return await apiService.fixLoanPix(loanId, pixKey);
 };
 
-export const verifyEmail = (email: string, code: string) => apiService.verifyEmail(email, code);
+export const get2FASetup = () => apiService.get2FASetup();
+
+export const verify2FA = (email: string, code: string) => apiService.verify2FA(email, code);
 
 export const confirmWithdrawal = (transactionId: number, code: string) => apiService.confirmWithdrawal(transactionId, code);
 

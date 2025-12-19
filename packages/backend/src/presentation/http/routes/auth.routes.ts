@@ -4,7 +4,8 @@ import bcrypt from 'bcrypt';
 import { z } from 'zod';
 import { getDbPool, generateReferralCode } from '../../../infrastructure/database/postgresql/connection/pool';
 import { authRateLimit } from '../middleware/rate-limit.middleware';
-import { emailService } from '../../../infrastructure/gateways/email.service';
+import { authMiddleware } from '../middleware/auth.middleware';
+import { twoFactorService } from '../../../application/services/two-factor.service';
 
 const authRoutes = new Hono();
 
@@ -17,7 +18,8 @@ authRoutes.post('/reset-password', authRateLimit);
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
-  secretPhrase: z.string().min(3),
+  secretPhrase: z.string().min(3).optional(), // Tornar opcional se usarmos 2FA
+  twoFactorCode: z.string().length(6).optional(),
 });
 
 const registerSchema = z.object({
@@ -53,26 +55,39 @@ authRoutes.post('/login', async (c) => {
     console.log('Resultado da consulta:', result.rows);
 
     if (result.rows.length === 0) {
-      console.log('Usuário não encontrado no banco');
       return c.json({ success: false, message: 'Usuário não encontrado' }, 404);
     }
 
     const user = result.rows[0];
 
-    // Verificar senha e frase secreta
-    console.log('Verificando credenciais para usuário:', user.email);
+    // Verificar se 2FA está habilitado e se o código foi enviado
+    if (user.two_factor_enabled) {
+      if (!validatedData.twoFactorCode) {
+        return c.json({
+          success: false,
+          message: 'Código de autenticação necessário',
+          requires2FA: true
+        }, 200); // Retorna 200 com flag para o frontend mostrar o campo
+      }
+
+      const isValid = twoFactorService.verifyToken(validatedData.twoFactorCode, user.two_factor_secret);
+      if (!isValid) {
+        return c.json({ success: false, message: 'Código de autenticação inválido' }, 401);
+      }
+    }
+
+    // Verificar senha e frase secreta (Frase secreta é backup se 2FA falhar ou se não tiver 2FA)
     const isPasswordValid = user.password_hash ?
       await bcrypt.compare(validatedData.password, user.password_hash) :
       validatedData.password === user.password_hash;
 
-    console.log('Senha válida:', isPasswordValid);
-    console.log('Frase secreta DB:', user.secret_phrase);
-    console.log('Frase secreta enviada:', validatedData.secretPhrase);
-    console.log('Frase secreta válida:', user.secret_phrase === validatedData.secretPhrase);
+    if (!isPasswordValid) {
+      return c.json({ success: false, message: 'Senha incorreta' }, 401);
+    }
 
-    if (!isPasswordValid || user.secret_phrase !== validatedData.secretPhrase) {
-      console.log('Credenciais inválidas');
-      return c.json({ success: false, message: 'Credenciais inválidas' }, 401);
+    // Se não tiver 2FA habilitado, exige a frase secreta
+    if (!user.two_factor_enabled && user.secret_phrase !== validatedData.secretPhrase) {
+      return c.json({ success: false, message: 'Frase secreta incorreta' }, 401);
     }
 
     if (!user.is_email_verified) {
@@ -106,6 +121,7 @@ authRoutes.post('/login', async (c) => {
           referralCode: user.referral_code,
           isAdmin: user.is_admin,
           score: user.score,
+          twoFactorEnabled: user.two_factor_enabled
         },
         token,
       },
@@ -194,13 +210,15 @@ authRoutes.post('/register', async (c) => {
     // Criar novo usuário
     const referralCode = generateReferralCode();
 
-    // Gerar código de verificação
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // GERAR 2FA (No lugar do código de email)
+    const tfaSecret = twoFactorService.generateSecret();
+    const otpUri = twoFactorService.generateOtpUri(validatedData.email, tfaSecret);
+    const qrCode = await twoFactorService.generateQrCode(otpUri);
 
     const newUserResult = await pool.query(
-      `INSERT INTO users (name, email, password_hash, secret_phrase, pix_key, balance, referral_code, is_admin, score, verification_code, is_email_verified)
-       VALUES ($1, $2, $3, $4, $5, 0, $6, $7, 300, $8, FALSE)
-       RETURNING id, name, email, pix_key, balance, score, created_at, referral_code, is_admin, is_email_verified`,
+      `INSERT INTO users (name, email, password_hash, secret_phrase, pix_key, balance, referral_code, is_admin, score, two_factor_secret, two_factor_enabled, is_email_verified)
+       VALUES ($1, $2, $3, $4, $5, 0, $6, $7, 300, $8, FALSE, TRUE)
+       RETURNING id, name, email, pix_key, balance, score, created_at, referral_code, is_admin`,
       [
         validatedData.name,
         validatedData.email,
@@ -209,14 +227,11 @@ authRoutes.post('/register', async (c) => {
         validatedData.pixKey,
         referralCode,
         isFirstUser,
-        verificationCode
+        tfaSecret
       ]
     );
 
     const newUser = newUserResult.rows[0];
-
-    // Enviar email de verificação
-    emailService.sendVerificationCode(newUser.email, verificationCode).catch(console.error);
 
     // Gerar token JWT
     const token = sign(
@@ -224,29 +239,30 @@ authRoutes.post('/register', async (c) => {
       process.env.JWT_SECRET!
     );
 
-    // Mensagem personalizada se for o primeiro usuário (administrador)
-    const message = isFirstUser
-      ? 'Usuário criado com sucesso! Você foi definido como o primeiro administrador do sistema. Um código de verificação foi enviado para seu email.'
-      : 'Usuário criado com sucesso. Um código de verificação foi enviado para seu email.';
-
     return c.json({
       success: true,
-      message,
+      message: 'Cadastro iniciado! Configure seu autenticador para ativar a conta.',
       data: {
         user: {
           id: newUser.id,
           name: newUser.name,
           email: newUser.email,
           pixKey: newUser.pix_key,
-          balance: parseFloat(newUser.balance),
+          balance: 0,
           joinedAt: newUser.created_at,
           referralCode: newUser.referral_code,
           isAdmin: newUser.is_admin,
-          isEmailVerified: newUser.is_email_verified,
+          twoFactorEnabled: false
+        },
+        twoFactor: {
+          secret: tfaSecret,
+          qrCode: qrCode,
+          otpUri: otpUri
         },
         token,
       },
     }, 201);
+
   } catch (error) {
     if (error instanceof z.ZodError) {
       return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
@@ -296,15 +312,14 @@ authRoutes.post('/reset-password', async (c) => {
   }
 });
 
-// Rota para reenviar código de verificação
-authRoutes.post('/resend-verification', async (c) => {
+// Rota de verificação de 2FA (Ativação)
+authRoutes.post('/verify-2fa', async (c) => {
   try {
-    const { email } = await c.req.json();
+    const { email, code } = await c.req.json();
     const pool = getDbPool(c);
 
-    // Buscar usuário
     const result = await pool.query(
-      'SELECT id, is_email_verified FROM users WHERE email = $1',
+      'SELECT id, two_factor_secret FROM users WHERE email = $1',
       [email]
     );
 
@@ -312,53 +327,69 @@ authRoutes.post('/resend-verification', async (c) => {
       return c.json({ success: false, message: 'Usuário não encontrado' }, 404);
     }
 
-    if (result.rows[0].is_email_verified) {
-      return c.json({ success: false, message: 'Email já verificado' }, 400);
+    const { id, two_factor_secret } = result.rows[0];
+
+    const isValid = twoFactorService.verifyToken(code, two_factor_secret);
+
+    if (!isValid) {
+      return c.json({ success: false, message: 'Código inválido' }, 400);
     }
 
-    // Gerar novo código
-    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Atualizar no banco
     await pool.query(
-      'UPDATE users SET verification_code = $1 WHERE email = $2',
-      [newCode, email]
+      'UPDATE users SET two_factor_enabled = TRUE WHERE id = $1',
+      [id]
     );
 
-    // Enviar email
-    await emailService.sendVerificationCode(email, newCode);
-
-    return c.json({ success: true, message: 'Novo código enviado com sucesso!' });
+    return c.json({ success: true, message: 'Autenticação de 2 fatores ativada com sucesso!' });
   } catch (error) {
-    console.error('Erro ao reenviar código:', error);
-    return c.json({ success: false, message: 'Erro ao reenviar código' }, 500);
+    console.error('Erro na verificação 2FA:', error);
+    return c.json({ success: false, message: 'Erro ao verificar código' }, 500);
   }
 });
 
-// Rota de verificação de email
-authRoutes.post('/verify-email', async (c) => {
+// Rota para obter dados de configuração de 2FA (Para usuários existentes)
+authRoutes.get('/2fa/setup', authMiddleware, async (c) => {
   try {
-    const { email, code } = await c.req.json();
+    const userPayload = c.get('user');
     const pool = getDbPool(c);
 
+    // Buscar usuário para verificar se já tem 2FA
     const result = await pool.query(
-      'SELECT id FROM users WHERE email = $1 AND verification_code = $2',
-      [email, code]
+      'SELECT email, two_factor_enabled, two_factor_secret FROM users WHERE id = $1',
+      [userPayload.id]
     );
 
     if (result.rows.length === 0) {
-      return c.json({ success: false, message: 'Código inválido ou email incorreto' }, 400);
+      return c.json({ success: false, message: 'Usuário não encontrado' }, 404);
     }
 
-    await pool.query(
-      'UPDATE users SET is_email_verified = TRUE, verification_code = NULL WHERE id = $1',
-      [result.rows[0].id]
-    );
+    const user = result.rows[0];
+    let secret = user.two_factor_secret;
 
-    return c.json({ success: true, message: 'Email verificado com sucesso!' });
+    // Se não tiver segredo ainda, gera um
+    if (!secret) {
+      secret = twoFactorService.generateSecret();
+      await pool.query(
+        'UPDATE users SET two_factor_secret = $1 WHERE id = $2',
+        [secret, userPayload.id]
+      );
+    }
+
+    const otpUri = twoFactorService.generateOtpUri(user.email, secret);
+    const qrCode = await twoFactorService.generateQrCode(otpUri);
+
+    return c.json({
+      success: true,
+      data: {
+        secret,
+        qrCode,
+        otpUri,
+        enabled: user.two_factor_enabled
+      }
+    });
   } catch (error) {
-    console.error('Erro na verificação:', error);
-    return c.json({ success: false, message: 'Erro ao verificar email' }, 500);
+    console.error('Erro ao buscar configuração 2FA:', error);
+    return c.json({ success: false, message: 'Erro ao gerar dados 2FA' }, 500);
   }
 });
 
