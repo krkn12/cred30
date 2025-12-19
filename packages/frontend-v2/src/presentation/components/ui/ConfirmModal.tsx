@@ -10,6 +10,7 @@ interface ConfirmModalProps {
     confirmText?: string;
     cancelText?: string;
     type?: 'danger' | 'warning' | 'info';
+    children?: React.ReactNode;
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -20,7 +21,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     message,
     confirmText = 'Confirmar',
     cancelText = 'Cancelar',
-    type = 'info'
+    type = 'info',
+    children
 }) => {
     if (!isOpen) return null;
 
@@ -43,6 +45,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
                 <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
                 <p className="text-zinc-400 text-sm leading-relaxed mb-6">{message}</p>
+
+                {children}
 
                 <div className="space-y-2">
                     <button

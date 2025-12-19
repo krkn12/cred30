@@ -355,9 +355,10 @@ class ApiService {
   }
 
   // Método para excluir conta
-  async deleteAccount(): Promise<any> {
+  async deleteAccount(twoFactorCode?: string): Promise<any> {
     const response = await this.request<any>('/users/me', {
       method: 'DELETE',
+      body: JSON.stringify({ twoFactorCode }),
     });
     return response;
   }
@@ -448,14 +449,14 @@ class ApiService {
 
   // Obter carteira de crédito do cliente
   async getCreditPortfolio(userId: string): Promise<any> {
-    const response = await this.request<any>(`/admin/credit-portfolio/${userId}`);
+    const response = await this.request<any>(`/ admin / credit - portfolio / ${userId}`);
     return response.data;
   }
 
   // --- Loja de Produtos (Afiliados) ---
 
   async getProducts(category?: string): Promise<any[]> {
-    const params = category ? `?category=${category}` : '';
+    const params = category ? `? category = ${category}` : '';
     const response = await this.request<any[]>('/products' + params);
     return response.data || [];
   }
@@ -490,7 +491,7 @@ class ApiService {
   }
 
   async updateProduct(id: string, data: any): Promise<any> {
-    const response = await this.request<any>(`/products/${id}`, {
+    const response = await this.request<any>(`/ products / ${id}`, {
       method: 'PUT',
       body: JSON.stringify(data)
     });
@@ -498,7 +499,7 @@ class ApiService {
   }
 
   async deleteProduct(id: string): Promise<void> {
-    await this.request<void>(`/products/${id}`, {
+    await this.request<void>(`/ products / ${id}`, {
       method: 'DELETE'
     });
   }
