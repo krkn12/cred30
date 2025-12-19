@@ -119,12 +119,25 @@ export const checkPaymentStatus = async (paymentId: number) => {
  */
 export const simulatePaymentApproval = async (paymentId: number) => {
     try {
-        const response = await payment.update({
-            id: paymentId,
-            body: { status: 'approved' }
-        } as any);
-        return response.status;
-    } catch (error) {
+        // No SDK v2, o método update não existe diretamente no objeto Payment.
+        // Usamos fetch diretamente para fazer uma requisição à API para fins de simulação.
+        const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${mpAccessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status: 'approved' })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Erro ao atualizar status no Mercado Pago');
+        }
+
+        const data = await response.json();
+        return data.status;
+    } catch (error: any) {
         console.error('Erro ao simular aprovação Mercado Pago:', error);
         throw error;
     }
