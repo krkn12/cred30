@@ -77,15 +77,58 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
         }, 1500);
     };
 
+    const compressImage = (file: File): Promise<Blob> => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target?.result as string;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1200;
+                    const MAX_HEIGHT = 1200;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob((blob) => {
+                        if (blob) resolve(blob);
+                        else resolve(file);
+                    }, 'image/jpeg', 0.75); // 75% de qualidade para economizar muito espaço
+                };
+            };
+        });
+    };
+
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         setUploading(true);
         try {
+            // Comprimir antes de enviar para economizar banda e espaço no Cloudinary
+            const compressedBlob = await compressImage(file);
+
             const formData = new FormData();
-            formData.append('file', file);
-            formData.append('upload_preset', 'cred30_preset'); // Nome do preset público
+            formData.append('file', compressedBlob);
+            formData.append('upload_preset', 'cred30_preset');
             formData.append('cloud_name', 'diu2htzxk');
 
             const res = await fetch(`https://api.cloudinary.com/v1_1/diu2htzxk/image/upload`, {
@@ -95,8 +138,12 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
 
             const data = await res.json();
             if (data.secure_url) {
-                setNewListing({ ...newListing, imageUrl: data.secure_url });
-                onSuccess('Imagem Enviada', 'Sua foto foi salva na nuvem com sucesso!');
+                // Adicionamos parâmetros de otimização do Cloudinary na URL salva
+                // c_limit,w_1200 -> limite de largura
+                // q_auto,f_auto -> qualidade e formato automático
+                const optimizedUrl = data.secure_url.replace('/upload/', '/upload/c_limit,w_1200,q_auto,f_auto/');
+                setNewListing({ ...newListing, imageUrl: optimizedUrl });
+                onSuccess('Imagem Otimizada', 'Sua foto foi comprimida e salva com sucesso!');
             } else {
                 console.error('Cloudinary Error Detail:', data);
                 const errorMsg = data.error?.message || 'Falha no upload';
@@ -305,7 +352,11 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
                                 <div key={item.id} className="bg-surface border border-surfaceHighlight rounded-2xl overflow-hidden group hover:border-primary-500/30 transition-all flex flex-col">
                                     <div className="aspect-square bg-zinc-900 flex items-center justify-center relative">
                                         {item.image_url ? (
-                                            <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
+                                            <img
+                                                src={item.image_url.includes('cloudinary') ? item.image_url.replace('/upload/', '/upload/w_600,c_fill,g_auto,q_auto,f_auto/') : item.image_url}
+                                                alt={item.title}
+                                                className="w-full h-full object-cover"
+                                            />
                                         ) : (
                                             <ImageIcon size={40} className="text-zinc-800" />
                                         )}
