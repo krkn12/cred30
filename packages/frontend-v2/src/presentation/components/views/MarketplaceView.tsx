@@ -3,7 +3,8 @@ import {
     ShoppingBag, Tag, Search, Filter, PlusCircle,
     ShieldCheck, Truck, Package, CheckCircle2,
     Clock, DollarSign, ArrowLeft, Image as ImageIcon,
-    ChevronRight, Info, AlertCircle, ExternalLink, Star, X as XIcon, RefreshCw
+    ChevronRight, Info, AlertCircle, ExternalLink, Star, X as XIcon, RefreshCw,
+    Sparkles, Wand2, Lightbulb
 } from 'lucide-react';
 import { AdBanner } from '../ui/AdBanner';
 import { AppState, User } from '../../../domain/types/common.types';
@@ -37,6 +38,44 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
     const categories = ['ELETRÔNICOS', 'SERVIÇOS', 'MODA', 'CASA', 'VEÍCULOS', 'OUTROS'];
 
     const [uploading, setUploading] = useState(false);
+    const [aiLoading, setAiLoading] = useState(false);
+
+    const handleAIAssist = async () => {
+        if (!newListing.title || newListing.title.length < 3) {
+            onError('Título Curto', 'Diga o que você está vendendo para a IA te ajudar!');
+            return;
+        }
+
+        setAiLoading(true);
+        // Simulação de processamento de IA para gerar descrição profissional
+        setTimeout(() => {
+            const title = newListing.title.toLowerCase();
+            let suggestedDesc = '';
+            let suggestedCat = 'OUTROS';
+
+            if (title.includes('iphone') || title.includes('celular') || title.includes('samsung')) {
+                suggestedDesc = `Vendo ${newListing.title} em excelente estado de conservação. Aparelho 100% original, funcionando perfeitamente e sem detalhes.\n\nAcompanha acessórios originais. Ótimo custo-benefício para quem busca qualidade e procedência. Entrega a combinar via Cred30.`;
+                suggestedCat = 'ELETRÔNICOS';
+            } else if (title.includes('carro') || title.includes('moto') || title.includes('veiculo')) {
+                suggestedDesc = `${newListing.title} muito bem cuidado, com as manutenções em dia. Documentação ok, pneus bons e pronto para uso.\n\nIdeal para quem busca um veículo confiável e econômico. Aceito propostas justas através do pagamento seguro da plataforma.`;
+                suggestedCat = 'VEÍCULOS';
+            } else if (title.includes('limpeza') || title.includes('aula') || title.includes('pintura') || title.includes('serviço')) {
+                suggestedDesc = `Ofereço serviço profissional de ${newListing.title}. Experiência comprovada, pontualidade e foco na satisfação do cliente.\n\nUtilizo materiais de alta qualidade. Solicite um orçamento sem compromisso. Pagamento garantido pelo sistema de Escrow da Cred30.`;
+                suggestedCat = 'SERVIÇOS';
+            } else {
+                suggestedDesc = `Oportunidade única: ${newListing.title}.\n\nProduto de procedência, conforme as fotos anexadas. Perfeito para quem busca um item ${newListing.title} com durabilidade e preço justo. Dúvidas? Entre em contato via chat para negociarmos os detalhes da entrega!`;
+            }
+
+            setNewListing(prev => ({
+                ...prev,
+                description: suggestedDesc,
+                category: suggestedCat
+            }));
+
+            onSuccess('IA Consultora', 'Melhorei seu anúncio com descrições que vendem mais rápido!');
+            setAiLoading(false);
+        }, 1500);
+    };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -85,26 +124,38 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
 
     const fetchListings = async () => {
         try {
+            console.log('Fetching listings...');
             const response = await apiService.get<any>('/marketplace/listings');
-            if (response.success) setListings(response.data?.listings || []);
+            console.log('Listings response:', response);
+            if (response.success && response.data) {
+                setListings(Array.isArray(response.data.listings) ? response.data.listings : []);
+            } else {
+                setListings([]);
+            }
         } catch (e) {
             console.error('Fetch listings error:', e);
+            setListings([]);
         }
     };
 
     const fetchMyOrders = async () => {
         try {
             const response = await apiService.get<any>('/marketplace/my-orders');
-            if (response.success) setMyOrders(response.data?.orders || []);
+            if (response.success && response.data) {
+                setMyOrders(Array.isArray(response.data.orders) ? response.data.orders : []);
+            } else {
+                setMyOrders([]);
+            }
         } catch (e) {
             console.error('Fetch orders error:', e);
+            setMyOrders([]);
         }
     };
 
     const handleCreateListing = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const priceNum = parseFloat(newListing.price);
+        const priceNum = parseFloat(newListing.price.replace(',', '.'));
         if (isNaN(priceNum) || priceNum <= 0) {
             onError('Preço Inválido', 'Por favor, coloque um valor válido para o item.');
             return;
@@ -302,10 +353,26 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
 
             {view === 'create' && (
                 <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 animate-in slide-in-from-bottom duration-300">
-                    <h3 className="text-lg font-bold text-white mb-6">O que você quer vender?</h3>
+                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                        O que você quer vender?
+                        <div className="bg-primary-500/10 text-primary-400 text-[9px] px-2 py-0.5 rounded-full border border-primary-500/20 flex items-center gap-1">
+                            <Sparkles size={10} /> ASSISTENTE IA ATIVO
+                        </div>
+                    </h3>
                     <form onSubmit={handleCreateListing} className="space-y-4">
                         <div>
-                            <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Título do Anúncio</label>
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Título do Anúncio</label>
+                                <button
+                                    type="button"
+                                    onClick={handleAIAssist}
+                                    disabled={aiLoading || !newListing.title}
+                                    className="text-[9px] font-black text-primary-400 flex items-center gap-1 hover:text-white transition-colors disabled:opacity-30"
+                                >
+                                    {aiLoading ? <RefreshCw size={10} className="animate-spin" /> : <Wand2 size={10} />}
+                                    MELHORAR COM IA
+                                </button>
+                            </div>
                             <input
                                 required
                                 value={newListing.title}
@@ -341,7 +408,14 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
                         </div>
 
                         <div>
-                            <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Descrição Detalhada</label>
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Descrição Detalhada</label>
+                                {!newListing.description && (
+                                    <span className="text-[9px] text-zinc-600 flex items-center gap-1 italic">
+                                        <Lightbulb size={10} /> A IA pode preencher isso para você!
+                                    </span>
+                                )}
+                            </div>
                             <textarea
                                 required
                                 rows={4}
