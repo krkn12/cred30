@@ -145,7 +145,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
             clearAllCache();
             onRefresh();
             setNewProfit('');
-            onSuccess('Lucro Adicionado', `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} adicionado com sucesso!`);
+            onSuccess('Excedente Adicionado', `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} adicionado com sucesso!`);
         } catch (e: any) {
             onError('Erro ao Atualizar Lucro', e.message);
         }
@@ -179,8 +179,8 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
             clearAllCache();
             await new Promise(resolve => setTimeout(resolve, 500));
             await onRefresh();
-            if (type === 'LOAN' && action === 'APPROVE') {
-                onSuccess('Empréstimo Aprovado', 'Empréstimo aprovado com sucesso!');
+            if (action === 'APPROVE') {
+                onSuccess('Solicitação Aprovada', 'Ação concluída com sucesso!');
             }
         } catch (e: any) {
             onError('Erro na Ação', e.message);
@@ -339,9 +339,9 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <MetricCard title="Membros" value={state.users.length} subtitle="Usuários Totais" icon={Users} color="blue" />
-                        <MetricCard title="Investimento" value={state.stats?.quotasCount ?? 0} subtitle="Cotas em Operação" icon={PieChart} color="cyan" />
+                        <MetricCard title="Participações" value={state.stats?.quotasCount ?? 0} subtitle="Cotas em Operação" icon={PieChart} color="cyan" />
                         <MetricCard title="Liquidez" value={formatCurrency(state.systemBalance)} subtitle="Caixa Disponível" icon={DollarSign} color="emerald" />
-                        <MetricCard title="Dividendos" value={formatCurrency(state.profitPool)} subtitle="Pote Acumulado" icon={PiggyBank} color="yellow" />
+                        <MetricCard title="Dividendos" value={formatCurrency(state.profitPool)} subtitle="Excedentes Acumulados" icon={PiggyBank} color="yellow" />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -463,7 +463,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                             <div className="flex items-center justify-between mb-8">
                                 <h3 className="text-xl font-bold text-white flex items-center gap-3">
                                     <div className="p-2 bg-orange-500/10 rounded-lg"><Coins className="text-orange-400" size={20} /></div>
-                                    Solicitações de Crédito
+                                    Solicitações de Apoio Mútuo
                                 </h3>
                                 <span className="bg-zinc-800 text-zinc-400 px-3 py-1 rounded-full text-[10px] font-black uppercase">Pendentes: {pending.loans.length}</span>
                             </div>
@@ -477,7 +477,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                                             <div className="flex justify-between items-start gap-4">
                                                 <div className="space-y-3 flex-1">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-orange-500/10 text-orange-400">EMPRÉSTIMO</span>
+                                                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-orange-500/10 text-orange-400">APOIO MÚTUO</span>
                                                         <span className="text-[10px] text-zinc-500 font-bold">{new Date(l.date).toLocaleString()}</span>
                                                     </div>
                                                     <div>
@@ -514,7 +514,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                         <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
                             <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
                                 <div className="p-2 bg-emerald-500/10 rounded-lg"><Coins className="text-emerald-400" size={20} /></div>
-                                Injetar Lucros no Sistema
+                                Injetar Excedentes no Sistema
                             </h3>
                             <div className="space-y-6">
                                 <div className="bg-black/20 p-6 rounded-2xl border border-zinc-800 relative group overflow-hidden">

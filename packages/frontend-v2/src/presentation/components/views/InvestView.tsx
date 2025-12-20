@@ -31,8 +31,8 @@ export const InvestView = ({ onBuy }: { onBuy: (qty: number, method: 'PIX' | 'BA
             <div className="bg-surface border border-surfaceHighlight rounded-3xl p-8 text-center relative overflow-hidden mb-6">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-400 to-primary-600"></div>
                 <TrendingUp size={48} className="mx-auto text-primary-400 mb-4" />
-                <h2 className="text-2xl font-bold text-white mb-2">Comprar Cota</h2>
-                <p className="text-zinc-400 mb-6">Invista no seu futuro com rendimentos diários variáveis.</p>
+                <h2 className="text-2xl font-bold text-white mb-2">Adquirir Participação</h2>
+                <p className="text-zinc-400 mb-6">Apoie a cooperativa e receba excedentes diários variáveis.</p>
 
                 <div className="text-4xl font-bold text-white mb-8">
                     {QUOTA_PRICE.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -148,7 +148,7 @@ export const InvestView = ({ onBuy }: { onBuy: (qty: number, method: 'PIX' | 'BA
             )}
             {/* Legal Disclaimer */}
             <div className="mt-8 px-4 text-[10px] text-zinc-600 text-center leading-relaxed">
-                <p>O Cred30 é um sistema de cooperação mútua. Investimentos em cotas possuem rendimentos variáveis baseados na performance operacional da cooperativa. Não há garantia de lucro fixo. Ao investir, você declara estar ciente dos riscos e das regras de liquidez do sistema.</p>
+                <p>O Cred30 é um sistema de cooperação mútua. A participação em cotas possui excedentes variáveis baseados na performance operacional da cooperativa. Não há garantia de sobra fixa. Ao participar, você declara estar ciente dos riscos e das regras de liquidez do sistema.</p>
             </div>
         </div>
     );

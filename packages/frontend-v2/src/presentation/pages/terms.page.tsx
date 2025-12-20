@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ScrollText, ShieldCheck, Scale, Users, Gavel, AlertTriangle, CreditCard, ClockIcon, FileText, Zap } from 'lucide-react';
+import { ArrowLeft, ScrollText, ShieldCheck, Scale, Users, Gavel, AlertTriangle, CreditCard, ClockIcon, FileText, Zap, ShoppingBag, Tag } from 'lucide-react';
 
 const TermsPage = () => {
     const navigate = useNavigate();
@@ -163,20 +163,34 @@ const TermsPage = () => {
                         </p>
                     </section>
 
-                    {/* Seção 7 */}
-                    <section className="bg-zinc-900/30 border border-white/5 p-5 sm:p-8 rounded-2xl sm:rounded-3xl">
+                    {/* Seção 7 - NOVO (Mercado Cred30) */}
+                    <section className="bg-zinc-900/30 border border-white/5 p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-[0_0_20px_rgba(34,211,238,0.05)]">
                         <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-3 text-cyan-400">
-                            <Zap size={22} /> 7. Publicidade e Parceiros Externos
+                            <ShoppingBag size={22} /> 7. Mercado Cred30 (P2P e Escrow)
                         </h2>
                         <p className="text-zinc-300 text-sm sm:text-base leading-relaxed mb-4">
-                            O Cred30 utiliza a veiculação de anúncios e parcerias externas como uma de suas fontes de receita para garantir a sustentabilidade e o crescimento da cooperativa. Ao utilizar a plataforma, o Usuário concorda que:
+                            O Mercado Cred30 é um ambiente de troca entre membros. A Cred30 atua EXCLUSIVAMENTE como custodiante dos fundos (Escrow) para garantir a segurança financeira da promessa de compra e venda:
                         </p>
-                        <ul className="list-disc list-inside text-zinc-400 text-xs sm:text-sm space-y-2 ml-2 sm:ml-4">
-                            <li>O Sistema pode exibir anúncios de terceiros em diversos formatos (banners, links, vídeos, notificações).</li>
-                            <li><strong>Responsabilidade Limitada:</strong> A Cred30 não controla, endossa ou se responsabiliza pelos conteúdos, produtos ou serviços oferecidos por anunciantes externos (ex: Adsterra, Google AdSense, etc.).</li>
-                            <li>Links externos podem redirecionar o Usuário para fora da plataforma segura do Cred30, ocorrendo por conta e risco do próprio Usuário.</li>
-                            <li>A visualização de anúncios pode ser requisito para o recebimento de certas recompensas digitais (como pontos de Score), não constituindo pagamento direto em dinheiro.</li>
-                        </ul>
+                        <div className="space-y-4">
+                            <div className="bg-cyan-500/5 border border-cyan-500/10 p-4 rounded-xl">
+                                <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                                    <ShieldCheck size={16} className="text-cyan-400" /> Sistema de Garantia
+                                </h4>
+                                <p className="text-xs text-zinc-400">Ao clicar em comprar, o saldo do comprador é retido pelo sistema. O valor só é liberado ao vendedor após a "Confirmação de Recebimento" pelo comprador.</p>
+                            </div>
+                            <div className="bg-zinc-800/50 p-4 rounded-xl">
+                                <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                                    <Tag size={16} className="text-zinc-500" /> Taxa de Intermediação
+                                </h4>
+                                <p className="text-xs text-zinc-400">A Cred30 retém 5% do valor bruto da transação para cobrir custos de operação e garantia de rede.</p>
+                            </div>
+                            <div className="bg-red-500/5 border border-red-500/10 p-4 rounded-xl">
+                                <h4 className="text-sm font-bold text-red-400 mb-2 flex items-center gap-2">
+                                    <AlertTriangle size={16} /> Isenção de Responsabilidade do Objeto
+                                </h4>
+                                <p className="text-xs text-zinc-400">A Cred30 NÃO verifica a qualidade, procedência ou estado físico dos produtos anunciados. A responsabilidade pela entrega física é integralmente do vendedor. Em caso de não recebimento, o comprador deve abrir disputa antes de confirmar o recebimento.</p>
+                            </div>
+                        </div>
                     </section>
 
                     {/* Seção 8 */}
@@ -187,7 +201,12 @@ const TermsPage = () => {
                         <p className="text-zinc-300 text-sm sm:text-base leading-relaxed mb-4">
                             A Cred30 reserva-se o direito de modificar estes Termos a qualquer momento. As alterações entram em vigor imediatamente após a publicação. O uso continuado da plataforma após modificações implica aceitação dos novos termos.
                         </p>
-                        <p className="text-zinc-400 text-xs sm:text-sm">
+                        <div className="bg-zinc-800/30 p-4 rounded-xl border border-white/5">
+                            <p className="text-zinc-400 text-xs sm:text-sm">
+                                <strong>Natureza Jurídica:</strong> Este sistema opera sob as normas do Código Civil Brasileiro relativas à Sociedade em Conta de Participação (SCP - Arts. 991 a 996) e ao Mútuo Civil (Arts. 586 a 592). Não se caracteriza como conta bancária ou investimento mobiliário.
+                            </p>
+                        </div>
+                        <p className="text-zinc-400 text-xs sm:text-sm mt-4">
                             Fica eleito o foro da comarca de residência do Usuário para dirimir quaisquer controvérsias oriundas deste contrato.
                         </p>
                     </section>
