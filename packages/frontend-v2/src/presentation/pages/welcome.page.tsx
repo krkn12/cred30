@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Shield, PiggyBank, CreditCard, Download, Smartphone } from 'lucide-react';
+import { ArrowRight, Shield, PiggyBank, CreditCard, Download, Smartphone, X as XIcon, Share } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // Interface para o evento de instalação do PWA
@@ -12,7 +12,12 @@ const WelcomePage = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [showInstallModal, setShowInstallModal] = useState(false);
   const navigate = useNavigate();
+
+  // Detectar o tipo de dispositivo
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isAndroid = /Android/.test(navigator.userAgent);
 
   const stats = [
     { value: "R$ 50", label: "Cota Mínima" },
@@ -75,8 +80,8 @@ const WelcomePage = () => {
         setDeferredPrompt(null);
       }
     } else {
-      // Se não tiver prompt nativo, vai para a página de download
-      navigate('/download');
+      // Se não tiver prompt nativo (como no iOS), mostra o modal instrucional
+      setShowInstallModal(true);
     }
   };
 
@@ -204,10 +209,6 @@ const WelcomePage = () => {
             <span className="text-lg font-bold">Cred30</span>
           </div>
           <div className="flex flex-wrap justify-center gap-6 sm:gap-8 text-zinc-500 text-sm font-medium">
-            <button onClick={() => navigate('/download')} className="hover:text-cyan-400 transition-colors flex items-center gap-1">
-              <Download size={14} />
-              Baixar App
-            </button>
             <button onClick={() => navigate('/terms')} className="hover:text-white transition-colors">Termos</button>
             <button onClick={() => navigate('/privacy')} className="hover:text-white transition-colors">Privacidade</button>
             <button onClick={() => navigate('/security')} className="hover:text-white transition-colors">Segurança</button>
@@ -217,6 +218,64 @@ const WelcomePage = () => {
           </p>
         </div>
       </footer>
+
+      {/* Modal de Instruções de Instalação (Simples e Transparente) */}
+      {showInstallModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowInstallModal(false)}>
+          <div className="bg-zinc-900/90 border border-zinc-700/50 rounded-3xl p-8 w-full max-w-sm relative shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setShowInstallModal(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors">
+              <XIcon size={20} />
+            </button>
+
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-cyan-500/10 rounded-2xl flex items-center justify-center text-cyan-400 mx-auto mb-4">
+                <Download size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Instalar App</h3>
+              <p className="text-zinc-400 text-sm">Siga os passos rápidos abaixo:</p>
+            </div>
+
+            {isIOS ? (
+              <div className="space-y-6">
+                <div className="flex items-center gap-4 group">
+                  <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center text-cyan-400 group-hover:bg-cyan-500/10 transition-colors">
+                    <Share size={20} />
+                  </div>
+                  <p className="text-zinc-300 text-sm font-medium">1. Toque em <span className="text-white font-bold">Compartilhar</span></p>
+                </div>
+                <div className="flex items-center gap-4 group">
+                  <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center text-cyan-400 group-hover:bg-cyan-500/10 transition-colors text-xl font-bold">
+                    +
+                  </div>
+                  <p className="text-zinc-300 text-sm font-medium">2. Toque em <span className="text-white font-bold">Adicionar à Tela de Início</span></p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex items-center gap-4 group">
+                  <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center text-cyan-400 group-hover:bg-cyan-500/10 transition-colors text-xl font-bold">
+                    ⋮
+                  </div>
+                  <p className="text-zinc-300 text-sm font-medium">1. Toque no <span className="text-white font-bold">Menu</span> do navegador</p>
+                </div>
+                <div className="flex items-center gap-4 group">
+                  <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center text-cyan-400 group-hover:bg-cyan-500/10 transition-colors">
+                    <Download size={20} />
+                  </div>
+                  <p className="text-zinc-300 text-sm font-medium">2. Toque em <span className="text-white font-bold">Instalar App</span></p>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowInstallModal(false)}
+              className="w-full mt-10 py-4 bg-white text-black font-extrabold rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-lg"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
