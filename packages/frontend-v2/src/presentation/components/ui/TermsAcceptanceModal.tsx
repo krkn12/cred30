@@ -101,6 +101,22 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({ isOp
                         </div>
                     </section>
 
+                    <section className="space-y-4">
+                        <h3 className="text-lg md:text-xl font-bold text-primary-400 flex items-center gap-2">
+                            5. Publicidade e Parceiros Externos
+                        </h3>
+                        <div className="bg-zinc-900/50 p-5 rounded-2xl border border-zinc-800 space-y-3">
+                            <p className="text-zinc-400 text-xs md:text-sm leading-relaxed">
+                                O sistema utiliza parcerias de publicidade (ex: Adsterra) para custear operações e levantar capital. Ao aceitar:
+                            </p>
+                            <ul className="text-zinc-500 text-[10px] md:text-xs space-y-1 list-disc list-inside">
+                                <li>Você entende que anúncios de terceiros serão exibidos.</li>
+                                <li>A Cred30 <strong className="text-white text-[11px]">NÃO SE RESPONSABILIZA</strong> pelo conteúdo, produtos ou promessas de anunciantes externos.</li>
+                                <li>O redirecionamento para sites externos ocorre por sua conta e risco.</li>
+                            </ul>
+                        </div>
+                    </section>
+
                     <div className="pt-10 border-t border-zinc-900 text-center">
                         <p className="text-zinc-500 text-sm italic">
                             Fim dos termos. Role até o fim para habilitar o botão de aceite.

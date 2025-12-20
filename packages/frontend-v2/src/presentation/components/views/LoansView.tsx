@@ -383,6 +383,10 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                     </div>
                 </div>
             )}
+            {/* Legal Disclaimer */}
+            <div className="mt-8 px-4 text-[10px] text-zinc-600 text-center leading-relaxed">
+                <p>Solicitações de crédito estão sujeitas à análise de Score e disponibilidade de caixa. Os empréstimos são garantidos por alienação de cotas ativas no sistema. Em caso de atraso superior a 5 dias, a garantia será executada automaticamente conforme Termos de Uso aceitos no cadastro.</p>
+            </div>
         </div>
     );
 };

@@ -79,7 +79,9 @@ export const AdBanner = ({ type, title, description, actionText }: AdBannerProps
                     <button className="w-full py-2 bg-zinc-800 group-hover:bg-primary-500 group-hover:text-black rounded-lg text-xs font-bold transition-all">
                         {actionText || 'SAIBA MAIS'}
                     </button>
-                    <p className="text-[8px] text-zinc-700 mt-2 text-center uppercase tracking-tighter">O conteúdo acima é de responsabilidade do anunciante</p>
+                    <p className="text-[7px] text-zinc-700 mt-2 text-center uppercase tracking-tighter leading-none">
+                        A Cred30 não garante e não se responsabiliza pelo conteúdo, ofertas ou segurança de links externos.
+                    </p>
                 </div>
             </div>
         );

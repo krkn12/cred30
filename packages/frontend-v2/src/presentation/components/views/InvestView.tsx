@@ -143,6 +143,10 @@ export const InvestView = ({ onBuy }: { onBuy: (qty: number, method: 'PIX' | 'BA
                     </div>
                 </div>
             )}
+            {/* Legal Disclaimer */}
+            <div className="mt-8 px-4 text-[10px] text-zinc-600 text-center leading-relaxed">
+                <p>O Cred30 é um sistema de cooperação mútua. Investimentos em cotas possuem rendimentos variáveis baseados na performance operacional da cooperativa. Não há garantia de lucro fixo. Ao investir, você declara estar ciente dos riscos e das regras de liquidez do sistema.</p>
+            </div>
         </div>
     );
 };
