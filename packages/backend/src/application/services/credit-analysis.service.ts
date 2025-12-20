@@ -53,6 +53,12 @@ export const calculateUserLoanLimit = async (pool: Pool | PoolClient, userId: st
         // Se tiver dívida atrasada, limite é ZERO
         if (hasOverdue) return 0;
 
+        // TRAVA: Só empresta para quem tem cotas ATIVAS no sistema
+        if (totalQuotasValue <= 0) {
+            console.log(`DEBUG - Limite zero para usuário ${userId}: Sem cotas ativas.`);
+            return 0;
+        }
+
         // A. Limite Base por Score
         const scoreLimit = (user.score || 0) * 5;
 
