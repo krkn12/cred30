@@ -242,6 +242,27 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                             </button>
                         </div>
                     </div>
+
+                    {/* Novo Bloco: Bônus de Clique Específico (Foco em CPC) */}
+                    <div className="mt-4 pt-4 border-t border-surfaceHighlight">
+                        <div
+                            onClick={() => window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank')}
+                            className="bg-gradient-to-r from-emerald-900/30 to-emerald-600/10 border border-emerald-500/30 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:border-emerald-500/60 transition-all group scale-[1.02] shadow-lg shadow-emerald-900/10"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400">
+                                    <Clock size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">Bônus Diário de Parceiro</p>
+                                    <p className="text-[10px] text-zinc-400">Visite nosso parceiro e ganhe prioridade na fila.</p>
+                                </div>
+                            </div>
+                            <div className="bg-emerald-500 text-black text-[10px] font-black px-3 py-1.5 rounded-lg flex items-center gap-1 group-hover:scale-105 transition-transform shadow-lg shadow-emerald-500/20">
+                                PEGAR AGORA <ArrowUpRight size={10} />
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
