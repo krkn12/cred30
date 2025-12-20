@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { QUOTA_PRICE, VESTING_PERIOD_MS, PENALTY_RATE } from '../../../shared/constants/business.constants';
+import { QUOTA_PRICE, VESTING_PERIOD_MS, PENALTY_RATE, QUOTA_PURCHASE_FEE_RATE } from '../../../shared/constants/business.constants';
 import { Quota } from '../../../domain/entities/quota.entity';
 import { UserContext } from '../../../shared/types/hono.types';
 import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction } from '../../../domain/services/transaction.service';
@@ -86,8 +86,11 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
 
     // Calcular valores com taxas conforme o método
     const baseCost = quantity * QUOTA_PRICE;
+    const serviceFee = baseCost * QUOTA_PURCHASE_FEE_RATE; // Taxa da plataforma
+    const totalWithServiceFee = baseCost + serviceFee;
+
     const method: PaymentMethod = useBalance ? 'balance' : (paymentMethod as PaymentMethod);
-    const { total: finalCost, fee: userFee } = calculateTotalToPay(baseCost, method);
+    const { total: finalCost, fee: userFee } = calculateTotalToPay(totalWithServiceFee, method);
 
     const user = c.get('user') as UserContext;
     const pool = getDbPool(c);
@@ -111,16 +114,25 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
     const result = await executeInTransaction(pool, async (client) => {
       // Se estiver usando saldo, verificar e bloquear
       if (useBalance) {
-        const balanceCheck = await lockUserBalance(client, user.id, baseCost);
+        const balanceCheck = await lockUserBalance(client, user.id, totalWithServiceFee);
         if (!balanceCheck.success) {
           throw new Error(balanceCheck.error);
         }
 
-        // Deduzir saldo
-        const updateResult = await updateUserBalance(client, user.id, baseCost, 'debit');
+        // Deduzir saldo (Custo base + Taxa da plataforma)
+        const updateResult = await updateUserBalance(client, user.id, totalWithServiceFee, 'debit');
         if (!updateResult.success) {
           throw new Error(updateResult.error);
         }
+
+        // Destinar a taxa de serviço (Regra 85/15)
+        const feeForOperational = serviceFee * 0.85;
+        const feeForProfit = serviceFee * 0.15;
+
+        await client.query(
+          'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
+          [feeForOperational, feeForProfit]
+        );
 
         // Criar cotas imediatamente (compra com saldo)
         for (let i = 0; i < quantity; i++) {
@@ -136,10 +148,10 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
           client,
           user.id,
           'BUY_QUOTA',
-          baseCost,
-          `Compra de ${quantity} cota(s) - APROVADA`,
+          totalWithServiceFee,
+          `Compra de ${quantity} cota(s) (+ R$ ${serviceFee.toFixed(2)} taxa) - APROVADA`,
           'APPROVED',
-          { quantity, useBalance, paymentMethod: 'balance' }
+          { quantity, useBalance, paymentMethod: 'balance', serviceFee }
         );
 
         if (!transactionResult.success) {

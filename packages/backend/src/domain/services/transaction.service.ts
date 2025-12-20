@@ -273,10 +273,23 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
         [gatewayCost, transaction.id]
       );
 
+      const serviceFee = metadata.serviceFee ? parseFloat(metadata.serviceFee) : 0;
+      const principalAmount = parseFloat(transaction.amount) - serviceFee;
+
       await client.query(
         'UPDATE system_config SET system_balance = system_balance + $1 - $2, total_gateway_costs = total_gateway_costs + $2',
-        [parseFloat(transaction.amount), gatewayCost]
+        [principalAmount, gatewayCost]
       );
+
+      // Distribuir a Taxa de Serviço se existir (externa)
+      if (serviceFee > 0) {
+        const feeForOperational = serviceFee * 0.85;
+        const feeForProfit = serviceFee * 0.15;
+        await client.query(
+          'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
+          [feeForOperational, feeForProfit]
+        );
+      }
     }
   }
 
@@ -389,12 +402,7 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
   });
 
   // Notificar usuário em tempo real
-  notificationService.notifyUser(transaction.user_id, 'TRANSACTION_STATUS_CHANGED', {
-    id: transaction.id,
-    type: transaction.type,
-    status: 'APPROVED',
-    message: `Sua transação de ${transaction.type} foi aprovada!`
-  });
+  notificationService.notifyUser(transaction.user_id, 'Status da Transação', `Sua transação de ${transaction.type} foi APROVADA!`);
 
   return { success: true, status: 'APPROVED' };
 };
@@ -461,12 +469,7 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
   );
 
   // Notificar usuário em tempo real
-  notificationService.notifyUser(loan.user_id, 'LOAN_STATUS_CHANGED', {
-    id: id,
-    status: 'APPROVED',
-    amount: loan.amount,
-    message: `Seu empréstimo de R$ ${parseFloat(loan.amount).toFixed(2)} foi aprovado e creditado!`
-  });
+  notificationService.notifyUser(loan.user_id, 'Empréstimo Aprovado', `Seu empréstimo de R$ ${parseFloat(loan.amount).toFixed(2)} foi aprovado e creditado!`);
 
   return { success: true, status: 'APPROVED' };
 };
