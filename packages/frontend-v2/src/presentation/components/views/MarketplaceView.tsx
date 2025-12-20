@@ -309,7 +309,7 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
                     </div>
 
                     <button className="w-full bg-zinc-800 group-hover:bg-primary-500 group-hover:text-black py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-2">
-                        ACESSAR OFERTA
+                        SAIBA MAIS
                     </button>
 
                     <p className="text-[7px] text-zinc-700 text-center uppercase tracking-tighter">
@@ -418,9 +418,9 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
                                                         setSelectedItem(item);
                                                         setView('details');
                                                     }}
-                                                    className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2"
+                                                    className="bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 rounded-lg text-xs font-black transition active:scale-95 flex items-center gap-2"
                                                 >
-                                                    VER MAIS
+                                                    COMPRAR AGORA
                                                 </button>
                                             </div>
                                         </div>
