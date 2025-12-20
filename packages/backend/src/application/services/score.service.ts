@@ -39,4 +39,27 @@ export const SCORE_REWARDS = {
 export const SCORE_PENALTIES = {
     LATENESS: -50,            // Por atraso no pagamento
     LOAN_REJECTION: -10,      // Tentativa de empréstimo sem critério (opcional)
+    DAILY_DECAY: -10          // Decaimento diário por inatividade/manutenção
+};
+
+/**
+ * Aplica o decaimento diário de score para todos os usuários
+ * Isso força o usuário a engajar (ver ads) para manter o score.
+ */
+export const decreaseDailyScore = async (pool: Pool): Promise<{ success: boolean; affectedUsers: number }> => {
+    try {
+        // Reduzir score de todos os usuários com score > 0
+        // Decaimento de 10 pontos por dia
+        const result = await pool.query(`
+            UPDATE users 
+            SET score = GREATEST(0, score - 10) 
+            WHERE score > 0
+        `);
+
+        console.log(`[Score] Decaimento diário aplicado a ${result.rowCount} usuários (-10 pontos).`);
+        return { success: true, affectedUsers: result.rowCount || 0 };
+    } catch (error) {
+        console.error('Erro ao aplicar decaimento de score:', error);
+        return { success: false, affectedUsers: 0 };
+    }
 };

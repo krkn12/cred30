@@ -4,6 +4,7 @@ import { Pool } from 'pg';
 import { distributeProfits } from './application/services/profit-distribution.service';
 import { backupDatabase } from './application/services/backup.service';
 import { runAutoLiquidation } from './application/services/auto-liquidation.service';
+import { decreaseDailyScore } from './application/services/score.service';
 
 /**
  * Inicializa os agendadores de tarefas (Cron Jobs)
@@ -51,6 +52,22 @@ export const initializeScheduler = (pool: Pool) => {
             console.error('❌ [CRON] Erro fatal na liquidação automática:', error);
         }
     });
+
+    // 4. Decaimento Diário de Score às 03:00 (Madrugada)
+    // Reduz 10 pontos de todos para forçar engajamento
+    cron.schedule('0 3 * * *', async () => {
+        console.log('🕒 [CRON] Iniciando decaimento diário de score...');
+        try {
+            const result = await decreaseDailyScore(pool);
+            if (result.success) {
+                console.log(`✅ [CRON] Decaimento de score aplicado a ${result.affectedUsers} usuários.`);
+            }
+        } catch (error) {
+            console.error('❌ [CRON] Erro fatal no decaimento de score:', error);
+        }
+    });
+
+    console.log('✅ Agendador inicializado: Distrib (00:00), Backup (01:00), Liq (02:00), Score (03:00).');
 
     console.log('✅ Agendador inicializado: Distribuição (00:00), Backup (01:00) e Auto-Liquidação (02:00).');
 };
