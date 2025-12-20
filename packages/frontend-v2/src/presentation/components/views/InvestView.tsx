@@ -19,6 +19,9 @@ export const InvestView = ({ onBuy }: { onBuy: (qty: number, method: 'PIX' | 'BA
     const total = baseCost + fee;
 
     const handlePurchase = () => {
+        // Adsterra SmartLink Trigger (Pop-Under effect)
+        window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
+
         onBuy(qty, method);
         setShowConfirm(false);
     };
