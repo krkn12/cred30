@@ -164,8 +164,18 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8 overflow-y-auto bg-background">
-        <div className="max-w-6xl mx-auto space-y-8 pb-32 md:pb-0">
+        <div className="max-w-6xl mx-auto space-y-8 pb-32">
           {children}
+
+          <footer className="mt-16 pt-8 border-t border-surfaceHighlight text-center space-y-2">
+            <p className="text-xs text-zinc-500">Cred30 © 2024 • Sistema de Cooperação Financeira Mútua</p>
+            <div className="flex justify-center gap-4 text-[10px] text-zinc-600">
+              <button onClick={() => navigate('/terms')} className="hover:text-primary-400">Termos de Uso</button>
+              <span>•</span>
+              <button onClick={() => navigate('/terms')} className="hover:text-primary-400">Política de Privacidade</button>
+            </div>
+            <p className="text-[9px] text-zinc-700 max-w-md mx-auto italic">O Cred30 não é uma instituição financeira regulada pelo BACEN. As operações são baseadas no Código Civil Brasileiro (Sociedade em Conta de Participação e Mútua).</p>
+          </footer>
         </div>
       </main>
 
