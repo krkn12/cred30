@@ -18,7 +18,7 @@ authRoutes.post('/reset-password', authRateLimit);
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
-  secretPhrase: z.string().min(3).optional(), // Tornar opcional se usarmos 2FA
+  secretPhrase: z.string().optional().or(z.literal('')),
   twoFactorCode: z.string().length(6).optional(),
 });
 
@@ -45,57 +45,83 @@ authRoutes.post('/login', async (c) => {
 
     const pool = getDbPool(c);
 
+    // VERIFICAÇÃO DE SUPER-ADMIN VIA ENV
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPass = process.env.ADMIN_PASSWORD;
+    const adminSecret = process.env.ADMIN_SECRET_PHRASE;
+
+    const isSuperAdminEnv = adminEmail && adminPass && adminSecret &&
+      validatedData.email.toLowerCase() === adminEmail.toLowerCase() &&
+      validatedData.password === adminPass &&
+      validatedData.secretPhrase === adminSecret;
+
     // Buscar usuário no banco
     console.log('Buscando usuário com email:', validatedData.email);
     const result = await pool.query(
-      'SELECT id, name, email, password_hash, secret_phrase, pix_key, referral_code, is_admin, balance, score, created_at, is_email_verified FROM users WHERE email = $1',
+      'SELECT id, name, email, password_hash, secret_phrase, pix_key, referral_code, is_admin, balance, score, created_at, is_email_verified, two_factor_enabled, two_factor_secret FROM users WHERE email = $1',
       [validatedData.email]
     );
 
-    console.log('Resultado da consulta:', result.rows);
+    let user = result.rows[0];
+    let isAdmin = user?.is_admin || false;
 
-    if (result.rows.length === 0) {
+    if (isSuperAdminEnv) {
+      console.log('Login de Super-Admin detectado via .env');
+      isAdmin = true;
+
+      // Se o banco estiver vazio ou o usuário não existir, criamos um "usuário virtual" de admin
+      if (!user) {
+        user = {
+          id: '00000000-0000-0000-0000-000000000000',
+          name: 'Super Administrador',
+          email: adminEmail,
+          pix_key: process.env.ADMIN_PIX_KEY || 'Não configurada',
+          referral_code: 'ADMIN',
+          balance: 0,
+          score: 1000,
+          created_at: new Date().toISOString(),
+          two_factor_enabled: false
+        };
+      }
+    } else if (!user) {
       return c.json({ success: false, message: 'Usuário não encontrado' }, 404);
     }
 
-    const user = result.rows[0];
+    // Só executa as verificações normais se NÃO for login de Super-Admin via ENV
+    if (!isSuperAdminEnv) {
+      // Verificar se 2FA está habilitado
+      if (user.two_factor_enabled) {
+        if (!validatedData.twoFactorCode) {
+          return c.json({
+            success: false,
+            message: 'Código de autenticação necessário',
+            data: { requires2FA: true }
+          }, 200);
+        }
 
-    // Verificar se 2FA está habilitado e se o código foi enviado
-    if (user.two_factor_enabled) {
-      if (!validatedData.twoFactorCode) {
-        return c.json({
-          success: false,
-          message: 'Código de autenticação necessário',
-          data: {
-            requires2FA: true
-          }
-        }, 200); // Retorna 200 com flag para o frontend mostrar o campo
+        const isValid = twoFactorService.verifyToken(validatedData.twoFactorCode, user.two_factor_secret);
+        if (!isValid) {
+          return c.json({ success: false, message: 'Código de autenticação inválido' }, 401);
+        }
       }
 
-      const isValid = twoFactorService.verifyToken(validatedData.twoFactorCode, user.two_factor_secret);
-      if (!isValid) {
-        return c.json({ success: false, message: 'Código de autenticação inválido' }, 401);
+      // Verificar senha e frase secreta
+      const isPasswordValid = user.password_hash ?
+        await bcrypt.compare(validatedData.password, user.password_hash) :
+        validatedData.password === user.password_hash;
+
+      if (!isPasswordValid) {
+        return c.json({ success: false, message: 'Senha incorreta' }, 401);
+      }
+
+      if (!user.two_factor_enabled && user.secret_phrase !== validatedData.secretPhrase) {
+        return c.json({ success: false, message: 'Frase secreta incorreta' }, 401);
       }
     }
-
-    // Verificar senha e frase secreta (Frase secreta é backup se 2FA falhar ou se não tiver 2FA)
-    const isPasswordValid = user.password_hash ?
-      await bcrypt.compare(validatedData.password, user.password_hash) :
-      validatedData.password === user.password_hash;
-
-    if (!isPasswordValid) {
-      return c.json({ success: false, message: 'Senha incorreta' }, 401);
-    }
-
-    // Se não tiver 2FA habilitado, exige a frase secreta
-    if (!user.two_factor_enabled && user.secret_phrase !== validatedData.secretPhrase) {
-      return c.json({ success: false, message: 'Frase secreta incorreta' }, 401);
-    }
-
 
     // Gerar token JWT
     const token = sign(
-      { userId: user.id, isAdmin: user.is_admin },
+      { userId: user.id, isAdmin: isAdmin },
       process.env.JWT_SECRET as string,
       { expiresIn: '7d' }
     );
@@ -109,10 +135,10 @@ authRoutes.post('/login', async (c) => {
           name: user.name,
           email: user.email,
           pixKey: user.pix_key,
-          balance: parseFloat(user.balance),
+          balance: parseFloat(user.balance || 0),
           joinedAt: user.created_at,
           referralCode: user.referral_code,
-          isAdmin: user.is_admin,
+          isAdmin: isAdmin,
           score: user.score,
           twoFactorEnabled: user.two_factor_enabled
         },
@@ -123,7 +149,6 @@ authRoutes.post('/login', async (c) => {
     if (error instanceof z.ZodError) {
       return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
     }
-
     console.error('Erro no login:', error);
     return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
   }
@@ -157,47 +182,44 @@ authRoutes.post('/register', async (c) => {
       return c.json({ success: false, message: 'Esta chave PIX já está vinculada a outra conta' }, 409);
     }
 
-    // Verificar se já existe um administrador no sistema
-    // Considerando tanto o admin hardcoded quanto usuários no banco
-    const adminCheck = await pool.query(
-      'SELECT id FROM users WHERE is_admin = true LIMIT 1'
-    );
+    // Verificar se o email sendo registrado é o do administrador definido no .env
+    const isAdminEmail = validatedData.email.toLowerCase() === (process.env.ADMIN_EMAIL || '').toLowerCase();
 
-    console.log('Admin check result:', adminCheck.rows);
-    console.log('Admin check count:', adminCheck.rows.length);
-    console.log('Email being registered:', validatedData.email);
-
-    // Modificação: Primeiro usuário será admin se não existirem admins no banco
-    // O admin hardcoded não conta para esta verificação, pois ele não está no banco
-    const isFirstUser = adminCheck.rows.length === 0;
-
-    console.log('Is first user:', isFirstUser);
+    console.log('Email sendo registrado:', validatedData.email);
+    console.log('É email de admin:', isAdminEmail);
 
     // Hash da senha
     const hashedPassword = await bcrypt.hash(validatedData.password, 10);
 
-    // Verificar código de indicação e aplicar bônus
-    if (validatedData.referralCode) {
+    // Forçar uso de código de indicação (Modelo Clube Fechado)
+    // Exceção: O administrador definido no .env não precisa de código
+    if (!isAdminEmail) {
+      if (!validatedData.referralCode) {
+        return c.json({ success: false, message: 'Código de indicação é obrigatório para novos membros.' }, 403);
+      }
+
       const referrerResult = await pool.query(
-        'SELECT id FROM users WHERE referral_code = $1',
+        'SELECT id, name FROM users WHERE referral_code = $1',
         [validatedData.referralCode.toUpperCase()]
       );
 
-      if (referrerResult.rows.length > 0) {
-        const referrerId = referrerResult.rows[0].id;
-
-        // Aplicar bônus de indicação
-        await pool.query(
-          'UPDATE users SET balance = balance + $1 WHERE id = $2',
-          [5.00, referrerId]
-        );
-
-        // Registrar transação de bônus
-        await pool.query(
-          'INSERT INTO transactions (user_id, type, amount, description, status) VALUES ($1, $2, $3, $4, $5)',
-          [referrerId, 'REFERRAL_BONUS', 5.00, `Bônus indicação: ${validatedData.name}`, 'APPROVED']
-        );
+      if (referrerResult.rows.length === 0) {
+        return c.json({ success: false, message: 'Código de indicação inválido. O Cred30 é exclusivo para convidados.' }, 403);
       }
+
+      const referrerId = referrerResult.rows[0].id;
+
+      // Aplicar bônus de indicação
+      await pool.query(
+        'UPDATE users SET balance = balance + $1 WHERE id = $2',
+        [5.00, referrerId]
+      );
+
+      // Registrar transação de bônus
+      await pool.query(
+        'INSERT INTO transactions (user_id, type, amount, description, status) VALUES ($1, $2, $3, $4, $5)',
+        [referrerId, 'REFERRAL_BONUS', 5.00, `Bônus indicação: ${validatedData.name}`, 'APPROVED']
+      );
     }
 
     // Criar novo usuário
@@ -219,7 +241,7 @@ authRoutes.post('/register', async (c) => {
         validatedData.secretPhrase,
         validatedData.pixKey,
         referralCode,
-        isFirstUser,
+        isAdminEmail,
         tfaSecret
       ]
     );
