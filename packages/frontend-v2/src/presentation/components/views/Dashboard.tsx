@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Users, Gamepad2, TrendingUp, DollarSign, ArrowUpFromLine,
     Repeat, Crown, Clock, ArrowDownLeft, ArrowUpRight,
-    PieChart, AlertTriangle, LogOut, Star
+    PieChart, AlertTriangle, LogOut, Star, Zap
 } from 'lucide-react';
 import { AppState, User } from '../../../domain/types/common.types';
 import { QUOTA_PRICE } from '../../../shared/constants/app.constants';
@@ -23,9 +23,10 @@ interface DashboardProps {
     onSuccess: (title: string, message: string) => void;
     onError: (title: string, message: string) => void;
     onChangePassword: (oldPass: string, newPass: string) => Promise<void>;
+    onClaimReward: () => Promise<void>;
 }
 
-export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onReinvest, onRefer, onVip, onLogout, onSuccess, onError, onChangePassword }: DashboardProps) => {
+export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onReinvest, onRefer, onVip, onLogout, onSuccess, onError, onChangePassword, onClaimReward }: DashboardProps) => {
     const user = state.currentUser!;
 
     const { userQuotas, totalInvested, totalCurrentValue, totalEarnings, earningsPercentage } = useMemo(() => {
@@ -183,6 +184,65 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                     <p className="text-xs text-zinc-500 mt-2">Faltam {nextLevel.goal - userQuotas.length} cotas para alcançar o próximo nível</p>
                 </div>
             )}
+
+            {/* Central de Prêmios & Monetização (Gera Caixa/Score) */}
+            <div className="bg-surface border border-surfaceHighlight rounded-2xl p-6 overflow-hidden relative">
+                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                    <Zap size={120} className="text-yellow-500" />
+                </div>
+
+                <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <Zap size={20} className="text-yellow-500 fill-yellow-500" />
+                                Central de Prêmios
+                            </h3>
+                            <p className="text-xs text-zinc-500">Cumpra tarefas e ganhe Score para aumentar seu limite</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Tarefa: Assistir Anúncio */}
+                        <div className="bg-background/50 border border-surfaceHighlight rounded-xl p-4 flex items-center justify-between group hover:border-yellow-500/30 transition-all">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center text-yellow-500">
+                                    <Gamepad2 size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-white">Anúncio Premiado</p>
+                                    <p className="text-[10px] text-zinc-400">+5 Pontos de Score</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={onClaimReward}
+                                className="bg-yellow-500 hover:bg-yellow-400 text-black text-[10px] font-black px-3 py-2 rounded-lg transition-transform active:scale-95 shadow-lg shadow-yellow-500/20"
+                            >
+                                ASSISTIR
+                            </button>
+                        </div>
+
+                        {/* Tarefa: Indicação (Existente facilitada) */}
+                        <div className="bg-background/50 border border-surfaceHighlight rounded-xl p-4 flex items-center justify-between group hover:border-primary-500/30 transition-all">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-primary-500/10 rounded-lg flex items-center justify-center text-primary-400">
+                                    <Users size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-white">Novo Membro</p>
+                                    <p className="text-[10px] text-zinc-400">+R$ 5,00 de Bônus</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={onRefer}
+                                className="bg-primary-500 hover:bg-primary-400 text-black text-[10px] font-black px-3 py-2 rounded-lg transition-transform active:scale-95 shadow-lg shadow-primary-500/20"
+                            >
+                                CONVIDAR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             {/* Quick Actions */}
             {/* Quick Actions (Carrossel Horizontal) */}

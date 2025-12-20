@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { Layout } from '../components/layout/main-layout.component';
 import { UpdateNotification } from '../components/ui/update-notification.component';
 import { AdminStoreManager } from '../components/features/store/admin-store.component';
-import { loadState, registerUser, loginUser, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, fastForwardTime, repayLoan, repayInstallment, getCurrentUser, resetPassword, requestWithdrawal, getPendingItems, processAdminAction, updateSystemBalance, updateProfitPool, distributeMonthlyDividends, fixLoanPix, clearAllCache, deleteUserAccount, changePassword, verify2FA, confirmWithdrawal } from '../../application/services/storage.service';
+import { loadState, registerUser, loginUser, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, fastForwardTime, repayLoan, repayInstallment, getCurrentUser, resetPassword, requestWithdrawal, getPendingItems, processAdminAction, updateSystemBalance, updateProfitPool, distributeMonthlyDividends, fixLoanPix, clearAllCache, deleteUserAccount, changePassword, verify2FA, confirmWithdrawal, claimAdReward } from '../../application/services/storage.service';
 import { apiService } from '../../application/services/api.service';
 import { AppState, Quota, Loan, Transaction, User } from '../../domain/types/common.types';
 import { QUOTA_PRICE, VESTING_PERIOD_MS } from '../../shared/constants/app.constants';
@@ -325,6 +325,16 @@ export default function App() {
     } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
   }
 
+  const handleClaimReward = async () => {
+    try {
+      const res = await claimAdReward();
+      await refreshState();
+      setShowSuccess({ isOpen: true, title: 'Parabéns!', message: res.message });
+    } catch (e: any) {
+      setShowError({ isOpen: true, title: 'Erro', message: e.message });
+    }
+  };
+
   if (state.isLoading) {
     return <div className="min-h-screen bg-black flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-500"></div></div>;
   }
@@ -388,6 +398,7 @@ export default function App() {
                       await changePassword(oldPass, newPass);
                       setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Senha alterada com sucesso!' });
                     }}
+                    onClaimReward={handleClaimReward}
                   />
                 </Suspense>
               } />
