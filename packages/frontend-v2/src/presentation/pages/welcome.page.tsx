@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Shield, PiggyBank, CreditCard, Download, Smartphone, X as XIcon, Share } from 'lucide-react';
+import { ArrowRight, Shield, PiggyBank, CreditCard, Download, Smartphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // Interface para o evento de instalação do PWA
@@ -12,12 +12,7 @@ const WelcomePage = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [showInstallModal, setShowInstallModal] = useState(false);
   const navigate = useNavigate();
-
-  // Detectar o tipo de dispositivo
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const isAndroid = /Android/.test(navigator.userAgent);
 
   const stats = [
     { value: "R$ 50", label: "Cota Mínima" },
@@ -72,7 +67,7 @@ const WelcomePage = () => {
   }, []);
 
   const handleInstallClick = async () => {
-    // Se tiver o prompt nativo, usa ele
+    // Se tiver o prompt nativo, usa ele direto
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
@@ -80,8 +75,8 @@ const WelcomePage = () => {
         setDeferredPrompt(null);
       }
     } else {
-      // Se não tiver, mostra o modal com instruções
-      setShowInstallModal(true);
+      // Se não tiver prompt nativo, vai para a página de download
+      navigate('/download');
     }
   };
 
@@ -222,81 +217,6 @@ const WelcomePage = () => {
           </p>
         </div>
       </footer>
-
-      {/* Modal de Instruções de Instalação */}
-      {showInstallModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowInstallModal(false)}>
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 w-full max-w-md relative" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setShowInstallModal(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white">
-              <XIcon size={24} />
-            </button>
-
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-cyan-500/10 rounded-2xl flex items-center justify-center text-cyan-400 mx-auto mb-4">
-                <Smartphone size={32} />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">Instalar Cred30</h3>
-              <p className="text-zinc-400 text-sm">Adicione o app à sua tela inicial para acesso rápido!</p>
-            </div>
-
-            {isIOS ? (
-              <div className="space-y-4">
-                <h4 className="font-bold text-white flex items-center gap-2">
-                  <span className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center text-xs">1</span>
-                  Toque no botão Compartilhar
-                </h4>
-                <div className="flex items-center justify-center bg-zinc-800 p-4 rounded-xl">
-                  <Share className="text-cyan-400" size={32} />
-                </div>
-                <h4 className="font-bold text-white flex items-center gap-2">
-                  <span className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center text-xs">2</span>
-                  Toque em "Adicionar à Tela de Início"
-                </h4>
-                <h4 className="font-bold text-white flex items-center gap-2">
-                  <span className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center text-xs">3</span>
-                  Toque em "Adicionar"
-                </h4>
-              </div>
-            ) : isAndroid ? (
-              <div className="space-y-4">
-                <h4 className="font-bold text-white flex items-center gap-2">
-                  <span className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center text-xs">1</span>
-                  Toque no menu do navegador (⋮)
-                </h4>
-                <h4 className="font-bold text-white flex items-center gap-2">
-                  <span className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center text-xs">2</span>
-                  Toque em "Adicionar à tela inicial"
-                </h4>
-                <h4 className="font-bold text-white flex items-center gap-2">
-                  <span className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center text-xs">3</span>
-                  Confirme tocando em "Adicionar"
-                </h4>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <h4 className="font-bold text-white flex items-center gap-2">
-                  <span className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center text-xs">1</span>
-                  No Chrome, clique no ícone de instalação na barra de endereço
-                </h4>
-                <h4 className="font-bold text-white flex items-center gap-2">
-                  <span className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center text-xs">2</span>
-                  Clique em "Instalar"
-                </h4>
-                <p className="text-zinc-500 text-xs text-center mt-4">
-                  Se não aparecer, tente acessar pelo celular para uma experiência melhor.
-                </p>
-              </div>
-            )}
-
-            <button
-              onClick={() => setShowInstallModal(false)}
-              className="w-full mt-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-bold rounded-xl transition"
-            >
-              Entendi
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
