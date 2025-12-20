@@ -76,23 +76,38 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
 
                     {/* Limite de Crédito Card (Nubank Style) */}
                     {creditLimit && (
-                        <div className="bg-gradient-to-r from-emerald-500/10 to-primary-500/10 border border-emerald-500/30 rounded-2xl p-4 mb-6">
+                        <div className={`border rounded-2xl p-4 mb-6 ${creditLimit.totalLimit === 0 ? 'bg-orange-500/10 border-orange-500/30' : 'bg-gradient-to-r from-emerald-500/10 to-primary-500/10 border-emerald-500/30'}`}>
                             <div className="flex items-center gap-2 mb-2">
-                                <TrendingUp className="text-emerald-400" size={18} />
-                                <span className="text-sm font-medium text-emerald-400">Seu Limite de Crédito</span>
+                                {creditLimit.totalLimit === 0 ? (
+                                    <AlertTriangle className="text-orange-400" size={18} />
+                                ) : (
+                                    <TrendingUp className="text-emerald-400" size={18} />
+                                )}
+                                <span className={`text-sm font-medium ${creditLimit.totalLimit === 0 ? 'text-orange-400' : 'text-emerald-400'}`}>
+                                    {creditLimit.totalLimit === 0 ? 'Atenção: Crédito Bloqueado' : 'Seu Limite de Crédito'}
+                                </span>
                             </div>
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-2xl font-bold text-white">{creditLimit.remainingLimit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                                <span className="text-xs text-zinc-400">de {creditLimit.totalLimit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                            </div>
-                            <div className="w-full h-2 bg-background rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-gradient-to-r from-emerald-500 to-primary-500 transition-all"
-                                    style={{ width: `${Math.max(0, Math.min(100, (creditLimit.remainingLimit / creditLimit.totalLimit) * 100))}%` }}
-                                />
-                            </div>
-                            {creditLimit.activeDebt > 0 && (
-                                <p className="text-xs text-zinc-500 mt-2">Você tem {creditLimit.activeDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em dívidas ativas.</p>
+
+                            {creditLimit.totalLimit === 0 ? (
+                                <p className="text-sm text-zinc-300">
+                                    Para liberar empréstimos, você precisa ter no mínimo <strong className="text-white">1 cota ativa</strong> no sistema.
+                                </p>
+                            ) : (
+                                <>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-2xl font-bold text-white">{creditLimit.remainingLimit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                        <span className="text-xs text-zinc-400">de {creditLimit.totalLimit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                    </div>
+                                    <div className="w-full h-2 bg-background rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-gradient-to-r from-emerald-500 to-primary-500 transition-all"
+                                            style={{ width: `${Math.max(0, Math.min(100, (creditLimit.remainingLimit / creditLimit.totalLimit) * 100))}%` }}
+                                        />
+                                    </div>
+                                    {creditLimit.activeDebt > 0 && (
+                                        <p className="text-xs text-zinc-500 mt-2">Você tem {creditLimit.activeDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em dívidas ativas.</p>
+                                    )}
+                                </>
                             )}
                         </div>
                     )}
@@ -171,10 +186,10 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
 
                             <button
                                 onClick={() => onRequest(amount, months, currentUser?.pixKey || '')}
-                                disabled={!amount || amount <= 0}
+                                disabled={!amount || amount <= 0 || creditLimit?.totalLimit === 0}
                                 className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-xl mt-6 transition shadow-lg shadow-emerald-500/20"
                             >
-                                Solicitar Empréstimo
+                                {creditLimit?.totalLimit === 0 ? 'Crédito Bloqueado' : 'Solicitar Empréstimo'}
                             </button>
                         </div>
                     </div>
