@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ArrowUpFromLine, ShieldCheck, Clock, XCircle } from 'lucide-react';
+import { ArrowUpFromLine, ShieldCheck, Clock, XCircle, TrendingUp } from 'lucide-react';
+import packageJson from '../../../../package.json';
 import { User } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 import { confirmWithdrawal } from '../../../application/services/storage.service';
@@ -16,6 +17,8 @@ interface WithdrawViewProps {
 export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess, onError, onRefresh }: WithdrawViewProps) => {
     const [val, setVal] = useState('');
     const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, transactionId: number | null, code: string }>({ isOpen: false, transactionId: null, code: '' });
+    const [showAd, setShowAd] = useState(false);
+    const [adTimer, setAdTimer] = useState(5);
 
     // Quick amount options
     const quickAmounts = [50, 100, 200, 500];
@@ -37,6 +40,19 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
             fetch2FASetup();
         }
     }, [confirmModal.isOpen]);
+
+    useEffect(() => {
+        let interval: any;
+        if (showAd && adTimer > 0) {
+            interval = setInterval(() => {
+                setAdTimer(prev => prev - 1);
+            }, 1000);
+        } else if (showAd && adTimer === 0) {
+            // Quando o timer acaba, podemos permitir fechar ou fechar automaticamente
+            // Vamos deixar o botão de fechar aparecer
+        }
+        return () => clearInterval(interval);
+    }, [showAd, adTimer]);
 
     const fetch2FASetup = async () => {
         try {
@@ -65,6 +81,14 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
     };
 
     const handleRequestWithdrawal = async () => {
+        const amount = parseFloat(val);
+        // Regra de anúncio: mostrar sempre ao solicitar saque
+        setShowAd(true);
+        setAdTimer(5);
+    };
+
+    const processWithdrawal = async () => {
+        setShowAd(false);
         const amount = parseFloat(val);
         try {
             const res = await apiService.requestWithdrawal(amount, currentUser?.pixKey || '');
@@ -236,6 +260,66 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                     <strong>Importante:</strong> Você está sacando do seu saldo disponível na conta.
                 </p>
             </div>
+
+            {/* Anúncio Intersticial */}
+            {showAd && (
+                <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300 backdrop-blur-md">
+                    <div className="w-full max-w-lg relative animate-in zoom-in duration-500">
+                        {/* Botão de Fechar com Timer */}
+                        <div className="absolute -top-12 right-0 flex items-center gap-3">
+                            {adTimer > 0 ? (
+                                <span className="text-zinc-400 text-xs font-bold bg-zinc-800/80 px-3 py-1.5 rounded-full border border-zinc-700">
+                                    O saque continuará em {adTimer}s...
+                                </span>
+                            ) : (
+                                <button
+                                    onClick={processWithdrawal}
+                                    className="bg-primary-500 text-black px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2 hover:bg-primary-400 transition-all shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-bounce"
+                                >
+                                    Pular Anúncio <ArrowUpFromLine size={16} />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Conteúdo do Anúncio */}
+                        <div className="bg-surface border border-primary-500/20 rounded-3xl overflow-hidden shadow-2xl">
+                            <div className="relative aspect-square sm:aspect-video overflow-hidden">
+                                <img
+                                    src="/ad-banner.png"
+                                    alt="Oferta Especial"
+                                    className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                                <div className="absolute bottom-4 left-6 right-6">
+                                    <span className="bg-primary-500 text-black text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider mb-2 inline-block">Patrocinado</span>
+                                    <h4 className="text-xl font-bold text-white">Ganhe até 10% de Cashback!</h4>
+                                    <p className="text-zinc-300 text-xs mt-1">Sabia que como membro VIP Ouro você recupera parte de cada investimento?</p>
+                                </div>
+                            </div>
+
+                            <div className="p-6 bg-zinc-900/50 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-primary-500/10 rounded-xl flex items-center justify-center text-primary-400">
+                                        <TrendingUp size={20} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-white">Cred30 Rewards</p>
+                                        <p className="text-[10px] text-zinc-500">Aproveite agora mesmo</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => window.open('/app/invest', '_blank')}
+                                    className="text-primary-400 text-xs font-bold hover:underline"
+                                >
+                                    Saiba Mais
+                                </button>
+                            </div>
+                        </div>
+
+                        <p className="text-center text-[10px] text-zinc-600 mt-4 uppercase tracking-[0.2em]">Anúncio Premium • Cred30 v{packageJson.version}</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
