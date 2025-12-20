@@ -89,11 +89,11 @@ export const generateLoanContractPDF = (data: LoanContractData): jsPDF => {
     y = addLine('3. DAS CONDIÇÕES FINANCEIRAS', y, true);
     y += 3;
 
-    // Tabela de valores
+    // Tabela de valores (aumentada para incluir data)
     doc.setFillColor(240, 240, 240);
-    doc.rect(margin, y, pageWidth - 2 * margin, 50, 'F');
+    doc.rect(margin, y, pageWidth - 2 * margin, 60, 'F');
     doc.setDrawColor(200, 200, 200);
-    doc.rect(margin, y, pageWidth - 2 * margin, 50, 'S');
+    doc.rect(margin, y, pageWidth - 2 * margin, 60, 'S');
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
@@ -101,26 +101,31 @@ export const generateLoanContractPDF = (data: LoanContractData): jsPDF => {
     const col1 = margin + 5;
     const col2 = pageWidth / 2;
 
-    doc.text('Valor do Empréstimo:', col1, tableY);
+    doc.text('Data de Concessão:', col1, tableY);
     doc.setFont('helvetica', 'bold');
-    doc.text(formatCurrency(data.loanAmount), col2, tableY);
+    doc.text(data.contractDate, col2, tableY);
 
     doc.setFont('helvetica', 'normal');
-    doc.text('Taxa de Juros:', col1, tableY + 10);
+    doc.text('Valor do Empréstimo:', col1, tableY + 10);
     doc.setFont('helvetica', 'bold');
-    doc.text(`${(data.interestRate * 100).toFixed(0)}%`, col2, tableY + 10);
+    doc.text(formatCurrency(data.loanAmount), col2, tableY + 10);
 
     doc.setFont('helvetica', 'normal');
-    doc.text('Valor Total a Pagar:', col1, tableY + 20);
+    doc.text('Taxa de Juros:', col1, tableY + 20);
     doc.setFont('helvetica', 'bold');
-    doc.text(formatCurrency(data.totalRepayment), col2, tableY + 20);
+    doc.text(`${(data.interestRate * 100).toFixed(0)}%`, col2, tableY + 20);
 
     doc.setFont('helvetica', 'normal');
-    doc.text('Número de Parcelas:', col1, tableY + 30);
+    doc.text('Valor Total a Pagar:', col1, tableY + 30);
     doc.setFont('helvetica', 'bold');
-    doc.text(`${data.installments}x de ${formatCurrency(data.installmentValue)}`, col2, tableY + 30);
+    doc.text(formatCurrency(data.totalRepayment), col2, tableY + 30);
 
-    y += 60;
+    doc.setFont('helvetica', 'normal');
+    doc.text('Número de Parcelas:', col1, tableY + 40);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${data.installments}x de ${formatCurrency(data.installmentValue)}`, col2, tableY + 40);
+
+    y += 70;
 
     // --- VENCIMENTO ---
     doc.setFont('helvetica', 'bold');
@@ -202,8 +207,10 @@ export const createContractData = (
         totalRepayment: number;
         installments: number;
         interestRate: number;
-        dueDate: number;
-        requestDate: number;
+        dueDate?: number | string;
+        requestDate?: number;
+        createdAt?: string;
+        created_at?: string;
     },
     user: {
         name: string;
@@ -212,8 +219,36 @@ export const createContractData = (
     }
 ): LoanContractData => {
     const contractNumber = `CRD30-${loan.id.toString().padStart(6, '0')}`;
-    const contractDate = new Date(loan.requestDate).toLocaleDateString('pt-BR');
-    const dueDate = new Date(loan.dueDate).toLocaleDateString('pt-BR');
+
+    // Tentar obter a data do empréstimo de várias fontes possíveis
+    let loanDate: Date;
+    if (loan.requestDate) {
+        loanDate = new Date(loan.requestDate);
+    } else if (loan.createdAt) {
+        loanDate = new Date(loan.createdAt);
+    } else if (loan.created_at) {
+        loanDate = new Date(loan.created_at);
+    } else {
+        loanDate = new Date(); // fallback para data atual
+    }
+
+    const contractDate = loanDate.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+
+    // Data de vencimento
+    let dueDateFormatted = 'Não definida';
+    if (loan.dueDate) {
+        const dueDateTime = typeof loan.dueDate === 'string' ? new Date(loan.dueDate) : new Date(loan.dueDate);
+        dueDateFormatted = dueDateTime.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+    }
+
     const installmentValue = loan.totalRepayment / loan.installments;
 
     return {
@@ -226,7 +261,7 @@ export const createContractData = (
         totalRepayment: loan.totalRepayment,
         installments: loan.installments,
         installmentValue,
-        dueDate,
+        dueDate: dueDateFormatted,
         contractDate,
         contractNumber,
     };
