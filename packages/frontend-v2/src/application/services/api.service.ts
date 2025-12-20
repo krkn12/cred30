@@ -254,6 +254,12 @@ class ApiService {
     return response.data!;
   }
 
+  // Método para reivindicar recompensa por anúncio
+  async claimAdReward(): Promise<any> {
+    const response = await this.request<any>('/users/reward-ad', { method: 'POST' });
+    return response.data!;
+  }
+
   // Método para comprar cotas
   async buyQuotas(quantity: number, useBalance: boolean, paymentMethod?: 'pix' | 'card', cardData?: any): Promise<any> {
     const response = await this.request<any>('/quotas/buy', {

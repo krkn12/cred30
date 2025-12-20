@@ -287,4 +287,66 @@ userRoutes.post('/change-password', authMiddleware, async (c) => {
   }
 });
 
+// Recompensa por assistir anúncio (Gera Score - Seguro para o Caixa)
+userRoutes.post('/reward-ad', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user') as UserContext;
+    const pool = getDbPool(c);
+
+    // 1. Verificar limite diário de recompensas por anúncio (evitar abuso)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const checkLimitRes = await pool.query(
+      `SELECT count(*) FROM transactions 
+       WHERE user_id = $1 AND type = 'AD_REWARD' AND created_at >= $2`,
+      [user.id, today]
+    );
+
+    const adsToday = parseInt(checkLimitRes.rows[0].count);
+    const DAILY_LIMIT = 5;
+
+    if (adsToday >= DAILY_LIMIT) {
+      return c.json({
+        success: false,
+        message: 'Limite diário de prêmios atingido. Volte amanhã!'
+      }, 400);
+    }
+
+    // 2. Aplicar Recompensa (Score +5)
+    // O Score é um bem digital que não custa dinheiro ao sistema, 
+    // mas incentiva o usuário a investir mais (crescendo o caixa).
+    const scoreReward = 5;
+
+    await pool.query(
+      'UPDATE users SET score = score + $1 WHERE id = $2',
+      [scoreReward, user.id]
+    );
+
+    // 3. Registrar a transação para controle de log e limite
+    await pool.query(
+      `INSERT INTO transactions (user_id, type, amount, status, description, metadata)
+       VALUES ($1, 'AD_REWARD', 0, 'APPROVED', $2, $3)`,
+      [
+        user.id,
+        `Prêmio por assistir anúncio (+${scoreReward} pts Score)`,
+        JSON.stringify({ scoreRewarded: scoreReward, adType: 'rewarded_video' })
+      ]
+    );
+
+    return c.json({
+      success: true,
+      message: `Parabéns! Você ganhou +${scoreReward} pontos de Score!`,
+      data: {
+        scoreRewarded: scoreReward,
+        adsToday: adsToday + 1
+      }
+    });
+
+  } catch (error) {
+    console.error('Erro ao processar recompensa ad:', error);
+    return c.json({ success: false, message: 'Erro ao processar sua recompensa.' }, 500);
+  }
+});
+
 export { userRoutes };

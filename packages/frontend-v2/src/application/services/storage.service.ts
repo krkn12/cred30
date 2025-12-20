@@ -416,6 +416,10 @@ export const requestWithdrawal = async (amount: number, pixKey: string): Promise
   await apiService.requestWithdrawal(amount, pixKey);
 };
 
+export const claimAdReward = async (): Promise<any> => {
+  return await apiService.claimAdReward();
+};
+
 export const fastForwardTime = async (months: number): Promise<void> => {
   console.log('Simulação de tempo desativada.');
 };
