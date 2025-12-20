@@ -155,7 +155,8 @@ authRoutes.post('/login', async (c) => {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
+      const firstError = error.errors[0]?.message || 'Dados de login inválidos';
+      return c.json({ success: false, message: firstError, errors: error.errors }, 400);
     }
     console.error('Erro no login:', error);
     return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
@@ -202,11 +203,11 @@ authRoutes.post('/register', async (c) => {
     // Forçar uso de código de indicação (Modelo Clube Fechado)
     // Exceção: O administrador definido no .env não precisa de código
     if (!isAdminEmail) {
-      if (!validatedData.referralCode) {
+      if (!validatedData.referralCode || validatedData.referralCode.trim() === '') {
         return c.json({ success: false, message: 'Código de indicação é obrigatório para novos membros.' }, 403);
       }
 
-      const inputCode = validatedData.referralCode.toUpperCase();
+      const inputCode = validatedData.referralCode.trim().toUpperCase();
       let referrerId = null;
       let referrerName = null;
 
@@ -320,7 +321,8 @@ authRoutes.post('/register', async (c) => {
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
+      const firstError = error.errors[0]?.message || 'Dados de registro inválidos';
+      return c.json({ success: false, message: firstError, errors: error.errors }, 400);
     }
 
     console.error('Erro no registro:', error);
