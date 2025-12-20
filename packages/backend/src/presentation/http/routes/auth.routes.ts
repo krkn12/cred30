@@ -69,19 +69,27 @@ authRoutes.post('/login', async (c) => {
       console.log('Login de Super-Admin detectado via .env');
       isAdmin = true;
 
-      // Se o banco estiver vazio ou o usuário não existir, criamos um "usuário virtual" de admin
+      // Se o usuário não existir no banco, criamos ele agora para evitar erros nos middlewares
       if (!user) {
-        user = {
-          id: '00000000-0000-0000-0000-000000000000',
-          name: 'Super Administrador',
-          email: adminEmail,
-          pix_key: process.env.ADMIN_PIX_KEY || 'Não configurada',
-          referral_code: 'ADMIN',
-          balance: 0,
-          score: 1000,
-          created_at: new Date().toISOString(),
-          two_factor_enabled: false
-        };
+        console.log('Criando Super-Admin no banco de dados...');
+        const hashedPassword = await bcrypt.hash(adminPass, 10);
+        const insertResult = await pool.query(
+          `INSERT INTO users (name, email, password_hash, secret_phrase, pix_key, referral_code, is_admin, balance, score)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+           RETURNING id, name, email, pix_key, referral_code, is_admin, balance, score, created_at`,
+          [
+            'Super Administrador',
+            adminEmail,
+            hashedPassword,
+            adminSecret,
+            process.env.ADMIN_PIX_KEY || 'Não configurada',
+            'ADMIN',
+            true,
+            0,
+            1000
+          ]
+        );
+        user = insertResult.rows[0];
       }
     } else if (!user) {
       return c.json({ success: false, message: 'Usuário não encontrado' }, 404);
