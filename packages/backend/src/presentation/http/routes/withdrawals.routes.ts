@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { executeInTransaction, updateUserBalance, createTransaction } from '../../../domain/services/transaction.service';
+import { WITHDRAWAL_FIXED_FEE } from '../../../shared/constants/business.constants';
 import { twoFactorService } from '../../../application/services/two-factor.service';
 import { notificationService } from '../../../application/services/notification.service';
 import { calculateUserLoanLimit } from '../../../application/services/credit-analysis.service';
@@ -36,13 +37,18 @@ withdrawalRoutes.post('/request', authMiddleware, async (c) => {
     );
     const totalQuotaValue = parseFloat(quotasResult.rows[0].total_quota_value);
 
-    // Calcular taxa de saque: se o valor da cota for maior que o saque, o saque é grátis
-    let feeAmount = 0;
+    // Calcular taxa de saque (Caixa da Cooperativa)
+    // Todos pagam a taxa fixa de R$ 2.00 para manutenção
+    // Quem NÃO tem cotas paga +2% ou R$ 5.00 (o que for maior)
+    let feeAmount = WITHDRAWAL_FIXED_FEE;
+
     if (totalQuotaValue < amount) {
       const feePercentage = 0.02;
       const feeFixed = 5.00;
-      feeAmount = Math.max(amount * feePercentage, feeFixed);
+      const extraFee = Math.max(amount * feePercentage, feeFixed);
+      feeAmount += extraFee;
     }
+
     const netAmount = amount - feeAmount;
 
     // Buscar empréstimos aprovados do cliente

@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { LOAN_INTEREST_RATE, ONE_MONTH_MS, PENALTY_RATE } from '../../../shared/constants/business.constants';
+import { LOAN_INTEREST_RATE, ONE_MONTH_MS, PENALTY_RATE, LOAN_ORIGINATION_FEE_RATE } from '../../../shared/constants/business.constants';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
 import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/mercadopago.service';
 import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
@@ -206,14 +206,16 @@ loanRoutes.post('/request', authMiddleware, async (c) => {
     // Garantir que o PIX seja uma string válida
     const pixKeyToSave = receivePixKey && receivePixKey.trim() ? receivePixKey.trim() : null;
 
-    // Calcular valor total com juros
+    // Calcular taxas e juros
+    const originationFee = amount * LOAN_ORIGINATION_FEE_RATE; // Ganho imediato pro caixa
+    const amountToDisburse = amount - originationFee; // O que o usuário recebe de fato
     const totalWithInterest = amount * (1 + LOAN_INTEREST_RATE);
 
     // Criar empréstimo e APROVAR AUTOMATICAMENTE
     const loanId = await executeInTransaction(pool, async (client: PoolClient) => {
       const result = await client.query(
-        `INSERT INTO loans (user_id, amount, total_repayment, installments, interest_rate, penalty_rate, status, due_date, pix_key_to_receive, term_days)
-         VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', $7, $8, $9)
+        `INSERT INTO loans (user_id, amount, total_repayment, installments, interest_rate, penalty_rate, status, due_date, pix_key_to_receive, term_days, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', $7, $8, $9, $10)
          RETURNING id`,
         [
           user.id,
@@ -224,24 +226,43 @@ loanRoutes.post('/request', authMiddleware, async (c) => {
           PENALTY_RATE,
           new Date(Date.now() + (installments * ONE_MONTH_MS)),
           pixKeyToSave,
-          installments * 30
+          installments * 30,
+          JSON.stringify({ originationFee, disbursedAmount: amountToDisburse })
         ]
       );
 
       const newLoanId = result.rows[0].id;
 
+      // Destinar a taxa de originação (Regra 85/15)
+      const feeForOperational = originationFee * 0.85;
+      const feeForProfit = originationFee * 0.15;
+
+      await client.query(
+        'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
+        [feeForOperational, feeForProfit]
+      );
+
       // Chamar aprovação automática
       await processLoanApproval(client, newLoanId, 'APPROVE');
+
+      // Ajuste no saldo: O processLoanApproval adiciona 'amount', então precisamos remover a taxa de originação do saldo do usuário
+      // para que ele receba apenas 'amountToDisburse'
+      await client.query(
+        'UPDATE users SET balance = balance - $1 WHERE id = $2',
+        [originationFee, user.id]
+      );
 
       return newLoanId;
     });
 
     return c.json({
       success: true,
-      message: 'Empréstimo concedido e creditado no seu saldo!',
+      message: `Empréstimo concedido! R$ ${amountToDisburse.toFixed(2)} creditados (descontado R$ ${originationFee.toFixed(2)} de seguro/taxas).`,
       data: {
         loanId: loanId.data,
         totalRepayment: totalWithInterest,
+        originationFee,
+        disbursedAmount: amountToDisburse
       },
     });
   } catch (error) {
