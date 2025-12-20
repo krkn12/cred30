@@ -10,9 +10,9 @@ const marketplaceRoutes = new Hono();
 
 // Esquemas de validação
 const createListingSchema = z.object({
-    title: z.string().min(3).max(255),
-    description: z.string().min(10),
-    price: z.number().positive(),
+    title: z.string().min(3, 'Título deve ter pelo menos 3 caracteres').max(255),
+    description: z.string().min(5, 'Descrição deve ter pelo menos 5 caracteres'),
+    price: z.number().positive('Preço deve ser maior que zero'),
     category: z.string().optional(),
     imageUrl: z.string().optional(),
 });
@@ -61,9 +61,10 @@ marketplaceRoutes.post('/create', authMiddleware, async (c) => {
         const parseResult = createListingSchema.safeParse(body);
 
         if (!parseResult.success) {
+            console.error('Validation error creating listing:', parseResult.error.errors);
             return c.json({
                 success: false,
-                message: 'Dados do anúncio inválidos',
+                message: 'Dados do anúncio inválidos: ' + parseResult.error.errors.map(e => e.message).join(', '),
                 errors: parseResult.error.errors
             }, 400);
         }
