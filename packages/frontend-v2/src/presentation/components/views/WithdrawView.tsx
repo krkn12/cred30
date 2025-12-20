@@ -308,10 +308,10 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                                     </div>
                                 </div>
                                 <button
-                                    onClick={() => window.open('/app/invest', '_blank')}
+                                    onClick={() => window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank')}
                                     className="text-primary-400 text-xs font-bold hover:underline"
                                 >
-                                    Saiba Mais
+                                    VER OFERTA
                                 </button>
                             </div>
                         </div>

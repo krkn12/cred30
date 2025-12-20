@@ -326,6 +326,9 @@ export default function App() {
   }
 
   const handleClaimReward = async () => {
+    // Abrir o Smartlink do Adsterra em uma nova aba para gerar receita
+    window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
+
     try {
       const res = await claimAdReward();
       await refreshState();
