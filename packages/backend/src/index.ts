@@ -26,7 +26,7 @@ app.use('*', compress());
 
 // Middleware para CORS
 app.use('*', cors({
-  origin: '*',
+  origin: (origin) => origin, // Permite qualquer origem mantendo suporte a credentials: true
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'Expires', 'X-Requested-With', 'Accept', 'Origin'],
   credentials: true,
