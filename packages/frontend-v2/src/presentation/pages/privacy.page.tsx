@@ -117,10 +117,10 @@ const PrivacyPage = () => {
                             A Cred30 <strong className="text-white">NÃO vende, aluga ou compartilha</strong> seus dados pessoais com terceiros para fins de marketing. O compartilhamento ocorre apenas nos seguintes casos:
                         </p>
                         <ul className="text-zinc-400 text-xs sm:text-sm space-y-2 ml-2">
+                            <li><strong className="text-white">• Entre Membros (Mercado):</strong> Ao realizar uma compra ou venda no Mercado Cred30, seu nome e status do pedido serão compartilhados com a outra parte da transação para viabilizar a entrega e comunicação.</li>
                             <li><strong className="text-white">• Gateway de Pagamento:</strong> Dados necessários para processar pagamentos são transmitidos ao Mercado Pago de forma segura.</li>
-                            <li><strong className="text-white">• Parceiros de Publicidade:</strong> Informações técnicas não identificáveis (como IP e tipo de dispositivo) podem ser compartilhadas com parceiros de mídia (ex: Adsterra) para exibição de anúncios.</li>
+                            <li><strong className="text-white">• Parceiros de Publicidade:</strong> Informações técnicas não identificáveis (como IP e tipo de dispositivo) podem ser compartilhadas com parceiros de mídia para exibição de anúncios.</li>
                             <li><strong className="text-white">• Obrigação Legal:</strong> Mediante ordem judicial ou requisição de autoridades competentes.</li>
-                            <li><strong className="text-white">• Proteção:</strong> Para investigar fraudes ou proteger a integridade do sistema.</li>
                         </ul>
                     </section>
 

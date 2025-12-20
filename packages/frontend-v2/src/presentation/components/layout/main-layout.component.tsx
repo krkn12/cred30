@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { LogOut, Home, PieChart, DollarSign, Settings, TrendingUp, ArrowUpFromLine, Gamepad2, ShoppingBag } from 'lucide-react';
+import { AdBanner } from '../ui/AdBanner';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../../../domain/types/common.types';
 
@@ -79,10 +80,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
   const navItems = [
     { id: 'dashboard', label: 'Início', icon: Home },
     { id: 'marketplace', label: 'Mercado', icon: ShoppingBag },
-    { id: 'invest', label: 'Investir', icon: TrendingUp },
+    { id: 'invest', label: 'Cotas', icon: TrendingUp },
     { id: 'games', label: 'Jogos', icon: Gamepad2 },
     { id: 'portfolio', label: 'Carteira', icon: PieChart },
-    { id: 'loans', label: 'Empréstimos', icon: DollarSign },
+    { id: 'loans', label: 'Crédito Mútuo', icon: DollarSign },
     { id: 'withdraw', label: 'Sacar', icon: ArrowUpFromLine },
   ];
 
@@ -138,6 +139,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
             </button>
           ))}
 
+
+          {/* Desktop Sidebar Ad - Monetização Extra */}
+          <div className="pt-4">
+            <AdBanner type="NATIVE" title="Dica Exclusiva" description="Aumente seu score hoje." />
+          </div>
         </nav>
         <div className="p-4 border-t border-surfaceHighlight">
           <button
@@ -181,7 +187,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
       </main>
 
       {/* Mobile Bottom Nav - Floating Dock (Elevado para não cobrar o Ad) */}
-      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/50 rounded-2xl flex justify-between items-center px-4 py-3 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] z-30">
+      <div className="md:hidden fixed bottom-[160px] left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/50 rounded-2xl flex justify-between items-center px-4 py-3 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] z-30">
         {navItems.map((item) => (
           <button
             key={item.id}
@@ -199,6 +205,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
         ))}
       </div>
 
+      {/* Sticky Ad Footer (Apenas Mobile - No PC polui muito) */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-black border-t border-zinc-800 p-1 pb-1">
+        <div className="mx-auto max-w-md">
+          <AdBanner type="BANNER" title="Parceiro em Destaque" description="Confira esta oferta especial." actionText="ABRIR" />
+        </div>
+      </div>
     </div>
   );
 };

@@ -124,7 +124,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                                 <ArrowUpFromLine size={14} /> Sacar
                             </button>
                             <button onClick={onBuyQuota} className="bg-white text-primary-900 hover:bg-zinc-100 text-xs font-bold py-2 px-4 rounded-lg shadow-lg transition flex items-center gap-2">
-                                <TrendingUp size={14} /> Investir
+                                <TrendingUp size={14} /> Participar
                             </button>
                         </div>
                     </div>
@@ -136,10 +136,10 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                     <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-2">
                             <PieChart size={20} className="text-primary-400" />
-                            <span className="text-sm font-medium text-zinc-400">Total Investido</span>
+                            <span className="text-sm font-medium text-zinc-400">Total em Cotas</span>
                         </div>
                         <h3 className="text-2xl font-bold text-white">{formatCurrency(totalInvested)}</h3>
-                        <p className="text-xs text-zinc-500 mt-1">{userQuotas.length} cotas</p>
+                        <p className="text-xs text-zinc-500 mt-1">{userQuotas.length} participações</p>
                     </div>
                 </div>
 
@@ -149,7 +149,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                     <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-2">
                             <ArrowUpFromLine size={20} className="text-emerald-400" />
-                            <span className="text-sm font-medium text-zinc-400">Rendimentos</span>
+                            <span className="text-sm font-medium text-zinc-400">Excedentes</span>
                         </div>
                         <h3 className="text-2xl font-bold text-emerald-400">{formatCurrency(totalEarnings)}</h3>
                         <p className="text-xs text-zinc-500 mt-1">+{earningsPercentage.toFixed(1)}%</p>
@@ -163,10 +163,10 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                     <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-2">
                             <DollarSign size={20} className="text-red-400" />
-                            <span className="text-sm font-medium text-zinc-400">Dívida Ativa</span>
+                            <span className="text-sm font-medium text-zinc-400">Compromisso Mútuo</span>
                         </div>
                         <h3 className="text-2xl font-bold text-red-400">{formatCurrency(totalDebt)}</h3>
-                        <p className="text-xs text-zinc-500 mt-1">{userLoans.length} empréstimos</p>
+                        <p className="text-xs text-zinc-500 mt-1">{userLoans.length} ajudas mútuas</p>
                     </div>
                 </div>
             </div>
@@ -275,7 +275,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                     <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-800 flex items-center justify-center text-primary-400 group-hover:bg-primary-900/40 transition-all border border-zinc-700 shadow-lg group-active:scale-95">
                         <TrendingUp size={24} />
                     </div>
-                    <span className="text-xs font-medium text-zinc-300">Investir</span>
+                    <span className="text-xs font-medium text-zinc-300">Aportar</span>
                 </button>
 
                 <button onClick={onGames} className="flex flex-col items-center gap-2 min-w-[72px] group shrink-0">
@@ -296,7 +296,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                     <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-800 flex items-center justify-center text-blue-400 group-hover:bg-blue-900/40 transition-all border border-zinc-700 shadow-lg group-active:scale-95">
                         <DollarSign size={24} />
                     </div>
-                    <span className="text-xs font-medium text-zinc-300">Empréstimo</span>
+                    <span className="text-xs font-medium text-zinc-300">Crédito</span>
                 </button>
 
                 <button onClick={onWithdraw} className="flex flex-col items-center gap-2 min-w-[72px] group shrink-0">
@@ -354,6 +354,9 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                         </div>
                     </div>
                 </div>
+
+                {/* Banner de Adsterra na Dashboard */}
+                <AdBanner type="NATIVE" title="Cartão com Limite Alto" description="Aproveite ofertas de parceiros Cred30." actionText="VER AGORA" />
             </div>
 
             {/* Recent Transactions (Extrato) */}

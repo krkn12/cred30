@@ -70,8 +70,8 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                             <DollarSign className="text-primary-400" size={24} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-white">Solicitar Empréstimo</h2>
-                            <p className="text-zinc-400 text-sm">Crédito rápido na sua conta</p>
+                            <h2 className="text-xl font-bold text-white">Solicitar Ajuda Mútua</h2>
+                            <p className="text-zinc-400 text-sm">Apoio financeiro imediato para membros</p>
                         </div>
                     </div>
 
@@ -85,7 +85,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                     <TrendingUp className="text-emerald-400" size={18} />
                                 )}
                                 <span className={`text-sm font-medium ${creditLimit.totalLimit === 0 ? 'text-orange-400' : 'text-emerald-400'}`}>
-                                    {creditLimit.totalLimit === 0 ? 'Atenção: Crédito Bloqueado' : 'Seu Limite de Crédito'}
+                                    {creditLimit.totalLimit === 0 ? 'Atenção: Ajuda Indisponível' : 'Seu Limite de Ajuda Mútua'}
                                 </span>
                             </div>
 
@@ -106,7 +106,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                         />
                                     </div>
                                     {creditLimit.activeDebt > 0 && (
-                                        <p className="text-xs text-zinc-500 mt-2">Você tem {creditLimit.activeDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em dívidas ativas.</p>
+                                        <p className="text-xs text-zinc-500 mt-2">Você tem {creditLimit.activeDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em compromissos ativos.</p>
                                     )}
                                 </>
                             )}
@@ -170,7 +170,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                         <span className="text-white font-medium">{amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-zinc-500">Juros (20%)</span>
+                                        <span className="text-zinc-500">Sustentabilidade (20%)</span>
                                         <span className="text-red-400 font-medium">{(totalRepay - amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
@@ -179,7 +179,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                     </div>
                                     <div className="h-px bg-zinc-800 my-2"></div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-zinc-400 text-sm">Total a Pagar</span>
+                                        <span className="text-zinc-400 text-sm">Total a Repor</span>
                                         <span className="text-xl font-bold text-white">{totalRepay.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                     </div>
                                 </div>
@@ -194,7 +194,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                 disabled={!amount || amount <= 0 || creditLimit?.totalLimit === 0}
                                 className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-xl mt-6 transition shadow-lg shadow-emerald-500/20"
                             >
-                                {creditLimit?.totalLimit === 0 ? 'Crédito Bloqueado' : 'Solicitar Empréstimo'}
+                                {creditLimit?.totalLimit === 0 ? 'Ajuda Indisponível' : 'Solicitar Apoio Mútuo'}
                             </button>
 
                             <div className="mt-4 shadow-sm">
@@ -210,7 +210,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
 
             {/* Active Loans List */}
             <div className="space-y-4">
-                <h3 className="text-lg font-bold text-white pl-1">Seus Empréstimos</h3>
+                <h3 className="text-lg font-bold text-white pl-1">Seus Compromissos Mútuos</h3>
 
                 {activeLoans.length === 0 && (
                     <div className="text-center py-12 bg-surface/50 rounded-3xl border border-surfaceHighlight border-dashed">
@@ -281,13 +281,13 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                         onClick={() => setInstallmentModalData({ loanId: loan.id, installmentAmount: installmentValue })}
                                         className="py-2.5 rounded-xl bg-surfaceHighlight hover:bg-zinc-700 text-white text-sm font-medium transition"
                                     >
-                                        Pagar Parcela
+                                        Repor Parcela
                                     </button>
                                     <button
                                         onClick={() => setPayModalId(loan.id)}
                                         className={`py-2.5 rounded-xl text-white text-sm font-medium transition ${isOverdue ? 'bg-red-500 hover:bg-red-600' : 'bg-primary-500 hover:bg-primary-400 text-black'}`}
                                     >
-                                        Quitar Tudo
+                                        Finalizar Compromisso
                                     </button>
                                     <button
                                         onClick={() => {
@@ -333,9 +333,9 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                     <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 w-full max-w-sm relative animate-fade-in">
                         <button title="Fechar" onClick={() => setPayModalId(null)} className="absolute top-4 right-4 text-zinc-400 hover:text-white bg-zinc-800 p-1.5 rounded-full z-10"><XIcon size={24} /></button>
 
-                        <h3 className="text-xl font-bold text-white mb-4">Quitar Empréstimo</h3>
+                        <h3 className="text-xl font-bold text-white mb-4">Finalizar Compromisso</h3>
                         <p className="text-zinc-400 text-sm mb-6">
-                            Você está prestes a quitar o valor total de <strong className="text-white">{selectedLoan.totalRepayment.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>.
+                            Você está prestes a repor o valor total de <strong className="text-white">{selectedLoan.totalRepayment.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong> para a cooperativa.
                         </p>
 
                         <div className="bg-background p-3 rounded-xl mb-4 border border-surfaceHighlight">
@@ -362,9 +362,9 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                     <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 w-full max-w-sm relative animate-fade-in">
                         <button title="Fechar" onClick={() => setInstallmentModalData(null)} className="absolute top-4 right-4 text-zinc-400 hover:text-white bg-zinc-800 p-1.5 rounded-full z-10"><XIcon size={24} /></button>
 
-                        <h3 className="text-xl font-bold text-white mb-4">Pagar Parcela</h3>
+                        <h3 className="text-xl font-bold text-white mb-4">Repor Parcela</h3>
                         <p className="text-zinc-400 text-sm mb-6">
-                            Valor da parcela: <strong className="text-white">{installmentModalData.installmentAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                            Valor da reposição: <strong className="text-white">{installmentModalData.installmentAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
                         </p>
 
                         <div className="bg-background p-3 rounded-xl mb-4 border border-surfaceHighlight">
@@ -389,7 +389,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
             )}
             {/* Legal Disclaimer */}
             <div className="mt-8 px-4 text-[10px] text-zinc-600 text-center leading-relaxed">
-                <p>Solicitações de crédito estão sujeitas à análise de Score e disponibilidade de caixa. Os empréstimos são garantidos por alienação de cotas ativas no sistema. Em caso de atraso superior a 5 dias, a garantia será executada automaticamente conforme Termos de Uso aceitos no cadastro.</p>
+                <p>As ajudas mútuas estão sujeitas à análise de Score e disponibilidade de caixa da cooperativa. Os créditos são garantidos por alienação de cotas ativas no sistema. Em caso de atraso superior a 5 dias, a garantia será executada automaticamente conforme Termos de Uso (SCP/Mútuo Civil).</p>
             </div>
         </div>
     );

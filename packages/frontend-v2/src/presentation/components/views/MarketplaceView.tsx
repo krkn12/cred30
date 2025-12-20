@@ -3,8 +3,9 @@ import {
     ShoppingBag, Tag, Search, Filter, PlusCircle,
     ShieldCheck, Truck, Package, CheckCircle2,
     Clock, DollarSign, ArrowLeft, Image as ImageIcon,
-    ChevronRight, Info, AlertCircle
+    ChevronRight, Info, AlertCircle, ExternalLink, Star
 } from 'lucide-react';
+import { AdBanner } from '../ui/AdBanner';
 import { AppState, User } from '../../../domain/types/common.types';
 import { MARKETPLACE_ESCROW_FEE_RATE } from '../../../shared/constants/app.constants';
 
@@ -211,37 +212,59 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
             {/* Content Rendering */}
             {view === 'browse' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in duration-300">
-                    {listings.length > 0 ? listings.map((item) => (
-                        <div key={item.id} className="bg-surface border border-surfaceHighlight rounded-2xl overflow-hidden group hover:border-primary-500/30 transition-all flex flex-col">
-                            <div className="aspect-square bg-zinc-900 flex items-center justify-center relative">
-                                {item.image_url ? (
-                                    <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
-                                ) : (
-                                    <ImageIcon size={40} className="text-zinc-800" />
-                                )}
-                                <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[10px] text-zinc-300 font-bold uppercase">
-                                    {item.category}
-                                </div>
+                    {listings.length > 0 ? (
+                        <>
+                            {/* Inserir Anúncio Adsterra no topo para visibilidade máxima */}
+                            <div className="col-span-1">
+                                <AdBanner
+                                    type="BANNER"
+                                    title="Ganhe + R$ 500 no Saldo"
+                                    description="Confira como liberar bônus de parceiros assistindo vídeos."
+                                    actionText="LIBERAR AGORA"
+                                />
                             </div>
-                            <div className="p-4 flex-1 flex flex-col">
-                                <h3 className="font-bold text-white text-base mb-1 line-clamp-1">{item.title}</h3>
-                                <p className="text-xs text-zinc-500 mb-4 line-clamp-2 h-8">{item.description}</p>
 
-                                <div className="mt-auto pt-4 border-t border-surfaceHighlight flex items-center justify-between">
-                                    <span className="text-lg font-black text-primary-400">{formatCurrency(parseFloat(item.price))}</span>
-                                    <button
-                                        onClick={() => {
-                                            setSelectedItem(item);
-                                            setView('details');
-                                        }}
-                                        className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2"
-                                    >
-                                        VER MAIS
-                                    </button>
+                            {listings.map((item) => (
+                                <div key={item.id} className="bg-surface border border-surfaceHighlight rounded-2xl overflow-hidden group hover:border-primary-500/30 transition-all flex flex-col">
+                                    <div className="aspect-square bg-zinc-900 flex items-center justify-center relative">
+                                        {item.image_url ? (
+                                            <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <ImageIcon size={40} className="text-zinc-800" />
+                                        )}
+                                        <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[10px] text-zinc-300 font-bold uppercase">
+                                            {item.category}
+                                        </div>
+                                    </div>
+                                    <div className="p-4 flex-1 flex flex-col">
+                                        <h3 className="font-bold text-white text-base mb-1 line-clamp-1">{item.title}</h3>
+                                        <p className="text-xs text-zinc-500 mb-4 line-clamp-2 h-8">{item.description}</p>
+
+                                        <div className="mt-auto pt-4 border-t border-surfaceHighlight flex items-center justify-between">
+                                            <span className="text-lg font-black text-primary-400">{formatCurrency(parseFloat(item.price))}</span>
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedItem(item);
+                                                    setView('details');
+                                                }}
+                                                className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2"
+                                            >
+                                                VER MAIS
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
+                            ))}
+
+                            {/* Segunda chamada Adsterra no final */}
+                            <div className="col-span-1">
+                                <AdBanner
+                                    type="TIP"
+                                    description="Dica: Clique em anúncios parceiros para aumentar seu Score Cred30."
+                                />
                             </div>
-                        </div>
-                    )) : (
+                        </>
+                    ) : (
                         <div className="col-span-full py-12 text-center">
                             <Tag size={48} className="text-zinc-800 mx-auto mb-4" />
                             <p className="text-zinc-500 text-sm">Nenhum item anunciado no momento.</p>

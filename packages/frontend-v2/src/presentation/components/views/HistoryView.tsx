@@ -23,14 +23,14 @@ export const HistoryView = ({ transactions }: HistoryViewProps) => {
     // Traduzir tipos
     const translateType = (type: string) => {
         const map: Record<string, string> = {
-            'DEPOSIT': 'Depósito',
+            'DEPOSIT': 'Aporte',
             'WITHDRAWAL': 'Saque',
-            'DIVIDEND': 'Dividendo',
-            'QUOTA_PURCHASE': 'Compra de Cota',
-            'QUOTA_SELL': 'Venda de Cota',
-            'LOAN_RECEIVED': 'Empréstimo Recebido',
-            'LOAN_PAYMENT': 'Pagamento de Empréstimo',
-            'LOAN_INSTALLMENT': 'Parcela de Empréstimo',
+            'DIVIDEND': 'Excedente',
+            'QUOTA_PURCHASE': 'Aquisição de Participação',
+            'QUOTA_SELL': 'Cessão de Participação',
+            'LOAN_RECEIVED': 'Apoio Mútuo Recebido',
+            'LOAN_PAYMENT': 'Reposição de Apoio',
+            'LOAN_INSTALLMENT': 'Reposição de Parcela',
             'REFERRAL_BONUS': 'Bônus de Indicação',
             'GAME_WIN': 'Prêmio de Jogo',
             'GAME_BET': 'Aposta em Jogo',
