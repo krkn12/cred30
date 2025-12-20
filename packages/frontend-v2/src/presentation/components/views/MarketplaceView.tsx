@@ -278,6 +278,48 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
 
     const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+    const NativeAdCard = ({ title, price, img, category }: { title: string, price: string, img: string, category: string }) => (
+        <div
+            onClick={() => {
+                if (confirm('Você está saindo da Cred30 para ver uma oferta de um parceiro externo. Deseja continuar?')) {
+                    window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
+                }
+            }}
+            className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden group hover:border-primary-500/40 transition-all flex flex-col cursor-pointer relative shadow-2xl"
+        >
+            <div className="absolute top-2 left-2 z-10 bg-zinc-800 text-zinc-400 text-[7px] font-black px-1.5 py-0.5 rounded flex items-center gap-1 border border-zinc-700">
+                <Info size={8} /> ANÚNCIO DE PARCEIRO
+            </div>
+            <div className="aspect-square bg-zinc-900 flex items-center justify-center relative grayscale-[0.3] group-hover:grayscale-0 transition-all">
+                <img src={img} alt={title} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[9px] text-zinc-400 font-medium">
+                    {category}
+                </div>
+            </div>
+            <div className="p-4 flex-1 flex flex-col">
+                <h3 className="font-bold text-white text-base mb-1 line-clamp-1 group-hover:text-primary-400 transition-colors">{title}</h3>
+                <p className="text-[10px] text-zinc-500 mb-4 line-clamp-2 h-8 italic leading-tight">Esta é uma oferta externa recomendada por nossos parceiros publicitários.</p>
+
+                <div className="mt-auto space-y-3">
+                    <div className="flex items-center justify-between">
+                        <span className="text-base font-black text-primary-400/70">{price}</span>
+                        <div className="text-[9px] text-zinc-600 flex items-center gap-1">
+                            Link Externo <ExternalLink size={10} />
+                        </div>
+                    </div>
+
+                    <button className="w-full bg-zinc-800 group-hover:bg-primary-500 group-hover:text-black py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-2">
+                        ACESSAR OFERTA
+                    </button>
+
+                    <p className="text-[7px] text-zinc-700 text-center uppercase tracking-tighter">
+                        A Cred30 não se responsabiliza pelo conteúdo deste site externo.
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+
     return (
         <div className="space-y-6 pb-20">
             {/* Header */}
@@ -348,40 +390,52 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
                                 />
                             </div>
 
-                            {listings.map((item) => (
-                                <div key={item.id} className="bg-surface border border-surfaceHighlight rounded-2xl overflow-hidden group hover:border-primary-500/30 transition-all flex flex-col">
-                                    <div className="aspect-square bg-zinc-900 flex items-center justify-center relative">
-                                        {item.image_url ? (
-                                            <img
-                                                src={item.image_url.includes('cloudinary') ? item.image_url.replace('/upload/', '/upload/w_600,c_fill,g_auto,q_auto,f_auto/') : item.image_url}
-                                                alt={item.title}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <ImageIcon size={40} className="text-zinc-800" />
-                                        )}
-                                        <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[10px] text-zinc-300 font-bold uppercase">
-                                            {item.category}
+                            {listings.map((item, index) => (
+                                <React.Fragment key={item.id}>
+                                    <div className="bg-surface border border-surfaceHighlight rounded-2xl overflow-hidden group hover:border-primary-500/30 transition-all flex flex-col">
+                                        <div className="aspect-square bg-zinc-900 flex items-center justify-center relative">
+                                            {item.image_url ? (
+                                                <img
+                                                    src={item.image_url.includes('cloudinary') ? item.image_url.replace('/upload/', '/upload/w_600,c_fill,g_auto,q_auto,f_auto/') : item.image_url}
+                                                    alt={item.title}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <ImageIcon size={40} className="text-zinc-800" />
+                                            )}
+                                            <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[10px] text-zinc-300 font-bold uppercase">
+                                                {item.category}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="p-4 flex-1 flex flex-col">
-                                        <h3 className="font-bold text-white text-base mb-1 line-clamp-1">{item.title}</h3>
-                                        <p className="text-xs text-zinc-500 mb-4 line-clamp-2 h-8">{item.description}</p>
+                                        <div className="p-4 flex-1 flex flex-col">
+                                            <h3 className="font-bold text-white text-base mb-1 line-clamp-1">{item.title}</h3>
+                                            <p className="text-xs text-zinc-500 mb-4 line-clamp-2 h-8">{item.description}</p>
 
-                                        <div className="mt-auto pt-4 border-t border-surfaceHighlight flex items-center justify-between">
-                                            <span className="text-lg font-black text-primary-400">{formatCurrency(parseFloat(item.price))}</span>
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedItem(item);
-                                                    setView('details');
-                                                }}
-                                                className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2"
-                                            >
-                                                VER MAIS
-                                            </button>
+                                            <div className="mt-auto pt-4 border-t border-surfaceHighlight flex items-center justify-between">
+                                                <span className="text-lg font-black text-primary-400">{formatCurrency(parseFloat(item.price))}</span>
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedItem(item);
+                                                        setView('details');
+                                                    }}
+                                                    className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2"
+                                                >
+                                                    VER MAIS
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+
+                                    {/* Injeção de Anúncio Estilo OLX a cada 3 itens */}
+                                    {(index + 1) % 3 === 0 && (
+                                        <NativeAdCard
+                                            title={index === 2 ? "Novo Cartão Black Sem Anuidade" : "Empréstimo FGTS Cai na Hora"}
+                                            price={index === 2 ? "GRÁTIS" : "SIMULAR"}
+                                            category="OFERTA"
+                                            img={index === 2 ? "https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=600&q=80" : "https://images.unsplash.com/photo-1554224155-16974a4005d1?auto=format&fit=crop&w=600&q=80"}
+                                        />
+                                    )}
+                                </React.Fragment>
                             ))}
 
                             {/* Segunda chamada Adsterra no final */}
