@@ -71,17 +71,23 @@ const WelcomePage = () => {
     };
   }, []);
 
+  const [isDownloading, setIsDownloading] = useState(false);
+
   const handleInstallClick = async () => {
-    // Se tiver o prompt nativo, usa ele direto
+    setIsDownloading(true);
+
+    // Se tiver o prompt nativo (Android/Chrome), dispara NA HORA
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') {
         setDeferredPrompt(null);
       }
+      setIsDownloading(false);
     } else {
-      // Se não tiver prompt nativo (como no iOS), mostra o modal instrucional
+      // Se for iOS ou não tiver prompt, mostra as instruções mas já deixa o botão pronto
       setShowInstallModal(true);
+      setIsDownloading(false);
     }
   };
 
@@ -150,10 +156,15 @@ const WelcomePage = () => {
             {!isInstalled && (
               <button
                 onClick={handleInstallClick}
-                className="bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-5 px-8 rounded-2xl transition-all hover:scale-105 flex items-center justify-center gap-3 text-lg border border-zinc-700"
+                disabled={isDownloading}
+                className="bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-5 px-8 rounded-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-3 text-lg border border-zinc-700 disabled:opacity-70"
               >
-                <Download className="w-5 h-5" />
-                Baixar App
+                {isDownloading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  <Download className="w-5 h-5" />
+                )}
+                {isDownloading ? 'Baixando...' : 'Baixar App'}
               </button>
             )}
 
