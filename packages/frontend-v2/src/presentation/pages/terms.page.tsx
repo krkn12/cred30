@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ScrollText, ShieldCheck, Scale, Users, Gavel, AlertTriangle, CreditCard, ClockIcon, FileText } from 'lucide-react';
+import { ArrowLeft, ScrollText, ShieldCheck, Scale, Users, Gavel, AlertTriangle, CreditCard, ClockIcon, FileText, Zap } from 'lucide-react';
 
 const TermsPage = () => {
     const navigate = useNavigate();
@@ -36,7 +36,7 @@ const TermsPage = () => {
                         <ScrollText size={14} /> Documento Oficial
                     </div>
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-3 sm:mb-4 tracking-tight">Termos de Uso</h1>
-                    <p className="text-zinc-400 text-sm sm:text-lg">Última atualização: 19 de Dezembro de 2024</p>
+                    <p className="text-zinc-400 text-sm sm:text-lg">Última atualização: 20 de Dezembro de 2024</p>
                 </div>
 
                 <div className="space-y-8 sm:space-y-12">
@@ -166,7 +166,23 @@ const TermsPage = () => {
                     {/* Seção 7 */}
                     <section className="bg-zinc-900/30 border border-white/5 p-5 sm:p-8 rounded-2xl sm:rounded-3xl">
                         <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-3 text-cyan-400">
-                            <ClockIcon size={22} /> 7. Modificações e Foro
+                            <Zap size={22} /> 7. Publicidade e Parceiros Externos
+                        </h2>
+                        <p className="text-zinc-300 text-sm sm:text-base leading-relaxed mb-4">
+                            O Cred30 utiliza a veiculação de anúncios e parcerias externas como uma de suas fontes de receita para garantir a sustentabilidade e o crescimento da cooperativa. Ao utilizar a plataforma, o Usuário concorda que:
+                        </p>
+                        <ul className="list-disc list-inside text-zinc-400 text-xs sm:text-sm space-y-2 ml-2 sm:ml-4">
+                            <li>O Sistema pode exibir anúncios de terceiros em diversos formatos (banners, links, vídeos, notificações).</li>
+                            <li><strong>Responsabilidade Limitada:</strong> A Cred30 não controla, endossa ou se responsabiliza pelos conteúdos, produtos ou serviços oferecidos por anunciantes externos (ex: Adsterra, Google AdSense, etc.).</li>
+                            <li>Links externos podem redirecionar o Usuário para fora da plataforma segura do Cred30, ocorrendo por conta e risco do próprio Usuário.</li>
+                            <li>A visualização de anúncios pode ser requisito para o recebimento de certas recompensas digitais (como pontos de Score), não constituindo pagamento direto em dinheiro.</li>
+                        </ul>
+                    </section>
+
+                    {/* Seção 8 */}
+                    <section className="bg-zinc-900/30 border border-white/5 p-5 sm:p-8 rounded-2xl sm:rounded-3xl">
+                        <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-3 text-cyan-400">
+                            <ClockIcon size={22} /> 8. Modificações e Foro
                         </h2>
                         <p className="text-zinc-300 text-sm sm:text-base leading-relaxed mb-4">
                             A Cred30 reserva-se o direito de modificar estes Termos a qualquer momento. As alterações entram em vigor imediatamente após a publicação. O uso continuado da plataforma após modificações implica aceitação dos novos termos.
