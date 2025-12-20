@@ -293,7 +293,9 @@ userRoutes.post('/reward-ad', authMiddleware, async (c) => {
     const user = c.get('user') as UserContext;
     const pool = getDbPool(c);
 
-    // 1. Verificar limite diário (REMOVIDO: Usuário pode ver ilimitado)
+    // 1. Verificar limite diário de GANHO DE SCORE (Anti-Farm)
+    // O usuário pode ver ilimitados anúncios para ajudar a plataforma,
+    // mas só ganha pontos nos primeiros X do dia.
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -303,20 +305,22 @@ userRoutes.post('/reward-ad', authMiddleware, async (c) => {
       [user.id, today]
     );
 
-    const adsToday = parseInt(checkLimitRes.rows[0].count);
-    // const DAILY_LIMIT = 5; 
+    const adsWithScoreToday = parseInt(checkLimitRes.rows[0].count);
+    const DAILY_SCORE_LIMIT_ADS = 3; // 3 ads * 5 pts = 15 pts max
 
-    // if (adsToday >= DAILY_LIMIT) { ... }
+    let scoreReward = 0;
+    let message = 'Obrigado por ajudar a Cred30!';
 
-    // 2. Aplicar Recompensa (Score +5)
-    // O Score é um bem digital que não custa dinheiro ao sistema, 
-    // mas incentiva o usuário a investir mais (crescendo o caixa).
-    const scoreReward = 5;
-
-    await pool.query(
-      'UPDATE users SET score = score + $1 WHERE id = $2',
-      [scoreReward, user.id]
-    );
+    if (adsWithScoreToday < DAILY_SCORE_LIMIT_ADS) {
+      scoreReward = 5;
+      await pool.query(
+        'UPDATE users SET score = score + $1 WHERE id = $2',
+        [scoreReward, user.id]
+      );
+      message = `Parabéns! Você ganhou +${scoreReward} pontos de Score!`;
+    } else {
+      message = 'Limite diário de pontos atingido, mas obrigado por apoiar o projeto!';
+    }
 
     // 3. Registrar a transação para controle de log e limite
     await pool.query(
@@ -324,17 +328,17 @@ userRoutes.post('/reward-ad', authMiddleware, async (c) => {
        VALUES ($1, 'AD_REWARD', 0, 'APPROVED', $2, $3)`,
       [
         user.id,
-        `Prêmio por assistir anúncio (+${scoreReward} pts Score)`,
+        `Visualização de anúncio ${scoreReward > 0 ? `(+${scoreReward} pts)` : '(Apoio)'}`,
         JSON.stringify({ scoreRewarded: scoreReward, adType: 'rewarded_video' })
       ]
     );
 
     return c.json({
       success: true,
-      message: `Parabéns! Você ganhou +${scoreReward} pontos de Score!`,
+      message,
       data: {
         scoreRewarded: scoreReward,
-        adsToday: adsToday + 1
+        adsToday: adsWithScoreToday + (scoreReward > 0 ? 1 : 0)
       }
     });
 
