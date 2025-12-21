@@ -29,7 +29,7 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
     const [generatedCode, setGeneratedCode] = useState('');
     const [inputCode, setInputCode] = useState('');
 
-    const interactionTimeout = 60000; // 1 minuto sem mexer pede check
+    const interactionTimeout = 120000; // 2 minutos sem mexer pede check
     const presenceTimeout = 15000; // 15 segundos para responder o check
 
     // Aulas Mock
@@ -68,6 +68,9 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
                 setIsPlaying(false); // Pausa se sair
             } else {
                 setIsTabFocused(true);
+                if (!isBlocked && !showPresenceCheck) {
+                    setIsPlaying(true); // Retoma se voltar e não estiver bloqueado
+                }
             }
         };
 
