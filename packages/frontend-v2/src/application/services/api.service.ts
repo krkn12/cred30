@@ -539,6 +539,46 @@ class ApiService {
     });
   }
 
+  // --- Suporte via Chat ---
+  async getChatHistory(): Promise<any> {
+    const response = await this.request<any>('/support/history');
+    return response.data;
+  }
+
+  async sendChatMessage(content: string): Promise<any> {
+    const response = await this.request<any>('/support/message', {
+      method: 'POST',
+      body: JSON.stringify({ content })
+    });
+    return response.data;
+  }
+
+  async escalateChat(): Promise<any> {
+    const response = await this.request<any>('/support/escalate', {
+      method: 'POST'
+    });
+    return response;
+  }
+
+  // --- Admin Support ---
+  async getPendingSupportChats(): Promise<any> {
+    const response = await this.request<any>('/support/admin/pending');
+    return response.data;
+  }
+
+  async getAdminChatHistory(chatId: string | number): Promise<any> {
+    const response = await this.request<any>(`/support/admin/chat/${chatId}`);
+    return response.data;
+  }
+
+  async respondSupportChat(chatId: string | number, content: string): Promise<any> {
+    const response = await this.request<any>('/support/admin/respond', {
+      method: 'POST',
+      body: JSON.stringify({ chatId, content })
+    });
+    return response.data;
+  }
+
   // Notificações em tempo real (SSE) - DESATIVADO TEMPORARIAMENTE PARA ESTABILIDADE
   listenToNotifications(_onNotification: (data: any) => void): () => void {
     /* 

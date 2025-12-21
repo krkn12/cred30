@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import packageJson from '../../../../package.json';
 import {
-    ShieldCheck, RefreshCw, LogOut, Users, PieChart, DollarSign, PiggyBank, Coins, ArrowUpFromLine, ArrowDownLeft, TrendingUp, Clock, ArrowUpRight, Check, X as XIcon, AlertTriangle, Settings as SettingsIcon, ShoppingBag as ShoppingBagIcon, UserPlus, Trash2
+    ShieldCheck, RefreshCw, LogOut, Users, PieChart, DollarSign, PiggyBank, Coins, ArrowUpFromLine, ArrowDownLeft, TrendingUp, Clock, ArrowUpRight, Check, X as XIcon, AlertTriangle, Settings as SettingsIcon, ShoppingBag as ShoppingBagIcon, UserPlus, Trash2, MessageSquare
 } from 'lucide-react';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { PromptModal } from '../ui/PromptModal';
@@ -11,6 +11,7 @@ import {
 } from '../../../application/services/storage.service';
 import { apiService } from '../../../application/services/api.service';
 import { AdminStoreManager } from '../features/store/admin-store.component';
+import { SupportAdminView } from './SupportAdminView';
 
 interface AdminViewProps {
     state: AppState;
@@ -49,7 +50,8 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const [isLoading, setIsLoading] = useState(true);
     const [confirmMP, setConfirmMP] = useState<{ id: string, tid: string } | null>(null);
     const [showFixPix, setShowFixPix] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'overview' | 'approvals' | 'system' | 'store' | 'referrals'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'approvals' | 'system' | 'store' | 'referrals' | 'support'>('overview');
+    const [pendingChatsCount, setPendingChatsCount] = useState(0);
     const [referralCodes, setReferralCodes] = useState<any[]>([]);
     const [newReferralCode, setNewReferralCode] = useState('');
     const [referralMaxUses, setReferralMaxUses] = useState('');
@@ -66,10 +68,20 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
             }
         };
         fetchPending();
+        fetchPendingChatsCount();
         if (activeTab === 'referrals') {
             fetchReferralCodes();
         }
     }, [state, activeTab]);
+
+    const fetchPendingChatsCount = async () => {
+        try {
+            const data = await apiService.getPendingSupportChats();
+            setPendingChatsCount(data.chats?.filter((c: any) => c.status === 'PENDING_HUMAN').length || 0);
+        } catch (e) {
+            console.error('Erro ao contar chats pendentes:', e);
+        }
+    };
 
     const fetchReferralCodes = async () => {
         try {
@@ -313,7 +325,8 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                     { id: 'system', name: 'Gestão Financeira', icon: SettingsIcon },
                     { id: 'referrals', name: 'Indicações', icon: UserPlus },
                     { id: 'store', name: 'Loja', icon: ShoppingBagIcon },
-                ].map((tab) => (
+                    { id: 'support', name: 'Suporte', icon: MessageSquare, count: pendingChatsCount },
+                ].map((tab: any) => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
@@ -678,6 +691,8 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                     <AdminStoreManager onSuccess={onSuccess} onError={onError} />
                 </div>
             )}
+
+            {activeTab === 'support' && <SupportAdminView />}
 
             {/* Modais de Suporte */}
             {confirmMP && (
