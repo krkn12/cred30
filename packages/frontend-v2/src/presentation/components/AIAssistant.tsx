@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, MessageSquare, X, Send } from 'lucide-react';
+import { User, MessageSquare, X, Send, Star } from 'lucide-react';
 import { apiService } from '../../application/services/api.service';
 
 interface AIAssistantProps {
@@ -12,6 +12,9 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
   const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [chatStatus, setChatStatus] = useState<'AI_ONLY' | 'PENDING_HUMAN' | 'ACTIVE_HUMAN' | 'CLOSED'>('AI_ONLY');
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackSent, setFeedbackSent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -43,20 +46,23 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
   // Polling para atualizar mensagens (A cada 5s se estiver aberto)
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isOpen) {
-      // Carrega imediatamente
+    if (isOpen && chatStatus !== 'CLOSED') {
       loadHistory();
-      // Configura intervalo
       interval = setInterval(loadHistory, 5000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isOpen]);
+  }, [isOpen, chatStatus]);
 
   const handleSend = async (manualContent?: string) => {
     const contentToSend = manualContent || message;
     if (!contentToSend.trim() || isLoading) return;
+
+    if (chatStatus === 'CLOSED') {
+      alert('Este atendimento foi encerrado.');
+      return;
+    }
 
     const userContent = contentToSend;
     setMessage('');
@@ -68,7 +74,6 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
     try {
       const result = await apiService.sendChatMessage(userContent);
       if (result.success) {
-        // Se houver resposta da IA, ela virá no data
         if (result.aiMessage) {
           setMessages(prev => [...prev, result.aiMessage]);
         }
@@ -94,6 +99,23 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
       console.error('Erro ao escalonar:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSendFeedback = async () => {
+    if (feedbackRating === 0) return;
+    try {
+      // Como o endpoint espera o chat ID, e nesta view simplificada pegamos o chat atual implicitamente
+      // precisamos do ID do chat.
+      const chatData = await apiService.getChatHistory();
+      if (chatData?.chat?.id) {
+        await apiService.sendSupportFeedback(chatData.chat.id, feedbackRating, feedbackComment);
+        setFeedbackSent(true);
+        // Resetar após alguns segundos para permitir novo chat futuramente?
+        // Ou apenas dizer "Obrigado"
+      }
+    } catch (error) {
+      console.error('Erro ao enviar feedback', error);
     }
   };
 
@@ -127,10 +149,12 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
               <div>
                 <h3 className="text-white font-bold flex items-center gap-2">
                   Edy
-                  <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded-full border border-emerald-500/20">Online</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${chatStatus === 'CLOSED' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
+                    {chatStatus === 'CLOSED' ? 'Offline' : 'Online'}
+                  </span>
                 </h3>
                 <p className="text-[10px] text-zinc-400 uppercase tracking-widest">
-                  {chatStatus === 'AI_ONLY' ? 'Assistente Virtual' : 'Atendimento Humano'}
+                  {chatStatus === 'AI_ONLY' ? 'Assistente Virtual' : chatStatus === 'CLOSED' ? 'Atendimento Encerrado' : 'Atendimento Humano'}
                 </p>
               </div>
             </div>
@@ -191,30 +215,82 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="p-4 border-t border-surfaceHighlight bg-surface">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSend();
-                  }
-                }}
-                placeholder="Como posso ajudar?"
-                className="flex-1 bg-background border border-surfaceHighlight rounded-xl px-4 py-2 text-white text-sm outline-none focus:border-primary-500 transition-all shadow-inner"
-                disabled={isLoading}
-              />
-              <button
-                onClick={() => handleSend()}
-                disabled={isLoading || !message.trim()}
-                className="bg-primary-500 hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed text-black p-2 rounded-xl font-medium transition shadow-lg"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-              </button>
+          {chatStatus === 'CLOSED' ? (
+            <div className="p-4 border-t border-surfaceHighlight bg-surface">
+              {feedbackSent ? (
+                <div className="text-center py-4 animate-in fade-in zoom-in">
+                  <p className="text-emerald-400 font-bold mb-1">Obrigado pela avaliação!</p>
+                  <p className="text-xs text-zinc-500 mb-4">Sua opinião nos ajuda a melhorar.</p>
+                  <button
+                    onClick={() => {
+                      setFeedbackSent(false);
+                      setFeedbackRating(0);
+                      setFeedbackComment('');
+                      setMessages([]);
+                      setChatStatus('AI_ONLY');
+                    }}
+                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg border border-zinc-700 transition"
+                  >
+                    Iniciar Novo Atendimento
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-2">
+                  <p className="text-xs text-zinc-400 text-center font-bold uppercase">Como foi seu atendimento?</p>
+                  <div className="flex justify-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setFeedbackRating(star)}
+                        className={`p-1 transition ${star <= feedbackRating ? 'text-yellow-400 scale-110' : 'text-zinc-600 hover:text-yellow-400/50'}`}
+                      >
+                        <Star size={24} fill={star <= feedbackRating ? "currentColor" : "none"} />
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    placeholder="Deixe um comentário (opcional)..."
+                    value={feedbackComment}
+                    onChange={(e) => setFeedbackComment(e.target.value)}
+                    className="w-full bg-black/20 border border-zinc-800 rounded-lg p-2 text-xs text-white resize-none"
+                    rows={2}
+                  />
+                  <button
+                    onClick={handleSendFeedback}
+                    disabled={feedbackRating === 0}
+                    className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 text-black font-bold text-xs py-2 rounded-lg transition"
+                  >
+                    Enviar Avaliação
+                  </button>
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="p-4 border-t border-surfaceHighlight bg-surface">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSend();
+                    }
+                  }}
+                  placeholder="Como posso ajudar?"
+                  className="flex-1 bg-background border border-surfaceHighlight rounded-xl px-4 py-2 text-white text-sm outline-none focus:border-primary-500 transition-all shadow-inner"
+                  disabled={isLoading}
+                />
+                <button
+                  onClick={() => handleSend()}
+                  disabled={isLoading || !message.trim()}
+                  className="bg-primary-500 hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed text-black p-2 rounded-xl font-medium transition shadow-lg"
+                >
+                  <Send size={20} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

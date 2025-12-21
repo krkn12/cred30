@@ -190,6 +190,15 @@ export class SupportService {
 
         return this.addMessage(pool, chatId, 'admin', content, adminId);
     }
+    async closeChat(pool: Pool | PoolClient, chatId: number, adminId: number): Promise<void> {
+        await pool.query(
+            "UPDATE support_chats SET status = 'CLOSED' WHERE id = $1",
+            [chatId]
+        );
+
+        // Mensagem final do sistema
+        await this.addMessage(pool, chatId, 'assistant', 'Atendimento encerrado pelo agente. Por favor, avalie nosso atendimento.', null);
+    }
 }
 
 export const supportService = new SupportService();

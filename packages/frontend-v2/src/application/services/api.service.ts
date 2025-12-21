@@ -544,6 +544,21 @@ class ApiService {
     */
     return () => { };
   }
+  async closeSupportChat(chatId: string | number): Promise<any> {
+    const response = await this.request<any>('/support/admin/close', {
+      method: 'POST',
+      body: JSON.stringify({ chatId })
+    });
+    return response.data;
+  }
+
+  async sendSupportFeedback(chatId: string | number, rating: number, comment?: string): Promise<any> {
+    const response = await this.request<any>('/support/feedback', {
+      method: 'POST',
+      body: JSON.stringify({ chatId, rating, comment })
+    });
+    return response.data;
+  }
 }
 
 // Exportar instância única do serviço
