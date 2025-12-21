@@ -69,9 +69,13 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         };
         fetchPending();
         fetchPendingChatsCount();
+        const interval = setInterval(fetchPendingChatsCount, 15000); // Poll a cada 15s
+
         if (activeTab === 'referrals') {
             fetchReferralCodes();
         }
+
+        return () => clearInterval(interval);
     }, [state, activeTab]);
 
     const fetchPendingChatsCount = async () => {

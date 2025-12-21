@@ -582,6 +582,7 @@ export const initializeDatabase = async () => {
     `);
 
     // --- SISTEMA DE SUPORTE VIA CHAT (IA + HUMANO) ---
+    console.log('Verificando tabelas de suporte...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS support_chats (
         id SERIAL PRIMARY KEY,
