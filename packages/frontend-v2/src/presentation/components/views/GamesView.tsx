@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Gamepad2, PlayCircle, Trophy, ArrowLeft, RefreshCw, X as XIcon } from 'lucide-react';
+import { Gamepad2, PlayCircle, Trophy, ArrowLeft, RefreshCw, X as XIcon, BookOpen } from 'lucide-react';
 import { PromoVideoPlayer } from '../ui/PromoVideoPlayer';
 import { apiService } from '../../../application/services/api.service';
 
@@ -25,26 +25,40 @@ export const GamesView: React.FC<GamesViewProps> = ({ onBack }) => {
 
     const handleManualClick = async () => {
         setLoadingAd(true);
+        let rewardMsg = '';
+
         try {
-            // Tenta creditar (silencioso)
-            apiService.post<any>('/monetization/reward-video', {}).catch(console.error);
-
-            // Abrir Smart Link (Monetização)
-            window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
-
-            // Abrir Jogo
-            setTimeout(() => {
-                window.open(selectedGameUrl, '_blank');
-                setShowAdModal(false);
-                setLoadingAd(false);
-                setAdCompleted(false);
-            }, 100);
-
-        } catch (error) {
+            // Tenta creditar recompensa real
+            const res = await apiService.post<any>('/monetization/reward-video', {});
+            if (res.success) {
+                rewardMsg = 'Recompensa de R$ 0,05 Recebida!';
+            }
+        } catch (error: any) {
             console.error(error);
-            window.open(selectedGameUrl, '_blank'); // Fallback
-            setShowAdModal(false);
+            if (error.response?.data?.message) {
+                rewardMsg = `Aviso: ${error.response.data.message}`;
+            }
         }
+
+        // Abrir Smart Link (Monetização)
+        window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
+
+        // Abrir Jogo com feedback
+        setTimeout(() => {
+            window.open(selectedGameUrl, '_blank');
+            setShowAdModal(false);
+            setLoadingAd(false);
+            setAdCompleted(false);
+            if (rewardMsg) alert(rewardMsg); // Feedback simples para o usuário não se perder
+        }, 500);
+    };
+
+    // Navegar para Educação
+    const handleEducation = () => {
+        // Como GamesView é uma rota e EducationView é outra, usamos o window da prop onBack se não houver router
+        // Mas o ideal é usar useNavigate se estivesse dentro do router context, aqui assumimos que o pai passa a função
+        // Vou adicionar um botão de navegação direta se possível ou apenas link
+        window.location.hash = '#/app/education'; // Hack simples se router não estiver disponível na prop
     };
 
     const games = [
@@ -71,19 +85,28 @@ export const GamesView: React.FC<GamesViewProps> = ({ onBack }) => {
     return (
         <div className="space-y-6 pb-20 relative">
             {/* Header */}
-            <div className="flex items-center gap-3">
-                {onBack && (
-                    <button onClick={onBack} className="text-zinc-400 hover:text-white transition">
-                        <ArrowLeft size={24} />
-                    </button>
-                )}
-                <div>
-                    <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                        <Gamepad2 className="text-purple-500" />
-                        Jogos & Diversão
-                    </h1>
-                    <p className="text-xs text-zinc-500 uppercase tracking-widest font-bold">Jogue e Ganhe Recompensas</p>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    {onBack && (
+                        <button onClick={onBack} className="text-zinc-400 hover:text-white transition">
+                            <ArrowLeft size={24} />
+                        </button>
+                    )}
+                    <div>
+                        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                            <Gamepad2 className="text-purple-500" />
+                            Jogos & Diversão
+                        </h1>
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest font-bold">Jogue e Ganhe Recompensas</p>
+                    </div>
                 </div>
+                <button
+                    onClick={handleEducation}
+                    className="flex flex-col items-center gap-1 bg-zinc-800/50 p-2 rounded-xl border border-zinc-700 hover:border-blue-500/50 transition"
+                >
+                    <BookOpen size={20} className="text-blue-400" />
+                    <span className="text-[10px] font-bold text-zinc-300">Aprender</span>
+                </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
