@@ -39,6 +39,12 @@ export const MARKET_CREDIT_MAX_INSTALLMENTS = 18; // Até 18x
 export const MARKET_CREDIT_MIN_SCORE = 450; // Score mínimo para comprar parcelado
 export const MARKET_CREDIT_MIN_QUOTAS = 1; // Mínimo de 1 cota ativa (Skin in the Game) para parcelar
 
+// --- Novas Fontes de Receita (Alta Margem) ---
+export const VERIFIED_BADGE_PRICE = 9.90; // Taxa única para selo de confiança
+export const PRIORITY_WITHDRAWAL_FEE = 5.00; // Taxa para saque expresso
+export const SCORE_BOOST_PRICE = 15.00; // Preço do pacote de +100 Score
+export const SCORE_BOOST_POINTS = 100; // Pontos ganhos no pacote
+
 // Taxas do Mercado Pago (Gateway)
 export const MERCADO_PAGO_PIX_FEE_PERCENT = 0.0099; // 0.99% para PIX
 export const MERCADO_PAGO_FIXED_FEE = 0.00; // R$ 0,00 fixo
