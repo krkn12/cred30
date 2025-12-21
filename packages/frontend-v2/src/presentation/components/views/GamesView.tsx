@@ -11,48 +11,39 @@ export const GamesView: React.FC<GamesViewProps> = ({ onBack }) => {
     const [loadingAd, setLoadingAd] = useState(false);
     const [showAdModal, setShowAdModal] = useState(false);
     const [selectedGameUrl, setSelectedGameUrl] = useState('');
-    const [countDown, setCountDown] = useState(5);
+    const [adCompleted, setAdCompleted] = useState(false);
 
     const handlePlayGame = (url: string) => {
         setSelectedGameUrl(url);
         setShowAdModal(true);
-        setCountDown(5);
-
-        // Timer do Anúncio
-        const timer = setInterval(() => {
-            setCountDown((prev) => {
-                if (prev <= 1) {
-                    clearInterval(timer);
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
+        setAdCompleted(false);
     };
 
-    const handleAdComplete = async () => {
+    const handleAdFinished = () => {
+        setAdCompleted(true);
+    };
+
+    const handleManualClick = async () => {
         setLoadingAd(true);
         try {
-            // Chamada para creditar recompensa (usando o endpoint de vídeo como proxy por enquanto)
-            // Idealmente existiria um endpoint específico /monetization/game-reward
-            await apiService.post<any>('/monetization/reward-video', {});
+            // Tenta creditar (silencioso)
+            apiService.post<any>('/monetization/reward-video', {}).catch(console.error);
 
-            // Abrir Smart Link (Monetização Real) em nova aba
+            // Abrir Smart Link (Monetização)
             window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
 
-            // Redirecionar para o jogo
+            // Abrir Jogo
             setTimeout(() => {
                 window.open(selectedGameUrl, '_blank');
                 setShowAdModal(false);
                 setLoadingAd(false);
-            }, 500);
+                setAdCompleted(false);
+            }, 100);
 
         } catch (error) {
-            console.error('Erro ao processar recompensa do jogo:', error);
-            // Mesmo com erro, deixar o usuário jogar
-            window.open(selectedGameUrl, '_blank');
+            console.error(error);
+            window.open(selectedGameUrl, '_blank'); // Fallback
             setShowAdModal(false);
-            setLoadingAd(false);
         }
     };
 
@@ -135,16 +126,36 @@ export const GamesView: React.FC<GamesViewProps> = ({ onBack }) => {
 
             {/* Ad Modal */}
             {showAdModal && (
-                <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4">
+                <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300">
                     <div className="bg-surface border border-surfaceHighlight rounded-3xl p-0 max-w-lg w-full relative overflow-hidden shadow-2xl">
-                        <button onClick={() => setShowAdModal(false)} className="absolute top-4 right-4 z-50 bg-black/50 text-white p-1 rounded-full hover:bg-black/80 transition">
-                            <XIcon size={20} />
-                        </button>
+                        {!adCompleted && (
+                            <button onClick={() => setShowAdModal(false)} className="absolute top-4 right-4 z-50 bg-black/50 text-white p-1 rounded-full hover:bg-black/80 transition">
+                                <XIcon size={20} />
+                            </button>
+                        )}
 
-                        <PromoVideoPlayer
-                            duration={15}
-                            onComplete={handleAdComplete}
-                        />
+                        {!adCompleted ? (
+                            <PromoVideoPlayer
+                                duration={5}
+                                onComplete={handleAdFinished}
+                            />
+                        ) : (
+                            <div className="p-8 text-center animate-in zoom-in duration-300">
+                                <div className="w-20 h-20 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-purple-400 animate-bounce">
+                                    <Trophy size={40} />
+                                </div>
+                                <h2 className="text-2xl font-black text-white mb-2">Recompensa Liberada!</h2>
+                                <p className="text-zinc-400 text-sm mb-8">
+                                    Obrigado por apoiar a comunidade. Clique abaixo para acessar seu jogo.
+                                </p>
+                                <button
+                                    onClick={handleManualClick}
+                                    className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-4 rounded-xl shadow-lg shadow-purple-900/40 transition active:scale-95 flex items-center justify-center gap-2 text-lg"
+                                >
+                                    {loadingAd ? <RefreshCw className="animate-spin" /> : <PlayCircle />} ACESSAR JOGO
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
