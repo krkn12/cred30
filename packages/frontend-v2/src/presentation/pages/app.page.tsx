@@ -2,15 +2,16 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from '../components/layout/main-layout.component';
 import { UpdateNotification } from '../components/ui/update-notification.component';
-import { AdminStoreManager } from '../components/features/store/admin-store.component';
-import { loadState, registerUser, loginUser, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, fastForwardTime, repayLoan, repayInstallment, getCurrentUser, resetPassword, requestWithdrawal, getPendingItems, processAdminAction, updateSystemBalance, updateProfitPool, distributeMonthlyDividends, fixLoanPix, clearAllCache, deleteUserAccount, changePassword, verify2FA, confirmWithdrawal, claimAdReward, upgradePro } from '../../application/services/storage.service';
+import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, repayInstallment, changePassword, upgradePro, claimAdReward } from '../../application/services/storage.service';
 import { apiService } from '../../application/services/api.service';
 import { AppState, Quota, Loan, Transaction, User } from '../../domain/types/common.types';
-import { QUOTA_PRICE, VESTING_PERIOD_MS } from '../../shared/constants/app.constants';
-import { ArrowRight, TrendingUp, Shield, Zap, Users, Star, ChevronRight, Check, ArrowUpRight, ArrowDownLeft, Wallet, PiggyBank, CreditCard, Star as StarIcon, Settings, LogOut, DollarSign, PieChart, ArrowUpFromLine, Trash2, Lock, AlertTriangle, X as XIcon, RefreshCw, KeyRound, QrCode, ShieldCheck, Coins, Clock, ArrowLeft, Repeat, Crown, Copy, CheckCircle2, ChevronLeft, Gamepad2 } from 'lucide-react';
+import { QUOTA_PRICE } from '../../shared/constants/app.constants';
+import { calculateTotalToPay } from '../../shared/utils/financial.utils';
+import { Check, X as XIcon, RefreshCw, AlertTriangle, Users, Copy, Wallet, TrendingUp, ArrowUpFromLine } from 'lucide-react';
 import { PIXModal } from '../components/ui/pix-modal.component';
 import { CardModal } from '../components/ui/card-modal.component';
 import { AuthScreen } from '../components/views/AuthScreen';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 
 // Lazy imports for views
 const WelcomePage = lazy(() => import('./welcome.page'));
@@ -24,29 +25,9 @@ const PortfolioView = lazy(() => import('../components/views/PortfolioView').the
 const LoansView = lazy(() => import('../components/views/LoansView').then(m => ({ default: m.LoansView })));
 const WithdrawView = lazy(() => import('../components/views/WithdrawView').then(m => ({ default: m.WithdrawView })));
 const AdminView = lazy(() => import('../components/views/AdminView').then(m => ({ default: m.AdminView })));
-const StoreView = lazy(() => import('../components/features/store/store.component').then(m => ({ default: m.StoreView })));
-const SlotMachine = lazy(() => import('../components/features/slot-machine.component').then(m => ({ default: m.SlotMachine })));
-const AIAssistant = lazy(() => import('../components/features/ai-assistant.component').then(m => ({ default: m.AIAssistant })));
 const HistoryView = lazy(() => import('../components/views/HistoryView').then(m => ({ default: m.HistoryView })));
 const MarketplaceView = lazy(() => import('../components/views/MarketplaceView').then(m => ({ default: m.MarketplaceView })));
 const EarnView = lazy(() => import('../components/views/EarnView').then(m => ({ default: m.EarnView })));
-
-import { ConfirmModal } from '../components/ui/ConfirmModal';
-
-
-
-// --- Auth Component ---
-
-
-// --- Client Views ---
-
-
-
-
-
-
-
-// --- Main App ---
 
 export default function App() {
   const [state, setState] = useState<AppState>({
@@ -68,6 +49,7 @@ export default function App() {
   const currentView = location.pathname.split('/').pop() || 'dashboard';
   const [showReferral, setShowReferral] = useState(false);
   const [showVip, setShowVip] = useState(false);
+
   const [pixModalData, setPixModalData] = useState<{
     isOpen: boolean,
     qrCode: string,
@@ -75,11 +57,7 @@ export default function App() {
     amount: number,
     description: string
   }>({
-    isOpen: false,
-    qrCode: '',
-    qrCodeBase64: '',
-    amount: 0,
-    description: ''
+    isOpen: false, qrCode: '', qrCodeBase64: '', amount: 0, description: ''
   });
 
   const [cardModalData, setCardModalData] = useState<{
@@ -88,32 +66,22 @@ export default function App() {
     type: 'QUOTA' | 'LOAN' | 'INSTALLMENT' | 'PRO',
     details: any
   }>({
-    isOpen: false,
-    amount: 0,
-    type: 'QUOTA',
-    details: {}
+    isOpen: false, amount: 0, type: 'QUOTA', details: {}
   });
 
   const [showSuccess, setShowSuccess] = useState<{ isOpen: boolean, title: string, message: string }>({
-    isOpen: false,
-    title: '',
-    message: ''
+    isOpen: false, title: '', message: ''
   });
+
   const [showError, setShowError] = useState<{ isOpen: boolean, title: string, message: string }>({
-    isOpen: false,
-    title: '',
-    message: ''
+    isOpen: false, title: '', message: ''
   });
 
   const [confirmState, setConfirmState] = useState<{ id?: string, type: 'SELL' | 'SELL_ALL' } | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     loadData();
-
-    // Auto-refresh: Atualiza os dados a cada 15 segundos automaticamente
     const interval = setInterval(() => {
-      // Só atualiza se o usuário estiver logado e a aba estiver ativa (visível)
       if (state.currentUser && !document.hidden) {
         refreshState();
       }
@@ -122,17 +90,14 @@ export default function App() {
     const handleAuthExpired = () => setState(prev => ({ ...prev, currentUser: null }));
     window.addEventListener('auth-expired', handleAuthExpired);
 
-    // Configurar Notificações em Tempo Real (SSE)
     let cleanupNotifications: (() => void) | undefined;
     if (state.currentUser) {
       cleanupNotifications = apiService.listenToNotifications((notif) => {
-        // Mostrar aviso de sucesso para o usuário
         setShowSuccess({
           isOpen: true,
           title: 'Notificação',
-          message: notif.message || 'Status atualizado com sucesso!'
+          message: notif.message || 'Status atualizado!'
         });
-        // Atualizar o estado global para refletir as mudanças (saldo, etc)
         refreshState();
       });
     }
@@ -142,7 +107,7 @@ export default function App() {
       window.removeEventListener('auth-expired', handleAuthExpired);
       if (cleanupNotifications) cleanupNotifications();
     };
-  }, [state.currentUser?.id]); // Reinicia se o usuário mudar
+  }, [state.currentUser?.id]);
 
   const loadData = async () => {
     try {
@@ -162,16 +127,17 @@ export default function App() {
   const handleLogout = async () => {
     await logoutUser();
     setState(prev => ({ ...prev, currentUser: null }));
+    navigate('/');
   };
 
   const handleBuyQuota = async (qty: number, method: 'PIX' | 'BALANCE' | 'CARD') => {
     try {
+      const { total } = calculateTotalToPay(qty * QUOTA_PRICE, method.toLowerCase() as any);
+
       if (method === 'CARD') {
-        const baseCost = qty * QUOTA_PRICE;
-        const fee = (baseCost * 0.0499) + 0.40;
         setCardModalData({
           isOpen: true,
-          amount: baseCost + fee,
+          amount: total,
           type: 'QUOTA',
           details: { qty }
         });
@@ -187,17 +153,14 @@ export default function App() {
           isOpen: true,
           qrCode: response.pixData.qr_code,
           qrCodeBase64: response.pixData.qr_code_base64,
-          amount: response.finalCost || response.cost,
+          amount: total,
           description: `Compra de ${qty} cota(s)`
         });
-      } else {
-        setShowSuccess({
-          isOpen: true,
-          title: 'Sucesso!',
-          message: 'Suas cotas foram adquiridas e já estão rendendo!'
-        });
-        navigate('/app/portfolio');
+        return;
       }
+
+      setShowSuccess({ isOpen: true, title: 'Sucesso!', message: 'Suas cotas foram adquiridas!' });
+      navigate('/app/portfolio');
     } catch (error: any) {
       setShowError({ isOpen: true, title: 'Erro na Compra', message: error.message });
     }
@@ -216,7 +179,7 @@ export default function App() {
     try {
       if (confirmState.type === 'SELL' && confirmState.id) {
         await sellQuota(confirmState.id);
-        setShowSuccess({ isOpen: true, title: 'Venda Realizada', message: 'O valor foi creditado no seu saldo.' });
+        setShowSuccess({ isOpen: true, title: 'Venda Realizada', message: 'Valor creditado.' });
       } else if (confirmState.type === 'SELL_ALL') {
         await sellAllQuotas();
         setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Todas as cotas vendidas!' });
@@ -237,25 +200,24 @@ export default function App() {
     } catch (error: any) { setShowError({ isOpen: true, title: 'Erro', message: error.message }); }
   };
 
-  // Funções auxiliares para passar para LoansView
   const handleRequestLoan = async (amount: number, installments: number, pixKey: string) => {
     try {
       await requestLoan(amount, installments, pixKey);
       await refreshState();
-      setShowSuccess({ isOpen: true, title: 'Aprovado!', message: 'Empréstimo aprovado e creditado com sucesso!' });
+      setShowSuccess({ isOpen: true, title: 'Aprovado!', message: 'Empréstimo aprovado com sucesso!' });
     } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
   };
 
   const handlePayLoan = async (loanId: string, useBalance: boolean, method?: 'pix' | 'card') => {
     try {
+      const loan = state.loans.find(l => l.id === loanId);
+      if (!loan) return;
+      const { total } = calculateTotalToPay(parseFloat(loan.totalRepayment as any), method || 'pix');
+
       if (method === 'card') {
-        const loan = state.loans.find(l => l.id === loanId);
-        if (!loan) return;
-        const baseCost = parseFloat(loan.totalRepayment as any);
-        const fee = (baseCost * 0.0499) + 0.40;
         setCardModalData({
           isOpen: true,
-          amount: baseCost + fee,
+          amount: total,
           type: 'LOAN',
           details: { loanId }
         });
@@ -270,28 +232,23 @@ export default function App() {
           isOpen: true,
           qrCode: response.pixData.qr_code,
           qrCodeBase64: response.pixData.qr_code_base64,
-          amount: response.finalCost || response.amount || 0,
+          amount: total,
           description: `Pagamento de Empréstimo`
         });
       } else {
-        setShowSuccess({
-          isOpen: true,
-          title: 'Pagamento OK!',
-          message: 'Seu empréstimo foi atualizado com sucesso.'
-        });
+        setShowSuccess({ isOpen: true, title: 'Pagamento OK!', message: 'Empréstimo atualizado.' });
       }
     } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
   };
 
-  // Adaptação para interface do LoansView que espera (id, amount, useBalance, method)
   const handlePayInstallment = async (id: string, amount: number, useBalance: boolean, method?: 'pix' | 'card') => {
     try {
+      const { total } = calculateTotalToPay(amount, method || 'pix');
+
       if (method === 'card') {
-        const baseCost = amount;
-        const fee = (baseCost * 0.0499) + 0.40;
         setCardModalData({
           isOpen: true,
-          amount: baseCost + fee,
+          amount: total,
           type: 'INSTALLMENT',
           details: { loanId: id, amount }
         });
@@ -306,50 +263,31 @@ export default function App() {
           isOpen: true,
           qrCode: response.pixData.qr_code,
           qrCodeBase64: response.pixData.qr_code_base64,
-          amount: response.finalCost || amount,
+          amount: total,
           description: `Pagamento de Parcela`
         });
       } else {
-        setShowSuccess({
-          isOpen: true,
-          title: 'Parcela Paga!',
-          message: 'O pagamento da sua parcela foi registrado.'
-        });
+        setShowSuccess({ isOpen: true, title: 'Parcela Paga!', message: 'Reposição registrada.' });
       }
     } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
-  }
-
-  const handleWithdraw = async (amount: number, pixKey: string) => {
-    try {
-      await requestWithdrawal(amount, pixKey);
-      await refreshState();
-      setShowSuccess({ isOpen: true, title: 'Solicitação Enviada', message: 'Solicitação de saque enviada! Aguarde processamento.' });
-    } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
-  }
-
-  const handleClaimReward = async () => {
-    const confirmAd = window.confirm("Você está sendo redirecionado para uma oferta de parceiro externo. A Cred30 não se responsabiliza pelo conteúdo exibido fora de nossa plataforma. Deseja continuar?");
-
-    if (!confirmAd) return;
-
-    // Abrir o Smartlink do Adsterra em uma nova aba para gerar receita
-    window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
-
-    try {
-      const res = await claimAdReward();
-      await refreshState();
-      setShowSuccess({ isOpen: true, title: 'Parabéns!', message: res.message });
-    } catch (e: any) {
-      setShowError({ isOpen: true, title: 'Erro', message: e.message });
-    }
   };
 
-  const handleUpgradeProClick = async (method: 'pix' | 'card' | 'balance') => {
+  const handleClaimAdReward = async () => {
     try {
+      await claimAdReward();
+      await refreshState();
+      setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Recompensa creditada!' });
+    } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
+  };
+
+  const handleUpgradeProClick = async (method: 'pix' | 'card') => {
+    try {
+      const { total } = calculateTotalToPay(29.90, method);
+
       if (method === 'card') {
         setCardModalData({
           isOpen: true,
-          amount: 29.90, // Valor fixo PRO
+          amount: total,
           type: 'PRO',
           details: {}
         });
@@ -364,15 +302,11 @@ export default function App() {
           isOpen: true,
           qrCode: response.data.pixData.qr_code,
           qrCodeBase64: response.data.pixData.qr_code_base64,
-          amount: 29.90,
+          amount: total,
           description: `Assinatura Cred30 PRO`
         });
       } else {
-        setShowSuccess({
-          isOpen: true,
-          title: 'Sucesso!',
-          message: 'Parabéns! Você agora é um membro Cred30 PRO.'
-        });
+        setShowSuccess({ isOpen: true, title: 'Sucesso!', message: 'Você agora é PRO!' });
       }
     } catch (e: any) {
       setShowError({ isOpen: true, title: 'Erro', message: e.message });
@@ -380,38 +314,32 @@ export default function App() {
   };
 
   if (state.isLoading) {
-    return <div className="min-h-screen bg-black flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-500"></div></div>;
+    return <div className="min-h-screen bg-black flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary-500"></div></div>;
   }
 
   if (!state.currentUser) {
     return (
-      <>
-        <UpdateNotification />
-        <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><RefreshCw className="animate-spin text-primary-500" /></div>}>
-          <Routes>
-            <Route path="/" element={<WelcomePage />} />
-            <Route path="/auth" element={<AuthScreen onLogin={refreshState} />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/privacy" element={<PrivacyPage />} />
-            <Route path="/security" element={<SecurityPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
-      </>
+      <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><RefreshCw className="animate-spin text-primary-500" /></div>}>
+        <Routes>
+          <Route path="/" element={<WelcomePage />} />
+          <Route path="/auth" element={<AuthScreen onLogin={refreshState} />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/security" element={<SecurityPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   if (state.currentUser.isAdmin) {
     return (
-      <>
-        <UpdateNotification />
-        <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><RefreshCw className="animate-spin text-primary-500" /></div>}>
-          <Routes>
-            <Route path="/admin" element={<AdminView state={state} onRefresh={refreshState} onLogout={handleLogout} onSuccess={(title, msg) => { setShowSuccess({ isOpen: true, title, message: msg }); }} onError={(title, msg) => { setShowError({ isOpen: true, title, message: msg }); }} />} />
-            <Route path="*" element={<Navigate to="/admin" replace />} />
-          </Routes>
-        </Suspense>
-      </>
+      <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><RefreshCw className="animate-spin text-primary-500" /></div>}>
+        <Routes>
+          <Route path="/admin" element={<AdminView state={state} onRefresh={refreshState} onLogout={handleLogout} onSuccess={(title, msg) => { setShowSuccess({ isOpen: true, title, message: msg }); }} onError={(title, msg) => { setShowError({ isOpen: true, title, message: msg }); }} />} />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
+        </Routes>
+      </Suspense>
     )
   }
 
@@ -440,22 +368,21 @@ export default function App() {
                     onError={(title, message) => setShowError({ isOpen: true, title, message })}
                     onChangePassword={async (oldPass, newPass) => {
                       await changePassword(oldPass, newPass);
-                      setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Senha alterada com sucesso!' });
+                      setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Senha alterada!' });
                     }}
-                    onClaimReward={handleClaimReward}
+                    onClaimReward={handleClaimAdReward}
                     onMarketplace={() => navigate('/app/marketplace')}
                     onEarn={() => navigate('/app/earn')}
                   />
                 </Suspense>
               } />
-              <Route path="store" element={<Suspense fallback={null}><StoreView /></Suspense>} />
+              <Route path="settings" element={<Suspense fallback={null}><SettingsView state={state} onRefresh={refreshState} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} /></Suspense>} />
               <Route path="invest" element={<Suspense fallback={null}><InvestView onBuy={handleBuyQuota} /></Suspense>} />
-              <Route path="games" element={<Suspense fallback={null}><SlotMachine onBalanceUpdate={refreshState} currentBalance={state.currentUser.balance} /></Suspense>} />
               <Route path="portfolio" element={
                 <Suspense fallback={null}>
                   <PortfolioView
-                    quotas={state.quotas.filter(q => q.userId === state.currentUser!.id)}
-                    hasLoans={false}
+                    quotas={state.quotas.filter(q => q.userId === state.currentUser?.id)}
+                    hasLoans={state.loans.some(l => l.userId === state.currentUser?.id && l.status === 'APPROVED' && !l.isFullyPaid)}
                     onSell={handleSellQuota}
                     onSellAll={handleSellAll}
                   />
@@ -464,35 +391,12 @@ export default function App() {
               <Route path="loans" element={
                 <Suspense fallback={null}>
                   <LoansView
-                    loans={state.loans.filter(l => l.userId === state.currentUser!.id)}
+                    loans={state.loans}
                     onRequest={handleRequestLoan}
                     onPay={handlePayLoan}
                     onPayInstallment={handlePayInstallment}
                     userBalance={state.currentUser.balance}
                     currentUser={state.currentUser}
-                  />
-                </Suspense>
-              } />
-              <Route path="settings" element={
-                <Suspense fallback={null}>
-                  <SettingsView
-                    user={state.currentUser}
-                    onSimulateTime={() => fastForwardTime(1).then(refreshState)}
-                    onLogout={handleLogout}
-                    onDeleteAccount={async (code) => {
-                      const res = await deleteUserAccount(code);
-                      if (!res.success) {
-                        setShowError({ isOpen: true, title: 'Erro ao Encerrar Conta', message: res.message });
-                      } else {
-                        setShowSuccess({ isOpen: true, title: 'Conta Encerrada', message: 'Sua conta foi encerrada com sucesso.' });
-                        handleLogout();
-                      }
-                    }}
-                    onChangePassword={async (oldPass, newPass) => {
-                      await changePassword(oldPass, newPass);
-                      setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Senha alterada com sucesso!' });
-                    }}
-                    onRefresh={refreshState}
                   />
                 </Suspense>
               } />
@@ -513,11 +417,7 @@ export default function App() {
               } />
               <Route path="marketplace" element={<Suspense fallback={null}><MarketplaceView state={state} onBack={() => navigate('/app/dashboard')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} onRefresh={refreshState} /></Suspense>} />
               <Route path="earn" element={<Suspense fallback={null}><EarnView state={state} onBack={() => navigate('/app/dashboard')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} onRefresh={refreshState} onUpgrade={handleUpgradeProClick} /></Suspense>} />
-              <Route path="history" element={
-                <Suspense fallback={null}>
-                  <HistoryView transactions={state.transactions.filter(t => t.userId === state.currentUser!.id)} />
-                </Suspense>
-              } />
+              <Route path="history" element={<Suspense fallback={null}><HistoryView transactions={state.transactions.filter(t => t.userId === state.currentUser!.id)} /></Suspense>} />
               <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
             </Routes>
 
@@ -525,44 +425,30 @@ export default function App() {
               <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowReferral(false)}>
                 <div className="bg-surface border border-surfaceHighlight rounded-3xl p-8 w-full max-w-sm relative animate-in fade-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
                   <button onClick={() => setShowReferral(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white">✕</button>
-
                   <div className="text-center mb-6">
                     <div className="w-16 h-16 bg-primary-500/10 rounded-2xl flex items-center justify-center text-primary-400 mx-auto mb-4">
                       <Users size={32} />
                     </div>
-                    <h3 className="text-xl font-bold text-white mb-2">Convidar Novo Membro</h3>
-                    <p className="text-zinc-400 text-sm">O Cred30 é exclusivo. Use seu link para convidar pessoas de confiança.</p>
+                    <h3 className="text-xl font-bold text-white mb-2">Convidar Membro</h3>
+                    <p className="text-zinc-400 text-sm">O Cred30 é exclusivo. Use seu link para convidar pessoas.</p>
                   </div>
-
                   <div className="space-y-4">
                     <div className="bg-background border border-surfaceHighlight rounded-xl p-4">
                       <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Seu Código</p>
                       <p className="text-white font-mono text-lg font-bold tracking-wider">{state.currentUser.referralCode}</p>
                     </div>
-
                     <button
                       onClick={() => {
                         const link = `${window.location.origin}/auth?ref=${state.currentUser.referralCode}`;
                         navigator.clipboard.writeText(link);
-                        setShowSuccess({ isOpen: true, title: 'Copiado!', message: 'Link de convite copiado com sucesso.' });
+                        setShowSuccess({ isOpen: true, title: 'Copiado!', message: 'Link copiado.' });
                       }}
                       className="w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-4 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20"
                     >
-                      <Copy size={18} />
-                      Copiar Link de Convite
+                      <Copy size={18} /> Copiar Link
                     </button>
-
                     <p className="text-[10px] text-zinc-500 text-center italic">Você ganha R$ 5,00 por indicação ativa.</p>
                   </div>
-                </div>
-              </div>
-            )}
-            {showVip && (
-              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                <div className="bg-surface rounded-3xl p-6 w-full max-w-sm relative">
-                  <button onClick={() => setShowVip(false)} className="absolute top-4 right-4 text-zinc-500">✕</button>
-                  <h3 className="text-xl font-bold text-white mb-4">VIP</h3>
-                  <p className="text-zinc-400">Em breve.</p>
                 </div>
               </div>
             )}
@@ -583,7 +469,6 @@ export default function App() {
               userEmail={state.currentUser?.email || ''}
               onSubmit={async (formData) => {
                 try {
-                  console.log('Finalizando pagamento com cartão...', formData);
                   if (cardModalData.type === 'QUOTA') {
                     await buyQuota(cardModalData.details.qty, false, 'card', formData);
                   } else if (cardModalData.type === 'LOAN') {
@@ -593,52 +478,55 @@ export default function App() {
                   } else if (cardModalData.type === 'PRO') {
                     await upgradePro('card', formData);
                   }
-
                   await refreshState();
                   setCardModalData(prev => ({ ...prev, isOpen: false }));
-                  setShowSuccess({
-                    isOpen: true,
-                    title: 'Pagamento Recebido!',
-                    message: 'Seu pagamento com cartão foi processado. A ativação no sistema ocorre em instantes.'
-                  });
-                  if (cardModalData.type === 'QUOTA') navigate('/app/portfolio');
+                  setShowSuccess({ isOpen: true, title: 'Processando...', message: 'Pagamento sendo analisado.' });
                 } catch (e: any) {
-                  throw new Error(e.message || 'Erro ao processar pagamento com cartão');
+                  setShowError({ isOpen: true, title: 'Erro no Cartão', message: e.message });
                 }
               }}
             />
 
             {showSuccess.isOpen && (
-              <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[300] p-4 animate-in fade-in duration-300" onClick={(e) => { if (e.target === e.currentTarget) setShowSuccess(prev => ({ ...prev, isOpen: false })); }}>
-                <div className="bg-surface border border-primary-500/30 rounded-3xl p-8 w-full max-w-sm text-center shadow-[0_0_40px_rgba(6,182,212,0.15)] relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-500 to-emerald-500"></div>
-                  <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 animate-in zoom-in duration-500 delay-100">
-                    <Check className="text-emerald-400" size={40} />
+              <div className="fixed bottom-24 left-4 right-4 md:left-auto md:right-8 md:w-96 z-[200] animate-in slide-in-from-bottom-5 duration-300">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center gap-4 backdrop-blur-xl">
+                  <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shrink-0"><Check size={24} /></div>
+                  <div className="flex-1">
+                    <h4 className="text-white font-bold text-sm tracking-tight">{showSuccess.title}</h4>
+                    <p className="text-zinc-400 text-xs">{showSuccess.message}</p>
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-2">{showSuccess.title}</h3>
-                  <p className="text-zinc-400 leading-relaxed mb-8">{showSuccess.message}</p>
-                  <button
-                    onClick={() => setShowSuccess(prev => ({ ...prev, isOpen: false }))}
-                    className="w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-4 rounded-xl transition-all shadow-lg"
-                  >
-                    Entendido
-                  </button>
+                  <button onClick={() => setShowSuccess({ ...showSuccess, isOpen: false })} className="text-zinc-500 hover:text-white">✕</button>
                 </div>
               </div>
             )}
 
-            <ConfirmModal
-              isOpen={!!confirmState}
-              onClose={() => setConfirmState(null)}
-              onConfirm={executeConfirmedSell}
-              title={confirmState?.type === 'SELL_ALL' ? 'Vender Tudo' : 'Vender Cota'}
-              message={confirmState?.type === 'SELL_ALL' ? 'Tem certeza que deseja vender todas as suas cotas?' : 'Tem certeza que deseja vender esta cota?'}
-              type="warning"
-              confirmText="Confirmar Venda"
-            />
+            {showError.isOpen && (
+              <div className="fixed bottom-24 left-4 right-4 md:left-auto md:right-8 md:w-96 z-[200] animate-in slide-in-from-bottom-5 duration-300">
+                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center gap-4 backdrop-blur-xl">
+                  <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white shrink-0"><AlertTriangle size={24} /></div>
+                  <div className="flex-1">
+                    <h4 className="text-white font-bold text-sm tracking-tight">{showError.title}</h4>
+                    <p className="text-zinc-400 text-xs">{showError.message}</p>
+                  </div>
+                  <button onClick={() => setShowError({ ...showError, isOpen: false })} className="text-zinc-500 hover:text-white">✕</button>
+                </div>
+              </div>
+            )}
+
+            {confirmState && (
+              <ConfirmModal
+                isOpen={!!confirmState}
+                onClose={() => setConfirmState(null)}
+                onConfirm={executeConfirmedSell}
+                title={confirmState.type === 'SELL_ALL' ? 'Vender Tudo?' : 'Confirmar Venda?'}
+                message={confirmState.type === 'SELL_ALL' ? 'Deseja vender todas as cotas?' : 'Deseja vender esta participação?'}
+                confirmText="Vender"
+                type="danger"
+              />
+            )}
           </Layout>
         } />
-      </Routes >
+      </Routes>
     </>
   );
 }

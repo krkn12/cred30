@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TrendingUp, X as XIcon } from 'lucide-react';
 import { QUOTA_PRICE } from '../../../shared/constants/app.constants';
+import { calculateTotalToPay } from '../../../shared/utils/financial.utils';
 import { AdBanner } from '../ui/AdBanner';
 
 export const InvestView = ({ onBuy }: { onBuy: (qty: number, method: 'PIX' | 'BALANCE' | 'CARD') => void }) => {
@@ -8,15 +9,8 @@ export const InvestView = ({ onBuy }: { onBuy: (qty: number, method: 'PIX' | 'BA
     const [method, setMethod] = useState<'PIX' | 'BALANCE' | 'CARD'>('PIX');
     const [showConfirm, setShowConfirm] = useState(false);
 
-    const baseCost = qty * QUOTA_PRICE;
-
-    const getFee = () => {
-        if (method === 'PIX' || method === 'BALANCE') return 0;
-        return (baseCost * 0.0499) + 0.40;
-    };
-
-    const fee = getFee();
-    const total = baseCost + fee;
+    const baseAmount = qty * QUOTA_PRICE;
+    const { total, fee } = calculateTotalToPay(baseAmount, method.toLowerCase() as any);
 
     const handlePurchase = () => {
         // Adsterra SmartLink Trigger (Pop-Under effect)
@@ -54,7 +48,7 @@ export const InvestView = ({ onBuy }: { onBuy: (qty: number, method: 'PIX' | 'BA
                 <div className="bg-background rounded-xl p-4 border border-surfaceHighlight text-left">
                     <div className="flex justify-between text-sm mb-2">
                         <span className="text-zinc-400">Subtotal ({qty}x)</span>
-                        <span className="text-white font-medium">{baseCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        <span className="text-white font-medium">{baseAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                     {fee > 0 && (
                         <div className="flex justify-between text-sm mb-2 text-yellow-500/90 font-medium">
@@ -103,7 +97,7 @@ export const InvestView = ({ onBuy }: { onBuy: (qty: number, method: 'PIX' | 'BA
                         <div className="bg-background border border-zinc-700 rounded-xl p-4 mb-4 space-y-2">
                             <div className="flex justify-between text-sm text-zinc-400">
                                 <span>Valor das Cotas</span>
-                                <span className="text-zinc-200">{baseCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                <span className="text-zinc-200">{baseAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                             </div>
 
                             {fee > 0 && (

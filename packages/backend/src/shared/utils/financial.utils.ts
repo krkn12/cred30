@@ -31,20 +31,28 @@ export const calculateTotalToPay = (amount: number, method: PaymentMethod = 'pix
     fee: number;
     total: number;
 } => {
-    if (method === 'pix' || method === 'balance') {
-        const fee = calculateGatewayCost(amount, method); // Custo para o sistema
+    if (method === 'balance') {
         return {
             baseAmount: amount,
-            fee: 0, // Usuário não paga taxa extra no PIX
+            fee: 0,
             total: amount
         };
     }
 
-    // Para outros métodos (cartão), calculamos a taxa para acrescentar
-    const fee = calculateGatewayCost(amount, method);
+    // Para métodos externos (PIX e Cartão), usamos a fórmula de Gross-up 
+    // para que o valor LÍQUIDO recebido seja exatamente o amount.
+    // Fórmula: Total = (Valor + TaxaFixa) / (1 - TaxaPercentual)
+
+    const percent = method === 'pix' ? MERCADO_PAGO_PIX_FEE_PERCENT : MERCADO_PAGO_CARD_FEE_PERCENT;
+    const fixed = method === 'pix' ? MERCADO_PAGO_FIXED_FEE : MERCADO_PAGO_CARD_FIXED_FEE;
+
+    // Se o valor for 100 e taxa 1%, queremos (100+0)/0.99 = 101.01
+    const total = (amount + fixed) / (1 - percent);
+    const fee = total - amount;
+
     return {
         baseAmount: amount,
-        fee: fee,
-        total: Number((amount + fee).toFixed(2))
+        fee: Number(fee.toFixed(2)),
+        total: Number(total.toFixed(2))
     };
 };

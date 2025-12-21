@@ -87,8 +87,8 @@ const WelcomePage = () => {
       <nav className={`relative z-10 px-6 py-8 transition-all duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
         <div className="max-w-6xl mx-auto flex justify-between items-center bg-zinc-900/40 backdrop-blur-xl border border-white/5 p-4 rounded-2xl">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-tr from-cyan-400 to-blue-600 rounded-xl flex items-center justify-center text-black font-bold text-xl uppercase">C</div>
-            <span className="text-xl font-bold tracking-tight">Cred<span className="text-cyan-400">30</span></span>
+            <img src="/pwa-192x192.png" alt="Cred30 Logo" className="w-10 h-10 rounded-xl shadow-[0_0_15px_rgba(34,211,238,0.4)]" />
+            <span className="text-xl font-bold tracking-tighter">Cred<span className="text-cyan-400">30</span></span>
           </div>
           <button onClick={() => navigate('/auth')} className="bg-white text-black font-bold px-6 py-2.5 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-white/10 text-sm">
             Entrar

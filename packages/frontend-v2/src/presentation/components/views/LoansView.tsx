@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, AlertTriangle, X as XIcon, CheckCircle2, ShieldCheck, Clock, TrendingUp, Download, FileText } from 'lucide-react';
+import { DollarSign, AlertTriangle, X as XIcon, CheckCircle2, ShieldCheck, Clock, TrendingUp, Download, FileText, QrCode, CreditCard } from 'lucide-react';
 import { Loan, User } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 import { downloadLoanContract, createContractData } from '../../../application/services/contract.service';
@@ -338,20 +338,46 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                             Você está prestes a repor o valor total de <strong className="text-white">{selectedLoan.totalRepayment.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong> para a cooperativa.
                         </p>
 
-                        <div className="bg-background p-3 rounded-xl mb-4 border border-surfaceHighlight">
-                            <div className="flex justify-between text-sm mb-1">
-                                <span className="text-zinc-400">Seu Saldo</span>
-                                <span className="text-white font-bold">{userBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    onClick={() => setPayMethod('pix')}
+                                    className={`py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${payMethod === 'pix' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-background border-surfaceHighlight text-zinc-500'}`}
+                                >
+                                    <QrCode size={20} />
+                                    <span className="text-[10px] font-bold uppercase">PIX</span>
+                                </button>
+                                <button
+                                    onClick={() => setPayMethod('card')}
+                                    className={`py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${payMethod === 'card' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-background border-surfaceHighlight text-zinc-500'}`}
+                                >
+                                    <CreditCard size={20} />
+                                    <span className="text-[10px] font-bold uppercase">Cartão</span>
+                                </button>
                             </div>
-                        </div>
 
-                        <button
-                            onClick={() => { onPay(selectedLoan.id, true); setPayModalId(null); }}
-                            disabled={userBalance < selectedLoan.totalRepayment}
-                            className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl mb-3"
-                        >
-                            {userBalance < selectedLoan.totalRepayment ? 'Saldo Insuficiente' : 'Pagar com Saldo'}
-                        </button>
+                            <div className="bg-background p-3 rounded-xl border border-surfaceHighlight">
+                                <div className="flex justify-between text-sm mb-1">
+                                    <span className="text-zinc-400">Seu Saldo</span>
+                                    <span className="text-white font-bold">{userBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => { onPay(selectedLoan.id, true); setPayModalId(null); }}
+                                disabled={userBalance < selectedLoan.totalRepayment}
+                                className="w-full bg-primary-500 hover:bg-primary-600 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed text-black font-black py-4 rounded-xl mb-2 transition shadow-lg shadow-primary-500/20"
+                            >
+                                {userBalance < selectedLoan.totalRepayment ? 'Saldo Insuficiente' : 'Pagar com Saldo'}
+                            </button>
+
+                            <button
+                                onClick={() => { onPay(selectedLoan.id, false, payMethod); setPayModalId(null); }}
+                                className={`w-full font-black py-4 rounded-xl transition shadow-lg ${payMethod === 'pix' ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-blue-500 text-white shadow-blue-500/20'}`}
+                            >
+                                {payMethod === 'pix' ? 'Gerar PIX de Reposição' : 'Pagar com Cartão'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -364,26 +390,55 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
 
                         <h3 className="text-xl font-bold text-white mb-4">Repor Parcela</h3>
                         <p className="text-zinc-400 text-sm mb-6">
-                            Valor da reposição: <strong className="text-white">{installmentModalData.installmentAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                            Valor da parcela: <strong className="text-white">{installmentModalData.installmentAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
                         </p>
 
-                        <div className="bg-background p-3 rounded-xl mb-4 border border-surfaceHighlight">
-                            <div className="flex justify-between text-sm mb-1">
-                                <span className="text-zinc-400">Seu Saldo</span>
-                                <span className="text-white font-bold">{userBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    onClick={() => setPayMethod('pix')}
+                                    className={`py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${payMethod === 'pix' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-background border-surfaceHighlight text-zinc-500'}`}
+                                >
+                                    <QrCode size={20} />
+                                    <span className="text-[10px] font-bold uppercase">PIX</span>
+                                </button>
+                                <button
+                                    onClick={() => setPayMethod('card')}
+                                    className={`py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${payMethod === 'card' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-background border-surfaceHighlight text-zinc-500'}`}
+                                >
+                                    <CreditCard size={20} />
+                                    <span className="text-[10px] font-bold uppercase">Cartão</span>
+                                </button>
                             </div>
-                        </div>
 
-                        <button
-                            onClick={() => {
-                                onPayInstallment(installmentModalData.loanId, installmentModalData.installmentAmount, true);
-                                setInstallmentModalData(null);
-                            }}
-                            disabled={userBalance < installmentModalData.installmentAmount}
-                            className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl mb-3"
-                        >
-                            {userBalance < installmentModalData.installmentAmount ? 'Saldo Insuficiente' : 'Pagar com Saldo'}
-                        </button>
+                            <div className="bg-background p-3 rounded-xl border border-surfaceHighlight">
+                                <div className="flex justify-between text-sm mb-1">
+                                    <span className="text-zinc-400">Seu Saldo</span>
+                                    <span className="text-white font-bold">{userBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    onPayInstallment(installmentModalData.loanId, installmentModalData.installmentAmount, true);
+                                    setInstallmentModalData(null);
+                                }}
+                                disabled={userBalance < installmentModalData.installmentAmount}
+                                className="w-full bg-primary-500 hover:bg-primary-600 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed text-black font-black py-4 rounded-xl mb-2 transition shadow-lg shadow-primary-500/20"
+                            >
+                                {userBalance < installmentModalData.installmentAmount ? 'Saldo Insuficiente' : 'Pagar com Saldo'}
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    onPayInstallment(installmentModalData.loanId, installmentModalData.installmentAmount, false, payMethod);
+                                    setInstallmentModalData(null);
+                                }}
+                                className={`w-full font-black py-4 rounded-xl transition shadow-lg ${payMethod === 'pix' ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-blue-500 text-white shadow-blue-500/20'}`}
+                            >
+                                {payMethod === 'pix' ? 'Gerar PIX da Parcela' : 'Pagar Parcela com Cartão'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
