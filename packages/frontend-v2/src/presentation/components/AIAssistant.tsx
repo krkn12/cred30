@@ -18,16 +18,6 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    if (isOpen) {
-      loadHistory();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
   const loadHistory = async () => {
     try {
       const data = await apiService.getChatHistory();
@@ -39,6 +29,30 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
       console.error('Erro ao carregar histórico:', error);
     }
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadHistory();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Polling para atualizar mensagens (A cada 5s se estiver aberto)
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isOpen) {
+      // Carrega imediatamente
+      loadHistory();
+      // Configura intervalo
+      interval = setInterval(loadHistory, 5000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isOpen]);
 
   const handleSend = async (manualContent?: string) => {
     const contentToSend = manualContent || message;
@@ -82,10 +96,6 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
       setIsLoading(false);
     }
   };
-
-
-
-  // ... (dentro do componente)
 
   const EDY_AVATAR = "https://randomuser.me/api/portraits/men/62.jpg";
 
