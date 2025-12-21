@@ -158,10 +158,8 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                 </button>
 
                 <div className="text-center mb-4 sm:mb-8">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-tr from-primary-400 to-primary-600 rounded-lg sm:rounded-2xl flex items-center justify-center text-black font-bold text-xl sm:text-3xl shadow-[0_0_20px_rgba(34,211,238,0.4)] mx-auto mb-2 sm:mb-4">
-                        C
-                    </div>
-                    <h1 className="text-xl sm:text-3xl font-bold text-white tracking-tight">Cred<span className="text-primary-400">30</span></h1>
+                    <img src="/pwa-192x192.png" alt="Cred30 Logo" className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl shadow-[0_0_25px_rgba(6,182,212,0.4)] mx-auto mb-4" />
+                    <h1 className="text-xl sm:text-3xl font-bold text-white tracking-tighter">Cred<span className="text-primary-400">30</span></h1>
                     <p className="text-zinc-500 mt-1 text-[10px] sm:text-sm">Sua liberdade financeira começa aqui.</p>
                 </div>
 

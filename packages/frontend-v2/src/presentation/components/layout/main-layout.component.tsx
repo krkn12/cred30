@@ -91,9 +91,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
     <div className="min-h-screen bg-background text-zinc-100 flex flex-col md:flex-row font-sans">
       {/* Mobile Header com Saldo e Install Btn */}
       <div className="md:hidden bg-surface border-b border-surfaceHighlight p-4 flex justify-between items-center sticky top-0 z-20 shadow-md">
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-tr from-primary-400 to-primary-600 rounded-lg flex items-center justify-center text-black font-bold shadow-[0_0_10px_rgba(34,211,238,0.3)]">C</div>
-          <span className="text-white">Cred<span className="text-primary-400">30</span></span>
+        <h1 className="text-xl font-bold flex items-center gap-3">
+          <img src="/pwa-192x192.png" alt="Cred30 Logo" className="w-8 h-8 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.4)]" />
+          <span className="text-white tracking-tighter">Cred<span className="text-primary-400">30</span></span>
         </h1>
 
         {user && (
@@ -117,10 +117,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
       {/* Sidebar Desktop */}
       <aside className="hidden md:flex flex-col w-72 bg-surface border-r border-surfaceHighlight h-screen sticky top-0">
         <div className="p-8">
-          <h1 className="text-3xl font-bold text-white flex items-center gap-2 tracking-tighter">
-            <div className="w-10 h-10 bg-gradient-to-tr from-primary-400 to-primary-600 rounded-xl flex items-center justify-center text-black font-bold text-xl shadow-[0_0_15px_rgba(34,211,238,0.5)]">
-              C
-            </div>
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3 tracking-tighter">
+            <img src="/pwa-192x192.png" alt="Cred30 Logo" className="w-10 h-10 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.4)]" />
             Cred<span className="text-primary-400">30</span>
           </h1>
         </div>

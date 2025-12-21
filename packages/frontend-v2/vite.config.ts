@@ -9,12 +9,13 @@ export default defineConfig({
         react(),
         VitePWA({
             registerType: 'autoUpdate',
-            includeAssets: ['icon.svg'],
+            injectRegister: 'inline',
+            includeAssets: ['pwa-192x192.png', 'pwa-512x512.png'],
             manifest: {
-                name: 'Cred30 Invest',
+                name: 'Cred30 Fintech',
                 short_name: 'Cred30',
-                description: 'Seu app de investimentos e crédito.',
-                theme_color: '#09090b',
+                description: 'Plataforma de Microcrédito e Investimentos',
+                theme_color: '#06b6d4',
                 background_color: '#09090b',
                 display: 'standalone',
                 orientation: 'portrait',
@@ -22,9 +23,15 @@ export default defineConfig({
                 scope: '/',
                 icons: [
                     {
-                        src: 'icon.svg',
-                        sizes: 'any',
-                        type: 'image/svg+xml',
+                        src: 'pwa-192x192.png',
+                        sizes: '192x192 1024x1024',
+                        type: 'image/png',
+                        purpose: 'any'
+                    },
+                    {
+                        src: 'pwa-512x512.png',
+                        sizes: '512x512 1024x1024',
+                        type: 'image/png',
                         purpose: 'any maskable'
                     }
                 ]
