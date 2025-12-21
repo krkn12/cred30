@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { User, MessageSquare, X, Send } from 'lucide-react';
 import { apiService } from '../../application/services/api.service';
 
 interface AIAssistantProps {
@@ -81,41 +82,68 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
     }
   };
 
+
+
+  // ... (dentro do componente)
+
+  const EDY_AVATAR = "https://images.unsplash.com/photo-1566492031773-4fbc7186b6fb?auto=format&fit=crop&w=100&h=100";
+
   return (
     <div className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-[150] print:hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`bg-primary-500 hover:bg-primary-400 text-black p-3.5 rounded-full shadow-lg transition-all ${isOpen ? 'rotate-90' : ''}`}
-        title="Assistente IA"
+        className={`bg-primary-500 hover:bg-primary-400 text-black p-0 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center w-14 h-14 overflow-hidden border-2 border-primary-400`}
+        title="Falar com o Edy"
       >
-        {isOpen ? '✕' : '🤖'}
+        {isOpen ? <X size={24} /> : (
+          <div className="relative w-full h-full">
+            <img src={EDY_AVATAR} alt="Edy" className="w-full h-full object-cover" />
+            <span className="absolute bottom-1 right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-primary-500"></span>
+            </span>
+          </div>
+        )}
       </button>
 
       {isOpen && (
-        <div className="absolute bottom-16 right-0 w-[calc(100vw-2rem)] md:w-96 bg-surface border border-surfaceHighlight rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[60vh] md:max-h-[500px]">
+        <div className="absolute bottom-16 right-0 w-[calc(100vw-2rem)] md:w-96 bg-surface border border-surfaceHighlight rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[60vh] md:max-h-[500px] animate-in slide-in-from-bottom-5 duration-300">
           <div className="flex justify-between items-center p-4 border-b border-surfaceHighlight bg-surfaceAccent">
-            <div>
-              <h3 className="text-white font-bold">Suporte Cred30</h3>
-              <p className="text-[10px] text-zinc-400 uppercase tracking-widest">
-                {chatStatus === 'AI_ONLY' ? '🤖 Atendimento via IA' : '👥 Atendimento Humano'}
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary-500/20 rounded-full flex items-center justify-center border border-primary-500/30 overflow-hidden">
+                <img src={EDY_AVATAR} alt="Edy" className="w-full h-full object-cover" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold flex items-center gap-2">
+                  Edy
+                  <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded-full border border-emerald-500/20">Online</span>
+                </h3>
+                <p className="text-[10px] text-zinc-400 uppercase tracking-widest">
+                  {chatStatus === 'AI_ONLY' ? 'Assistente Virtual' : 'Atendimento Humano'}
+                </p>
+              </div>
             </div>
             {chatStatus === 'AI_ONLY' && (
               <button
                 onClick={handleEscalate}
                 className="text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-1 rounded border border-zinc-700 transition"
               >
-                Falar com Atendente
+                Falar com Humano
               </button>
             )}
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px]">
             {messages.length === 0 && !isLoading && (
-              <div className="text-center text-zinc-400 py-8">
-                <p className="text-lg mb-2">👋 Olá!</p>
-                <p>Sou o assistente virtual do Cred30.</p>
-                <p className="text-sm mt-2">Dúvidas sobre aportes, apoios ou saques? Digite abaixo.</p>
+              <div className="text-center text-zinc-400 py-8 px-4">
+                <div className="w-16 h-16 bg-zinc-800/50 rounded-full flex items-center justify-center mx-auto mb-4 border border-zinc-700 overflow-hidden shadow-lg shadow-black/50">
+                  <img src={EDY_AVATAR} alt="Edy" className="w-full h-full object-cover" />
+                </div>
+                <p className="text-lg mb-2 font-bold text-white">Olá! Sou o Edy. 👋</p>
+                <p className="text-sm">Estou aqui para tirar suas dúvidas sobre o Cred30 de forma rápida e segura.</p>
+                <p className="text-xs mt-4 text-zinc-500 bg-zinc-800/50 p-2 rounded-lg inline-block">
+                  Pergunte sobre: Cotas, Empréstimos ou Saques.
+                </p>
               </div>
             )}
 
