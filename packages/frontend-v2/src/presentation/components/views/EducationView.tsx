@@ -26,6 +26,8 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
     const [showPresenceCheck, setShowPresenceCheck] = useState(false);
     const [presenceTimer, setPresenceTimer] = useState(0);
     const [isBlocked, setIsBlocked] = useState(false);
+    const [generatedCode, setGeneratedCode] = useState('');
+    const [inputCode, setInputCode] = useState('');
 
     const interactionTimeout = 60000; // 1 minuto sem mexer pede check
     const presenceTimeout = 15000; // 15 segundos para responder o check
@@ -100,6 +102,8 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
                 // 2. Checagem de Presença (Anti-Bot)
                 if (timeSinceLastInteraction > interactionTimeout && !showPresenceCheck) {
                     setShowPresenceCheck(true);
+                    setGeneratedCode(Math.floor(1000 + Math.random() * 9000).toString()); // Gera código 1000-9999
+                    setInputCode(''); // Limpa input anterior
                     setPresenceTimer(presenceTimeout / 1000);
                     return;
                 }
@@ -298,18 +302,37 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
 
                         {/* Modal Check de Presença */}
                         {showPresenceCheck && !isBlocked && (
-                            <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6 z-[60] animate-in zoom-in duration-200">
+                            <div className="absolute inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-6 z-[60] animate-in zoom-in duration-200">
                                 <div className="bg-zinc-900 border border-blue-500/30 p-6 rounded-2xl max-w-sm w-full text-center shadow-2xl shadow-blue-900/20">
                                     <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-400">
                                         <MousePointerClick size={32} />
                                     </div>
-                                    <h3 className="text-lg font-bold text-white mb-2">Você ainda está aí?</h3>
-                                    <p className="text-zinc-400 text-xs mb-6">Clique no botão abaixo em <span className="text-red-400 font-bold">{presenceTimer}s</span> para provar que está assistindo.</p>
+                                    <h3 className="text-lg font-bold text-white mb-2">Verificação de Presença</h3>
+                                    <p className="text-zinc-400 text-xs mb-4">Digite o código abaixo para continuar pontuando:</p>
+
+                                    <div className="bg-black/50 p-4 rounded-xl mb-4 border border-zinc-700">
+                                        <span className="text-3xl font-mono font-black text-blue-400 tracking-[0.5em]">{generatedCode}</span>
+                                    </div>
+
+                                    <input
+                                        type="number"
+                                        value={inputCode}
+                                        onChange={(e) => setInputCode(e.target.value)}
+                                        placeholder="Digite o código"
+                                        className="w-full bg-zinc-800 border-zinc-700 text-white rounded-lg p-3 text-center font-bold text-xl mb-4 focus:ring-2 focus:ring-blue-500 outline-none"
+                                        autoFocus
+                                    />
+
+                                    <div className="text-xs text-red-500 font-bold mb-4 animate-pulse">
+                                        Tempo restante: {presenceTimer}s
+                                    </div>
+
                                     <button
                                         onClick={handlePresenceConfirm}
-                                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-blue-900/30 active:scale-95 flex items-center justify-center gap-2"
+                                        disabled={inputCode !== generatedCode}
+                                        className={`w-full font-bold py-3 rounded-xl transition shadow-lg flex items-center justify-center gap-2 ${inputCode === generatedCode ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/30' : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'}`}
                                     >
-                                        <CheckCircle2 size={18} /> ESTOU ASSISTINDO
+                                        <CheckCircle2 size={18} /> CONFIRMAR PRESENÇA
                                     </button>
                                 </div>
                             </div>
