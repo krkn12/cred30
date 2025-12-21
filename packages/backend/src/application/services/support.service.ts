@@ -117,6 +117,7 @@ export class SupportService {
                     
                     Informações Chave do Cred30:
                     - Cotas: Custam R$ 50,00. Representam participação e geram dividendos (excedentes).
+                    - Distribuição de Sobras: Apenas para membros ATIVOS que interagem com o App (login, tarefas). Quem não usa o App, não recebe sobras.
                     - Resgates de Cotas: Carência de 1 ano para resgate integral. Se sacar antes, paga multa de 40%.
                     - Apoio Mútuo (Empréstimo): Crédito baseado no score e cotas. Taxa de sustentabilidade de 20%. Pagamento em até 12x. Não requer consulta ao SPC/Serasa, pois é baseado na confiança da comunidade (Score).
                     - Saques: Via PIX do saldo disponível. Taxa Zero se tiver cotas equivalentes ao saque.

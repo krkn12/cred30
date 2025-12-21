@@ -87,7 +87,7 @@ const TermsPage = () => {
                             </div>
                             <div className="bg-zinc-900/50 p-5 sm:p-6 rounded-xl sm:rounded-2xl border border-white/5">
                                 <h3 className="font-bold mb-2 text-white">Excedentes (Participação)</h3>
-                                <p className="text-zinc-400 text-xs sm:text-sm">85% das sobras operacionais (taxas e anúncios) são distribuídas como bônus de participação. Não há promessa de rendimento fixo ou garantido.</p>
+                                <p className="text-zinc-400 text-xs sm:text-sm">85% das sobras operacionais são distribuídas como bônus. A elegibilidade requer interatividade comprovada com a plataforma (uso ativo). Membros inativos não participam da distribuição.</p>
                             </div>
                             <div className="bg-zinc-900/50 p-5 sm:p-6 rounded-xl sm:rounded-2xl border border-white/5">
                                 <h3 className="font-bold mb-2 text-white">Cessão e Carência (Regra de 1 Ano)</h3>
