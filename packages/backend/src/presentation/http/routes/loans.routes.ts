@@ -241,22 +241,15 @@ loanRoutes.post('/request', authMiddleware, async (c) => {
         [feeForOperational, feeForProfit]
       );
 
-      // Chamar aprovação automática
-      await processLoanApproval(client, newLoanId, 'APPROVE');
-
-      // Ajuste no saldo: O processLoanApproval adiciona 'amount', então precisamos remover a taxa de originação do saldo do usuário
-      // para que ele receba apenas 'amountToDisburse'
-      await client.query(
-        'UPDATE users SET balance = balance - $1 WHERE id = $2',
-        [originationFee, user.id]
-      );
+      // Antigamente aqui aprovava automático. 
+      // Agora fica PENDING para o administrador aprovar manualmente com segurança.
 
       return newLoanId;
     });
 
     return c.json({
       success: true,
-      message: `Apoio Mútuo concedido! R$ ${amountToDisburse.toFixed(2)} creditados (descontado R$ ${originationFee.toFixed(2)} de taxa de sustentabilidade).`,
+      message: `Solicitação de Apoio Mútuo enviada! Aguarde a análise do administrador. Valor a receber: R$ ${amountToDisburse.toFixed(2)}.`,
       data: {
         loanId: loanId.data,
         totalRepayment: totalWithInterest,

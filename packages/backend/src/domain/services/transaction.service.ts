@@ -4,6 +4,7 @@ import { calculateGatewayCost } from '../../shared/utils/financial.utils';
 import { updateScore, SCORE_REWARDS } from '../../application/services/score.service';
 import { logAudit } from '../../application/services/audit.service';
 import { notificationService } from '../../application/services/notification.service';
+import { calculateUserLoanLimit } from '../../application/services/credit-analysis.service';
 
 export interface TransactionResult<T = any> {
   success: boolean;
@@ -466,6 +467,23 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
     });
 
     return { success: true, status: 'REJECTED' };
+  }
+
+  // --- RE-VALIDAÇÃO DE SEGURANÇA NA APROVAÇÃO ---
+  // Recalcular limite e caixa disponível NO MOMENTO da aprovação
+  const availableLimit = await calculateUserLoanLimit(client, loan.user_id);
+
+  // Buscar dívidas ativas atuais (caso ele tenha pedido outro empréstimo nesse meio tempo)
+  const activeLoansResult = await client.query(
+    `SELECT COALESCE(SUM(amount), 0) as total FROM loans 
+     WHERE user_id = $1 AND status IN ('APPROVED', 'PAYMENT_PENDING') AND id != $2`,
+    [loan.user_id, id]
+  );
+  const currentDebt = parseFloat(activeLoansResult.rows[0].total);
+  const realAvailable = availableLimit - currentDebt;
+
+  if (parseFloat(loan.amount) > realAvailable) {
+    throw new Error(`Aprovação bloqueada: Limite insuficiente no momento (Disponível: R$ ${realAvailable.toFixed(2)}).`);
   }
 
   await client.query('UPDATE loans SET status = $1, approved_at = $2 WHERE id = $3', ['APPROVED', new Date(), id]);
