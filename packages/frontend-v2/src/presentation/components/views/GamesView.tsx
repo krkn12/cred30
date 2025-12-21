@@ -1,13 +1,59 @@
-import React from 'react';
-import { Gamepad2, PlayCircle, Trophy, ArrowLeft } from 'lucide-react';
+import React, { useState } from 'react';
+import { Gamepad2, PlayCircle, Trophy, ArrowLeft, RefreshCw, X as XIcon } from 'lucide-react';
+import { PromoVideoPlayer } from '../ui/PromoVideoPlayer';
+import { apiService } from '../../../application/services/api.service';
 
 interface GamesViewProps {
     onBack?: () => void;
 }
 
 export const GamesView: React.FC<GamesViewProps> = ({ onBack }) => {
+    const [loadingAd, setLoadingAd] = useState(false);
+    const [showAdModal, setShowAdModal] = useState(false);
+    const [selectedGameUrl, setSelectedGameUrl] = useState('');
+    const [countDown, setCountDown] = useState(5);
+
     const handlePlayGame = (url: string) => {
-        window.open(url, '_blank');
+        setSelectedGameUrl(url);
+        setShowAdModal(true);
+        setCountDown(5);
+
+        // Timer do Anúncio
+        const timer = setInterval(() => {
+            setCountDown((prev) => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    };
+
+    const handleAdComplete = async () => {
+        setLoadingAd(true);
+        try {
+            // Chamada para creditar recompensa (usando o endpoint de vídeo como proxy por enquanto)
+            // Idealmente existiria um endpoint específico /monetization/game-reward
+            await apiService.post<any>('/monetization/reward-video', {});
+
+            // Abrir Smart Link (Monetização Real) em nova aba
+            window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
+
+            // Redirecionar para o jogo
+            setTimeout(() => {
+                window.open(selectedGameUrl, '_blank');
+                setShowAdModal(false);
+                setLoadingAd(false);
+            }, 500);
+
+        } catch (error) {
+            console.error('Erro ao processar recompensa do jogo:', error);
+            // Mesmo com erro, deixar o usuário jogar
+            window.open(selectedGameUrl, '_blank');
+            setShowAdModal(false);
+            setLoadingAd(false);
+        }
     };
 
     const games = [
@@ -32,7 +78,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ onBack }) => {
     ];
 
     return (
-        <div className="space-y-6 pb-20">
+        <div className="space-y-6 pb-20 relative">
             {/* Header */}
             <div className="flex items-center gap-3">
                 {onBack && (
@@ -86,6 +132,22 @@ export const GamesView: React.FC<GamesViewProps> = ({ onBack }) => {
                     <p className="text-[10px] text-zinc-600 max-w-[200px]">Novos parceiros estão sendo integrados à plataforma.</p>
                 </div>
             </div>
+
+            {/* Ad Modal */}
+            {showAdModal && (
+                <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4">
+                    <div className="bg-surface border border-surfaceHighlight rounded-3xl p-0 max-w-lg w-full relative overflow-hidden shadow-2xl">
+                        <button onClick={() => setShowAdModal(false)} className="absolute top-4 right-4 z-50 bg-black/50 text-white p-1 rounded-full hover:bg-black/80 transition">
+                            <XIcon size={20} />
+                        </button>
+
+                        <PromoVideoPlayer
+                            duration={15}
+                            onComplete={handleAdComplete}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

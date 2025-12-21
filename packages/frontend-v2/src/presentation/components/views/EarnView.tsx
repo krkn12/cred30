@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import {
     Gamepad2, Star, Coins, Crown, PlayCircle,
     ArrowLeft, TrendingUp, ShieldCheck, Zap,
-    ChevronRight, Sparkles, Wand2, Lightbulb, RefreshCw, Users, Play
+    ChevronRight, Sparkles, Wand2, Lightbulb, RefreshCw, Users, Play, X as XIcon, Clock
 } from 'lucide-react';
+import { PromoVideoPlayer } from '../ui/PromoVideoPlayer';
 import { AppState } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 
@@ -18,18 +19,37 @@ interface EarnViewProps {
 
 export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgrade }: EarnViewProps) => {
     const [loading, setLoading] = useState(false);
+    const [showAdModal, setShowAdModal] = useState(false);
+    const [countDown, setCountDown] = useState(15);
     const user = state.currentUser!;
 
-    const handleWatchVideo = async () => {
-        // Simulação de abrir Smart Link/Rewarded Ad
-        window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
+    const handleWatchVideo = () => {
+        setShowAdModal(true);
+        setCountDown(10); // 10 segundos de "vídeo"
 
+        const timer = setInterval(() => {
+            setCountDown((prev) => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    };
+
+    const handleAdRewardClaim = async () => {
         setLoading(true);
         try {
+            // Abrir Smart Link (Anúncio Real)
+            window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
+
+            // Creditar Recompensa
             const response = await apiService.post<any>('/monetization/reward-video', {});
+
             if (response.success) {
                 onSuccess('Bônus Recebido!', response.message);
-                onRefresh();
+                await onRefresh();
             } else {
                 onError('Aguarde', response.message);
             }
@@ -37,6 +57,7 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
             onError('Erro', e.message || 'Erro ao processar recompensa.');
         } finally {
             setLoading(false);
+            setShowAdModal(false);
         }
     };
 
@@ -55,7 +76,7 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
     };
 
     return (
-        <div className="space-y-6 pb-20">
+        <div className="space-y-6 pb-20 relative">
             {/* Header */}
             <div className="flex items-center gap-3">
                 <button onClick={onBack} className="text-zinc-400 hover:text-white transition">
@@ -95,10 +116,9 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                     </div>
                     <button
                         onClick={handleWatchVideo}
-                        disabled={loading}
-                        className="w-full bg-primary-500 hover:bg-primary-400 text-black py-4 rounded-2xl font-black transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20"
+                        className="w-full bg-primary-500 hover:bg-primary-400 text-black py-4 rounded-2xl font-black transition active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20"
                     >
-                        {loading ? <RefreshCw className="animate-spin" size={20} /> : <PlayCircle size={20} />}
+                        <PlayCircle size={20} />
                         ASSISTIR E GANHAR
                     </button>
                 </div>
@@ -164,10 +184,10 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
 
                     <button
                         onClick={handleUpgradePro}
-                        disabled={loading || loadingLocal || user.membership_type === 'PRO'}
+                        disabled={loadingLocal || user.membership_type === 'PRO'}
                         className={`w-full py-4 rounded-2xl font-black transition active:scale-95 flex items-center justify-center gap-2 ${user.membership_type === 'PRO' ? 'bg-zinc-800 text-zinc-500' : (proMethod === 'pix' ? 'bg-emerald-500 text-black' : (proMethod === 'card' ? 'bg-blue-500 text-white' : 'bg-white text-black hover:bg-zinc-200'))} shadow-xl`}
                     >
-                        {loading || loadingLocal ? <RefreshCw className="animate-spin" size={20} /> : (user.membership_type === 'PRO' ? 'MEMBRO PRO ATIVO' : `ASSINAR PRO POR R$ 29,90`)}
+                        {loadingLocal ? <RefreshCw className="animate-spin" size={20} /> : (user.membership_type === 'PRO' ? 'MEMBRO PRO ATIVO' : `ASSINAR PRO POR R$ 29,90`)}
                     </button>
                     <p className="text-[8px] text-zinc-600 text-center mt-3 uppercase font-bold tracking-widest leading-normal">
                         Assinando hoje você ajuda a aumentar os excedentes operacionais para todos os membros da plataforma.
@@ -199,6 +219,59 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                     </p>
                 </div>
             </div>
+
+            {/* Video Ad Modal */}
+            {showAdModal && (
+                <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4">
+                    <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 max-w-sm w-full relative">
+                        <button
+                            onClick={() => setShowAdModal(false)}
+                            className="absolute top-4 right-4 text-zinc-500 hover:text-white"
+                        >
+                            <XIcon size={20} />
+                        </button>
+
+                        <div className="text-center pt-4">
+                            <div className="w-20 h-20 bg-primary-500/10 rounded-full flex items-center justify-center mx-auto mb-6 relative">
+                                <div className="absolute inset-0 border-4 border-primary-500/20 rounded-full animate-spin-slow"></div>
+                                <PlayCircle size={40} className="text-primary-400" />
+                            </div>
+
+                            <h3 className="text-2xl font-bold text-white mb-2">Vídeo Publicitário</h3>
+                            <p className="text-sm text-zinc-400 mb-8 px-4">
+                                Assista ao vídeo do nosso parceiro para desbloquear sua recompensa exclusiva.
+                            </p>
+
+                            <div className="bg-black/50 rounded-xl p-4 border border-zinc-800 mb-6">
+                                <div className="flex items-center justify-between text-xs text-zinc-500 mb-2 uppercase font-bold tracking-wider">
+                                    <span>Tempo Restante</span>
+                                    <Clock size={14} />
+                                </div>
+                                <div className="text-4xl font-mono font-bold text-white tabular-nums">
+                                    00:{countDown.toString().padStart(2, '0')}
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={handleAdRewardClaim}
+                                disabled={countDown > 0 || loading}
+                                className={`w-full py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${countDown > 0
+                                    ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                                    : 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                                    }`}
+                            >
+                                {loading ? <RefreshCw className="animate-spin" size={20} /> : (
+                                    countDown > 0 ? 'AGUARDE O VÍDEO...' : 'RESGATAR RECOMPENSA'
+                                )}
+                            </button>
+
+                            <p className="text-[9px] text-zinc-600 mt-4 italic">
+                                Ao clicar em resgatar, você será redirecionado ao site do parceiro.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
