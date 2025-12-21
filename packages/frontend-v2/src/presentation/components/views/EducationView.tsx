@@ -302,45 +302,52 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
 
                         {/* Modal Check de Presença */}
                         {showPresenceCheck && !isBlocked && (
-                            <div className="absolute inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-4 z-[60] animate-in zoom-in duration-200">
-                                <div className="bg-zinc-900 border border-blue-500/30 p-6 rounded-3xl w-full max-w-[320px] text-center shadow-2xl shadow-blue-900/20 relative">
-                                    <div className="w-14 h-14 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-400 border border-blue-500/20">
-                                        <MousePointerClick size={28} />
+                            <div className="fixed inset-0 z-[60] bg-black/95 backdrop-blur-md overflow-y-auto">
+                                <div className="min-h-full w-full flex items-center justify-center p-4">
+                                    <div className="bg-zinc-900 border border-blue-500/30 p-5 rounded-3xl w-full max-w-[300px] text-center shadow-2xl shadow-blue-900/20 relative">
+                                        <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-3 text-blue-400 border border-blue-500/20">
+                                            <MousePointerClick size={24} />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-white mb-1">Presença</h3>
+                                        <p className="text-zinc-400 text-[11px] mb-4 px-2">Digite o código para continuar:</p>
+
+                                        <div className="bg-black/60 p-2 rounded-xl mb-4 border border-zinc-800 flex justify-center items-center gap-2">
+                                            {generatedCode.split('').map((digit, i) => (
+                                                <span key={i} className="text-xl font-mono font-black text-blue-400 w-8 h-10 flex items-center justify-center bg-blue-500/5 rounded">{digit}</span>
+                                            ))}
+                                        </div>
+
+                                        <input
+                                            type="tel"
+                                            pattern="[0-9]*"
+                                            maxLength={4}
+                                            value={inputCode}
+                                            onChange={(e) => setInputCode(e.target.value.slice(0, 4))}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && inputCode === generatedCode) {
+                                                    handlePresenceConfirm();
+                                                }
+                                            }}
+                                            placeholder="0000"
+                                            className="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl p-3 text-center font-bold text-xl mb-2 focus:ring-2 focus:ring-blue-500 outline-none tracking-widest placeholder-zinc-700"
+                                            autoFocus
+                                        />
+
+                                        <div className="flex justify-between items-center text-[10px] font-bold uppercase mb-4 px-2">
+                                            <span className={presenceTimer < 5 ? "text-red-500 animate-pulse" : "text-zinc-500"}>Tempo: {presenceTimer}s</span>
+                                            <span className={inputCode.length === 4 ? (inputCode === generatedCode ? "text-emerald-500" : "text-red-500") : "text-zinc-600"}>
+                                                {inputCode.length === 4 ? (inputCode === generatedCode ? "Correto" : "Inválido") : "..."}
+                                            </span>
+                                        </div>
+
+                                        <button
+                                            onClick={handlePresenceConfirm}
+                                            disabled={inputCode !== generatedCode}
+                                            className={`w-full font-bold py-3 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-xs uppercase ${inputCode === generatedCode ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/40 scale-105' : 'bg-zinc-800 text-zinc-600 cursor-not-allowed border border-zinc-700'}`}
+                                        >
+                                            <CheckCircle2 size={16} /> Confirmar
+                                        </button>
                                     </div>
-                                    <h3 className="text-xl font-bold text-white mb-1">Checagem Rápida</h3>
-                                    <p className="text-zinc-400 text-xs mb-6 px-4">Digite o código para provar que você está assistindo:</p>
-
-                                    <div className="bg-black/60 p-4 rounded-2xl mb-4 border border-zinc-800 flex justify-center items-center gap-1">
-                                        {generatedCode.split('').map((digit, i) => (
-                                            <span key={i} className="text-2xl font-mono font-black text-blue-400 w-8 h-10 flex items-center justify-center bg-blue-500/5 rounded mx-0.5">{digit}</span>
-                                        ))}
-                                    </div>
-
-                                    <input
-                                        type="tel"
-                                        pattern="[0-9]*"
-                                        maxLength={4}
-                                        value={inputCode}
-                                        onChange={(e) => setInputCode(e.target.value.slice(0, 4))}
-                                        placeholder="0000"
-                                        className="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl p-4 text-center font-bold text-2xl mb-2 focus:ring-2 focus:ring-blue-500 outline-none tracking-widest placeholder-zinc-700"
-                                        autoFocus
-                                    />
-
-                                    <div className="flex justify-between items-center text-[10px] font-bold uppercase mb-4 px-2">
-                                        <span className={presenceTimer < 5 ? "text-red-500 animate-pulse" : "text-zinc-500"}>Expira em: {presenceTimer}s</span>
-                                        <span className={inputCode.length === 4 ? (inputCode === generatedCode ? "text-emerald-500" : "text-red-500") : "text-zinc-600"}>
-                                            {inputCode.length === 4 ? (inputCode === generatedCode ? "Código Correto" : "Código Inválido") : "Aguardando..."}
-                                        </span>
-                                    </div>
-
-                                    <button
-                                        onClick={handlePresenceConfirm}
-                                        disabled={inputCode !== generatedCode}
-                                        className={`w-full font-bold py-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm uppercase ${inputCode === generatedCode ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/40 scale-105' : 'bg-zinc-800 text-zinc-600 cursor-not-allowed border border-zinc-700'}`}
-                                    >
-                                        <CheckCircle2 size={18} /> Confirmar
-                                    </button>
                                 </div>
                             </div>
                         )}
