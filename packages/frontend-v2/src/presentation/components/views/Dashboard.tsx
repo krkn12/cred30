@@ -10,7 +10,6 @@ import { AppState, User } from '../../../domain/types/common.types';
 import { QUOTA_PRICE } from '../../../shared/constants/app.constants';
 import { AdBanner } from '../ui/AdBanner';
 import { fastForwardTime, deleteUserAccount } from '../../../application/services/storage.service';
-import { SettingsView } from './SettingsView';
 
 interface DashboardProps {
     state: AppState;
@@ -49,7 +48,6 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
         return { userLoans: loans, totalDebt: debt };
     }, [state.loans, user.id]);
 
-    const [showSettings, setShowSettings] = useState(false);
     const navigate = useNavigate();
 
     const handleDeleteAccount = async () => {
@@ -104,9 +102,6 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                 </div>
                 <div className="flex flex-col items-end gap-2">
                     <div className="flex gap-2">
-                        <button title="Configurações" onClick={() => setShowSettings(true)} className="text-zinc-400 hover:text-white p-2 bg-surfaceHighlight rounded-lg transition-colors">
-                            <Settings size={20} />
-                        </button>
                         <button title="Sair" onClick={onLogout} className="text-zinc-400 hover:text-white p-2 bg-surfaceHighlight rounded-lg transition-colors">
                             <LogOut size={20} />
                         </button>
@@ -423,24 +418,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                 )}
             </div>
 
-            {/* Settings Modal - Using the consolidated SettingsView */}
-            {showSettings && (
-                <div className="fixed inset-0 z-50 bg-black/80 flex justify-end">
-                    <div className="w-full max-w-sm bg-surface border-l border-surfaceHighlight p-6 h-full overflow-y-auto animate-in slide-in-from-right duration-300">
-                        <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-xl font-bold text-white">Configurações</h2>
-                            <button onClick={() => setShowSettings(false)} className="text-zinc-500 hover:text-white">✕</button>
-                        </div>
-                        <SettingsView
-                            user={user}
-                            onSimulateTime={() => fastForwardTime(30).then(() => window.location.reload())}
-                            onLogout={onLogout}
-                            onDeleteAccount={handleDeleteAccount}
-                            onChangePassword={onChangePassword}
-                        />
-                    </div>
-                </div>
-            )}
+            {/* Settings Modal removed as per user request */}
         </div>
     );
 };
