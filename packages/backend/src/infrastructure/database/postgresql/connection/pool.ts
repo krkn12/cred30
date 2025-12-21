@@ -473,9 +473,13 @@ export const initializeDatabase = async () => {
         max_uses INTEGER,
         current_uses INTEGER DEFAULT 0,
         is_active BOOLEAN DEFAULT TRUE,
+        is_verified BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Garantir coluna is_verified para bancos existentes
+    await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE');
 
     if (!totalGatewayCostsColumnExists.rows[0].exists) {
       await client.query('ALTER TABLE system_config ADD COLUMN total_gateway_costs DECIMAL(15,2) DEFAULT 0');

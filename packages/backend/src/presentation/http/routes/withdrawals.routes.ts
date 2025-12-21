@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { executeInTransaction, updateUserBalance, createTransaction, processTransactionApproval } from '../../../domain/services/transaction.service';
-import { WITHDRAWAL_FIXED_FEE } from '../../../shared/constants/business.constants';
+import { WITHDRAWAL_FIXED_FEE, PRIORITY_WITHDRAWAL_FEE } from '../../../shared/constants/business.constants';
 import { twoFactorService } from '../../../application/services/two-factor.service';
 import { notificationService } from '../../../application/services/notification.service';
 import { calculateUserLoanLimit } from '../../../application/services/credit-analysis.service';
@@ -40,9 +40,14 @@ withdrawalRoutes.post('/request', authMiddleware, async (c) => {
     // Calcular taxa de saque (Caixa da Cooperativa)
     // Todos pagam a taxa fixa de R$ 2.00 para manutenção
     // Quem NÃO tem cotas paga +2% ou R$ 5.00 (o que for maior)
+    const { isPriority } = withdrawalSchema.extend({ isPriority: z.boolean().optional().default(false) }).parse(body);
     let feeAmount = WITHDRAWAL_FIXED_FEE;
 
-    if (totalQuotaValue < amount) {
+    if (isPriority) {
+      // Saque Prioritário: R$ 5,00 ou 2% (o que for maior)
+      feeAmount = Math.max(PRIORITY_WITHDRAWAL_FEE, amount * 0.02);
+    } else if (totalQuotaValue < amount) {
+      // Penalidade Padrão para quem não tem cota e não pagou prioridade
       const feePercentage = 0.02;
       const feeFixed = 5.00;
       const extraFee = Math.max(amount * feePercentage, feeFixed);
