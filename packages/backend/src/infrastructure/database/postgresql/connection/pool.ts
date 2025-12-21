@@ -326,6 +326,7 @@ export const initializeDatabase = async () => {
     // Garantir que as colunas novas existam em bancos já criados
     await client.query(`
       ALTER TABLE loans ADD COLUMN IF NOT EXISTS payout_status VARCHAR(20) DEFAULT 'NONE';
+      ALTER TABLE loans ADD COLUMN IF NOT EXISTS metadata JSONB;
     `);
 
     // Verificar se a tabela loan_installments existe
