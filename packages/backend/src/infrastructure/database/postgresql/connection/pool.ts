@@ -38,9 +38,10 @@ export const getDbPool = (c?: any): Pool => {
     return c.get('dbPool');
   }
 
-  // Se não, use o pool global
+  // Se não, use o pool global ou a instância estática
   if (!dbPool) {
-    throw new Error('Pool PostgreSQL não inicializado. Use getDbPool apenas em rotas Hono.');
+    // Fallback seguro para a instância estática
+    return pool;
   }
 
   return dbPool;
