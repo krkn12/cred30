@@ -48,6 +48,17 @@ supportRoutes.post('/message', authMiddleware, async (c) => {
         if (chat.status === 'AI_ONLY') {
             const aiResponseContent = await supportService.processAiResponse(pool, chat.id, content);
             aiMsg = await supportService.addMessage(pool, chat.id, 'assistant', aiResponseContent, null);
+        } else if (chat.status === 'PENDING_HUMAN') {
+            const lowerContent = content.toLowerCase();
+            if (lowerContent.includes('cancelar') || lowerContent.includes('voltar')) {
+                // User wants to go back to AI
+                await pool.query("UPDATE support_chats SET status = 'AI_ONLY' WHERE id = $1", [chat.id]);
+                aiMsg = await supportService.addMessage(pool, chat.id, 'assistant', "Atendimento humano cancelado. Voltei! Como posso ajudar você hoje?", null);
+            } else {
+                // Remind user they are waiting
+                // Only send reminder if the last message wasn't already a reminder (to avoid spam loop? Hard to check quickly, just send for now)
+                aiMsg = await supportService.addMessage(pool, chat.id, 'assistant', "Sua solicitação foi enviada para nossos atendentes. Por favor, aguarde um momento. \n\nPara cancelar e voltar a falar com o Edy, digite 'cancelar'.", null);
+            }
         }
 
         return c.json({
