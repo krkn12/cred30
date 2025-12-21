@@ -194,7 +194,7 @@ export const generateLoanContractPDF = (data: LoanContractData): jsPDF => {
  */
 export const downloadLoanContract = (data: LoanContractData) => {
     const doc = generateLoanContractPDF(data);
-    doc.save(`contrato_emprestimo_${data.contractNumber}.pdf`);
+    doc.save(`contrato_mutuo_${data.contractNumber}.pdf`);
 };
 
 /**

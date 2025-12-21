@@ -361,7 +361,7 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
                 fetchMyOrders();
                 onRefresh();
             } else {
-                onError('Falha no Crédito Mútuo', response.message);
+                onError('Falha no Apoio Mútuo', response.message);
             }
         } catch (e: any) {
             onError('Erro', e.message || 'Erro ao processar seu apoio social.');
@@ -374,8 +374,8 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
         setConfirmData({
             isOpen: true,
             title: 'Solicitar Apoio Social',
-            message: `Deseja solicitar crédito para este item em ${selectedInstallments}x? Seu Score será usado como garantia e analisado instantaneamente.`,
-            confirmText: 'Solicitar Crédito',
+            message: `Deseja solicitar apoio para este item em ${selectedInstallments}x? Seu Score será usado como garantia e analisado instantaneamente.`,
+            confirmText: 'Solicitar Apoio',
             onConfirm: () => executeBuyCredit(listingId)
         });
     };
@@ -761,7 +761,7 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
                                             {order.payment_method === 'CRED30_CREDIT' && order.installments && (
                                                 <div className="flex items-center gap-1.5 text-[10px] text-primary-400 font-bold mt-0.5">
                                                     <Zap size={12} className="fill-primary-400/20" />
-                                                    <span>Crediário: {order.installments}x de {formatCurrency(parseFloat(order.total_repayment) / order.installments)}</span>
+                                                    <span>Repasse Programado: {order.installments}x de {formatCurrency(parseFloat(order.total_repayment) / order.installments)}</span>
                                                 </div>
                                             )}
                                         </div>

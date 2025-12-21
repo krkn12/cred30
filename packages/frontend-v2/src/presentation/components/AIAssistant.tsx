@@ -151,7 +151,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
                 <p className="text-lg mb-2 font-bold text-white">Olá! Sou o Edy. 👋</p>
                 <p className="text-sm">Estou aqui para tirar suas dúvidas sobre o Cred30 de forma rápida e segura.</p>
                 <p className="text-xs mt-4 text-zinc-500 bg-zinc-800/50 p-2 rounded-lg inline-block">
-                  Pergunte sobre: Cotas, Empréstimos ou Saques.
+                  Pergunte sobre: Licenças, Apoios ou Resgates.
                 </p>
               </div>
             )}

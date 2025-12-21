@@ -24,8 +24,8 @@ export const HistoryView = ({ transactions }: HistoryViewProps) => {
     const translateType = (type: string) => {
         const map: Record<string, string> = {
             'DEPOSIT': 'Aporte',
-            'WITHDRAWAL': 'Saque',
-            'DIVIDEND': 'Excedente',
+            'WITHDRAWAL': 'Resgate',
+            'DIVIDEND': 'Bônus de Resultado',
             'QUOTA_PURCHASE': 'Aquisição de Participação',
             'QUOTA_SELL': 'Cessão de Participação',
             'LOAN_RECEIVED': 'Apoio Mútuo Recebido',

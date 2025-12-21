@@ -68,7 +68,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
         try {
             const res = await confirmWithdrawal(confirmModal.transactionId, confirmModal.code);
             if (res.success) {
-                onSuccess('Saque Confirmado!', 'Seu saque foi processado com sucesso.');
+                onSuccess('Resgate Confirmado!', 'Seu resgate foi processado com sucesso.');
                 setConfirmModal({ ...confirmModal, isOpen: false });
                 setVal('');
                 onRefresh();
@@ -96,14 +96,14 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
             if (res.success && res.data?.requiresConfirmation) {
                 setConfirmModal({ isOpen: true, transactionId: res.data.transactionId, code: '' });
             } else if (res.success) {
-                onSuccess('Solicitação Enviada', 'Solicitação de saque enviada! Aguarde processamento.');
+                onSuccess('Solicitação Enviada', 'Solicitação de resgate enviada! Aguarde processamento.');
                 setVal('');
                 onRefresh();
             } else {
-                onError('Erro no Saque', res.message);
+                onError('Erro no Resgate', res.message);
             }
         } catch (e: any) {
-            onError('Erro no Saque', e.message);
+            onError('Erro no Resgate', e.message);
         }
     };
 
@@ -115,7 +115,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                     <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
                         <ArrowUpFromLine size={32} className="text-white" />
                     </div>
-                    <h2 className="text-2xl font-bold mb-2">Solicitar Saque</h2>
+                    <h2 className="text-2xl font-bold mb-2">Solicitar Resgate</h2>
                     <p className="text-sm opacity-80">Transfira seu saldo disponível para sua conta bancária</p>
                 </div>
 
@@ -130,7 +130,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
             <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6">
                 <div className="space-y-6">
                     <div>
-                        <label className="text-xs text-zinc-400 block mb-3">Valor do Saque</label>
+                        <label className="text-xs text-zinc-400 block mb-3">Valor do Resgate</label>
 
                         {/* Quick Amount Buttons */}
                         <div className="grid grid-cols-4 gap-2 mb-4">
@@ -170,7 +170,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                         {isValidAmount && (
                             <div className="mt-3 p-3 bg-zinc-800/50 rounded-lg text-xs space-y-1">
                                 <div className="flex justify-between">
-                                    <span className="text-zinc-400">Taxa de saque ({isFree ? 'Grátis' : '2%'})</span>
+                                    <span className="text-zinc-400">Taxa de resgate ({isFree ? 'Grátis' : '2%'})</span>
                                     <span className={isFree ? 'text-emerald-400' : 'text-zinc-300'}>
                                         {isFree ? 'R$ 0,00' : fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                     </span>
@@ -195,7 +195,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                     disabled={!isValidAmount || !currentUser?.pixKey}
                     className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] mt-6"
                 >
-                    Confirmar Saque
+                    Confirmar Resgate
                 </button>
 
                 {confirmModal.isOpen && (
@@ -210,7 +210,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                                     <ShieldCheck size={32} className="text-primary-500" />
                                 </div>
                                 <h3 className="text-xl font-bold text-white">Autenticação 2FA</h3>
-                                <p className="text-zinc-400 text-sm mt-2 mb-6">Insira o código de 6 dígitos do seu autenticador para confirmar o saque.</p>
+                                <p className="text-zinc-400 text-sm mt-2 mb-6">Insira o código de 6 dígitos do seu autenticador para confirmar o resgate.</p>
 
                                 {twoFactorData?.otpUri && (
                                     <a
@@ -238,7 +238,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                                 onClick={handleConfirmWithCode}
                                 className="w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95"
                             >
-                                Confirmar e Sacar
+                                Confirmar e Resgatar
                             </button>
                         </div>
                     </div>
@@ -251,13 +251,13 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                     <span>Processamento em até 24h úteis</span>
                 </p>
                 <p className="text-xs text-zinc-400 mt-2">
-                    Taxa mínima de R$ 5,00 ou 2% do valor do saque.
+                    Taxa mínima de R$ 5,00 ou 2% do valor do resgate.
                 </p>
                 <p className="text-xs text-emerald-400/80 mt-2">
-                    💡 <strong>Benefício VIP:</strong> Se o valor das suas participações for maior ou igual ao saque, a taxa é <strong>ZERO</strong>!
+                    💡 <strong>Benefício VIP:</strong> Se o valor das suas participações for maior ou igual ao resgate, a taxa é <strong>ZERO</strong>!
                 </p>
                 <p className="text-xs text-zinc-400 mt-2">
-                    <strong>Importante:</strong> Você está sacando do seu saldo disponível na conta.
+                    <strong>Importante:</strong> Você está resgatando do seu saldo disponível na conta.
                 </p>
             </div>
 
@@ -269,7 +269,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                         <div className="absolute -top-12 right-0 flex items-center gap-3">
                             {adTimer > 0 ? (
                                 <span className="text-zinc-400 text-xs font-bold bg-zinc-800/80 px-3 py-1.5 rounded-full border border-zinc-700">
-                                    O saque continuará em {adTimer}s...
+                                    O resgate continuará em {adTimer}s...
                                 </span>
                             ) : (
                                 <button

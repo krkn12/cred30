@@ -176,7 +176,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                 <div className="bg-surface border border-surfaceHighlight rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-bold text-white">Progresso para {nextLevel.next}</h3>
-                        <span className="text-sm text-zinc-400">{userQuotas.length}/{nextLevel.goal} cotas</span>
+                        <span className="text-sm text-zinc-400">{userQuotas.length}/{nextLevel.goal} licenças</span>
                     </div>
                     <div className="w-full bg-zinc-700 rounded-full h-3 overflow-hidden">
                         <div
@@ -184,7 +184,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                             style={{ width: `${Math.min(progressToNext, 100)}%` }}
                         ></div>
                     </div>
-                    <p className="text-xs text-zinc-500 mt-2">Faltam {nextLevel.goal - userQuotas.length} cotas para alcançar o próximo nível</p>
+                    <p className="text-xs text-zinc-500 mt-2">Faltam {nextLevel.goal - userQuotas.length} licenças para alcançar o próximo nível</p>
                 </div>
             )}
 
