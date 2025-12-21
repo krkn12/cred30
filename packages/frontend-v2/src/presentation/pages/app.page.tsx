@@ -14,23 +14,43 @@ import { AuthScreen } from '../components/views/AuthScreen';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { AIAssistant } from '../components/AIAssistant';
 
+// Helper para lidar com erro de carregamento de chunks (comum após deploys)
+const lazyWithRetry = (componentImport: () => Promise<any>) =>
+  lazy(async () => {
+    const pageHasAlreadyBeenForceRefreshed = JSON.parse(
+      window.localStorage.getItem('page-has-been-force-refreshed') || 'false'
+    );
+
+    try {
+      const component = await componentImport();
+      window.localStorage.setItem('page-has-been-force-refreshed', 'false');
+      return component;
+    } catch (error) {
+      if (!pageHasAlreadyBeenForceRefreshed) {
+        window.localStorage.setItem('page-has-been-force-refreshed', 'true');
+        return window.location.reload();
+      }
+      throw error;
+    }
+  });
+
 // Lazy imports for views
-const WelcomePage = lazy(() => import('./welcome.page'));
-const TermsPage = lazy(() => import('./terms.page'));
-const PrivacyPage = lazy(() => import('./privacy.page'));
-const SecurityPage = lazy(() => import('./security.page'));
-const Dashboard = lazy(() => import('../components/views/Dashboard').then(m => ({ default: m.Dashboard })));
-const SettingsView = lazy(() => import('../components/views/SettingsView').then(m => ({ default: m.SettingsView })));
-const InvestView = lazy(() => import('../components/views/InvestView').then(m => ({ default: m.InvestView })));
-const PortfolioView = lazy(() => import('../components/views/PortfolioView').then(m => ({ default: m.PortfolioView })));
-const LoansView = lazy(() => import('../components/views/LoansView').then(m => ({ default: m.LoansView })));
-const WithdrawView = lazy(() => import('../components/views/WithdrawView').then(m => ({ default: m.WithdrawView })));
-const AdminView = lazy(() => import('../components/views/AdminView').then(m => ({ default: m.AdminView })));
-const HistoryView = lazy(() => import('../components/views/HistoryView').then(m => ({ default: m.HistoryView })));
-const MarketplaceView = lazy(() => import('../components/views/MarketplaceView').then(m => ({ default: m.MarketplaceView })));
-const EarnView = lazy(() => import('../components/views/EarnView').then(m => ({ default: m.EarnView })));
-const GamesView = lazy(() => import('../components/views/GamesView').then(m => ({ default: m.GamesView })));
-const EducationView = lazy(() => import('../components/views/EducationView').then(m => ({ default: m.EducationView })));
+const WelcomePage = lazyWithRetry(() => import('./welcome.page'));
+const TermsPage = lazyWithRetry(() => import('./terms.page'));
+const PrivacyPage = lazyWithRetry(() => import('./privacy.page'));
+const SecurityPage = lazyWithRetry(() => import('./security.page'));
+const Dashboard = lazyWithRetry(() => import('../components/views/Dashboard').then(m => ({ default: m.Dashboard })));
+const SettingsView = lazyWithRetry(() => import('../components/views/SettingsView').then(m => ({ default: m.SettingsView })));
+const InvestView = lazyWithRetry(() => import('../components/views/InvestView').then(m => ({ default: m.InvestView })));
+const PortfolioView = lazyWithRetry(() => import('../components/views/PortfolioView').then(m => ({ default: m.PortfolioView })));
+const LoansView = lazyWithRetry(() => import('../components/views/LoansView').then(m => ({ default: m.LoansView })));
+const WithdrawView = lazyWithRetry(() => import('../components/views/WithdrawView').then(m => ({ default: m.WithdrawView })));
+const AdminView = lazyWithRetry(() => import('../components/views/AdminView').then(m => ({ default: m.AdminView })));
+const HistoryView = lazyWithRetry(() => import('../components/views/HistoryView').then(m => ({ default: m.HistoryView })));
+const MarketplaceView = lazyWithRetry(() => import('../components/views/MarketplaceView').then(m => ({ default: m.MarketplaceView })));
+const EarnView = lazyWithRetry(() => import('../components/views/EarnView').then(m => ({ default: m.EarnView })));
+const GamesView = lazyWithRetry(() => import('../components/views/GamesView').then(m => ({ default: m.GamesView })));
+const EducationView = lazyWithRetry(() => import('../components/views/EducationView').then(m => ({ default: m.EducationView })));
 
 export default function App() {
   const [state, setState] = useState<AppState>({

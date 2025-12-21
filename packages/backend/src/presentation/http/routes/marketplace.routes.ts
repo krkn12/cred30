@@ -178,6 +178,7 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c) => {
                 `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, contact_phone)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
                 [listingId, user.id, listing.seller_id, price, fee, sellerAmount, 'WAITING_SHIPPING', 'BALANCE', deliveryAddress, contactPhone]
+            );
             const orderId = orderResult.rows[0].id;
 
             await createTransaction(client, user.id, 'MARKET_PURCHASE', price, `Compra: ${listing.title}`, 'APPROVED', { orderId, listingId });
@@ -288,7 +289,7 @@ marketplaceRoutes.get('/my-orders', authMiddleware, async (c) => {
        JOIN users ub ON o.buyer_id = ub.id
        JOIN users us ON o.seller_id = us.id
        LEFT JOIN loans ln ON o.payment_method = 'CRED30_CREDIT' 
-            AND (ln.metadata->>'orderId')::numeric = o.id 
+            AND ln.metadata->>'orderId' = o.id::text 
             AND ln.user_id = o.buyer_id
        WHERE o.buyer_id = $1 OR o.seller_id = $1
        ORDER BY o.created_at DESC`,
