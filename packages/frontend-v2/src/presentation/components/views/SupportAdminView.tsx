@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiService } from '../../../application/services/api.service';
-import { MessageSquare, User, Clock, Send, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { MessageSquare, User, Clock, Send, CheckCircle, AlertCircle, RefreshCw, XCircle } from 'lucide-react';
 
 interface SupportChat {
     id: number;
@@ -86,6 +86,22 @@ export const SupportAdminView = () => {
         }
     };
 
+    const handleCloseChat = async () => {
+        if (!selectedChat || !window.confirm('Deseja realmente encerrar este atendimento? O cliente será notificado para avaliar.')) return;
+
+        try {
+            setIsLoading(true);
+            await apiService.closeSupportChat(selectedChat.id);
+            setSelectedChat(null);
+            await loadPendingChats();
+        } catch (error) {
+            console.error('Erro ao encerrar chat:', error);
+            alert('Erro ao encerrar atendimento.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'PENDING_HUMAN': return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
@@ -106,8 +122,9 @@ export const SupportAdminView = () => {
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[700px] animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Lista de Chats */}
+            {/* Lista de Chats (mantido) */}
             <div className="lg:col-span-1 bg-zinc-900/50 border border-zinc-800 rounded-3xl flex flex-col overflow-hidden shadow-2xl">
+                {/* ... */}
                 <div className="p-6 border-b border-zinc-800 flex justify-between items-center bg-zinc-800/20">
                     <h3 className="text-lg font-bold text-white flex items-center gap-3">
                         <MessageSquare className="text-primary-400" size={20} />
@@ -160,14 +177,23 @@ export const SupportAdminView = () => {
                 ) : (
                     <>
                         {/* Header Chat */}
-                        <div className="p-6 border-b border-zinc-800 bg-zinc-800/20 flex gap-4 items-center">
-                            <div className="w-12 h-12 bg-primary-500/10 rounded-2xl flex items-center justify-center text-primary-400 border border-primary-500/20">
-                                <User size={24} />
+                        <div className="p-6 border-b border-zinc-800 bg-zinc-800/20 flex justify-between items-center">
+                            <div className="flex gap-4 items-center">
+                                <div className="w-12 h-12 bg-primary-500/10 rounded-2xl flex items-center justify-center text-primary-400 border border-primary-500/20">
+                                    <User size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="text-white font-bold leading-tight">{selectedChat.user_name}</h4>
+                                    <p className="text-xs text-zinc-500">{selectedChat.user_email}</p>
+                                </div>
                             </div>
-                            <div>
-                                <h4 className="text-white font-bold leading-tight">{selectedChat.user_name}</h4>
-                                <p className="text-xs text-zinc-500">{selectedChat.user_email}</p>
-                            </div>
+                            <button
+                                onClick={handleCloseChat}
+                                className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 px-4 py-2 rounded-xl text-xs font-bold transition"
+                            >
+                                <XCircle size={16} />
+                                Encerrar
+                            </button>
                         </div>
 
                         {/* Mensagens */}

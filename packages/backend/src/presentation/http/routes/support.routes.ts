@@ -151,5 +151,54 @@ supportRoutes.post('/admin/respond', authMiddleware, adminMiddleware, async (c) 
         return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
     }
 });
+// Fechar chat (Admin)
+supportRoutes.post('/admin/close', authMiddleware, adminMiddleware, async (c) => {
+    try {
+        const admin = c.get('user') as any;
+        const pool = getDbPool(c);
+        const { chatId } = await c.req.json();
+
+        if (!chatId) {
+            return c.json({ success: false, message: 'ChatId é obrigatório' }, 400);
+        }
+
+        await supportService.closeChat(pool, chatId, admin.id);
+
+        return c.json({
+            success: true,
+            message: 'Chat encerrado com sucesso'
+        });
+    } catch (error: any) {
+        console.error('Erro ao encerrar chat:', error);
+        return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
+    }
+});
+
+// Enviar feedback (Usuário)
+supportRoutes.post('/feedback', authMiddleware, async (c) => {
+    try {
+        const user = c.get('user') as any;
+        const pool = getDbPool(c);
+        const { chatId, rating, comment } = await c.req.json();
+
+        if (!chatId || !rating) {
+            return c.json({ success: false, message: 'ChatId e nota são obrigatórios' }, 400);
+        }
+
+        // Atualizar chat com feedback
+        await pool.query(
+            'UPDATE support_chats SET rating = $1, feedback_comment = $2 WHERE id = $3 AND user_id = $4',
+            [rating, comment || null, chatId, user.id]
+        );
+
+        return c.json({
+            success: true,
+            message: 'Feedback enviado com sucesso!'
+        });
+    } catch (error: any) {
+        console.error('Erro ao enviar feedback:', error);
+        return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
+    }
+});
 
 export { supportRoutes };

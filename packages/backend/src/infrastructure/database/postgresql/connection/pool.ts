@@ -630,9 +630,15 @@ export const initializeDatabase = async () => {
         id SERIAL PRIMARY KEY,
         user_id ${userIdType} REFERENCES users(id),
         status VARCHAR(20) DEFAULT 'AI_ONLY', -- AI_ONLY, PENDING_HUMAN, ACTIVE_HUMAN, CLOSED
+        rating INTEGER,
+        feedback_comment TEXT,
         last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Garantir colunas de feedback para bancos existentes
+      ALTER TABLE support_chats ADD COLUMN IF NOT EXISTS rating INTEGER;
+      ALTER TABLE support_chats ADD COLUMN IF NOT EXISTS feedback_comment TEXT;
 
       CREATE TABLE IF NOT EXISTS support_messages (
         id SERIAL PRIMARY KEY,
