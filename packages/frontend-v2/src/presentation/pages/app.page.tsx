@@ -30,6 +30,7 @@ const HistoryView = lazy(() => import('../components/views/HistoryView').then(m 
 const MarketplaceView = lazy(() => import('../components/views/MarketplaceView').then(m => ({ default: m.MarketplaceView })));
 const EarnView = lazy(() => import('../components/views/EarnView').then(m => ({ default: m.EarnView })));
 const GamesView = lazy(() => import('../components/views/GamesView').then(m => ({ default: m.GamesView })));
+const EducationView = lazy(() => import('../components/views/EducationView').then(m => ({ default: m.EducationView })));
 
 export default function App() {
   const [state, setState] = useState<AppState>({
@@ -436,6 +437,7 @@ export default function App() {
                 <Route path="marketplace" element={<Suspense fallback={null}><MarketplaceView state={state} onBack={() => navigate('/app/dashboard')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} onRefresh={refreshState} /></Suspense>} />
                 <Route path="earn" element={<Suspense fallback={null}><EarnView state={state} onBack={() => navigate('/app/dashboard')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} onRefresh={refreshState} onUpgrade={handleUpgradeProClick} /></Suspense>} />
                 <Route path="games" element={<Suspense fallback={null}><GamesView onBack={() => navigate('/app/dashboard')} /></Suspense>} />
+                <Route path="education" element={<Suspense fallback={null}><EducationView onBack={() => navigate('/app/dashboard')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} /></Suspense>} />
                 <Route path="history" element={<Suspense fallback={null}><HistoryView transactions={state.transactions.filter(t => t.userId === state.currentUser!.id)} /></Suspense>} />
                 <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
               </Routes>
