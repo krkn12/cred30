@@ -150,6 +150,16 @@ const WelcomePage = () => {
               </button>
             )}
 
+            {/* Pedir Convite Button */}
+            <a
+              href="https://wa.me/5591980177874?text=Ol%C3%A1%2C%20quero%20um%20convite%20para%20o%20Cred30!"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-center text-cyan-400 hover:text-cyan-300 font-bold text-sm py-2 hover:underline transition-all"
+            >
+              Não tem convite? Peça o seu aqui
+            </a>
+
             {isInstalled && (
               <div className="flex items-center justify-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-6 py-4 rounded-2xl text-emerald-400 font-bold">
                 <Smartphone className="w-5 h-5" />
