@@ -15,11 +15,7 @@ const WelcomePage = () => {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showIosGuide, setShowIosGuide] = useState(false);
-  const [showInstallGuide, setShowInstallGuide] = useState(false);
   const navigate = useNavigate();
-
-  const isEdge = /Edg/.test(navigator.userAgent);
-  const isChrome = /Chrome/.test(navigator.userAgent) && !isEdge;
 
   // Detectar iOS
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
@@ -60,9 +56,9 @@ const WelcomePage = () => {
       setShowIosGuide(true);
       setIsDownloading(false);
     } else {
-      // Fallback para outros casos (Edge desktop manual, etc)
-      setIsDownloading(false);
-      setShowInstallGuide(true);
+      // Fallback simples se o navegador não suportar ou bloquear o prompt
+      // Como o usuário pediu "download direto", se não der, avisamos o básico.
+      alert('A instalação automática não está disponível neste navegador. Tente instalar pelo menu de opções.');
     }
   };
 
@@ -193,62 +189,7 @@ const WelcomePage = () => {
         </div>
       )}
 
-      {/* GUIA MANUAL (DESKTOP/ANDROID SEM PROMPT) */}
-      {showInstallGuide && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[100] flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
-          <div className="max-w-md w-full bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center relative shadow-2xl">
-            <button onClick={() => setShowInstallGuide(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white">
-              <XIcon size={24} />
-            </button>
 
-            <div className="w-20 h-20 bg-cyan-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-cyan-400">
-              <Download size={40} />
-            </div>
-
-            <h3 className="text-2xl font-black text-white mb-4">Instalação Manual</h3>
-            <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
-              O navegador bloqueou o download automático. Para instalar, siga os passos abaixo:
-            </p>
-
-            <div className="bg-black/40 rounded-xl p-4 text-left space-y-3 mb-6 border border-white/5">
-              {isEdge ? (
-                <>
-                  <div className="flex items-start gap-3">
-                    <span className="bg-zinc-700 text-white w-5 h-5 rounded flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</span>
-                    <p className="text-sm text-zinc-300">Clique nos <strong>três pontos (...)</strong> no canto superior direito do navegador.</p>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="bg-zinc-700 text-white w-5 h-5 rounded flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</span>
-                    <p className="text-sm text-zinc-300">Vá até o menu <strong>Aplicativos</strong>.</p>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="bg-zinc-700 text-white w-5 h-5 rounded flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</span>
-                    <p className="text-sm text-zinc-300">Clique em <strong>Instalar Cred30</strong> (ou "Instalar este site como aplicativo").</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-start gap-3">
-                    <span className="bg-zinc-700 text-white w-5 h-5 rounded flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</span>
-                    <p className="text-sm text-zinc-300">Clique nos <strong>três pontos (...)</strong> ou no ícone de download na barra de endereço.</p>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="bg-zinc-700 text-white w-5 h-5 rounded flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</span>
-                    <p className="text-sm text-zinc-300">Selecione <strong>Instalar Cred30</strong> ou <strong>Adicionar à Tela Principal</strong>.</p>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <button
-              onClick={() => setShowInstallGuide(false)}
-              className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-bold py-4 rounded-xl transition-all"
-            >
-              Entendi, vou instalar agora!
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
