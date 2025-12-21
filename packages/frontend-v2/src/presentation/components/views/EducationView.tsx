@@ -1,0 +1,306 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { BookOpen, PlayCircle, Clock, Trophy, AlertTriangle, CheckCircle2, X as XIcon, BrainCircuit, MousePointerClick, ArrowLeft } from 'lucide-react';
+import { apiService } from '../../../application/services/api.service';
+
+interface EducationViewProps {
+    onBack: () => void;
+    onSuccess: (title: string, msg: string) => void;
+}
+
+const POINTS_PER_SECOND = 0.5; // ~30 pontos por minuto. 1000 pontos = ~33 min. 
+const POINTS_TO_CURRENCY_RATE = 0.29 / 1000; // 1000 pontos = R$ 0.29
+
+export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess }) => {
+    // Estados da Aula
+    const [selectedLesson, setSelectedLesson] = useState<any>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+
+    // Estados de Farm e Pontos
+    const [sessionPoints, setSessionPoints] = useState(0);
+    const [totalPoints, setTotalPoints] = useState(0); // Acumulado persistente (mock por enquanto)
+    const [sessionTime, setSessionTime] = useState(0);
+
+    // Anti-Cheat States
+    const [isTabFocused, setIsTabFocused] = useState(true);
+    const [lastInteraction, setLastInteraction] = useState(Date.now());
+    const [showPresenceCheck, setShowPresenceCheck] = useState(false);
+    const [presenceTimer, setPresenceTimer] = useState(0);
+    const [isBlocked, setIsBlocked] = useState(false);
+
+    const interactionTimeout = 60000; // 1 minuto sem mexer pede check
+    const presenceTimeout = 15000; // 15 segundos para responder o check
+
+    // Aulas Mock
+    const lessons = [
+        {
+            id: 1,
+            title: "Como Gerenciar Suas Dívidas",
+            duration: "15:00",
+            category: "Finanças Básicas",
+            videoUrl: "https://www.youtube.com/embed/sS2K-T6jVXE", // Placeholder
+            thumbnail: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=800"
+        },
+        {
+            id: 2,
+            title: "Investindo com Pouco Dinheiro",
+            duration: "22:30",
+            category: "Investimentos",
+            videoUrl: "https://www.youtube.com/embed/sS2K-T6jVXE",
+            thumbnail: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&q=80&w=800"
+        },
+        {
+            id: 3,
+            title: "Entendendo Score de Crédito",
+            duration: "10:45",
+            category: "Score",
+            videoUrl: "https://www.youtube.com/embed/sS2K-T6jVXE",
+            thumbnail: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=800"
+        }
+    ];
+
+    // Monitoramento de Foco na Aba
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                setIsTabFocused(false);
+                setIsPlaying(false); // Pausa se sair
+            } else {
+                setIsTabFocused(true);
+            }
+        };
+
+        const handleInteraction = () => {
+            setLastInteraction(Date.now());
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('mousemove', handleInteraction);
+        window.addEventListener('keydown', handleInteraction);
+        window.addEventListener('click', handleInteraction);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('mousemove', handleInteraction);
+            window.removeEventListener('keydown', handleInteraction);
+            window.removeEventListener('click', handleInteraction);
+        };
+    }, []);
+
+    // Loop Principal de Pontos e Checagem
+    useEffect(() => {
+        let interval: any;
+
+        if (selectedLesson && !isBlocked) {
+            interval = setInterval(() => {
+                const timeSinceLastInteraction = Date.now() - lastInteraction;
+
+                // 1. Checagem de Foco
+                if (!isTabFocused) return; // Não conta ponto se aba oculta
+
+                // 2. Checagem de Presença (Anti-Bot)
+                if (timeSinceLastInteraction > interactionTimeout && !showPresenceCheck) {
+                    setShowPresenceCheck(true);
+                    setPresenceTimer(presenceTimeout / 1000);
+                    return;
+                }
+
+                // 3. Contagem regressiva do Check de Presença
+                if (showPresenceCheck) {
+                    setPresenceTimer(prev => {
+                        if (prev <= 1) {
+                            // Falhou no check
+                            setIsBlocked(true);
+                            setShowPresenceCheck(false);
+                            setIsPlaying(false);
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                    return; // Não ganha ponto enquanto o modal está aberto
+                }
+
+                // *** GANHO DE PONTOS ***
+                if (isPlaying && !showPresenceCheck) {
+                    setSessionPoints(prev => prev + POINTS_PER_SECOND);
+                    setSessionTime(prev => prev + 1);
+                }
+
+            }, 1000);
+        }
+
+        return () => clearInterval(interval);
+    }, [selectedLesson, isPlaying, isTabFocused, lastInteraction, showPresenceCheck, isBlocked]);
+
+    // Calcular Ganhos
+    const currentEarnings = sessionPoints * POINTS_TO_CURRENCY_RATE;
+
+    const handleLessonSelect = (lesson: any) => {
+        setSelectedLesson(lesson);
+        setIsPlaying(true);
+        setSessionPoints(0);
+        setSessionTime(0);
+        setIsBlocked(false);
+        setLastInteraction(Date.now());
+    };
+
+    const handlePresenceConfirm = () => {
+        setShowPresenceCheck(false);
+        setLastInteraction(Date.now());
+        setIsPlaying(true);
+    };
+
+    const handleExitLesson = () => {
+        // Salvar pontos acumulados (Mock de chamada de API)
+        if (sessionPoints > 0) {
+            // apiService.post('/education/progress', { points: sessionPoints }) ...
+            onSuccess("Sessão Finalizada", `Você ganhou R$ ${currentEarnings.toFixed(4)} e ${sessionPoints.toFixed(0)} pontos!`);
+        }
+        setSelectedLesson(null);
+        setSessionPoints(0);
+        setSessionTime(0);
+    };
+
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    return (
+        <div className="space-y-6 pb-20 relative min-h-screen">
+            {/* Header */}
+            {!selectedLesson && (
+                <div className="flex items-center gap-3 mb-6">
+                    <button onClick={onBack} className="text-zinc-400 hover:text-white transition">
+                        <XIcon size={24} />
+                    </button>
+                    <div>
+                        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                            <BookOpen className="text-blue-500" />
+                            Cred30 Academy
+                        </h1>
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest font-bold">Estude e Monetize seu Tempo</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Lista de Aulas */}
+            {!selectedLesson ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {lessons.map(lesson => (
+                        <div key={lesson.id} onClick={() => handleLessonSelect(lesson)} className="bg-surface border border-surfaceHighlight rounded-2xl overflow-hidden group hover:border-blue-500/50 transition-all cursor-pointer">
+                            <div className="aspect-video bg-zinc-800 relative">
+                                <img src={lesson.thumbnail} alt={lesson.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-black/50 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                                        <PlayCircle className="text-white" size={24} />
+                                    </div>
+                                </div>
+                                <div className="absolute top-2 right-2 bg-black/60 px-2 py-1 rounded text-[10px] text-white font-bold">
+                                    {lesson.duration}
+                                </div>
+                            </div>
+                            <div className="p-4">
+                                <div className="text-[10px] text-blue-400 font-bold uppercase mb-1">{lesson.category}</div>
+                                <h3 className="text-white font-bold leading-tight mb-2">{lesson.title}</h3>
+                                <div className="flex items-center gap-2 text-[10px] text-zinc-500">
+                                    <Trophy size={12} className="text-yellow-500" />
+                                    <span>Ganhe até R$ 0,29 a cada 1k pts</span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                /* Modo Sala de Aula */
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom duration-300">
+                    <div className="flex items-center justify-between bg-zinc-900/50 p-2 rounded-xl">
+                        <button onClick={handleExitLesson} className="flex items-center gap-2 text-zinc-400 hover:text-red-400 transition text-xs font-bold px-2">
+                            <ArrowLeft size={16} /> SAIR DA AULA
+                        </button>
+                        <div className="flex items-center gap-4">
+                            <div className="flex flex-col items-end">
+                                <span className="text-[10px] text-zinc-500 font-bold uppercase">Tempo de Estudo</span>
+                                <span className="text-white font-mono font-bold">{formatTime(sessionTime)}</span>
+                            </div>
+                            <div className="h-8 w-px bg-zinc-800"></div>
+                            <div className="flex flex-col items-end">
+                                <span className="text-[10px] text-zinc-500 font-bold uppercase">Pontos</span>
+                                <span className="text-yellow-400 font-mono font-bold flex items-center gap-1">
+                                    <Trophy size={12} /> {sessionPoints.toFixed(0)}
+                                </span>
+                            </div>
+                            <div className="h-8 w-px bg-zinc-800"></div>
+                            <div className="flex flex-col items-end">
+                                <span className="text-[10px] text-zinc-500 font-bold uppercase">Ganhos</span>
+                                <span className="text-emerald-400 font-mono font-bold">R$ {currentEarnings.toFixed(4)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Aviso Anti-Farm */}
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 flex items-start gap-3">
+                        <BrainCircuit size={18} className="text-blue-400 shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-zinc-400 leading-tight">
+                            <strong className="text-blue-400 block mb-1">Sistema Anti-Farm Ativo</strong>
+                            Mantenha a aba aberta e interaja com a aula. Se mudar de aba ou ficar inativo por muito tempo, a contagem de pontos será pausada automaticamente.
+                        </p>
+                    </div>
+
+                    {/* Área do Vídeo */}
+                    <div className={`aspect-video bg-black rounded-3xl overflow-hidden border border-zinc-800 shadow-2xl relative ${isBlocked ? 'grayscale opacity-50' : ''}`}>
+                        {!isBlocked ? (
+                            <iframe
+                                width="100%"
+                                height="100%"
+                                src={`${selectedLesson.videoUrl}?autoplay=1&controls=0`}
+                                title={selectedLesson.title}
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                className="pointer-events-none" // Impede interação direta com o player para forçar uso da interface e evitar bypass
+                            ></iframe>
+                        ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-zinc-900">
+                                <AlertTriangle size={48} className="text-red-500 mb-4 animate-bounce" />
+                                <h2 className="text-2xl font-bold text-white mb-2">Sessão Bloqueada</h2>
+                                <p className="text-zinc-400 text-sm mb-6">Detectamos inatividade prolongada. Para continuar acumulando pontos, você precisa reiniciar a aula.</p>
+                                <button onClick={handleExitLesson} className="bg-red-500 hover:bg-red-400 text-white font-bold py-3 px-8 rounded-xl transition">
+                                    Encerrar Sessão
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Overlay de Pausa por Foco */}
+                        {!isTabFocused && !isBlocked && (
+                            <div className="absolute inset-0 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center text-center z-50">
+                                <Clock size={48} className="text-yellow-500 mb-4 animate-pulse" />
+                                <h3 className="text-xl font-bold text-white">Sessão Pausada</h3>
+                                <p className="text-zinc-400 text-sm mt-2">Volte para esta aba para continuar ganhando pontos.</p>
+                            </div>
+                        )}
+
+                        {/* Modal Check de Presença */}
+                        {showPresenceCheck && !isBlocked && (
+                            <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6 z-[60] animate-in zoom-in duration-200">
+                                <div className="bg-zinc-900 border border-blue-500/30 p-6 rounded-2xl max-w-sm w-full text-center shadow-2xl shadow-blue-900/20">
+                                    <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-400">
+                                        <MousePointerClick size={32} />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-white mb-2">Você ainda está aí?</h3>
+                                    <p className="text-zinc-400 text-xs mb-6">Clique no botão abaixo em <span className="text-red-400 font-bold">{presenceTimer}s</span> para provar que está assistindo.</p>
+                                    <button
+                                        onClick={handlePresenceConfirm}
+                                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-blue-900/30 active:scale-95 flex items-center justify-center gap-2"
+                                    >
+                                        <CheckCircle2 size={18} /> ESTOU ASSISTINDO
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
