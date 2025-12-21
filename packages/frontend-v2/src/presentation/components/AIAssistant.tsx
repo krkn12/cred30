@@ -40,10 +40,11 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
     }
   };
 
-  const handleSend = async () => {
-    if (!message.trim() || isLoading) return;
+  const handleSend = async (manualContent?: string) => {
+    const contentToSend = manualContent || message;
+    if (!contentToSend.trim() || isLoading) return;
 
-    const userContent = message;
+    const userContent = contentToSend;
     setMessage('');
     setIsLoading(true);
 
@@ -131,6 +132,14 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
                 Falar com Humano
               </button>
             )}
+            {chatStatus === 'PENDING_HUMAN' && (
+              <button
+                onClick={() => handleSend('cancelar')}
+                className="text-[10px] bg-red-900/30 hover:bg-red-900/50 text-red-400 px-2 py-1 rounded border border-red-900/50 transition border-dashed"
+              >
+                Cancelar
+              </button>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px]">
@@ -188,7 +197,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
                 disabled={isLoading}
               />
               <button
-                onClick={handleSend}
+                onClick={() => handleSend()}
                 disabled={isLoading || !message.trim()}
                 className="bg-primary-500 hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed text-black p-2 rounded-xl font-medium transition shadow-lg"
               >
