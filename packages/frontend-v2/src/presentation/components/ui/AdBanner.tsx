@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink, Info } from 'lucide-react';
+import { ExternalLink, Info, Star, X } from 'lucide-react';
 
 interface AdBannerProps {
     type: 'NATIVE' | 'BANNER' | 'TIP';
@@ -36,7 +36,7 @@ export const AdBanner = ({ type, title, description, actionText }: AdBannerProps
                             <span className="text-[8px] bg-zinc-800 text-zinc-500 px-1 rounded border border-zinc-700">EXTERNO</span>
                         </div>
                         <p className="text-xs text-zinc-500 max-w-[200px]">
-                            {description || 'Descubra como aumentar seus rendimentos hoje.'}
+                            {description || 'Descubra como aumentar seus resultados hoje.'}
                         </p>
                     </div>
                 </div>
@@ -113,4 +113,3 @@ export const AdBanner = ({ type, title, description, actionText }: AdBannerProps
     );
 };
 
-import { Star, X } from 'lucide-react';

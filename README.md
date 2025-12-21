@@ -1,6 +1,6 @@
-# Cred30 - Plataforma Fintech
+# Cred30 - Plataforma Associativa de Apoio Mútuo
 
-Cred30 é uma plataforma financeira que permite investimentos em cotas com rendimentos diários, empréstimos pessoais e sistema de indicações.
+Cred30 é uma plataforma de cooperação que permite aportes associativos com distribuição de excedentes operacionais, apoio mútuo entre membros e sistema de indicações.
 
 ## 🏗️ Estrutura do Projeto
 
@@ -16,12 +16,12 @@ Este é um monorepo que contém:
 
 ## 🚀 Funcionalidades
 
-- 🏦 **Investimento em Cotas**: Compre cotas a R$ 50,00 cada e receba rendimentos diários
-- 💰 **Empréstimos Pessoais**: Solicite empréstimos com juros de 20% ao mês
-- 👥 **Saque de Valores**: Transfira seu saldo para sua conta bancária
-- 🎯 **Sistema de Indicação**: Ganhe R$ 5,00 por cada amigo indicado
-- 👑 **Níveis VIP**: Bronze, Prata e Ouro com benefícios exclusivos
-- 🤖 **Assistente IA**: Receba dicas financeiras personalizadas
+- 🏦 **Aportes Associativos**: Participe com cotas a partir de R$ 50,00 e receba excedentes operacionais proporcionais
+- 💰 **Apoio Mútuo**: Solicite apoio social com taxa de sustentabilidade de 20%
+- 👥 **Reposição de Saldos**: Transfira seus resultados para sua conta via PIX
+- 🎯 **Sistema de Indicação**: Bônus de R$ 5,00 por cada novo membro indicado
+- 👑 **Níveis VIP**: Benefícios exclusivos para membros engajados
+- 🤖 **Assistente IA**: Dicas de gestão e educação cooperativa
 
 ## 🛠️ Tecnologias
 

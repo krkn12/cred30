@@ -145,7 +145,7 @@ export const PortfolioView = ({ quotas, hasLoans, onSell, onSellAll }: Portfolio
 
             {/* Quotas List */}
             <div className="space-y-4">
-                <h3 className="text-lg font-bold text-white pl-1">Seus Ativos ({safeQuotas.length})</h3>
+                <h3 className="text-lg font-bold text-white pl-1">Minhas Participações ({safeQuotas.length})</h3>
                 {safeQuotas.length === 0 ? (
                     <div className="text-center py-12 bg-surface/50 rounded-2xl border border-surfaceHighlight border-dashed">
                         <TrendingUp size={48} className="mx-auto text-zinc-600 mb-4" />
@@ -212,7 +212,7 @@ export const PortfolioView = ({ quotas, hasLoans, onSell, onSellAll }: Portfolio
 
                         <div className="space-y-3 mb-6">
                             <div className="flex justify-between text-zinc-400 text-sm">
-                                <span>Valor Bruto (Investido)</span>
+                                <span>Valor do Aporte</span>
                                 <span>{originalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                             </div>
                             <div className="flex justify-between text-yellow-500 text-sm">

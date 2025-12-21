@@ -4,7 +4,7 @@ import {
     ShieldCheck, Truck, Package, CheckCircle2,
     Clock, DollarSign, ArrowLeft, Image as ImageIcon,
     ChevronRight, Info, AlertCircle, ExternalLink, Star, X as XIcon, RefreshCw,
-    Sparkles, Wand2, Lightbulb, Zap
+    Sparkles, Wand2, Lightbulb, Zap, TrendingUp
 } from 'lucide-react';
 import { AdBanner } from '../ui/AdBanner';
 import { AppState, User } from '../../../domain/types/common.types';
@@ -299,7 +299,7 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
     };
 
     const handleBuyOnCredit = async (listingId: number) => {
-        if (!confirm(`Deseja realmente financiar este item em ${selectedInstallments}x? Seu Score será usado como garantia.`)) return;
+        if (!confirm(`Deseja realmente solicitar apoio para este item em ${selectedInstallments}x? Seu Score será usado como garantia.`)) return;
 
         setLoading(true);
         try {
@@ -308,15 +308,15 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
                 installments: selectedInstallments
             });
             if (response.success) {
-                onSuccess('Financiamento Aprovado!', response.message);
+                onSuccess('Apoio Aprovado!', response.message);
                 setView('my-orders');
                 fetchMyOrders();
                 onRefresh();
             } else {
-                onError('Falha no Crédito', response.message);
+                onError('Falha no Crédito Mútuo', response.message);
             }
         } catch (e: any) {
-            onError('Erro', e.message || 'Erro ao processar seu financiamento social.');
+            onError('Erro', e.message || 'Erro ao processar seu apoio social.');
         } finally {
             setLoading(false);
         }
@@ -791,9 +791,10 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
                                 </button>
                                 <button
                                     onClick={() => setBuyMethod('credit')}
-                                    className={`flex-1 py-3 rounded-xl border font-bold text-xs transition ${buyMethod === 'credit' ? 'bg-primary-500 text-black border-primary-500' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}
+                                    className={`flex-1 py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${buyMethod === 'credit' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-background border-surfaceHighlight text-zinc-500'}`}
                                 >
-                                    Crediário Social
+                                    <TrendingUp size={20} />
+                                    <span className="text-[10px] font-bold uppercase">Apoio Social</span>
                                 </button>
                             </div>
 
@@ -803,7 +804,7 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
                                         <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl">
                                             <div className="flex items-center gap-2 mb-2 text-red-400">
                                                 <AlertCircle size={16} />
-                                                <span className="text-xs font-bold uppercase">Crediário Bloqueado</span>
+                                                <span className="text-xs font-bold uppercase">Apoio Social Indisponível</span>
                                             </div>
                                             <p className="text-[10px] text-zinc-400 leading-tight">
                                                 Seu score atual ({state.currentUser!.score}) está abaixo do mínimo exigido ({MARKET_CREDIT_MIN_SCORE}). Aumente seu score sendo um membro PRO ou pagando apoios em dia.
@@ -829,7 +830,7 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
                                                     })}
                                                 </select>
                                                 <p className="text-[9px] text-zinc-500 mt-2 px-1 italic">
-                                                    * Taxa de juros social de {MARKET_CREDIT_INTEREST_RATE * 100}% ao mês.
+                                                    * Taxa de sustentabilidade social de {MARKET_CREDIT_INTEREST_RATE * 100}% ao mês.
                                                 </p>
                                             </div>
                                         </>
@@ -857,7 +858,7 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
                                 disabled={loading || (buyMethod === 'credit' && state.currentUser!.score < MARKET_CREDIT_MIN_SCORE)}
                                 className="w-full bg-primary-600 hover:bg-primary-500 text-white font-black py-4 rounded-2xl shadow-lg transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 text-lg"
                             >
-                                <ShoppingBag /> {loading ? 'PROCESSANDO...' : (buyMethod === 'credit' ? 'SOLICITAR CREDIÁRIO' : 'COMPRAR AGORA')}
+                                <ShoppingBag /> {loading ? 'PROCESSANDO...' : (buyMethod === 'credit' ? 'SOLICITAR APOIO SOCIAL' : 'COMPRAR AGORA')}
                             </button>
                         </div>
                     </div>

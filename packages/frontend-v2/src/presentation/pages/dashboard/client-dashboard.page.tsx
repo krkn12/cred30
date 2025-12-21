@@ -1,7 +1,6 @@
 import React from 'react';
-import { MetricCard } from '../admin/MetricCard';
-import { formatCurrency, formatPercent } from '../../utils/formatters';
-import { User, Quota, Loan } from '../../../types';
+import { MetricCard } from '../../components/ui/MetricCard';
+import { User, Quota, Loan } from '../../../domain/types/common.types';
 
 interface ClientDashboardProps {
   user: User;
@@ -30,6 +29,10 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   const pendingLoans = loans.filter(loan => loan.status === 'PENDING');
   const totalLoanDebt = activeLoans.reduce((sum, loan) => sum + (loan.remainingAmount || loan.totalRepayment), 0);
 
+  // Helper formatting (injected or local)
+  const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const formatPercent = (val: number) => (val * 100).toFixed(2) + '%';
+
   const netWorth = user.balance + totalQuotaValue - totalLoanDebt;
 
   return (
@@ -46,7 +49,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
         <MetricCard
           title="Saldo Disponível"
           value={formatCurrency(user.balance)}
-          subtitle="Para saques ou investimentos"
+          subtitle="Para saques ou novos aportes"
           color="blue"
         />
         <MetricCard
@@ -60,15 +63,15 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
           } : undefined}
         />
         <MetricCard
-          title="Dívida de Empréstimos"
+          title="Compromissos Ativos"
           value={formatCurrency(totalLoanDebt)}
-          subtitle={`${activeLoans.length} empréstimo(s) ativo(s)`}
+          subtitle={`${activeLoans.length} apoio(s) em aberto`}
           color="red"
         />
         <MetricCard
-          title="Lucro em Cotas"
+          title="Excedentes das Cotas"
           value={formatCurrency(totalQuotaProfit)}
-          subtitle={totalQuotaProfit >= 0 ? 'Rentabilidade positiva' : 'Rentabilidade negativa'}
+          subtitle={totalQuotaProfit >= 0 ? 'Resultado positivo' : 'Resultado negativo'}
           color={totalQuotaProfit >= 0 ? 'green' : 'red'}
         />
       </div>
@@ -86,7 +89,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             </div>
             <span className="text-sm font-medium text-gray-900">Depositar</span>
           </button>
-          
+
           <button
             onClick={onWithdraw}
             className="flex flex-col items-center p-4 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
@@ -96,7 +99,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             </div>
             <span className="text-sm font-medium text-gray-900">Sacar</span>
           </button>
-          
+
           <button
             onClick={onBuyQuota}
             className="flex flex-col items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
@@ -104,9 +107,9 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white font-bold mb-2">
               ↑
             </div>
-            <span className="text-sm font-medium text-gray-900">Comprar Cota</span>
+            <span className="text-sm font-medium text-gray-900">Aportar Cotas</span>
           </button>
-          
+
           <button
             onClick={onSellQuota}
             disabled={quotas.length === 0}
@@ -117,7 +120,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             </div>
             <span className="text-sm font-medium text-gray-900">Vender Cota</span>
           </button>
-          
+
           <button
             onClick={onRequestLoan}
             className="flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
@@ -125,9 +128,9 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold mb-2">
               ₿
             </div>
-            <span className="text-sm font-medium text-gray-900">Pedir Empréstimo</span>
+            <span className="text-sm font-medium text-gray-900">Pedir Apoio</span>
           </button>
-          
+
           <button
             className="flex flex-col items-center p-4 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
           >
@@ -139,7 +142,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
         </div>
       </div>
 
-      {/* Resumo de Investimentos */}
+      {/* Resumo de Aportes e Apoio */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Minhas Cotas</h3>
@@ -181,15 +184,15 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Meus Empréstimos</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Meus Apoios Mútuos</h3>
           {loans.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              <p className="mb-4">Você ainda não solicitou empréstimos</p>
+              <p className="mb-4">Você ainda não solicitou apoios</p>
               <button
                 onClick={onRequestLoan}
                 className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
               >
-                Solicitar Empréstimo
+                Solicitar Apoio Mútuo
               </button>
             </div>
           ) : (
@@ -213,17 +216,16 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                       </p>
                     </div>
                     <div className="text-right">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        loan.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${loan.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
                         loan.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                        loan.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
-                        loan.status === 'PAID' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                          loan.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                            loan.status === 'PAID' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                        }`}>
                         {loan.status === 'APPROVED' ? 'Aprovado' :
-                         loan.status === 'PENDING' ? 'Pendente' :
-                         loan.status === 'REJECTED' ? 'Rejeitado' :
-                         loan.status === 'PAID' ? 'Pago' : loan.status}
+                          loan.status === 'PENDING' ? 'Pendente' :
+                            loan.status === 'REJECTED' ? 'Rejeitado' :
+                              loan.status === 'PAID' ? 'Pago' : loan.status}
                       </span>
                       {loan.remainingAmount !== undefined && loan.remainingAmount < loan.totalRepayment && (
                         <p className="text-sm text-green-600 mt-1">

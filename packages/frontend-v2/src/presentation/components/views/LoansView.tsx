@@ -200,7 +200,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                             <div className="mt-4 shadow-sm">
                                 <AdBanner
                                     type="TIP"
-                                    description="Precisa de mais? Clientes VIP têm acesso a linhas de crédito especiais."
+                                    description="Precisa de mais? Membros PRO têm acesso a maiores limites de apoio mútuo."
                                 />
                             </div>
                         </div>
@@ -305,7 +305,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                 </div>
                             )}
 
-                            {/* Botão de contrato para empréstimos já quitados */}
+                            {/* Botão de contrato para compromissos já quitados */}
                             {loan.status === 'APPROVED' && loan.isFullyPaid && (
                                 <div className="pt-4 border-t border-surfaceHighlight">
                                     <button
@@ -444,7 +444,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
             )}
             {/* Legal Disclaimer */}
             <div className="mt-8 px-4 text-[10px] text-zinc-600 text-center leading-relaxed">
-                <p>As ajudas mútuas estão sujeitas à análise de Score e disponibilidade de caixa da cooperativa. Os créditos são garantidos por alienação de cotas ativas no sistema. Em caso de atraso superior a 5 dias, a garantia será executada automaticamente conforme Termos de Uso (SCP/Mútuo Civil).</p>
+                <p>As ajudas mútuas estão sujeitas à análise de Score e disponibilidade de caixa da cooperativa. Os apoios são lastreados por alienação de cotas ativas no sistema. Em caso de atraso superior a 5 dias, o lastro será executado automaticamente conforme Termos de Uso (SCP/Mútuo Civil).</p>
             </div>
         </div>
     );

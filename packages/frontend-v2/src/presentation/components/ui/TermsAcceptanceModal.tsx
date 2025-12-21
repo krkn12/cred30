@@ -53,13 +53,13 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({ isOp
                             1. Natureza da Cooperativa
                         </h3>
                         <p className="text-zinc-400 leading-relaxed text-sm md:text-base">
-                            O Cred30 é um sistema de cooperação financeira mútua. Ao se cadastrar, você não está apenas abrindo uma conta, mas tornando-se um membro participante de uma comunidade de crédito cooperativo. A participação é voluntária e baseada na confiança mútua.
+                            O Cred30 é um sistema de apoio mútuo e cooperação entre membros. Ao se cadastrar, você torna-se um associado participante de uma comunidade de auxílio mútuo privado. A participação é voluntária e baseada na ajuda recíproca.
                         </p>
                     </section>
 
                     <section className="space-y-4">
                         <h3 className="text-lg md:text-xl font-bold text-primary-400 flex items-center gap-2">
-                            2. Regras de Investimento (Cotas)
+                            2. Regras dos Aportes (Cotas)
                         </h3>
                         <div className="grid md:grid-cols-2 gap-4">
                             <div className="bg-zinc-900/50 p-5 rounded-2xl border border-zinc-800">
@@ -68,17 +68,17 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({ isOp
                             </div>
                             <div className="bg-zinc-900/50 p-5 rounded-2xl border border-zinc-800">
                                 <h4 className="font-bold text-white mb-2 text-sm md:text-base">Distribuição</h4>
-                                <p className="text-zinc-500 text-xs md:text-sm leading-relaxed">85% do lucro gerado é distribuído proporcionalmente entre os detentores de cotas ativas.</p>
+                                <p className="text-zinc-500 text-xs md:text-sm leading-relaxed">85% dos excedentes gerados são distribuídos proporcionalmente entre os detentores de cotas ativas.</p>
                             </div>
                         </div>
                     </section>
 
                     <section className="space-y-4">
                         <h3 className="text-lg md:text-xl font-bold text-primary-400 flex items-center gap-2">
-                            3. Empréstimos e Garantia Real
+                            3. Apoio Mútuo e Garantia Real
                         </h3>
                         <p className="text-zinc-400 leading-relaxed text-sm md:text-base">
-                            Os membros podem solicitar crédito baseado em seu patrimônio. <strong className="text-white">As cotas ativas servem como garantia real para os empréstimos.</strong>
+                            Os membros podem solicitar apoio para consumo ou projetos baseado em seu score. <strong className="text-white">As cotas ativas servem como garantia para honrar os compromissos de reposição.</strong>
                         </p>
                         <div className="bg-red-500/5 border border-red-500/10 p-4 rounded-xl flex items-start gap-4">
                             <div className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center text-red-400 text-xs font-bold mt-1 shrink-0">!</div>
@@ -90,11 +90,11 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({ isOp
 
                     <section className="space-y-4">
                         <h3 className="text-lg md:text-xl font-bold text-primary-400 flex items-center gap-2">
-                            4. Juros e Penalidades
+                            4. Sustentabilidade e Penalidades
                         </h3>
                         <div className="bg-zinc-900/50 p-5 rounded-2xl border border-zinc-800">
                             <p className="text-zinc-400 text-xs md:text-sm leading-relaxed">
-                                • Juros fixos de 20% por operação.<br />
+                                • Taxa de sustentabilidade de 20% por operação.<br />
                                 • Multa de mora diária de <strong className="text-white">0.5% ao dia</strong> sobre o valor em atraso.<br />
                                 • Perda imediata de Score e exclusão de benefícios VIP em caso de inadimplência.
                             </p>
