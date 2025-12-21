@@ -3,7 +3,7 @@
     "short_name": "Cred30",
     "description": "Plataforma de Apoio Mútuo e Participação Social",
     "start_url": "/",
-    "display": "fullscreen",
+    "display": "standalone",
     "background_color": "#09090b",
     "theme_color": "#09090b",
     "orientation": "portrait",
