@@ -581,6 +581,32 @@ export const initializeDatabase = async () => {
       )
     `);
 
+    // --- SISTEMA DE SUPORTE VIA CHAT (IA + HUMANO) ---
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS support_chats (
+        id SERIAL PRIMARY KEY,
+        user_id ${userIdType} REFERENCES users(id),
+        status VARCHAR(20) DEFAULT 'AI_ONLY', -- AI_ONLY, PENDING_HUMAN, ACTIVE_HUMAN, CLOSED
+        last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS support_messages (
+        id SERIAL PRIMARY KEY,
+        chat_id INTEGER REFERENCES support_chats(id) ON DELETE CASCADE,
+        sender_id ${userIdType} REFERENCES users(id), -- NULL se for IA
+        role VARCHAR(20) NOT NULL, -- user, assistant, admin
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_support_chats_user ON support_chats(user_id);
+      CREATE INDEX IF NOT EXISTS idx_support_chats_status ON support_chats(status);
+      CREATE INDEX IF NOT EXISTS idx_support_messages_chat ON support_messages(chat_id);
+    `);
+
+    console.log('Tabelas de suporte criadas/verificadas com sucesso!');
+
     console.log('Tabelas criadas/verificadas com sucesso!');
 
     // Criar índices de performance
