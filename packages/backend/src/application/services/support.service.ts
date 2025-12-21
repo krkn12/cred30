@@ -1,4 +1,5 @@
 import { Pool, PoolClient } from 'pg';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export interface ChatMessage {
     id?: number;
@@ -97,14 +98,56 @@ export class SupportService {
     async processAiResponse(pool: Pool | PoolClient, chatId: number, userMessage: string): Promise<string> {
         const lowerMessage = userMessage.toLowerCase();
 
-        // Lógica simples de palavras-chave para a IA
-        let response = "";
-
+        // 1. Verificação imediata de intenção de humano (hardcoded para velocidade e economia)
         if (lowerMessage.includes('falar com atendente') || lowerMessage.includes('humano') || lowerMessage.includes('pessoa') || lowerMessage.includes('suporte direto')) {
             await this.escalateToHuman(pool, chatId);
             return "Entendido. Vou encaminhar sua conversa para um atendente humano. Por favor, aguarde um momento que logo alguém irá falar com você.";
         }
 
+        // 2. Tentar usar Gemini AI (Se houver chave configurada)
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (apiKey) {
+            try {
+                const genAI = new GoogleGenerativeAI(apiKey);
+                const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+                const prompt = `
+                    Você é o Edy, o assistente virtual da Cred30, uma cooperativa de microcrédito.
+                    Sua persona: Homem brasileiro do norte, ético, amigável, profissional e direto. Use gírias leves da região norte se couber, mas mantenha o profissionalismo.
+                    
+                    Informações Chave do Cred30:
+                    - Cotas: Custam R$ 50,00. Representam participação e geram dividendos (excedentes).
+                    - Apoio Mútuo (Empréstimo): Crédito baseado no score e cotas. Taxa de sustentabilidade de 20%. Pagamento em até 12x. Não requer consulta ao SPC/Serasa, pois é baseado na confiança da comunidade (Score).
+                    - Saques: Via PIX do saldo disponível. Taxa Zero se tiver cotas equivalentes ao saque.
+                    - Score: Pontos ganhos por pagar em dia, assistir vídeos e completar tarefas. Aumenta limite de apoio.
+                    - Jogos/Vídeos: Formas de ganhar saldo extra e score assistindo anúncios.
+                    
+                    Instruções:
+                    1. Responda à dúvida do usuário de forma concisa e útil (máximo 4 frases).
+                    2. Se o usuário pedir atendimento humano ou se você não souber a resposta com certeza absoluta, responda APENAS A STRING: "ESCALATE_TO_HUMAN".
+                    3. Nunca invente taxas ou regras não listadas acima.
+                    
+                    Usuário: "${userMessage}"
+                `;
+
+                const result = await model.generateContent(prompt);
+                const response = result.response.text();
+
+                if (response.includes("ESCALATE_TO_HUMAN")) {
+                    await this.escalateToHuman(pool, chatId);
+                    return "Compreendo. Essa questão requer um especialista. Estou chamando um atendente humano para te ajudar. Aguarde um instante.";
+                }
+
+                return response;
+
+            } catch (error) {
+                console.error("Erro na Gemini AI:", error);
+                // Continua para o fallback se a API falhar
+            }
+        }
+
+        // 3. Fallback (Lógica antiga de palavras-chave)
+        let response = "";
         if (lowerMessage.includes('cota') || lowerMessage.includes('aporte')) {
             response = "As cotas do Cred30 custam R$ 50,00 cada. Elas representam sua participação na cooperativa e geram excedentes operacionais baseados na produtividade da comunidade.";
         } else if (lowerMessage.includes('apoio') || lowerMessage.includes('empréstimo')) {
@@ -112,9 +155,9 @@ export class SupportService {
         } else if (lowerMessage.includes('saque')) {
             response = "Os saques podem ser feitos via PIX do seu saldo disponível. Se você tiver cotas em valor igual ou superior ao saque, a taxa é Zero!";
         } else if (lowerMessage.includes('oi') || lowerMessage.includes('olá') || lowerMessage.includes('bom dia')) {
-            response = "Olá! Sou o assistente virtual do Cred30. Como posso ajudar você hoje? Eu conheço sobre aportes, apoios, saques e funcionamento geral.";
+            response = "Olá! Sou o Edy, seu assistente virtual do Cred30. Como posso ajudar você hoje? Posso explicar sobre aportes, apoios e saques.";
         } else {
-            response = "Ainda estou aprendendo sobre esse assunto específico. Para não te dar uma informação errada, gostaria de falar com um atendente humano? Se sim, clique no botão 'Falar com Atendente' acima ou digite 'humano' aqui embaixo.";
+            response = "Ainda estou aprendendo. Gostaria de falar com um atendente humano? Se sim, clique no botão 'Falar com Atendente' acima.";
         }
 
         return response;
