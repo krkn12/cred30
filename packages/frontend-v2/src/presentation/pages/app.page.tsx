@@ -196,7 +196,7 @@ export default function App() {
     try {
       await buyQuota(1, true);
       await refreshState();
-      setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Reinvestimento realizado!' });
+      setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Aporte realizado com sucesso!' });
     } catch (error: any) { setShowError({ isOpen: true, title: 'Erro', message: error.message }); }
   };
 
@@ -204,7 +204,7 @@ export default function App() {
     try {
       await requestLoan(amount, installments, pixKey);
       await refreshState();
-      setShowSuccess({ isOpen: true, title: 'Aprovado!', message: 'Empréstimo aprovado com sucesso!' });
+      setShowSuccess({ isOpen: true, title: 'Sucesso!', message: 'Apoio solicitado com sucesso!' });
     } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
   };
 
@@ -233,10 +233,10 @@ export default function App() {
           qrCode: response.pixData.qr_code,
           qrCodeBase64: response.pixData.qr_code_base64,
           amount: total,
-          description: `Pagamento de Empréstimo`
+          description: `Reposição de Apoio Mútuo`
         });
       } else {
-        setShowSuccess({ isOpen: true, title: 'Pagamento OK!', message: 'Empréstimo atualizado.' });
+        setShowSuccess({ isOpen: true, title: 'Pagamento OK!', message: 'Apoio atualizado.' });
       }
     } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
   };
@@ -376,7 +376,18 @@ export default function App() {
                   />
                 </Suspense>
               } />
-              <Route path="settings" element={<Suspense fallback={null}><SettingsView state={state} onRefresh={refreshState} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} /></Suspense>} />
+              <Route path="settings" element={
+                <Suspense fallback={null}>
+                  <SettingsView
+                    user={state.currentUser!}
+                    onSimulateTime={() => { }}
+                    onLogout={handleLogout}
+                    onDeleteAccount={() => { }}
+                    onChangePassword={changePassword}
+                    onRefresh={refreshState}
+                  />
+                </Suspense>
+              } />
               <Route path="invest" element={<Suspense fallback={null}><InvestView onBuy={handleBuyQuota} /></Suspense>} />
               <Route path="portfolio" element={
                 <Suspense fallback={null}>

@@ -124,7 +124,7 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                         Seja Cred30 <span className="text-primary-400">PRO</span>
                     </h3>
                     <p className="text-sm text-zinc-400 mb-6 leading-relaxed">
-                        Faça o upgrade da sua conta e tenha benefícios exclusivos que aumentam seus lucros e os dividendos da comunidade.
+                        Faça o upgrade da sua conta e tenha benefícios exclusivos que aumentam seus pontos e os excedentes operacionais da comunidade.
                     </p>
 
                     <div className="grid grid-cols-1 gap-3 mb-8">
@@ -132,7 +132,7 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                             { icon: <Zap size={14} />, text: "Aprovação de Crédito Prioritária" },
                             { icon: <TrendingUp size={14} />, text: "Taxas de Administração 20% Menores" },
                             { icon: <ShieldCheck size={14} />, text: "Selo de Membro Verificado PRO" },
-                            { icon: <Users size={14} />, text: "Parte do valor vai para Dividendos" }
+                            { icon: <Users size={14} />, text: "Contribui para os Excedentes Mútuos" }
                         ].map((item, i) => (
                             <div key={i} className="flex items-center gap-3 text-zinc-300">
                                 <div className="text-primary-400">{item.icon}</div>
@@ -170,7 +170,7 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                         {loading || loadingLocal ? <RefreshCw className="animate-spin" size={20} /> : (user.membership_type === 'PRO' ? 'MEMBRO PRO ATIVO' : `ASSINAR PRO POR R$ 29,90`)}
                     </button>
                     <p className="text-[8px] text-zinc-600 text-center mt-3 uppercase font-bold tracking-widest leading-normal">
-                        Assinando hoje você ajuda a aumentar o fundo de reserva dos cotistas da plataforma.
+                        Assinando hoje você ajuda a aumentar os excedentes operacionais para todos os membros da plataforma.
                     </p>
                 </div>
             </div>
@@ -182,8 +182,8 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                         <TrendingUp size={24} className="text-emerald-400" />
                     </div>
                     <div>
-                        <h4 className="text-sm font-bold text-white">Fundo de Dividendos</h4>
-                        <p className="text-[10px] text-zinc-500 uppercase font-black">Operação em crescimento</p>
+                        <h4 className="text-sm font-bold text-white">Resultados Proporcionais</h4>
+                        <p className="text-[10px] text-zinc-500 uppercase font-black">Distribuição de Excedentes</p>
                     </div>
                 </div>
                 <div className="space-y-4">
@@ -195,7 +195,7 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                         <div className="bg-emerald-500 h-full w-[65%]" />
                     </div>
                     <p className="text-[10px] text-zinc-500 italic leading-relaxed">
-                        Dica: Quanto mais membros usarem o Mercado e assistirem vídeos, maior será o pagamento mensal por Participação adquirida.
+                        Dica: Quanto mais membros usarem o Mercado e assistirem vídeos, maior será a distribuição proporcional por Participação adquirida.
                     </p>
                 </div>
             </div>

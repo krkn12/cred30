@@ -17,9 +17,9 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
 
     // Simular resposta da IA
     setTimeout(() => {
-      const aiResponse = { 
-        role: 'assistant', 
-        content: `Olá! Sou o assistente virtual do Cred30. Como posso ajudar você hoje?` 
+      const aiResponse = {
+        role: 'assistant',
+        content: `Olá! Sou o assistente virtual do Cred30. Como posso ajudar você hoje?`
       };
       setMessages(prev => [...prev, newMessage, aiResponse]);
     }, 1000);
@@ -60,8 +60,8 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
                 <p>Sou o assistente virtual do Cred30.</p>
                 <p className="text-sm mt-2">Posso ajudar com:</p>
                 <ul className="text-sm mt-2 space-y-1">
-                  <li>• Informações sobre investimentos</li>
-                  <li>• Dúvidas sobre empréstimos</li>
+                  <li>• Informações sobre aportes</li>
+                  <li>• Dúvidas sobre apoios</li>
                   <li>• Ajuda com o sistema</li>
                 </ul>
               </div>
@@ -73,11 +73,10 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] p-3 rounded-lg ${
-                    msg.role === 'user'
+                  className={`max-w-[80%] p-3 rounded-lg ${msg.role === 'user'
                       ? 'bg-primary-500 text-black'
                       : 'bg-surfaceHighlight text-white'
-                  }`}
+                    }`}
                 >
                   {msg.content}
                 </div>

@@ -12,9 +12,9 @@ export default defineConfig({
             injectRegister: 'inline',
             includeAssets: ['pwa-192x192.png', 'pwa-512x512.png'],
             manifest: {
-                name: 'Cred30 Fintech',
+                name: 'Cred30 Associativo',
                 short_name: 'Cred30',
-                description: 'Plataforma de Microcrédito e Investimentos',
+                description: 'Plataforma de Apoio Mútuo e Participação Social',
                 theme_color: '#06b6d4',
                 background_color: '#09090b',
                 display: 'standalone',

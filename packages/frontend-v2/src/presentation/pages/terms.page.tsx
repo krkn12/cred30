@@ -119,7 +119,7 @@ const TermsPage = () => {
                             </div>
                             <div className="flex items-start gap-3">
                                 <div className="w-6 h-6 bg-cyan-500/20 rounded-full flex items-center justify-center text-cyan-400 flex-shrink-0 text-xs font-bold">3</div>
-                                <p className="text-zinc-400 text-xs sm:text-sm"><strong className="text-white">Garantia Real:</strong> Os empréstimos são garantidos pelas cotas do membro. Em caso de atraso superior a 5 dias, o sistema executará automaticamente a garantia, liquidando as cotas necessárias para quitar o débito.</p>
+                                <p className="text-zinc-400 text-xs sm:text-sm"><strong className="text-white">Garantia Real:</strong> Os apoios são lastreados pelas participações do membro. Em caso de atraso superior a 5 dias, o sistema executará automaticamente o lastro, liquidando as cotas necessárias para quitar o débito.</p>
                             </div>
                             <div className="flex items-start gap-3">
                                 <div className="w-6 h-6 bg-cyan-500/20 rounded-full flex items-center justify-center text-cyan-400 flex-shrink-0 text-xs font-bold">4</div>
@@ -140,7 +140,7 @@ const TermsPage = () => {
                             <li>Saques requerem autenticação de dois fatores (2FA) para segurança.</li>
                             <li>Membros com cotas ativas em valor igual ou superior ao saque estão isentos de taxa.</li>
                             <li>Caso contrário, aplica-se uma taxa de 2% (mínimo R$ 5,00) sobre o valor do saque.</li>
-                            <li>85% da taxa de saque retorna ao caixa operacional e 15% vai para o pool de dividendos.</li>
+                            <li>85% da taxa de saque retorna ao caixa operacional e 15% vai para o pool de excedentes.</li>
                             <li>Saques estão sujeitos à disponibilidade de caixa e podem ser enfileirados.</li>
                         </ul>
                     </section>
@@ -160,7 +160,7 @@ const TermsPage = () => {
                             </ul>
                         </div>
                         <p className="text-zinc-300 text-sm sm:text-base leading-relaxed">
-                            A violação de qualquer regra pode resultar em suspensão ou exclusão permanente da cooperativa, sem direito a ressarcimento de valores investidos em cotas.
+                            A violação de qualquer regra pode resultar em suspensão ou exclusão permanente da cooperativa, sem direito a ressarcimento de valores aportados em cotas.
                         </p>
                     </section>
 
@@ -207,7 +207,7 @@ const TermsPage = () => {
                                 <strong>Natureza Jurídica (Blindagem):</strong> Este sistema opera estritamente sob as normas do Código Civil Brasileiro relativas à **Sociedade em Conta de Participação (SCP - Arts. 991 a 996)**, onde o gestor atua como sócio ostensivo e os membros como sócios participantes.
                             </p>
                             <p className="text-zinc-400 text-[10px] sm:text-xs leading-relaxed">
-                                **Mútuo Coletivo:** As operações de apoio mútuo baseiam-se nos **Arts. 586 a 592 (Mútuo Civil)** operados em caráter privado entre os sócios. NÃO se caracteriza como atividade financeira pública, conta de pagamento aberta ou oferta pública de investimentos.
+                                **Mútuo Coletivo:** As operações de apoio mútuo baseiam-se nos **Arts. 586 a 592 (Mútuo Civil)** operados em caráter privado entre os sócios. NÃO se caracteriza como atividade financeira pública, conta de pagamento aberta ou oferta pública de investimentos (CVM).
                             </p>
                             <p className="text-red-400/80 text-[9px] uppercase font-black tracking-tighter">
                                 aviso: a plataforma não promete ganhos fáceis. o resultado depende da atividade comercial do grupo no mercado cred30 e publicidade.

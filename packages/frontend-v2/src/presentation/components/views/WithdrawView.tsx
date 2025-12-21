@@ -293,7 +293,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                                 <div className="absolute bottom-4 left-6 right-6">
                                     <span className="bg-primary-500 text-black text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider mb-2 inline-block">Patrocinado</span>
                                     <h4 className="text-xl font-bold text-white">Ganhe até 10% de Cashback!</h4>
-                                    <p className="text-zinc-300 text-xs mt-1">Sabia que como membro VIP Ouro você recupera parte de cada investimento?</p>
+                                    <p className="text-zinc-300 text-xs mt-1">Sabia que como membro VIP Ouro você recupera parte de cada aporte?</p>
                                 </div>
                             </div>
 
