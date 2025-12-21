@@ -112,7 +112,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ onBack }) => {
                             <Gamepad2 className="text-purple-500" />
                             Jogos & Diversão
                         </h1>
-                        <p className="text-xs text-zinc-500 uppercase tracking-widest font-bold">Jogue e Ganhe Recompensas</p>
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest font-bold">Divirta-se e Obtenha Benefícios</p>
                     </div>
                 </div>
                 <button
@@ -146,7 +146,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ onBack }) => {
                                 className="w-full bg-zinc-800 hover:bg-purple-600 hover:text-white text-zinc-300 py-3 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-2"
                             >
                                 <PlayCircle size={16} />
-                                JOGAR AGORA
+                                ACESSAR
                             </button>
                         </div>
                     </div>
@@ -190,7 +190,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ onBack }) => {
                                     onClick={handleManualClick}
                                     className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-4 rounded-xl shadow-lg shadow-purple-900/40 transition active:scale-95 flex items-center justify-center gap-2 text-lg mb-2"
                                 >
-                                    {loadingAd ? <RefreshCw className="animate-spin" /> : <PlayCircle />} ACESSAR JOGO
+                                    {loadingAd ? <RefreshCw className="animate-spin" /> : <PlayCircle />} ACESSAR
                                 </button>
                                 <p className="text-[10px] text-zinc-500 italic">
                                     O jogo abrirá nesta aba. O anúncio abrirá em uma nova aba.

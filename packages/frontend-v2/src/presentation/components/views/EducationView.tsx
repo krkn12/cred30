@@ -44,7 +44,7 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
             id: 2,
             title: "Investindo com Pouco Dinheiro",
             duration: "22:30",
-            category: "Investimentos",
+            category: "Educação Financeira",
             videoUrl: "https://www.youtube.com/embed/sS2K-T6jVXE",
             thumbnail: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&q=80&w=800"
         },

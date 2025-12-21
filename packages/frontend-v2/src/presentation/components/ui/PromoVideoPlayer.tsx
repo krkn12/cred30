@@ -14,7 +14,7 @@ export const PromoVideoPlayer: React.FC<PromoVideoPlayerProps> = ({ duration, on
         {
             icon: <TrendingUp size={64} className="text-emerald-400" />,
             title: "Crescimento Mútuo",
-            text: "Seu capital cresce junto com a comunidade. Invista em cotas e receba dividendos reais.",
+            text: "Seu patrimônio se fortalece com a comunidade. Adquira licenças e receba bônus de resultado.",
             color: "from-emerald-900/40 to-black"
         },
         {

@@ -134,7 +134,7 @@ const PrivacyPage = () => {
                         </p>
                         <ul className="list-disc list-inside text-zinc-400 text-xs sm:text-sm space-y-2 ml-2 sm:ml-4">
                             <li>Calcular seu limite de crédito disponível para empréstimos.</li>
-                            <li>Definir elegibilidade para distribuição de dividendos.</li>
+                            <li>Definir elegibilidade para distribuição de bônus ou excedentes.</li>
                             <li>Identificar e prevenir atividades fraudulentas.</li>
                         </ul>
                         <div className="mt-4 bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl">

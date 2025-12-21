@@ -119,7 +119,7 @@ const TermsPage = () => {
                             </div>
                             <div className="flex items-start gap-3">
                                 <div className="w-6 h-6 bg-cyan-500/20 rounded-full flex items-center justify-center text-cyan-400 flex-shrink-0 text-xs font-bold">3</div>
-                                <p className="text-zinc-400 text-xs sm:text-sm"><strong className="text-white">Garantia Real:</strong> Os apoios são lastreados pelas participações do membro. Em caso de atraso superior a 5 dias, o sistema executará automaticamente o lastro, liquidando as cotas necessárias para quitar o débito.</p>
+                                <p className="text-zinc-400 text-xs sm:text-sm"><strong className="text-white">Garantia Real:</strong> Os apoios são lastreados pelas licenças do membro. Em caso de atraso superior a 5 dias, o sistema executará automaticamente o lastro, liquidando as licenças necessárias para quitar o débito.</p>
                             </div>
                             <div className="flex items-start gap-3">
                                 <div className="w-6 h-6 bg-cyan-500/20 rounded-full flex items-center justify-center text-cyan-400 flex-shrink-0 text-xs font-bold">4</div>
@@ -131,17 +131,17 @@ const TermsPage = () => {
                     {/* Seção 5 */}
                     <section className="bg-zinc-900/30 border border-white/5 p-5 sm:p-8 rounded-2xl sm:rounded-3xl">
                         <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-3 text-cyan-400">
-                            <ShieldCheck size={22} /> 5. Saques
+                            <ShieldCheck size={22} /> 5. Resgates
                         </h2>
                         <p className="text-zinc-300 text-sm sm:text-base leading-relaxed mb-4">
-                            Os saques são processados exclusivamente via PIX para a chave cadastrada. As regras aplicáveis são:
+                            Os resgates são processados exclusivamente via PIX para a chave cadastrada. As regras aplicáveis são:
                         </p>
                         <ul className="list-disc list-inside text-zinc-400 text-xs sm:text-sm space-y-2 ml-2 sm:ml-4">
-                            <li>Saques requerem autenticação de dois fatores (2FA) para segurança.</li>
-                            <li>Membros com cotas ativas em valor igual ou superior ao saque estão isentos de taxa.</li>
-                            <li>Caso contrário, aplica-se uma taxa de 2% (mínimo R$ 5,00) sobre o valor do saque.</li>
-                            <li>85% da taxa de saque retorna ao caixa operacional e 15% vai para o pool de excedentes.</li>
-                            <li>Saques estão sujeitos à disponibilidade de caixa e podem ser enfileirados.</li>
+                            <li>Resgates requerem autenticação de dois fatores (2FA) para segurança.</li>
+                            <li>Membros com licenças ativas em valor igual ou superior ao resgate estão isentos de taxa.</li>
+                            <li>Caso contrário, aplica-se uma contribuição administrativa de 2% (mínimo R$ 5,00) sobre o valor do resgate.</li>
+                            <li>85% dessa contribuição retorna ao caixa operacional e 15% vai para o pool de bônus ou excedentes.</li>
+                            <li>Resgates estão sujeitos à disponibilidade do caixa mútuo e podem ser enfileirados.</li>
                         </ul>
                     </section>
 
@@ -160,7 +160,7 @@ const TermsPage = () => {
                             </ul>
                         </div>
                         <p className="text-zinc-300 text-sm sm:text-base leading-relaxed">
-                            A violação de qualquer regra pode resultar em suspensão ou exclusão permanente da cooperativa, sem direito a ressarcimento de valores aportados em cotas.
+                            A violação de qualquer regra pode resultar em suspensão ou exclusão permanente da cooperativa, sem direito a ressarcimento de valores aportados em licenças, salvo deliberação contrária.
                         </p>
                     </section>
 

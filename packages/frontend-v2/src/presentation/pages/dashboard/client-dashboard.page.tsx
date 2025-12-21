@@ -49,13 +49,13 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
         <MetricCard
           title="Saldo Disponível"
           value={formatCurrency(user.balance)}
-          subtitle="Para saques ou novos aportes"
+          subtitle="Para resgates ou novos aportes"
           color="blue"
         />
         <MetricCard
-          title="Valor em Cotas"
+          title="Valor em Licenças"
           value={formatCurrency(totalQuotaValue)}
-          subtitle={`${quotas.length} cota(s)`}
+          subtitle={`${quotas.length} licença(s)`}
           color="green"
           trend={totalQuotaProfit !== 0 ? {
             value: Math.abs((totalQuotaProfit / (totalQuotaValue - totalQuotaProfit)) * 100),
@@ -69,7 +69,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
           color="red"
         />
         <MetricCard
-          title="Excedentes das Cotas"
+          title="Excedentes das Licenças"
           value={formatCurrency(totalQuotaProfit)}
           subtitle={totalQuotaProfit >= 0 ? 'Resultado positivo' : 'Resultado negativo'}
           color={totalQuotaProfit >= 0 ? 'green' : 'red'}
@@ -107,7 +107,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white font-bold mb-2">
               ↑
             </div>
-            <span className="text-sm font-medium text-gray-900">Aportar Cotas</span>
+            <span className="text-sm font-medium text-gray-900">Aportar Licenças</span>
           </button>
 
           <button
@@ -118,7 +118,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             <div className="w-8 h-8 bg-yellow-600 rounded-full flex items-center justify-center text-white font-bold mb-2">
               ↓
             </div>
-            <span className="text-sm font-medium text-gray-900">Vender Cota</span>
+            <span className="text-sm font-medium text-gray-900">Resgatar Licença</span>
           </button>
 
           <button
@@ -145,15 +145,15 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       {/* Resumo de Aportes e Apoio */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Minhas Cotas</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Minhas Licenças</h3>
           {quotas.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              <p className="mb-4">Você ainda não possui cotas</p>
+              <p className="mb-4">Você ainda não possui licenças</p>
               <button
                 onClick={onBuyQuota}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
               >
-                Comprar Primeira Cota
+                Adquirir Primeira Licença
               </button>
             </div>
           ) : (
@@ -162,7 +162,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                 <div key={quota.id} className="border rounded-lg p-4">
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="font-medium text-gray-900">Cota #{index + 1}</p>
+                      <p className="font-medium text-gray-900">Licença #{index + 1}</p>
                       <p className="text-sm text-gray-500">
                         Comprada em {new Date(quota.purchaseDate).toLocaleDateString('pt-BR')}
                       </p>

@@ -73,7 +73,7 @@ export const PortfolioView = ({ quotas, hasLoans, onSell, onSellAll }: Portfolio
             });
             netValue = originalValue - penaltyValue;
         } else if (selectedQuotaId) {
-            modalTitle = `Resgate Cota #${typeof selectedQuotaId === 'string' ? selectedQuotaId.substring(0, 4) : 'N/A'}`;
+            modalTitle = `Resgate Licença #${typeof selectedQuotaId === 'string' ? selectedQuotaId.substring(0, 4) : 'N/A'}`;
             const quota = safeQuotas.find(q => q?.id === selectedQuotaId);
             if (quota) {
                 const daysHeld = Math.floor((Date.now() - (Number(quota.purchaseDate) || 0)) / (1000 * 60 * 60 * 24));

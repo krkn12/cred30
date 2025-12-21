@@ -60,7 +60,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
           color="blue"
         />
         <MetricCard
-          title="Lucro de Juros"
+          title="Bônus de Encargos"
           value={formatCurrency(profitPool)}
           subtitle="Juros acumulados"
           color="green"
@@ -79,9 +79,9 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
         />
       </div>
 
-      {/* Gestão de Lucros */}
+      {/* Gestão de Bônus */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Gestão de Lucros</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Gestão de Bônus</h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
@@ -89,15 +89,15 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
               <h4 className="font-medium text-gray-900 mb-2">Resumo de Distribuição</h4>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Total de Lucros:</span>
+                  <span className="text-sm text-gray-600">Total de Bônus:</span>
                   <span className="font-medium">{formatCurrency(profitPool)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Cotas Ativas:</span>
+                  <span className="text-sm text-gray-600">Licenças Ativas:</span>
                   <span className="font-medium">{quotasCount}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Lucro por Cota (85%):</span>
+                  <span className="text-sm text-gray-600">Bônus por Licença (85%):</span>
                   <span className="font-medium text-green-600">{formatCurrency(profitPerQuota)}</span>
                 </div>
                 <div className="flex justify-between">
@@ -114,21 +114,21 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
                 onClick={() => setShowProfitModal(true)}
                 className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
               >
-                Adicionar Lucro
+                Adicionar Bônus
               </button>
               <button
                 onClick={onDistributeProfits}
                 disabled={profitPool <= 0 || quotasCount === 0}
                 className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                Distribuir Lucros
+                Distribuir Bônus
               </button>
             </div>
 
             {quotasCount === 0 && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                 <p className="text-sm text-yellow-800">
-                  ⚠️ Não há cotas ativas para distribuir lucros
+                  ⚠️ Não há licenças ativas para distribuir bônus
                 </p>
               </div>
             )}
@@ -139,7 +139,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
               <h4 className="font-medium text-gray-900 mb-2">Informações do Sistema</h4>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Preço da Cota:</span>
+                  <span className="text-sm text-gray-600">Preço da Licença:</span>
                   <span className="font-medium">{formatCurrency(FINANCIAL_CONSTANTS.QUOTA_PRICE)}</span>
                 </div>
                 <div className="flex justify-between">
@@ -211,17 +211,17 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
         </div>
       )}
 
-      {/* Modal para adicionar lucro */}
+      {/* Modal para adicionar bônus */}
       {showProfitModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Adicionar Lucro de Juros
+              Adicionar Bônus de Encargos
             </h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Valor do lucro
+                  Valor do bônus
                 </label>
                 <input
                   type="number"

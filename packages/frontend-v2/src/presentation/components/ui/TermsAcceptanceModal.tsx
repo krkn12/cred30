@@ -59,16 +59,16 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({ isOp
 
                     <section className="space-y-4">
                         <h3 className="text-lg md:text-xl font-bold text-primary-400 flex items-center gap-2">
-                            2. Regras dos Aportes (Cotas)
+                            2. Regras dos Aportes Sociais (Licenças)
                         </h3>
                         <div className="grid md:grid-cols-2 gap-4">
                             <div className="bg-zinc-900/50 p-5 rounded-2xl border border-zinc-800">
-                                <h4 className="font-bold text-white mb-2 text-sm md:text-base">Valor da Cota</h4>
-                                <p className="text-zinc-500 text-xs md:text-sm leading-relaxed">Cada cota possui o valor nominal fixado em R$ 50,00, podendo ser reajustado conforme deliberação do sistema.</p>
+                                <h4 className="font-bold text-white mb-2 text-sm md:text-base">Valor da Licença</h4>
+                                <p className="text-zinc-500 text-xs md:text-sm leading-relaxed">Cada licença possui o valor nominal fixado em R$ 50,00, podendo ser reajustado conforme deliberação do sistema.</p>
                             </div>
                             <div className="bg-zinc-900/50 p-5 rounded-2xl border border-zinc-800">
                                 <h4 className="font-bold text-white mb-2 text-sm md:text-base">Distribuição</h4>
-                                <p className="text-zinc-500 text-xs md:text-sm leading-relaxed">85% dos excedentes gerados são distribuídos proporcionalmente entre os detentores de cotas ativas.</p>
+                                <p className="text-zinc-500 text-xs md:text-sm leading-relaxed">85% dos excedentes gerados são distribuídos proporcionalmente entre os detentores de licenças ativas.</p>
                             </div>
                         </div>
                     </section>
@@ -78,12 +78,12 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({ isOp
                             3. Apoio Mútuo e Garantia Real
                         </h3>
                         <p className="text-zinc-400 leading-relaxed text-sm md:text-base">
-                            Os membros podem solicitar apoio para consumo ou projetos baseado em seu score. <strong className="text-white">As cotas ativas servem como garantia para honrar os compromissos de reposição.</strong>
+                            Os membros podem solicitar apoio para consumo ou projetos baseado em seu score. <strong className="text-white">As licenças ativas servem como garantia para honrar os compromissos de reposição.</strong>
                         </p>
                         <div className="bg-red-500/5 border border-red-500/10 p-4 rounded-xl flex items-start gap-4">
                             <div className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center text-red-400 text-xs font-bold mt-1 shrink-0">!</div>
                             <p className="text-zinc-500 text-xs md:text-sm leading-relaxed">
-                                Em caso de atraso superior a 5 dias, o sistema reserva-se o direito de <strong className="text-red-400">LIQUIDAR AUTOMATICAMENTE</strong> as cotas do devedor para quitar o saldo devedor, sem necessidade de aviso prévio.
+                                Em caso de atraso superior a 5 dias, o sistema reserva-se o direito de <strong className="text-red-400">LIQUIDAR AUTOMATICAMENTE</strong> as licenças do devedor para quitar o saldo devedor, sem necessidade de aviso prévio.
                             </p>
                         </div>
                     </section>
