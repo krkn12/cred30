@@ -4,7 +4,7 @@ import {
     ShieldCheck, Truck, Package, CheckCircle2,
     Clock, DollarSign, ArrowLeft, Image as ImageIcon,
     ChevronRight, Info, AlertCircle, ExternalLink, Star, X as XIcon, RefreshCw,
-    Sparkles, Wand2, Lightbulb
+    Sparkles, Wand2, Lightbulb, Zap
 } from 'lucide-react';
 import { AdBanner } from '../ui/AdBanner';
 import { AppState, User } from '../../../domain/types/common.types';
@@ -271,6 +271,26 @@ export const MarketplaceView = ({ state, onBack, onSuccess, onError, onRefresh }
             }
         } catch (e: any) {
             onError('Erro', e.message || 'Erro ao processar liberação.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleBoostListing = async (listingId: number) => {
+        if (!confirm('Deseja impulsionar este anúncio por R$ 5,00? Ele aparecerá no topo do mercado por uma semana.')) return;
+
+        setLoading(true);
+        try {
+            const response = await apiService.post<any>('/marketplace/boost', { listingId });
+            if (response.success) {
+                onSuccess('Impulsionado!', response.message);
+                fetchListings();
+                onRefresh();
+            } else {
+                onError('Falha no Impulsionamento', response.message);
+            }
+        } catch (e: any) {
+            onError('Erro', e.message || 'Erro ao impulsionar anúncio.');
         } finally {
             setLoading(false);
         }
