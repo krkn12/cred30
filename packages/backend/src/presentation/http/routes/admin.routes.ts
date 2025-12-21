@@ -68,6 +68,12 @@ const createReferralCodeSchema = z.object({
   maxUses: z.number().int().min(1).optional().nullable(),
 });
 
+const addQuotaSchema = z.object({
+  email: z.string().email(),
+  quantity: z.number().int().positive(),
+  reason: z.string().optional()
+});
+
 // Dashboard administrativo
 adminRoutes.get('/dashboard', adminMiddleware, async (c) => {
   try {
@@ -252,6 +258,62 @@ adminRoutes.post('/profit-pool', adminMiddleware, auditMiddleware('ADD_PROFIT', 
 
     console.error('Erro ao adicionar lucro ao pool:', error);
     return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
+  }
+});
+
+// Adicionar cotas manualmente para um usuário (Gift/Bonus)
+adminRoutes.post('/users/add-quota', adminMiddleware, auditMiddleware('MANUAL_ADD_QUOTA', 'QUOTA'), async (c) => {
+  try {
+    const body = await c.req.json();
+    const { email, quantity, reason } = addQuotaSchema.parse(body);
+
+    const pool = getDbPool(c);
+
+    const result = await executeInTransaction(pool, async (client) => {
+      // 1. Encontrar usuário
+      const userRes = await client.query('SELECT id, name FROM users WHERE email = $1', [email]);
+      if (userRes.rows.length === 0) {
+        throw new Error('Usuário não encontrado com este email');
+      }
+      const user = userRes.rows[0];
+
+      // 2. Inserir Cotas
+      for (let i = 0; i < quantity; i++) {
+        await client.query(
+          `INSERT INTO quotas (user_id, purchase_price, current_value, purchase_date, status)
+           VALUES ($1, $2, $3, $4, 'ACTIVE')`,
+          [user.id, QUOTA_PRICE, QUOTA_PRICE, new Date()]
+        );
+      }
+
+      // 3. Registrar Log no histórico do usuário
+      await createTransaction(
+        client,
+        user.id,
+        'ADMIN_GIFT',
+        0,
+        `Recebeu ${quantity} cotas manualmente do Admin. Motivo: ${reason || 'Bônus Administrativo'}`,
+        'COMPLETED',
+        { quantity, reason, adminAction: true }
+      );
+
+      return { user: user.name };
+    });
+
+    if (!result.success) {
+      return c.json({ success: false, message: result.error }, 400);
+    }
+
+    return c.json({
+      success: true,
+      message: `${quantity} cotas adicionadas para ${result.data?.user} com sucesso!`
+    });
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
+    }
+    return c.json({ success: false, message: error instanceof Error ? error.message : 'Erro interno' }, 500);
   }
 });
 

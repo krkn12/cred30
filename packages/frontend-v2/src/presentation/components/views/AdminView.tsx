@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import packageJson from '../../../../package.json';
 import {
-    ShieldCheck, RefreshCw, LogOut, Users, PieChart, DollarSign, PiggyBank, Coins, ArrowUpFromLine, ArrowDownLeft, TrendingUp, Clock, ArrowUpRight, Check, X as XIcon, AlertTriangle, Settings as SettingsIcon, ShoppingBag as ShoppingBagIcon, UserPlus, Trash2, MessageSquare, ExternalLink, Send, Clipboard
+    ShieldCheck, RefreshCw, LogOut, Users, PieChart, DollarSign, PiggyBank, Coins, ArrowUpFromLine, ArrowDownLeft, TrendingUp, Clock, ArrowUpRight, Check, X as XIcon, AlertTriangle, Settings as SettingsIcon, ShoppingBag as ShoppingBagIcon, UserPlus, Trash2, MessageSquare, ExternalLink, Send, Clipboard, Gift
 } from 'lucide-react';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { PromptModal } from '../ui/PromptModal';
@@ -50,12 +50,15 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const [isLoading, setIsLoading] = useState(true);
     const [confirmMP, setConfirmMP] = useState<{ id: string, tid: string } | null>(null);
 
-    const [activeTab, setActiveTab] = useState<'overview' | 'payouts' | 'system' | 'store' | 'referrals' | 'support'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'payouts' | 'system' | 'store' | 'referrals' | 'support' | 'users'>('overview');
     const [payoutQueue, setPayoutQueue] = useState<{ transactions: any[], loans: any[] }>({ transactions: [], loans: [] });
     const [pendingChatsCount, setPendingChatsCount] = useState(0);
     const [referralCodes, setReferralCodes] = useState<any[]>([]);
     const [newReferralCode, setNewReferralCode] = useState('');
     const [referralMaxUses, setReferralMaxUses] = useState('');
+    const [giftEmail, setGiftEmail] = useState('');
+    const [giftQuantity, setGiftQuantity] = useState('');
+    const [giftReason, setGiftReason] = useState('');
 
     useEffect(() => {
 
@@ -227,6 +230,29 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
 
 
 
+    const handleGiftQuota = async () => {
+        if (!giftEmail || !giftQuantity) return;
+        if (!window.confirm(`CONFIRMAÇÃO: Enviar ${giftQuantity} cotas para ${giftEmail}? Esta ação criará as cotas e não cobrará do usuário.`)) return;
+
+        try {
+            const response = await apiService.post('/admin/users/add-quota', {
+                email: giftEmail,
+                quantity: parseInt(giftQuantity),
+                reason: giftReason
+            });
+            if (response.success) {
+                onSuccess('Envio Realizado!', response.message);
+                setGiftEmail('');
+                setGiftQuantity('');
+                setGiftReason('');
+            } else {
+                onError('Erro', response.message);
+            }
+        } catch (e: any) {
+            onError('Erro', e.message);
+        }
+    };
+
     const formatCurrency = (val: number) => {
         if (typeof val !== 'number' || isNaN(val)) return 'R$ 0,00';
         return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -280,6 +306,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                     { id: 'payouts', name: 'Fila de Resgates', icon: Send, count: (payoutQueue.transactions?.length || 0) },
                     { id: 'system', name: 'Gestão Financeira', icon: SettingsIcon },
                     { id: 'referrals', name: 'Indicações', icon: UserPlus },
+                    { id: 'users', name: 'Usuários & Gifts', icon: Gift },
                     { id: 'store', name: 'Loja', icon: ShoppingBagIcon },
                     { id: 'support', name: 'Suporte', icon: MessageSquare, count: pendingChatsCount },
                 ].map((tab: any) => (
@@ -626,6 +653,63 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                                         </div>
                                     ))
                                 )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'users' && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl max-w-2xl mx-auto">
+                        <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
+                            <div className="p-2 bg-purple-500/10 rounded-lg"><Gift className="text-purple-400" size={20} /></div>
+                            Presentear Cotas (Admin Gift)
+                        </h3>
+                        <div className="space-y-6">
+                            <div className="bg-purple-500/5 border border-purple-500/10 rounded-2xl p-4 text-purple-200 text-sm">
+                                <p className="font-bold flex items-center gap-2"><AlertTriangle size={14} /> ATENÇÃO</p>
+                                <p className="mt-1 opacity-80">Esta ação adiciona cotas "ATIVAS" diretamente na conta do usuário sem cobrar saldo. Use para bonificações ou correções.</p>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-[10px] text-zinc-500 font-black uppercase mb-1 block tracking-widest">Email do Usuário</label>
+                                    <input
+                                        type="email"
+                                        placeholder="usuario@email.com"
+                                        value={giftEmail}
+                                        onChange={(e) => setGiftEmail(e.target.value)}
+                                        className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-purple-500/50 focus:bg-zinc-800 transition-all font-bold"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] text-zinc-500 font-black uppercase mb-1 block tracking-widest">Quantidade de Cotas</label>
+                                    <input
+                                        type="number"
+                                        placeholder="Ex: 5"
+                                        value={giftQuantity}
+                                        onChange={(e) => setGiftQuantity(e.target.value)}
+                                        className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-purple-500/50 focus:bg-zinc-800 transition-all font-bold"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] text-zinc-500 font-black uppercase mb-1 block tracking-widest">Motivo (Interno)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Ex: Bônus de migração"
+                                        value={giftReason}
+                                        onChange={(e) => setGiftReason(e.target.value)}
+                                        className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-purple-500/50 focus:bg-zinc-800 transition-all text-sm font-medium"
+                                    />
+                                </div>
+
+                                <button
+                                    onClick={handleGiftQuota}
+                                    className="w-full bg-purple-500 hover:bg-purple-400 text-black font-black py-4 rounded-2xl transition-all shadow-xl hover:shadow-[0_0_30px_rgba(168,85,247,0.3)] transform active:scale-95 flex items-center justify-center gap-3 text-sm uppercase mt-4"
+                                >
+                                    <Gift size={20} /> Enviar Cotas
+                                </button>
                             </div>
                         </div>
                     </div>
