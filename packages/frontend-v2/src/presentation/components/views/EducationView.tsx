@@ -276,7 +276,7 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
                                 src={`${selectedLesson.videoUrl}?autoplay=0&controls=1&rel=0`}
                                 title={selectedLesson.title}
                                 frameBorder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; compute-pressure"
                                 allowFullScreen
                                 className="z-10 relative" // Permitir interação
                             ></iframe>
