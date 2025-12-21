@@ -574,6 +574,8 @@ export const initializeDatabase = async () => {
         seller_amount DECIMAL(10, 2) NOT NULL, -- Valor que o vendedor receberá (amount - fee)
         status VARCHAR(30) DEFAULT 'WAITING_PAYMENT', -- WAITING_PAYMENT, WAITING_SHIPPING, IN_TRANSIT, DELIVERED, COMPLETED, CANCELLED, DISPUTE
         payment_method VARCHAR(20), -- BALANCE, PIX, etc
+        delivery_address TEXT,
+        contact_phone VARCHAR(20),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         tracking_code VARCHAR(100),
