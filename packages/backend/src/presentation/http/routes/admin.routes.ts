@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
+import bcrypt from 'bcrypt';
 import { PoolClient } from 'pg';
 import { authMiddleware, adminMiddleware } from '../middleware/auth.middleware';
 import { auditMiddleware, initializeAuditTable } from '../../../infrastructure/logging/audit.middleware';
@@ -185,7 +186,7 @@ adminRoutes.get('/dashboard', adminMiddleware, async (c) => {
 // Rota obsoleta - Caixa operacional agora é calculado automaticamente
 // Mantida para compatibilidade, mas retorna mensagem informativa
 // Painel de Monitoramento de Saúde do Sistema
-adminRoutes.get('/metrics/health', adminMiddleware, async (c) => {
+adminRoutes.get('/metrics/health', attendantMiddleware, async (c) => {
   try {
     const pool = getDbPool(c);
     const start = Date.now();
@@ -1716,7 +1717,6 @@ adminRoutes.post('/users/create-attendant', adminMiddleware, auditMiddleware('CR
     const body = await c.req.json();
     const { name, email, password, secretPhrase, pixKey } = createAttendantSchema.parse(body);
     const pool = getDbPool(c);
-    const bcrypt = require('bcrypt');
     const passwordHash = await bcrypt.hash(password, 10);
 
     const result = await pool.query(

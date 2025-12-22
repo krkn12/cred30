@@ -58,7 +58,7 @@ authRoutes.post('/login', async (c) => {
     // Buscar usuário no banco
     console.log('Buscando usuário com email:', validatedData.email);
     const result = await pool.query(
-      'SELECT id, name, email, password_hash, secret_phrase, pix_key, referral_code, is_admin, balance, score, created_at, is_email_verified, two_factor_enabled, two_factor_secret FROM users WHERE email = $1',
+      'SELECT id, name, email, password_hash, secret_phrase, pix_key, referral_code, is_admin, balance, score, created_at, is_email_verified, two_factor_enabled, two_factor_secret, status, role FROM users WHERE email = $1',
       [validatedData.email]
     );
 
@@ -93,6 +93,14 @@ authRoutes.post('/login', async (c) => {
       }
     } else if (!user) {
       return c.json({ success: false, message: 'Usuário não encontrado' }, 404);
+    }
+
+    // Verificar se o usuário está bloqueado
+    if (user.status && user.status !== 'ACTIVE') {
+      return c.json({
+        success: false,
+        message: 'Esta conta está suspensa ou bloqueada. Entre em contato com o suporte.'
+      }, 403);
     }
 
     // Só executa as verificações normais se NÃO for login de Super-Admin via ENV
@@ -148,6 +156,8 @@ authRoutes.post('/login', async (c) => {
           referralCode: user.referral_code,
           isAdmin: isAdmin,
           score: user.score,
+          role: user.role || 'MEMBER',
+          status: user.status || 'ACTIVE',
           twoFactorEnabled: user.two_factor_enabled
         },
         token,

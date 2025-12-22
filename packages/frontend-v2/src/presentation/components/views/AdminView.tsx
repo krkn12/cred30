@@ -51,7 +51,10 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const [isLoading, setIsLoading] = useState(true);
     const [confirmMP, setConfirmMP] = useState<{ id: string, tid: string } | null>(null);
 
-    const [activeTab, setActiveTab] = useState<'overview' | 'payouts' | 'system' | 'store' | 'referrals' | 'support' | 'users' | 'metrics'>('overview');
+    const userRole = state.currentUser?.role || (state.currentUser?.isAdmin ? 'ADMIN' : 'MEMBER');
+    const [activeTab, setActiveTab] = useState<'overview' | 'payouts' | 'system' | 'store' | 'referrals' | 'support' | 'users' | 'metrics'>(
+        userRole === 'ATTENDANT' ? 'support' : 'overview'
+    );
     const [payoutQueue, setPayoutQueue] = useState<{ transactions: any[], loans: any[] }>({ transactions: [], loans: [] });
     const [pendingChatsCount, setPendingChatsCount] = useState(0);
     const [referralCodes, setReferralCodes] = useState<any[]>([]);
@@ -331,15 +334,18 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
             {/* Abas */}
             <div className="flex items-center gap-1.5 p-1.5 bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 rounded-[2rem] overflow-x-auto no-scrollbar shadow-xl sticky top-4 z-50">
                 {[
-                    { id: 'overview', name: 'Resumo', icon: PieChart },
-                    { id: 'payouts', name: 'Resgates', icon: Send, count: (payoutQueue.transactions?.length || 0) },
-                    { id: 'metrics', name: 'Monitoramento', icon: Activity },
-                    { id: 'system', name: 'Financeiro', icon: SettingsIcon },
-                    { id: 'referrals', name: 'Indicações', icon: UserPlus },
-                    { id: 'users', name: 'Usuários', icon: Gift },
-                    { id: 'store', name: 'Loja', icon: ShoppingBagIcon },
-                    { id: 'support', name: 'Suporte', icon: MessageSquare, count: pendingChatsCount },
-                ].map((tab: any) => (
+                    { id: 'overview', name: 'Resumo', icon: PieChart, roles: ['ADMIN'] },
+                    { id: 'payouts', name: 'Resgates', icon: Send, count: (payoutQueue.transactions?.length || 0), roles: ['ADMIN'] },
+                    { id: 'metrics', name: 'Monitoramento', icon: Activity, roles: ['ADMIN', 'ATTENDANT'] },
+                    { id: 'system', name: 'Financeiro', icon: SettingsIcon, roles: ['ADMIN'] },
+                    { id: 'referrals', name: 'Indicações', icon: UserPlus, roles: ['ADMIN'] },
+                    { id: 'users', name: 'Usuários', icon: ShieldCheck, roles: ['ADMIN'] },
+                    { id: 'store', name: 'Loja', icon: ShoppingBagIcon, roles: ['ADMIN'] },
+                    { id: 'support', name: 'Suporte', icon: MessageSquare, count: pendingChatsCount, roles: ['ADMIN', 'ATTENDANT'] },
+                ].filter((tab: any) => {
+                    const userRole = state.currentUser?.role || (state.currentUser?.isAdmin ? 'ADMIN' : 'MEMBER');
+                    return tab.roles.includes(userRole as any);
+                }).map((tab: any) => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
