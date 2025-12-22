@@ -184,6 +184,70 @@ adminRoutes.get('/dashboard', adminMiddleware, async (c) => {
 
 // Rota obsoleta - Caixa operacional agora é calculado automaticamente
 // Mantida para compatibilidade, mas retorna mensagem informativa
+// Painel de Monitoramento de Saúde do Sistema
+adminRoutes.get('/metrics/health', adminMiddleware, async (c) => {
+  try {
+    const pool = getDbPool(c);
+    const start = Date.now();
+
+    // 1. Latência do Banco de Dados
+    await pool.query('SELECT 1');
+    const dbLatency = Date.now() - start;
+
+    // 2. Estatísticas de Tabelas (Volume de Dados)
+    const tableStats = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM users) as total_users,
+        (SELECT COUNT(*) FROM transactions) as total_transactions,
+        (SELECT COUNT(*) FROM quotas) as total_quotas,
+        (SELECT COUNT(*) FROM loans) as total_loans,
+        (SELECT COUNT(*) FROM audit_logs) as total_audit_logs
+    `);
+
+    // 3. Atividade Recente (Últimas 24h)
+    const recentActivity = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '24 hours') as new_users_24h,
+        (SELECT COUNT(*) FROM transactions WHERE created_at > NOW() - INTERVAL '24 hours') as trans_24h,
+        (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE created_at > NOW() - INTERVAL '24 hours' AND status = 'APPROVED') as volume_24h
+    `);
+
+    // 4. Status da Fila e Liquidez
+    const queueStatus = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM loans WHERE status = 'PENDING') as pending_loans_count,
+        (SELECT COALESCE(SUM(amount), 0) FROM loans WHERE status = 'PENDING') as pending_loans_volume
+    `);
+
+    // 5. Recursos do Sistema (Node.js)
+    const memoryUsage = process.memoryUsage();
+    const uptime = process.uptime();
+
+    return c.json({
+      success: true,
+      data: {
+        health: {
+          status: 'HEALTHY',
+          dbLatency: `${dbLatency}ms`,
+          uptime: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m`,
+          memory: {
+            heapUsed: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`,
+            heapTotal: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
+            rss: `${Math.round(memoryUsage.rss / 1024 / 1024)}MB`
+          }
+        },
+        database: tableStats.rows[0],
+        activity: recentActivity.rows[0],
+        queue: queueStatus.rows[0],
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar métricas de saúde:', error);
+    return c.json({ success: false, message: 'Erro ao coletar métricas' }, 500);
+  }
+});
+
 adminRoutes.post('/system-balance', adminMiddleware, async (c) => {
   return c.json({
     success: false,

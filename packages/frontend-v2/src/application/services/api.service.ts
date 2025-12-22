@@ -370,7 +370,10 @@ class ApiService {
     return response.data;
   }
 
-
+  async getHealthMetrics(): Promise<any> {
+    const response = await this.request<any>('/admin/metrics/health');
+    return response.data;
+  }
 
   async addProfitToPool(amountToAdd: number): Promise<void> {
     await this.request<void>('/admin/profit-pool', {

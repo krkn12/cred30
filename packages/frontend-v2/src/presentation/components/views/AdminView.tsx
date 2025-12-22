@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import packageJson from '../../../../package.json';
 import {
-    ShieldCheck, RefreshCw, LogOut, Users, PieChart, DollarSign, PiggyBank, Coins, ArrowUpFromLine, ArrowDownLeft, TrendingUp, Clock, ArrowUpRight, Check, X as XIcon, AlertTriangle, Settings as SettingsIcon, ShoppingBag as ShoppingBagIcon, UserPlus, Trash2, MessageSquare, ExternalLink, Send, Clipboard, Gift
+    ShieldCheck, RefreshCw, LogOut, Users, PieChart, DollarSign, PiggyBank, Coins, ArrowUpFromLine, ArrowDownLeft, TrendingUp, Clock, ArrowUpRight, Check, X as XIcon, AlertTriangle, Settings as SettingsIcon, ShoppingBag as ShoppingBagIcon, UserPlus, Trash2, MessageSquare, ExternalLink, Send, Clipboard, Gift, Activity, Cpu, Database, HardDrive, Zap
 } from 'lucide-react';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { PromptModal } from '../ui/PromptModal';
@@ -50,7 +50,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const [isLoading, setIsLoading] = useState(true);
     const [confirmMP, setConfirmMP] = useState<{ id: string, tid: string } | null>(null);
 
-    const [activeTab, setActiveTab] = useState<'overview' | 'payouts' | 'system' | 'store' | 'referrals' | 'support' | 'users'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'payouts' | 'system' | 'store' | 'referrals' | 'support' | 'users' | 'metrics'>('overview');
     const [payoutQueue, setPayoutQueue] = useState<{ transactions: any[], loans: any[] }>({ transactions: [], loans: [] });
     const [pendingChatsCount, setPendingChatsCount] = useState(0);
     const [referralCodes, setReferralCodes] = useState<any[]>([]);
@@ -59,11 +59,13 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const [giftEmail, setGiftEmail] = useState('');
     const [giftQuantity, setGiftQuantity] = useState('');
     const [giftReason, setGiftReason] = useState('');
+    const [healthMetrics, setHealthMetrics] = useState<any>(null);
+    const [isMetricsLoading, setIsMetricsLoading] = useState(false);
 
     useEffect(() => {
-
+        setIsLoading(false);
         fetchPendingChatsCount();
-        const interval = setInterval(fetchPendingChatsCount, 15000); // Poll a cada 15s
+        const interval = setInterval(fetchPendingChatsCount, 15000);
 
         if (activeTab === 'payouts') {
             fetchPayoutQueue();
@@ -73,8 +75,24 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
             fetchReferralCodes();
         }
 
+        if (activeTab === 'metrics') {
+            fetchHealthMetrics();
+        }
+
         return () => clearInterval(interval);
     }, [state, activeTab]);
+
+    const fetchHealthMetrics = async () => {
+        setIsMetricsLoading(true);
+        try {
+            const data = await apiService.getHealthMetrics();
+            if (data) setHealthMetrics(data);
+        } catch (e) {
+            console.error('Erro ao buscar métricas:', e);
+        } finally {
+            setIsMetricsLoading(false);
+        }
+    };
 
     const fetchPayoutQueue = async () => {
         try {
@@ -118,7 +136,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const handleCreateReferralCode = async () => {
         if (!newReferralCode) return;
         try {
-            const response = await apiService.post('/admin/referral-codes', {
+            const response = await apiService.post<any>('/admin/referral-codes', {
                 code: newReferralCode,
                 maxUses: referralMaxUses ? parseInt(referralMaxUses) : null
             });
@@ -137,7 +155,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
 
     const handleToggleReferralCode = async (id: number) => {
         try {
-            const response = await apiService.post(`/admin/referral-codes/${id}/toggle`, {});
+            const response = await apiService.post<any>(`/admin/referral-codes/${id}/toggle`, {});
             if (response.success) {
                 fetchReferralCodes();
             }
@@ -149,7 +167,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const handleDeleteReferralCode = async (id: number) => {
         if (!window.confirm('Excluir este código definitivamente?')) return;
         try {
-            const response = await apiService.delete(`/admin/referral-codes/${id}`);
+            const response = await apiService.delete<any>(`/admin/referral-codes/${id}`);
             if (response.success) {
                 onSuccess('Removido', 'Código excluído com sucesso');
                 fetchReferralCodes();
@@ -162,7 +180,6 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const [newProfit, setNewProfit] = useState('');
     const [newManualCost, setNewManualCost] = useState('');
     const [manualCostDescription, setManualCostDescription] = useState('');
-    const [showDistributeModal, setShowDistributeModal] = useState(false);
 
     const parseCurrencyInput = (val: string) => {
         const clean = val.replace(/[^0-9,.]/g, '');
@@ -188,7 +205,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         try {
             const val = parseCurrencyInput(newManualCost);
             if (isNaN(val) || val <= 0) throw new Error("Valor inválido");
-            const response = await apiService.post('/admin/manual-cost', {
+            const response = await apiService.post<any>('/admin/manual-cost', {
                 amount: val,
                 description: manualCostDescription || 'Custo manual'
             });
@@ -206,17 +223,11 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         }
     };
 
-
-
-    const handleSimulateMpPayment = async (paymentId: string, transactionId: string) => {
-        setConfirmMP({ id: paymentId, tid: transactionId });
-    };
-
     const confirmSimulateMpPayment = async () => {
         if (!confirmMP) return;
         const { id: paymentId, tid: transactionId } = confirmMP;
         try {
-            const response = await apiService.post('/admin/simulate-mp-payment', { paymentId, transactionId });
+            const response = await apiService.post<any>('/admin/simulate-mp-payment', { paymentId, transactionId });
             if (response.success) {
                 onSuccess('Simulação Sucesso', 'Pagamento aprovado no Sandbox.');
                 await onRefresh();
@@ -228,14 +239,12 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         }
     };
 
-
-
     const handleGiftQuota = async () => {
         if (!giftEmail || !giftQuantity) return;
         if (!window.confirm(`CONFIRMAÇÃO: Enviar ${giftQuantity} cotas para ${giftEmail}? Esta ação criará as cotas e não cobrará do usuário.`)) return;
 
         try {
-            const response = await apiService.post('/admin/users/add-quota', {
+            const response = await apiService.post<any>('/admin/users/add-quota', {
                 email: giftEmail,
                 quantity: parseInt(giftQuantity),
                 reason: giftReason
@@ -256,7 +265,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const handleRunLiquidation = async () => {
         if (!window.confirm('Iniciar varredura de garantias agora? O sistema executará o lastro de todos os apoios em atraso há mais de 5 dias.')) return;
         try {
-            const res = await apiService.post('/admin/run-liquidation', {});
+            const res = await apiService.post<any>('/admin/run-liquidation', {});
             if (res.success) {
                 onSuccess('Varredura Concluída', res.message);
                 onRefresh();
@@ -300,7 +309,6 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                         <button
                             onClick={() => { clearAllCache(); onRefresh(); onSuccess("Atualizado", "Dados sincronizados."); }}
                             className="group bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700/50 hover:border-primary-500/50 px-6 py-3.5 rounded-2xl flex items-center gap-3 transition-all duration-300 text-sm font-bold text-zinc-300 shadow-lg"
-                            aria-label="Atualizar dados do sistema"
                         >
                             <RefreshCw size={18} className={isLoading ? "animate-spin" : "group-hover:rotate-180 transition-transform duration-500"} />
                             {isLoading ? "Sincronizando" : "Atualizar Sistema"}
@@ -308,7 +316,6 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                         <button
                             onClick={onLogout}
                             className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 px-6 py-3.5 rounded-2xl flex items-center gap-3 transition-all duration-300 text-sm font-bold text-red-500 shadow-lg"
-                            aria-label="Sair do painel administrativo"
                         >
                             <LogOut size={18} /> Sair
                         </button>
@@ -316,14 +323,15 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                 </div>
             </div>
 
-            {/* Navegação por Abas - Estilo iOS/Moderno */}
+            {/* Abas */}
             <div className="flex items-center gap-1.5 p-1.5 bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 rounded-[2rem] overflow-x-auto no-scrollbar shadow-xl sticky top-4 z-50">
                 {[
                     { id: 'overview', name: 'Resumo', icon: PieChart },
-                    { id: 'payouts', name: 'Fila de Resgates', icon: Send, count: (payoutQueue.transactions?.length || 0) },
-                    { id: 'system', name: 'Gestão Financeira', icon: SettingsIcon },
+                    { id: 'payouts', name: 'Resgates', icon: Send, count: (payoutQueue.transactions?.length || 0) },
+                    { id: 'metrics', name: 'Monitoramento', icon: Activity },
+                    { id: 'system', name: 'Financeiro', icon: SettingsIcon },
                     { id: 'referrals', name: 'Indicações', icon: UserPlus },
-                    { id: 'users', name: 'Usuários & Gifts', icon: Gift },
+                    { id: 'users', name: 'Usuários', icon: Gift },
                     { id: 'store', name: 'Loja', icon: ShoppingBagIcon },
                     { id: 'support', name: 'Suporte', icon: MessageSquare, count: pendingChatsCount },
                 ].map((tab: any) => (
@@ -348,6 +356,108 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                 ))}
             </div>
 
+            {activeTab === 'overview' && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <MetricCard title="Membros" value={state.users.length} subtitle="Usuários Totais" icon={Users} color="blue" />
+                        <MetricCard title="Participações" value={state.stats?.quotasCount ?? 0} subtitle="Licenças em Operação" icon={PieChart} color="cyan" />
+                        <MetricCard title="Reserva Acumulada" value={formatCurrency(state.stats?.totalReserves || 0)} subtitle="Impostos + Op + Lucros" icon={ShieldCheck} color="blue" />
+                        <MetricCard title="Liquidez Real" value={formatCurrency(state.stats?.realLiquidity ?? state.systemBalance)} subtitle="Disponível p/ Saque/Apoio" icon={DollarSign} color="emerald" />
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'metrics' && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    {isMetricsLoading ? (
+                        <div className="py-20 text-center text-zinc-500 font-bold uppercase tracking-widest animate-pulse">
+                            Coletando dados do servidor...
+                        </div>
+                    ) : healthMetrics && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* Status do Servidor */}
+                            <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
+                                <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
+                                    <div className="p-2 bg-primary-500/10 rounded-lg"><Cpu className="text-primary-400" size={20} /></div>
+                                    Recursos do Sistema
+                                </h3>
+                                <div className="space-y-6">
+                                    <div className="flex justify-between items-center p-4 bg-black/20 rounded-2xl border border-zinc-800">
+                                        <div className="flex items-center gap-3">
+                                            <Activity size={18} className="text-emerald-400" />
+                                            <span className="text-sm font-bold text-zinc-300">Latência do Banco</span>
+                                        </div>
+                                        <span className="text-xl font-black text-white">{healthMetrics.health.dbLatency}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center p-4 bg-black/20 rounded-2xl border border-zinc-800">
+                                        <div className="flex items-center gap-3">
+                                            <Clock size={18} className="text-primary-400" />
+                                            <span className="text-sm font-bold text-zinc-300">Uptime do Servidor</span>
+                                        </div>
+                                        <span className="text-xl font-black text-white">{healthMetrics.health.uptime}</span>
+                                    </div>
+                                    <div className="p-6 bg-black/20 rounded-2xl border border-zinc-800">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <HardDrive size={18} className="text-orange-400" />
+                                            <span className="text-sm font-bold text-zinc-300">Uso de Memória RAM</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Heap Usado</p>
+                                                <p className="text-lg font-bold text-white">{healthMetrics.health.memory.heapUsed}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Total RSS</p>
+                                                <p className="text-lg font-bold text-white">{healthMetrics.health.memory.rss}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Carga de Dados */}
+                            <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
+                                <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
+                                    <div className="p-2 bg-emerald-500/10 rounded-lg"><Database className="text-emerald-400" size={20} /></div>
+                                    Volume de Dados
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-4 bg-black/20 rounded-2xl border border-zinc-800">
+                                        <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Transações</p>
+                                        <p className="text-xl font-bold text-white">{healthMetrics.database.total_transactions}</p>
+                                    </div>
+                                    <div className="p-4 bg-black/20 rounded-2xl border border-zinc-800">
+                                        <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Audit Logs</p>
+                                        <p className="text-xl font-bold text-white">{healthMetrics.database.total_audit_logs}</p>
+                                    </div>
+                                    <div className="p-4 bg-black/20 rounded-2xl border border-zinc-800 col-span-2">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Atividade 24h</p>
+                                                <p className="text-xl font-bold text-white">+{healthMetrics.activity.trans_24h} Transações</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Volume 24h</p>
+                                                <p className="text-xl font-bold text-emerald-400">{formatCurrency(parseFloat(healthMetrics.activity.volume_24h))}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10 col-span-2">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <Zap size={18} className="text-emerald-400" />
+                                                <span className="text-sm font-bold text-zinc-300">Novos Membros 24h</span>
+                                            </div>
+                                            <span className="text-lg font-black text-white">+{healthMetrics.activity.new_users_24h}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {activeTab === 'payouts' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <div className="max-w-4xl mx-auto">
@@ -355,12 +465,9 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                             <div className="flex items-center justify-between mb-8">
                                 <h3 className="text-xl font-bold text-white flex items-center gap-3">
                                     <div className="p-2 bg-emerald-500/10 rounded-lg"><ArrowUpRight className="text-emerald-400" size={20} /></div>
-                                    Resgates em Espera (PIX)
+                                    Fila de Resgates (PIX)
                                 </h3>
-                                <div className="flex flex-col items-end">
-                                    <span className="bg-zinc-800 text-zinc-400 px-3 py-1 rounded-full text-[10px] font-black uppercase">Fila: {payoutQueue.transactions?.length || 0}</span>
-                                    <p className="text-[10px] text-zinc-500 mt-1 uppercase font-bold tracking-tighter">Ordenado por Licenças e Score</p>
-                                </div>
+                                <span className="bg-zinc-800 text-zinc-400 px-3 py-1 rounded-full text-[10px] font-black uppercase">Pendentes: {payoutQueue.transactions?.length || 0}</span>
                             </div>
 
                             <div className="space-y-4 max-h-[700px] overflow-y-auto pr-3 custom-scrollbar">
@@ -369,35 +476,31 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                                         <div className="bg-zinc-800/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                             <Check className="text-zinc-500" size={32} />
                                         </div>
-                                        <p className="text-zinc-500 font-bold uppercase text-xs tracking-widest">Tudo em dia! Nenhum PIX pendente.</p>
+                                        <p className="text-zinc-500 font-bold uppercase text-xs tracking-widest">Tudo em dia!</p>
                                     </div>
                                 ) : (
                                     payoutQueue.transactions.map((t) => (
                                         <div key={t.id} className="bg-black/30 border border-zinc-800/50 rounded-2xl p-6 transition-all hover:border-zinc-700 hover:bg-black/40 group">
                                             <div className="flex justify-between items-start gap-4">
                                                 <div className="space-y-3 flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-emerald-500/10 text-emerald-400">RESGATE REQUISITADO</span>
-                                                        <span className="text-[10px] text-zinc-500 font-bold">VIP: {t.user_quotas} Licenças | Score: {t.user_score}</span>
-                                                    </div>
                                                     <div>
                                                         <p className="text-sm font-bold text-white mb-0.5">{t.user_name}</p>
-                                                        <div className="flex items-center gap-2 bg-zinc-800/50 p-2 rounded-lg cursor-pointer hover:bg-zinc-700 transition-colors" onClick={() => {
+                                                        <div className="flex items-center gap-2 bg-zinc-800/50 p-2 rounded-lg" onClick={() => {
                                                             navigator.clipboard.writeText(t.user_pix);
                                                             onSuccess('Copiado', 'Chave PIX copiada!');
                                                         }}>
                                                             <p className="text-[11px] text-primary-400 font-mono break-all">{t.user_pix}</p>
-                                                            <Clipboard size={12} className="text-zinc-500 flex-shrink-0" />
+                                                            <Clipboard size={12} className="text-zinc-500" />
                                                         </div>
                                                     </div>
                                                     <p className="text-2xl font-black text-white">{formatCurrency(t.amount)}</p>
                                                 </div>
                                                 <button
                                                     onClick={() => handleConfirmPayout(t.id, 'TRANSACTION')}
-                                                    className="p-6 bg-primary-500/10 text-primary-400 rounded-2xl hover:bg-primary-500 hover:text-black transition-all flex flex-col items-center justify-center gap-2 shadow-lg min-w-[140px]"
+                                                    className="p-4 bg-primary-500/10 text-primary-400 rounded-2xl hover:bg-primary-500 hover:text-black transition-all flex flex-col items-center justify-center gap-2 min-w-[120px]"
                                                 >
-                                                    <Check size={28} />
-                                                    <span className="text-[10px] font-black uppercase tracking-tighter">Confirmo o PIX</span>
+                                                    <Check size={20} />
+                                                    <span className="text-[10px] font-black uppercase">Confirmar</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -409,217 +512,51 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                 </div>
             )}
 
-            {activeTab === 'overview' && (
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <MetricCard title="Membros" value={state.users.length} subtitle="Usuários Totais" icon={Users} color="blue" />
-                        <MetricCard title="Participações" value={state.stats?.quotasCount ?? 0} subtitle="Licenças em Operação" icon={PieChart} color="cyan" />
-                        <MetricCard title="Reserva Acumulada" value={formatCurrency(state.stats?.totalReserves || 0)} subtitle="Impostos + Op + Lucros" icon={ShieldCheck} color="blue" />
-                        <MetricCard title="Liquidez Real" value={formatCurrency(state.stats?.realLiquidity ?? state.systemBalance)} subtitle="Disponível p/ Saque/Apoio" icon={DollarSign} color="emerald" />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Termômetro de Liquidez */}
-                        <div className="bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-3xl p-8 shadow-2xl">
-                            <div className="flex items-center justify-between mb-8">
-                                <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                                    <div className="p-2 bg-primary-500/10 rounded-lg"><TrendingUp className="text-primary-400" size={20} /></div>
-                                    Monitor de Liquidez
-                                </h3>
-                                {(() => {
-                                    const activeQuotasVal = (state.stats?.quotasCount || 0) * 50;
-                                    const reserveNeeded = activeQuotasVal * 0.3;
-                                    const currentCash = state.systemBalance;
-                                    let status = currentCash < reserveNeeded * 0.5 ? "Crítico" : currentCash < reserveNeeded ? "Alerta" : "Saudável";
-                                    let color = status === "Crítico" ? "text-red-400 bg-red-400/10 border-red-400/30" : status === "Alerta" ? "text-yellow-400 bg-yellow-400/10 border-yellow-400/30" : "text-emerald-400 bg-emerald-400/10 border-emerald-400/30";
-                                    return <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${color}`}>{status}</span>;
-                                })()}
-                            </div>
-
-                            <div className="space-y-6">
-                                <div className="relative h-4 bg-zinc-800/80 rounded-full overflow-hidden border border-zinc-700/50">
-                                    <div className="absolute top-0 left-[30%] h-full w-[2px] bg-white/20 z-10" title="Reserva 30% shadow-[0_0_10px_white]"></div>
-                                    <div className="h-full bg-gradient-to-r from-primary-600 to-emerald-400 shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all duration-1000"
-                                        style={{ width: `${Math.min((state.systemBalance / ((state.stats?.quotasCount || 1) * 50)) * 100, 100)}%` }}></div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-6 pt-4">
-                                    <div className="bg-black/20 p-5 rounded-2xl border border-zinc-800">
-                                        <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Caixa Bruto</p>
-                                        <p className="text-2xl font-bold text-white tracking-tight">{formatCurrency(state.systemBalance)}</p>
-                                    </div>
-                                    <div className="bg-black/20 p-5 rounded-2xl border border-zinc-800">
-                                        <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Reservas Totais</p>
-                                        <p className="text-2xl font-bold text-primary-400/80 tracking-tight">{formatCurrency(state.stats?.totalReserves || 0)}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Projeção de Resultados */}
-                        <div className="bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-3xl p-8 shadow-2xl">
-                            <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
-                                <div className="p-2 bg-orange-500/10 rounded-lg"><PieChart className="text-orange-400" size={20} /></div>
-                                Recebíveis de Curto Prazo
-                            </h3>
-                            <div className="space-y-6">
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div>
-                                        <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Total a Receber</p>
-                                        <p className="text-2xl font-bold text-white tracking-tight">{formatCurrency(state.stats?.totalToReceive || 0)}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Resultado Previsto</p>
-                                        <p className="text-2xl font-bold text-orange-400 tracking-tight">{formatCurrency((state.stats?.totalToReceive || 0) - (state.stats?.totalLoaned || 0))}</p>
-                                    </div>
-                                </div>
-                                <div className="p-4 bg-orange-500/5 rounded-2xl border border-orange-500/10">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-xs text-zinc-400 font-bold uppercase">Repasse (85%)</span>
-                                        <span className="text-lg font-black text-white">{formatCurrency(((state.stats?.totalToReceive || 0) - (state.stats?.totalLoaned || 0)) * 0.85)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-
-
             {activeTab === 'system' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <MetricCard
-                            title="Reserva p/ Impostos"
-                            value={formatCurrency(state.stats?.totalTaxReserve || 0)}
-                            subtitle="6% de todo resultado"
-                            icon={ShieldCheck}
-                            color="blue"
-                        />
-                        <MetricCard
-                            title="Custos (Servidor/APIs)"
-                            value={formatCurrency(state.stats?.totalOperationalReserve || 0)}
-                            subtitle="4% de todo resultado"
-                            icon={SettingsIcon}
-                            color="orange"
-                        />
-                        <MetricCard
-                            title="Meu Salário (Pró-labore)"
-                            value={formatCurrency(state.stats?.totalOwnerProfit || 0)}
-                            subtitle="5% de todo resultado"
-                            icon={DollarSign}
-                            color="emerald"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* Gestão de Resultados */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
                             <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
                                 <div className="p-2 bg-emerald-500/10 rounded-lg"><Coins className="text-emerald-400" size={20} /></div>
-                                Distribuir Bônus no Clube
-                            </h3>
-                            <div className="space-y-6">
-                                <div className="bg-black/20 p-6 rounded-2xl border border-zinc-800 relative group overflow-hidden">
-                                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-30 transition-opacity">
-                                        <TrendingUp size={60} />
-                                    </div>
-                                    <p className="text-[10px] text-zinc-500 font-black uppercase mb-1 underline decoration-primary-500/50 underline-offset-4">Fundo de Recompensas</p>
-                                    <p className="text-4xl font-black text-white tracking-tighter">{formatCurrency(state.profitPool)}</p>
-                                    <p className="text-[11px] text-zinc-400 mt-4 leading-relaxed font-medium">
-                                        Este valor será distribuído automaticamente entre as licenças ativas à meia-noite (00:00).
-                                    </p>
-                                </div>
-                                <div className="space-y-4 pt-4">
-                                    <div className="relative">
-                                        <label className="text-[10px] text-zinc-500 font-black uppercase mb-2 block tracking-widest">Valor do Bônus a Adicionar (R$)</label>
-                                        <input
-                                            type="text"
-                                            placeholder="Ex: 1.250,50"
-                                            value={newProfit}
-                                            onChange={(e) => setNewProfit(e.target.value)}
-                                            className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-emerald-500/50 focus:bg-zinc-800 transition-all text-xl font-bold shadow-inner"
-                                        />
-                                    </div>
-                                    <button
-                                        onClick={handleUpdateProfit}
-                                        className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-black py-4 rounded-2xl transition-all shadow-xl hover:shadow-[0_0_30px_rgba(16,185,129,0.3)] transform active:scale-95 flex items-center justify-center gap-3 text-sm uppercase"
-                                    >
-                                        <Check size={20} /> Confirmar Lançamento
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Lançamento de Custos */}
-                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
-                            <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
-                                <div className="p-2 bg-red-500/10 rounded-lg"><ArrowDownLeft className="text-red-400" size={20} /></div>
-                                Registro de Despesas Manuais
+                                Fundo de Recompensas
                             </h3>
                             <div className="space-y-6">
                                 <div className="bg-black/20 p-6 rounded-2xl border border-zinc-800">
-                                    <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Total de Despesas Lançadas</p>
-                                    <p className="text-4xl font-black text-red-500 tracking-tighter">{formatCurrency(state.stats?.totalManualCosts || 0)}</p>
+                                    <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Acumulado p/ Distribuição</p>
+                                    <p className="text-4xl font-black text-white tracking-tighter">{formatCurrency(state.profitPool)}</p>
                                 </div>
                                 <div className="space-y-4">
                                     <input
                                         type="text"
-                                        placeholder="Valor da Despesa (R$)"
-                                        value={newManualCost}
-                                        onChange={(e) => setNewManualCost(e.target.value)}
-                                        className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-red-500/50 focus:bg-zinc-800 transition-all font-bold shadow-inner"
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Motivo / Descrição"
-                                        value={manualCostDescription}
-                                        onChange={(e) => setManualCostDescription(e.target.value)}
-                                        className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-red-500/50 focus:bg-zinc-800 transition-all text-sm font-medium shadow-inner"
+                                        placeholder="Valor a adicionar (R$)"
+                                        value={newProfit}
+                                        onChange={(e) => setNewProfit(e.target.value)}
+                                        className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-emerald-500/50 font-bold"
                                     />
                                     <button
-                                        onClick={handleUpdateManualCost}
-                                        className="w-full bg-zinc-800 hover:bg-red-950 border border-red-900/30 hover:border-red-500/50 text-red-500 font-black py-4 rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3 text-sm uppercase"
+                                        onClick={handleUpdateProfit}
+                                        className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-4 rounded-2xl transition-all shadow-xl"
                                     >
-                                        <AlertTriangle size={20} /> Lançar Despesa
+                                        Lançar Excedente
                                     </button>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Ações de Manutenção do Sistema */}
-                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl lg:col-span-2">
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
                             <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
-                                <div className="p-2 bg-primary-500/10 rounded-lg"><ShieldCheck className="text-primary-400" size={20} /></div>
-                                Ações de Segurança e Limpeza
+                                <div className="p-2 bg-red-500/10 rounded-lg"><AlertTriangle className="text-red-400" size={20} /></div>
+                                Varredura de Inadimplência
                             </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="p-6 bg-black/20 rounded-2xl border border-zinc-800 flex flex-col justify-between">
-                                    <div>
-                                        <h4 className="font-bold text-white mb-1">Varredura de Garantias</h4>
-                                        <p className="text-xs text-zinc-500 mb-4">Executa automaticamente as licenças de membros com apoio em atraso há mais de 5 dias para recompor o fundo comum.</p>
-                                    </div>
-                                    <button
-                                        onClick={handleRunLiquidation}
-                                        className="w-full bg-primary-500/10 hover:bg-primary-500 text-primary-400 hover:text-black border border-primary-500/30 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <RefreshCw size={18} /> Varrer Inadimplentes Agora
-                                    </button>
-                                </div>
-
-                                <div className="p-6 bg-black/20 rounded-2xl border border-zinc-800 flex flex-col justify-between">
-                                    <div>
-                                        <h4 className="font-bold text-white mb-1">Cache do Sistema</h4>
-                                        <p className="text-xs text-zinc-500 mb-4">Limpa todos os dados temporários e força a sincronização total com o banco de dados principal de todos os clientes.</p>
-                                    </div>
-                                    <button
-                                        onClick={() => { clearAllCache(); onRefresh(); onSuccess("Cache Limpo", "Todos os dados foram sincronizados."); }}
-                                        className="w-full bg-zinc-800 hover:bg-white text-zinc-400 hover:text-black border border-zinc-700 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <Trash2 size={18} /> Forçar Sincronização Geral
-                                    </button>
-                                </div>
-                            </div>
+                            <p className="text-sm text-zinc-400 mb-6 leading-relaxed">
+                                Clique abaixo para executar manualmente a proteção de lastro. Usuários com atraso superior a 5 dias terão suas licenças executadas para cobrir a dívida.
+                            </p>
+                            <button
+                                onClick={handleRunLiquidation}
+                                className="w-full bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-black border border-red-500/30 font-black py-5 rounded-2xl transition-all uppercase tracking-widest text-xs"
+                            >
+                                Iniciar Varredura de Garantias
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -627,84 +564,55 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
 
             {activeTab === 'referrals' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Criar Código */}
-                        <div className="lg:col-span-1 bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl h-fit">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
                             <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
                                 <div className="p-2 bg-primary-500/10 rounded-lg"><UserPlus className="text-primary-400" size={20} /></div>
-                                Novo Código
+                                Criar Novo Código
                             </h3>
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="text-[10px] text-zinc-500 font-black uppercase mb-2 block tracking-widest">Código (Ex: VIP2024)</label>
-                                    <input
-                                        type="text"
-                                        placeholder="CÓDIGO"
-                                        value={newReferralCode}
-                                        onChange={(e) => setNewReferralCode(e.target.value.toUpperCase())}
-                                        className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 focus:bg-zinc-800 transition-all font-bold"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] text-zinc-500 font-black uppercase mb-2 block tracking-widest">Limite de Usos (Opcional)</label>
-                                    <input
-                                        type="number"
-                                        placeholder="Ilimitado se vazio"
-                                        value={referralMaxUses}
-                                        onChange={(e) => setReferralMaxUses(e.target.value)}
-                                        className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 focus:bg-zinc-800 transition-all font-bold"
-                                    />
-                                </div>
+                            <div className="space-y-4">
+                                <input
+                                    type="text"
+                                    placeholder="CÓDIGO (EX: VIP2024)"
+                                    value={newReferralCode}
+                                    onChange={(e) => setNewReferralCode(e.target.value.toUpperCase())}
+                                    className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-bold"
+                                />
+                                <input
+                                    type="number"
+                                    placeholder="Máximo de Usos (vazio = ilimitado)"
+                                    value={referralMaxUses}
+                                    onChange={(e) => setReferralMaxUses(e.target.value)}
+                                    className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-bold"
+                                />
                                 <button
                                     onClick={handleCreateReferralCode}
-                                    className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3 text-sm uppercase"
+                                    className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition-all shadow-xl"
                                 >
-                                    <Check size={20} /> Criar Código
+                                    Gerar Código VIP
                                 </button>
                             </div>
                         </div>
 
-                        {/* Lista de Códigos */}
-                        <div className="lg:col-span-2 bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
                             <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
                                 <div className="p-2 bg-zinc-800 rounded-lg"><Users className="text-zinc-400" size={20} /></div>
-                                Códigos Ativos
+                                Códigos Administrativos
                             </h3>
-                            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-3 custom-scrollbar">
-                                {referralCodes.length === 0 ? (
-                                    <div className="py-12 text-center text-zinc-500 font-medium">Nenhum código administrativo criado.</div>
-                                ) : (
-                                    referralCodes.map((rc) => (
-                                        <div key={rc.id} className={`bg-black/30 border ${rc.is_active ? 'border-zinc-800/50' : 'border-red-900/20 opacity-60'} rounded-2xl p-6 transition-all hover:bg-black/40`}>
-                                            <div className="flex justify-between items-center">
-                                                <div className="space-y-1">
-                                                    <p className="text-2xl font-black text-white tracking-widest">{rc.code}</p>
-                                                    <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-                                                        <span>Criado por: {rc.creator_name}</span>
-                                                        <span>•</span>
-                                                        <span className={rc.current_uses >= (rc.max_uses || Infinity) ? 'text-red-400' : 'text-primary-400'}>
-                                                            Usos: {rc.current_uses} / {rc.max_uses || '∞'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        onClick={() => handleToggleReferralCode(rc.id)}
-                                                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all border ${rc.is_active ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500 hover:text-black' : 'bg-zinc-800 text-zinc-500 border-zinc-700 hover:bg-white hover:text-black'}`}
-                                                    >
-                                                        {rc.is_active ? 'Ativo' : 'Inativo'}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteReferralCode(rc.id)}
-                                                        className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-black transition-all"
-                                                    >
-                                                        <Trash2 size={18} />
-                                                    </button>
-                                                </div>
-                                            </div>
+                            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                {referralCodes.map((rc) => (
+                                    <div key={rc.id} className="bg-black/20 border border-zinc-800 px-4 py-3 rounded-xl flex justify-between items-center">
+                                        <div>
+                                            <p className="font-black text-white tracking-widest leading-none">{rc.code}</p>
+                                            <p className="text-[10px] text-zinc-500 font-bold mt-1 uppercase">Usos: {rc.current_uses} / {rc.max_uses || '∞'}</p>
                                         </div>
-                                    ))
-                                )}
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => handleDeleteReferralCode(rc.id)} className="p-2 text-zinc-500 hover:text-red-500 transition-colors">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -712,76 +620,51 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
             )}
 
             {activeTab === 'users' && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl max-w-2xl mx-auto">
-                        <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
-                            <div className="p-2 bg-purple-500/10 rounded-lg"><Gift className="text-purple-400" size={20} /></div>
-                            Presentear Cotas (Admin Gift)
-                        </h3>
-                        <div className="space-y-6">
-                            <div className="bg-purple-500/5 border border-purple-500/10 rounded-2xl p-4 text-purple-200 text-sm">
-                                <p className="font-bold flex items-center gap-2"><AlertTriangle size={14} /> ATENÇÃO</p>
-                                <p className="mt-1 opacity-80">Esta ação adiciona cotas "ATIVAS" diretamente na conta do usuário sem cobrar saldo. Use para bonificações ou correções.</p>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-[10px] text-zinc-500 font-black uppercase mb-1 block tracking-widest">Email do Usuário</label>
-                                    <input
-                                        type="email"
-                                        placeholder="usuario@email.com"
-                                        value={giftEmail}
-                                        onChange={(e) => setGiftEmail(e.target.value)}
-                                        className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-purple-500/50 focus:bg-zinc-800 transition-all font-bold"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] text-zinc-500 font-black uppercase mb-1 block tracking-widest">Quantidade de Cotas</label>
-                                    <input
-                                        type="number"
-                                        placeholder="Ex: 5"
-                                        value={giftQuantity}
-                                        onChange={(e) => setGiftQuantity(e.target.value)}
-                                        className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-purple-500/50 focus:bg-zinc-800 transition-all font-bold"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] text-zinc-500 font-black uppercase mb-1 block tracking-widest">Motivo (Interno)</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Ex: Bônus de migração"
-                                        value={giftReason}
-                                        onChange={(e) => setGiftReason(e.target.value)}
-                                        className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-purple-500/50 focus:bg-zinc-800 transition-all text-sm font-medium"
-                                    />
-                                </div>
-
-                                <button
-                                    onClick={handleGiftQuota}
-                                    className="w-full bg-purple-500 hover:bg-purple-400 text-black font-black py-4 rounded-2xl transition-all shadow-xl hover:shadow-[0_0_30px_rgba(168,85,247,0.3)] transform active:scale-95 flex items-center justify-center gap-3 text-sm uppercase mt-4"
-                                >
-                                    <Gift size={20} /> Enviar Cotas
-                                </button>
-                            </div>
-                        </div>
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
+                        <div className="p-2 bg-purple-500/10 rounded-lg"><Gift className="text-purple-400" size={20} /></div>
+                        Presentear Cotas (Ação Direta)
+                    </h3>
+                    <div className="space-y-4">
+                        <input
+                            type="email"
+                            placeholder="Email do usuário"
+                            value={giftEmail}
+                            onChange={(e) => setGiftEmail(e.target.value)}
+                            className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-purple-500/50 font-bold"
+                        />
+                        <input
+                            type="number"
+                            placeholder="Quantidade de Licenças"
+                            value={giftQuantity}
+                            onChange={(e) => setGiftQuantity(e.target.value)}
+                            className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-purple-500/50 font-bold"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Motivo (Opcional)"
+                            value={giftReason}
+                            onChange={(e) => setGiftReason(e.target.value)}
+                            className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-purple-500/50 text-sm"
+                        />
+                        <button
+                            onClick={handleGiftQuota}
+                            className="w-full bg-purple-500 hover:bg-purple-400 text-black font-black py-4 rounded-2xl transition-all shadow-xl"
+                        >
+                            Confirmar Presente
+                        </button>
                     </div>
                 </div>
             )}
 
-            {activeTab === 'store' && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <AdminStoreManager onSuccess={onSuccess} onError={onError} />
-                </div>
-            )}
-
+            {activeTab === 'store' && <AdminStoreManager onSuccess={onSuccess} onError={onError} />}
             {activeTab === 'support' && <SupportAdminView />}
 
-            {/* Modais de Suporte */}
             {confirmMP && (
                 <ConfirmModal
                     isOpen={true}
                     title="Simular Pagamento"
-                    message="Deseja simular a aprovação deste pagamento no ambiente de testes (Sandbox)?"
+                    message="Deseja aprovar este pagamento no Sandbox?"
                     onConfirm={confirmSimulateMpPayment}
                     onClose={() => setConfirmMP(null)}
                 />
