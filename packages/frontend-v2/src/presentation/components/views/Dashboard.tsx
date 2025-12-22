@@ -62,10 +62,10 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
     };
 
     const getVipLevel = (quotas: number) => {
-        if (quotas >= 100) return 'Fundador';
-        if (quotas >= 50) return 'Ouro';
-        if (quotas >= 10) return 'Prata';
-        return 'Bronze';
+        if (quotas >= 100) return { name: 'Fundador', color: 'bg-primary-600/20 text-primary-400 border-primary-500/30' };
+        if (quotas >= 50) return { name: 'Ouro', color: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' };
+        if (quotas >= 10) return { name: 'Prata', color: 'bg-zinc-400/20 text-zinc-300 border-zinc-400/30' };
+        return { name: 'Bronze', color: 'bg-orange-700/20 text-orange-600 border-orange-700/30' };
     };
 
     const vipLevel = getVipLevel(userQuotas.length);
@@ -76,7 +76,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
         return { next: null, goal: 100 };
     };
 
-    const nextLevel = getNextLevelInfo(vipLevel);
+    const nextLevel = getNextLevelInfo(vipLevel.name);
     const progressToNext = nextLevel.next ? Math.min((userQuotas.length / nextLevel.goal) * 100, 100) : 100;
 
     const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -90,8 +90,8 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                 <div>
                     <h1 className="text-2xl font-bold text-white tracking-tight">Olá, {user.name.split(' ')[0]} 👋</h1>
                     <div className="flex items-center gap-2 mt-1">
-                        <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider ${vipLevel === 'Ouro' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' : vipLevel === 'Prata' ? 'bg-zinc-400/20 text-zinc-300 border border-zinc-400/30' : 'bg-orange-700/20 text-orange-600 border border-orange-700/30'}`}>
-                            {vipLevel}
+                        <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider ${vipLevel.color}`}>
+                            {vipLevel.name}
                         </span>
                         <div className="flex items-center gap-1 bg-surfaceHighlight px-2 py-0.5 rounded text-[10px] text-zinc-400">
                             <Star size={10} className="text-primary-400" fill="currentColor" />
