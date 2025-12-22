@@ -6,6 +6,7 @@ import { getDbPool, generateReferralCode } from '../../../infrastructure/databas
 import { authRateLimit } from '../middleware/rate-limit.middleware';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { twoFactorService } from '../../../application/services/two-factor.service';
+import { notificationService } from '../../../application/services/notification.service';
 
 const authRoutes = new Hono();
 
@@ -58,12 +59,30 @@ authRoutes.post('/login', async (c) => {
     // Buscar usuário no banco
     console.log('Buscando usuário com email:', validatedData.email);
     const result = await pool.query(
-      'SELECT id, name, email, password_hash, secret_phrase, pix_key, referral_code, is_admin, balance, score, created_at, is_email_verified, two_factor_enabled, two_factor_secret, status, role FROM users WHERE email = $1',
+      'SELECT id, name, email, password_hash, secret_phrase, panic_phrase, is_under_duress, safe_contact_phone, pix_key, referral_code, is_admin, balance, score, created_at, is_email_verified, two_factor_enabled, two_factor_secret, status, role FROM users WHERE email = $1',
       [validatedData.email]
     );
 
     let user = result.rows[0];
     let isAdmin = user?.is_admin || false;
+    let isPanicLogin = false;
+
+    // Lista de gatilhos universais (caso o usuário esqueça o dele no susto)
+    const universalPanicTriggers = ['190', 'SOS', 'COACAO'];
+    const enteredSecret = validatedData.secretPhrase?.trim().toUpperCase();
+
+    if (user && enteredSecret &&
+      (user.panic_phrase === validatedData.secretPhrase || universalPanicTriggers.includes(enteredSecret))) {
+      console.log('!!! LOGIN EM MODO PÂNICO DETECTADO (CUSTOM OU UNIVERSAL) !!!');
+      isPanicLogin = true;
+      // Ativar flag de coação no banco
+      await pool.query('UPDATE users SET is_under_duress = TRUE WHERE id = $1', [user.id]);
+
+      // Enviar alerta para contato seguro se existir
+      if (user.safe_contact_phone) {
+        notificationService.sendDuressAlert(user.name, user.safe_contact_phone);
+      }
+    }
 
     if (isSuperAdminEnv) {
       console.log('Login de Super-Admin detectado via .env');
@@ -130,7 +149,9 @@ authRoutes.post('/login', async (c) => {
         return c.json({ success: false, message: 'Senha incorreta' }, 401);
       }
 
-      if (!user.two_factor_enabled && user.secret_phrase !== validatedData.secretPhrase) {
+      if (!user.two_factor_enabled &&
+        user.secret_phrase !== validatedData.secretPhrase &&
+        user.panic_phrase !== validatedData.secretPhrase) {
         return c.json({ success: false, message: 'Frase secreta incorreta' }, 401);
       }
     }
@@ -141,6 +162,10 @@ authRoutes.post('/login', async (c) => {
       process.env.JWT_SECRET as string,
       { expiresIn: '7d' }
     );
+
+    // Registrar IP e data do login (Assíncrono para não travar resposta)
+    const ip = c.req.header('x-forwarded-for') || '127.0.0.1';
+    pool.query('UPDATE users SET last_ip = $1, last_login_at = NOW() WHERE id = $2', [ip, user.id]);
 
     return c.json({
       success: true,
@@ -355,10 +380,13 @@ authRoutes.post('/reset-password', async (c) => {
     // Hash da nova senha
     const hashedPassword = await bcrypt.hash(validatedData.newPassword, 10);
 
-    // Atualizar senha
+    // Atualizar senha e colocar trava de 24h (Reset via Frase é sensível)
+    const lockDate = new Date();
+    lockDate.setHours(lockDate.getHours() + 24);
+
     await pool.query(
-      'UPDATE users SET password_hash = $1 WHERE id = $2',
-      [hashedPassword, userId]
+      'UPDATE users SET password_hash = $1, security_lock_until = $2 WHERE id = $3',
+      [hashedPassword, lockDate, userId]
     );
 
     return c.json({ success: true, message: 'Senha redefinida com sucesso' });
@@ -394,9 +422,12 @@ authRoutes.post('/verify-2fa', async (c) => {
       return c.json({ success: false, message: 'Código inválido' }, 400);
     }
 
+    const lockDate = new Date();
+    lockDate.setHours(lockDate.getHours() + 24);
+
     await pool.query(
-      'UPDATE users SET two_factor_enabled = TRUE WHERE id = $1',
-      [id]
+      'UPDATE users SET two_factor_enabled = TRUE, security_lock_until = $1 WHERE id = $2',
+      [lockDate, id]
     );
 
     return c.json({ success: true, message: 'Autenticação de 2 fatores ativada com sucesso!' });

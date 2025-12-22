@@ -1,6 +1,7 @@
 import { User, Quota, Loan, Transaction, AppState } from '../../domain/types/common.types';
 import { apiService } from './api.service';
 export { apiService };
+import { syncService } from './sync.service';
 import { QUOTA_PRICE, LOAN_INTEREST_RATE, PENALTY_RATE, VESTING_PERIOD_MS } from '../../shared/constants/app.constants';
 
 // Função para converter dados da API para o formato esperado pelo frontend
@@ -145,6 +146,8 @@ export const loadState = async (): Promise<AppState> => {
             stats.realLiquidity = dashboard.data?.systemConfig?.real_liquidity || dashboard.systemConfig?.real_liquidity || 0;
             stats.totalReserves = dashboard.data?.systemConfig?.total_reserves || dashboard.systemConfig?.total_reserves || 0;
             stats.theoreticalCash = dashboard.data?.systemConfig?.theoretical_cash || dashboard.systemConfig?.theoretical_cash || 0;
+            stats.monthlyFixedCosts = dashboard.data?.systemConfig?.monthly_fixed_costs || dashboard.systemConfig?.monthly_fixed_costs || 0;
+            stats.systemConfig = dashboard.data?.systemConfig || dashboard.systemConfig || null;
           }
 
           // DEBUG: Verificar valores extraídos
@@ -253,6 +256,9 @@ export const distributeMonthlyDividends = async () => {
 // --- User Logic ---
 
 export const buyQuota = async (quantity: number, useBalance: boolean = false, paymentMethod?: 'pix' | 'card', cardData?: any): Promise<any> => {
+  if (!navigator.onLine) {
+    return await syncService.enqueue('BUY_QUOTA', { quantity, useBalance, paymentMethod, cardData });
+  }
   return await apiService.buyQuotas(quantity, useBalance, paymentMethod, cardData);
 };
 
@@ -269,14 +275,23 @@ export const requestLoan = async (
   amount: number,
   installments: number
 ): Promise<any> => {
+  if (!navigator.onLine) {
+    return await syncService.enqueue('REQUEST_LOAN', { amount, installments });
+  }
   return await apiService.requestLoan(amount, installments);
 };
 
 export const repayLoan = async (loanId: string, useBalance: boolean, paymentMethod?: 'pix' | 'card', cardData?: any): Promise<any> => {
+  if (!navigator.onLine) {
+    return await syncService.enqueue('REPAY_LOAN', { loanId, useBalance, paymentMethod, cardData });
+  }
   return await apiService.repayLoan(loanId, useBalance, paymentMethod, cardData);
 };
 
 export const repayInstallment = async (loanId: string, amount: number, useBalance: boolean, paymentMethod?: 'pix' | 'card', cardData?: any): Promise<any> => {
+  if (!navigator.onLine) {
+    return await syncService.enqueue('REPAY_INSTALLMENT', { loanId, amount, useBalance, paymentMethod, cardData });
+  }
   return await apiService.repayInstallment(loanId, amount, useBalance, paymentMethod, cardData);
 };
 
@@ -285,6 +300,9 @@ export const requestWithdrawal = async (amount: number, pixKey: string): Promise
 };
 
 export const claimAdReward = async (): Promise<any> => {
+  if (!navigator.onLine) {
+    return await syncService.enqueue('CLAIM_AD_REWARD', {});
+  }
   return await apiService.claimAdReward();
 };
 

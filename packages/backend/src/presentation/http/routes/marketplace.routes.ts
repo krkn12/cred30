@@ -23,6 +23,7 @@ const buyListingSchema = z.object({
     listingId: z.number().int(),
     deliveryAddress: z.string().min(10, 'Endereço muito curto').optional(),
     contactPhone: z.string().min(8, 'Telefone inválido').optional(),
+    offlineToken: z.string().optional(),
 });
 
 const buyOnCreditSchema = z.object({
@@ -38,28 +39,34 @@ const buyOnCreditSchema = z.object({
 marketplaceRoutes.get('/listings', authMiddleware, async (c) => {
     try {
         const pool = getDbPool(c);
+        const limit = parseInt(c.req.query('limit') || '50');
+        const offset = parseInt(c.req.query('offset') || '0');
 
-        // Otimização: Busca unificada via SQL para reduzir processamento em JS
+        // Otimização: Busca unificada via SQL com paginação
         const combinedResult = await pool.query(`
-            (SELECT l.id::text, l.title, l.description, l.price::float, l.image_url, l.category, 
-                    u.name as seller_name, l.seller_id::text, l.is_boosted, l.created_at, l.status, 'P2P' as type,
-                    NULL as affiliate_url
-             FROM marketplace_listings l 
-             JOIN users u ON l.seller_id = u.id 
-             WHERE l.status = 'ACTIVE')
-            UNION ALL
-            (SELECT p.id::text, p.title, p.description, p.price::float, p.image_url, p.category, 
-                    'Cred30 Parceiros' as seller_name, '0' as seller_id, true as is_boosted, p.created_at, 'ACTIVE' as status, 'AFFILIATE' as type,
-                    p.affiliate_url
-             FROM products p
-             WHERE p.active = true)
+            SELECT * FROM (
+                (SELECT l.id::text, l.title, l.description, l.price::float, l.image_url, l.category, 
+                        u.name as seller_name, l.seller_id::text, l.is_boosted, l.created_at, l.status, 'P2P' as type,
+                        NULL as affiliate_url
+                 FROM marketplace_listings l 
+                 JOIN users u ON l.seller_id = u.id 
+                 WHERE l.status = 'ACTIVE')
+                UNION ALL
+                (SELECT p.id::text, p.title, p.description, p.price::float, p.image_url, p.category, 
+                        'Cred30 Parceiros' as seller_name, '0' as seller_id, true as is_boosted, p.created_at, 'ACTIVE' as status, 'AFFILIATE' as type,
+                        p.affiliate_url
+                 FROM products p
+                 WHERE p.active = true)
+            ) as combined
             ORDER BY is_boosted DESC, created_at DESC
-        `);
+            LIMIT $1 OFFSET $2
+        `, [limit, offset]);
 
         return c.json({
             success: true,
             data: {
-                listings: combinedResult.rows
+                listings: combinedResult.rows,
+                pagination: { limit, offset }
             }
         });
     } catch (error) {
@@ -189,7 +196,7 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c) => {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
         const body = await c.req.json();
-        const { listingId, deliveryAddress, contactPhone } = buyListingSchema.parse(body);
+        const { listingId, deliveryAddress, contactPhone, offlineToken } = buyListingSchema.parse(body);
 
         const listingResult = await pool.query('SELECT * FROM marketplace_listings WHERE id = $1 AND status = $2', [listingId, 'ACTIVE']);
         if (listingResult.rows.length === 0) return c.json({ success: false, message: 'Item indisponível.' }, 404);
@@ -209,9 +216,9 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c) => {
             await client.query('UPDATE marketplace_listings SET status = $1 WHERE id = $2', ['SOLD', listingId]);
 
             const orderResult = await client.query(
-                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, contact_phone)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-                [listingId, user.id, listing.seller_id, price, fee, sellerAmount, 'WAITING_SHIPPING', 'BALANCE', deliveryAddress, contactPhone]
+                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, contact_phone, offline_token)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+                [listingId, user.id, listing.seller_id, price, fee, sellerAmount, 'WAITING_SHIPPING', 'BALANCE', deliveryAddress, contactPhone, offlineToken]
             );
             const orderId = orderResult.rows[0].id;
 
@@ -378,14 +385,17 @@ marketplaceRoutes.post('/order/:id/receive', authMiddleware, async (c) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
+        const body = await c.req.json().catch(() => ({}));
+        const { verificationCode } = body;
         const orderId = c.req.param('id');
 
         // Buscar pedido esperando entrega
         const orderResult = await pool.query(
             `SELECT o.*, l.title FROM marketplace_orders o 
        JOIN marketplace_listings l ON o.listing_id = l.id 
-       WHERE o.id = $1 AND o.buyer_id = $2 AND o.status IN ('WAITING_SHIPPING', 'IN_TRANSIT')`,
-            [orderId, user.id]
+       WHERE o.id = $1 AND o.status IN ('WAITING_SHIPPING', 'IN_TRANSIT')
+       AND (o.buyer_id = $2 OR (o.offline_token IS NOT NULL AND $3::text IS NOT NULL AND o.offline_token = $3))`,
+            [orderId, user.id, verificationCode]
         );
 
         if (orderResult.rows.length === 0) {
@@ -456,6 +466,8 @@ marketplaceRoutes.get('/my-orders', authMiddleware, async (c) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
+        const limit = parseInt(c.req.query('limit') || '20');
+        const offset = parseInt(c.req.query('offset') || '0');
 
         const result = await pool.query(
             `SELECT o.*, l.title, l.image_url, 
@@ -470,14 +482,16 @@ marketplaceRoutes.get('/my-orders', authMiddleware, async (c) => {
             AND ln.metadata->>'orderId' = o.id::text 
             AND ln.user_id = o.buyer_id
        WHERE o.buyer_id = $1 OR o.seller_id = $1
-       ORDER BY o.created_at DESC`,
-            [user.id]
+       ORDER BY o.created_at DESC
+       LIMIT $2 OFFSET $3`,
+            [user.id, limit, offset]
         );
 
         return c.json({
             success: true,
             data: {
-                orders: result.rows
+                orders: result.rows,
+                pagination: { limit, offset }
             }
         });
     } catch (error) {

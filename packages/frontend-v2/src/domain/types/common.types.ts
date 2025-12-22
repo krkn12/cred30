@@ -87,6 +87,8 @@ export interface AppState {
     realLiquidity?: number;
     totalReserves?: number;
     theoreticalCash?: number;
+    monthlyFixedCosts?: number;
+    systemConfig?: any; // To avoid lint errors when accessing raw config
   };
 }
 

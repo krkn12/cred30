@@ -10,36 +10,115 @@ export default defineConfig({
         VitePWA({
             registerType: 'autoUpdate',
             injectRegister: 'inline',
-            includeAssets: ['pwa-192x192.png', 'pwa-512x512.png'],
+            includeAssets: ['pwa-192x192.png', 'pwa-512x512.png', 'favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
             manifest: {
                 name: 'Cred30 Associativo',
                 short_name: 'Cred30',
                 description: 'Plataforma de Apoio Mútuo e Participação Social',
-                theme_color: '#06b6d4',
+                theme_color: '#09090b',
                 background_color: '#09090b',
                 display: 'standalone',
                 orientation: 'portrait',
                 start_url: '/',
                 scope: '/',
+                categories: ['finance', 'productivity', 'utilities'],
+                id: 'com.cred30.app',
                 icons: [
                     {
                         src: 'pwa-192x192.png',
-                        sizes: '192x192 1024x1024',
+                        sizes: '192x192',
                         type: 'image/png',
                         purpose: 'any'
                     },
                     {
                         src: 'pwa-512x512.png',
-                        sizes: '512x512 1024x1024',
+                        sizes: '512x512',
                         type: 'image/png',
-                        purpose: 'any maskable'
+                        purpose: 'any'
+                    },
+                    {
+                        src: 'pwa-512x512.png',
+                        sizes: '512x512',
+                        type: 'image/png',
+                        purpose: 'maskable'
+                    }
+                ],
+                screenshots: [
+                    {
+                        src: 'screenshot-mobile.png',
+                        sizes: '1080x1920',
+                        type: 'image/png',
+                        form_factor: 'narrow'
+                    },
+                    {
+                        src: 'screenshot-desktop.png',
+                        sizes: '1920x1080',
+                        type: 'image/png',
+                        form_factor: 'wide'
                     }
                 ]
             },
             workbox: {
+                globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
                 cleanupOutdatedCaches: true,
                 skipWaiting: true,
-                clientsClaim: true
+                clientsClaim: true,
+                runtimeCaching: [
+                    {
+                        urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+                        handler: 'CacheFirst',
+                        options: {
+                            cacheName: 'google-fonts-cache',
+                            expiration: {
+                                maxEntries: 10,
+                                maxAgeSeconds: 60 * 60 * 24 * 365
+                            },
+                            cacheableResponse: {
+                                statuses: [0, 200]
+                            }
+                        }
+                    },
+                    {
+                        urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+                        handler: 'CacheFirst',
+                        options: {
+                            cacheName: 'gstatic-fonts-cache',
+                            expiration: {
+                                maxEntries: 10,
+                                maxAgeSeconds: 60 * 60 * 24 * 365
+                            },
+                            cacheableResponse: {
+                                statuses: [0, 200]
+                            }
+                        }
+                    },
+                    {
+                        urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/,
+                        handler: 'StaleWhileRevalidate',
+                        options: {
+                            cacheName: 'images-cache',
+                            expiration: {
+                                maxEntries: 60,
+                                maxAgeSeconds: 60 * 60 * 24 * 30
+                            }
+                        }
+                    },
+                    {
+                        urlPattern: /^\/api\/.*$/,
+                        handler: 'NetworkFirst',
+                        options: {
+                            cacheName: 'api-cache',
+                            networkTimeoutSeconds: 5,
+                            expiration: {
+                                maxEntries: 100,
+                                maxAgeSeconds: 60 * 60 * 24
+                            },
+                            cacheableResponse: {
+                                statuses: [0, 200]
+                            }
+                        }
+                    }
+                ]
             }
         })
     ],
@@ -61,6 +140,17 @@ export default defineConfig({
     },
     build: {
         outDir: 'dist',
-        sourcemap: true,
+        sourcemap: false,
+        minify: 'esbuild',
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+                    'vendor-core': ['axios', 'lucide-react', '@headlessui/react'],
+                    'vendor-utils': ['jspdf', '@google/genai']
+                }
+            }
+        },
+        chunkSizeWarningLimit: 1000
     }
 })

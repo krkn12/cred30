@@ -132,14 +132,22 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
           [totalAdmFee]
         );
 
-        // Criar cotas imediatamente (compra com saldo)
+        // Otimização: Criar cotas via Batch Insert (Uma única query para todas as cotas)
+        const values: any[] = [];
+        const placeholders: string[] = [];
+        let pIndex = 1;
+        const now = new Date();
+
         for (let i = 0; i < quantity; i++) {
-          await client.query(
-            `INSERT INTO quotas (user_id, purchase_price, current_value, purchase_date, status)
-             VALUES ($1, $2, $3, $4, 'ACTIVE')`,
-            [user.id, QUOTA_SHARE_VALUE, QUOTA_SHARE_VALUE, new Date()]
-          );
+          placeholders.push(`($${pIndex++}, $${pIndex++}, $${pIndex++}, $${pIndex++}, 'ACTIVE')`);
+          values.push(user.id, QUOTA_SHARE_VALUE, QUOTA_SHARE_VALUE, now);
         }
+
+        await client.query(
+          `INSERT INTO quotas (user_id, purchase_price, current_value, purchase_date, status)
+           VALUES ${placeholders.join(', ')}`,
+          values
+        );
 
         // Criar transação APROVADA (compra com saldo)
         const transactionResult = await createTransaction(

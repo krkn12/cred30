@@ -6,6 +6,7 @@ import { notificationService } from '../../../application/services/notification.
 
 const notificationRoutes = new Hono();
 
+
 /**
  * Endpoint para inscrição em notificações em tempo real (SSE)
  */

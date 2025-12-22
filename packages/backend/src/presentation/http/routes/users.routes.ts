@@ -14,6 +14,11 @@ const updateUserSchema = z.object({
   name: z.string().min(3).optional(),
   pixKey: z.string().min(5).optional(),
   secretPhrase: z.string().min(3).optional(),
+  panicPhrase: z.string().min(3).optional(),
+  safeContactPhone: z.string().min(8).optional(),
+  // Campos de confirmação de segurança
+  confirmationCode: z.string().optional(), // 2FA
+  password: z.string().min(1).optional(), // Backup se 2FA off
 });
 
 // Obter perfil do usuário atual
@@ -39,6 +44,32 @@ userRoutes.put('/profile', authMiddleware, async (c) => {
 
     const user = c.get('user') as UserContext;
     const pool = getDbPool(c);
+
+    // 1. VERIFICAÇÃO DE SEGURANÇA PARA CAMPOS SENSÍVEIS (PIX, Frases ou Contato Seguro)
+    const isSensitiveChange = validatedData.pixKey || validatedData.secretPhrase || validatedData.panicPhrase || validatedData.safeContactPhone;
+
+    if (isSensitiveChange) {
+      // Buscar dados atuais de segurança
+      const securityRes = await pool.query(
+        'SELECT password_hash, two_factor_enabled, two_factor_secret FROM users WHERE id = $1',
+        [user.id]
+      );
+      const securityData = securityRes.rows[0];
+
+      if (securityData.two_factor_enabled) {
+        if (!validatedData.confirmationCode) {
+          return c.json({ success: false, message: 'Código de autenticação necessário para alterar dados sensíveis.' }, 403);
+        }
+        const isValid = twoFactorService.verifyToken(validatedData.confirmationCode, securityData.two_factor_secret);
+        if (!isValid) return c.json({ success: false, message: 'Código de autenticação inválido.' }, 401);
+      } else {
+        if (!validatedData.password) {
+          return c.json({ success: false, message: 'Senha necessária para alterar dados sensíveis.' }, 403);
+        }
+        const isMatch = await bcrypt.compare(validatedData.password, securityData.password_hash);
+        if (!isMatch) return c.json({ success: false, message: 'Senha incorreta.' }, 401);
+      }
+    }
 
     // Verificar se a nova frase secreta já existe em outro usuário
     if (validatedData.secretPhrase) {
@@ -68,6 +99,22 @@ userRoutes.put('/profile', authMiddleware, async (c) => {
     if (validatedData.secretPhrase) {
       updateFields.push(`secret_phrase = $${paramIndex++}`);
       updateValues.push(validatedData.secretPhrase);
+    }
+    if (validatedData.panicPhrase) {
+      updateFields.push(`panic_phrase = $${paramIndex++}`);
+      updateValues.push(validatedData.panicPhrase);
+    }
+    if (validatedData.safeContactPhone) {
+      updateFields.push(`safe_contact_phone = $${paramIndex++}`);
+      updateValues.push(validatedData.safeContactPhone);
+    }
+
+    // Se houve mudança sensível, aplicar o LOCK de saque de 48h
+    if (isSensitiveChange) {
+      updateFields.push(`security_lock_until = $${paramIndex++}`);
+      const lockDate = new Date();
+      lockDate.setHours(lockDate.getHours() + 48); // 48 horas de trava
+      updateValues.push(lockDate);
     }
 
     if (updateFields.length === 0) {
@@ -136,22 +183,76 @@ userRoutes.get('/balance', authMiddleware, async (c) => {
   }
 });
 
-// Obter extrato de transações do usuário
+/**
+ * Endpoint de Sincronização Consolidada (Otimização de Performance)
+ * Retorna todos os dados vitais para a home em uma única chamada de banco.
+ */
+userRoutes.get('/sync', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user') as UserContext;
+    const pool = getDbPool(c);
+
+    const result = await pool.query(`
+      SELECT 
+        u.balance,
+        u.score,
+        (SELECT COUNT(*) FROM quotas WHERE user_id = u.id AND status = 'ACTIVE') as active_quotas,
+        (SELECT COALESCE(SUM(total_repayment - COALESCE((metadata->>'paidAmount')::float, 0)), 0) 
+         FROM loans WHERE user_id = u.id AND status IN ('APPROVED', 'PAYMENT_PENDING')) as debt_total,
+        (SELECT security_lock_until FROM users WHERE id = u.id) as lock_until
+      FROM users u
+      WHERE u.id = $1
+    `, [user.id]);
+
+    const stats = result.rows[0];
+
+    return c.json({
+      success: true,
+      data: {
+        user: {
+          ...user,
+          balance: parseFloat(stats.balance),
+          score: stats.score,
+        },
+        stats: {
+          activeQuotas: parseInt(stats.active_quotas),
+          debtTotal: parseFloat(stats.debt_total),
+          securityLock: stats.lock_until && new Date(stats.lock_until) > new Date() ? stats.lock_until : null
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Erro no Sync:', error);
+    return c.json({ success: false, message: 'Erro ao sincronizar dados' }, 500);
+  }
+});
+
+// Obter extrato de transações do usuário (Otimizado com Paginação)
 userRoutes.get('/transactions', authMiddleware, async (c) => {
   try {
     const user = c.get('user') as UserContext;
     const pool = getDbPool(c);
 
-    // Buscar transações do usuário
+    // Parâmetros de paginação
+    const limit = parseInt(c.req.query('limit') || '20');
+    const offset = parseInt(c.req.query('offset') || '0');
+
+    // Buscar transações com limite e offset
     const result = await pool.query(
       `SELECT id, type, amount, created_at as date, description, status, metadata
        FROM transactions
        WHERE user_id = $1
-       ORDER BY created_at DESC`,
+       ORDER BY created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [user.id, limit, offset]
+    );
+
+    // Contar total para ajudar na paginação do frontend
+    const countResult = await pool.query(
+      'SELECT COUNT(*) FROM transactions WHERE user_id = $1',
       [user.id]
     );
 
-    // Formatar transações para resposta
     const formattedTransactions = result.rows.map(transaction => ({
       id: transaction.id,
       type: transaction.type,
@@ -166,6 +267,11 @@ userRoutes.get('/transactions', authMiddleware, async (c) => {
       success: true,
       data: {
         transactions: formattedTransactions,
+        pagination: {
+          total: parseInt(countResult.rows[0].count),
+          limit,
+          offset
+        }
       },
     });
   } catch (error) {

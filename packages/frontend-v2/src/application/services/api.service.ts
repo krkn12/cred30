@@ -108,8 +108,10 @@ class ApiService {
 
       return data;
     } catch (error: any) {
+      if (error.name === 'TypeError' && !navigator.onLine) {
+        error.message = 'Sua conexão com a internet caiu. O App exibirá dados salvos quando possível.';
+      }
       console.error('Erro na requisição:', error);
-      // alert(error.message); // Removido para evitar alerts do sistema
       throw error;
     }
   }

@@ -18,8 +18,8 @@ interface MarketplaceViewProps {
 // Componentes internos para anúncios
 const AdBanner = ({ type, title, description, actionText }: any) => (
     <div className={`p-4 rounded-2xl border transition-all hover:scale-[1.02] cursor-pointer ${type === 'BANNER'
-            ? 'bg-gradient-to-br from-primary-600/20 to-purple-600/10 border-primary-500/20 shadow-lg shadow-primary-500/5'
-            : 'bg-zinc-900/50 border-zinc-800'
+        ? 'bg-gradient-to-br from-primary-600/20 to-purple-600/10 border-primary-500/20 shadow-lg shadow-primary-500/5'
+        : 'bg-zinc-900/50 border-zinc-800'
         }`}>
         <div className="flex items-center justify-between mb-2">
             <span className="text-[8px] font-black bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded border border-zinc-700 uppercase tracking-widest">Patrocinado</span>
@@ -57,7 +57,7 @@ const NativeAdCard = ({ title, price, category, img }: any) => (
 );
 
 export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: MarketplaceViewProps) => {
-    const [view, setView] = useState<'browse' | 'create' | 'my-orders' | 'details'>('browse');
+    const [view, setView] = useState<'browse' | 'create' | 'my-orders' | 'details' | 'offline-sync'>('browse');
     const [listings, setListings] = useState<any[]>([]);
     const [myOrders, setMyOrders] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -65,6 +65,8 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('TODOS');
     const [confirmData, setConfirmData] = useState<any>(null);
+    const [offlineVoucher, setOfflineVoucher] = useState<{ code: string, amount: number, item: string } | null>(null);
+    const [redeemCode, setRedeemCode] = useState('');
 
     const [newListing, setNewListing] = useState({
         title: '',
@@ -147,6 +149,39 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         }
     };
 
+    const generateOfflineVoucher = (item: any) => {
+        // Criar um código baseado no tempo e IDs (apenas para exibição, a segurança real é no sync posterior)
+        const code = `CR30-${Math.random().toString(36).substring(2, 7).toUpperCase()}-${item.id}`;
+        setOfflineVoucher({ code, amount: item.price, item: item.title });
+
+        // Registrar no sync service que esta compra foi iniciada offline
+        import('../../../application/services/sync.service').then(({ syncService }) => {
+            syncService.enqueue('BUY_MARKETPLACE', {
+                listingId: item.id,
+                offlineToken: code
+            });
+        });
+
+        onSuccess('Voucher Gerado', 'Mostre este código ao vendedor para confirmar a compra offline.');
+    };
+
+    const handleRedeemOfflineCode = async () => {
+        if (!redeemCode) return;
+
+        // O vendedor registra o código recebido do comprador.
+        // Como ambos estão offline, isso fica na fila de sincronização do vendedor.
+        import('../../../application/services/sync.service').then(({ syncService }) => {
+            syncService.enqueue('RELEASE_ESCROW', {
+                verificationCode: redeemCode,
+                note: 'Resgate via modo offline (Interior)'
+            });
+        });
+
+        onSuccess('Código Registrado', 'O resgate foi agendado. O saldo cairá assim que você detectar internet.');
+        setRedeemCode('');
+        setView('browse');
+    };
+
     const formatCurrency = (val: number) => {
         return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     };
@@ -188,6 +223,15 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                     className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${view === 'my-orders' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
                 >
                     Meus Pedidos
+                </button>
+                <button
+                    onClick={() => setView('offline-sync')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${view === 'offline-sync' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
+                >
+                    <div className="flex items-center justify-center gap-1">
+                        <Zap size={10} className={view === 'offline-sync' ? 'text-primary-400' : 'text-zinc-500'} />
+                        Modo Interior
+                    </div>
                 </button>
             </div>
 
@@ -510,6 +554,51 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 </div>
             )}
 
+            {view === 'offline-sync' && (
+                <div className="space-y-6 animate-in fade-in duration-300">
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center space-y-4">
+                        <div className="w-16 h-16 bg-primary-500/10 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <Zap className="text-primary-400" size={32} />
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tight">Modo Interior / Sem Sinal</h3>
+                        <p className="text-sm text-zinc-400 leading-relaxed">
+                            Use esta seção para validar compras presenciais quando ambos estiverem sem internet.
+                            O vendedor digita o código gerado no celular do comprador.
+                        </p>
+                    </div>
+
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6">
+                        <h4 className="text-xs font-black text-white uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <CheckCircle2 size={16} className="text-primary-400" /> Sou o Vendedor
+                        </h4>
+                        <div className="space-y-3">
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase ml-1">Código Recebido do Comprador</p>
+                            <input
+                                type="text"
+                                value={redeemCode}
+                                onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
+                                placeholder="EX: CR30-X4K2P-12"
+                                className="w-full bg-black border border-zinc-800 rounded-2xl px-6 py-4 text-white font-mono text-xl focus:border-primary-500 outline-none transition-all"
+                            />
+                            <button
+                                onClick={handleRedeemOfflineCode}
+                                className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl shadow-lg transition active:scale-[0.98] uppercase text-xs tracking-widest"
+                            >
+                                Validar e Receber Saldo
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-zinc-900/40 border border-zinc-800/50 rounded-2xl p-4 flex gap-4 items-center">
+                        <div className="p-2 bg-zinc-800 rounded-lg text-zinc-500"><Clock size={20} /></div>
+                        <div>
+                            <p className="text-[10px] font-bold text-white uppercase">Como funciona?</p>
+                            <p className="text-[10px] text-zinc-500">O App guarda a validação localmente. O saldo será transferido assim que o celular do vendedor encontrar um sinal de internet.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {view === 'details' && selectedItem && (
                 <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl animate-in fade-in duration-300 overflow-y-auto">
                     <div className="max-w-xl mx-auto min-h-screen bg-zinc-950 flex flex-col">
@@ -574,13 +663,27 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     <button
                                         className="flex-[2] bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition shadow-lg shadow-primary-500/20 flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
                                         onClick={() => {
-                                            onSuccess('Interesse Registrado', 'O vendedor foi notificado sobre seu interesse!');
+                                            if (!navigator.onLine) {
+                                                generateOfflineVoucher(selectedItem);
+                                            } else {
+                                                onSuccess('Interesse Registrado', 'O vendedor foi notificado sobre seu interesse!');
+                                            }
                                         }}
                                     >
-                                        {selectedItem.type === 'AFFILIATE' ? 'Ver Oferta Parceira' : 'Comprar Agora'}
+                                        {!navigator.onLine ? 'GERAR VOUCHER OFFLINE' : (selectedItem.type === 'AFFILIATE' ? 'Ver Oferta Parceira' : 'Comprar Agora')}
                                         <ChevronRight size={18} />
                                     </button>
                                 </div>
+
+                                {offlineVoucher && (
+                                    <div className="mt-6 bg-primary-500/10 border border-primary-500/30 p-6 rounded-3xl animate-in zoom-in duration-300">
+                                        <div className="text-center space-y-2">
+                                            <p className="text-[10px] text-primary-400 font-black uppercase tracking-widest">Código de Pagamento Offline</p>
+                                            <p className="text-4xl font-black text-white font-mono tracking-tighter">{offlineVoucher.code}</p>
+                                            <p className="text-[11px] text-zinc-400 leading-tight">O vendedor deve digitar este código no "Modo Interior" do App dele para validar sua compra.</p>
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="flex items-center justify-center gap-4 mt-4 text-[10px] text-zinc-500 font-bold uppercase tracking-widest border-t border-zinc-800 pt-4">
                                     <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-500" /> Transação Segura</span>
                                     <span className="flex items-center gap-1"><Truck size={12} /> Entrega Combinada</span>
