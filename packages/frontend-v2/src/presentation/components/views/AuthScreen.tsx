@@ -150,6 +150,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
 
                 {/* Botão Voltar - Dentro do card */}
                 <button
+                    type="button"
                     onClick={() => navigate('/')}
                     className="flex items-center gap-1.5 text-zinc-500 hover:text-white transition-colors text-xs font-medium group mb-4 sm:mb-6 mt-1"
                 >
@@ -187,15 +188,42 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                             <div className="space-y-4">
                                 <div className="relative">
                                     <Users className="absolute left-3 top-3 text-zinc-500" size={20} />
-                                    <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition" required />
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        autocomplete="email"
+                                        placeholder="Email"
+                                        value={email}
+                                        onChange={e => setEmail(e.target.value)}
+                                        className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition"
+                                        required
+                                    />
                                 </div>
                                 <div className="relative">
                                     <KeyRound className="absolute left-3 top-3 text-zinc-500" size={20} />
-                                    <input type="text" placeholder="Frase Secreta" value={secretPhrase} onChange={e => setSecretPhrase(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition" required />
+                                    <input
+                                        type="text"
+                                        name="secretPhrase"
+                                        autocomplete="off"
+                                        placeholder="Frase Secreta"
+                                        value={secretPhrase}
+                                        onChange={e => setSecretPhrase(e.target.value)}
+                                        className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition"
+                                        required
+                                    />
                                 </div>
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-3 text-zinc-500" size={20} />
-                                    <input type="password" placeholder="Nova Senha" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition" required />
+                                    <input
+                                        type="password"
+                                        name="new-password"
+                                        autocomplete="new-password"
+                                        placeholder="Nova Senha"
+                                        value={newPassword}
+                                        onChange={e => setNewPassword(e.target.value)}
+                                        className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition"
+                                        required
+                                    />
                                 </div>
                             </div>
                             <button type="submit" className="w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(6,182,212,0.3)] mt-4">Redefinir Senha</button>
@@ -206,33 +234,87 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                             {isRegister && (
                                 <div className="relative">
                                     <Users className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
-                                    <input type="text" placeholder="Nome Completo" value={name} onChange={e => setName(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition" required />
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        autocomplete="name"
+                                        placeholder="Nome Completo"
+                                        value={name}
+                                        onChange={e => setName(e.target.value)}
+                                        className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition"
+                                        required
+                                    />
                                 </div>
                             )}
                             <div className="relative">
                                 <Users className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
-                                <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition" required />
+                                <input
+                                    type="email"
+                                    name="email"
+                                    autocomplete="email"
+                                    placeholder="Email"
+                                    value={email}
+                                    onChange={e => setEmail(e.target.value)}
+                                    className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition"
+                                    required
+                                />
                             </div>
 
                             <div className="relative">
                                 <Lock className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
-                                <input type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition" required />
+                                <input
+                                    type="password"
+                                    name="password"
+                                    autocomplete={isRegister ? "new-password" : "current-password"}
+                                    placeholder="Senha"
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition"
+                                    required
+                                />
                             </div>
 
                             <div className="relative">
                                 <KeyRound className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
-                                <input type="text" placeholder={isRegister ? "Crie sua Frase Secreta" : "Frase Secreta"} value={secretPhrase} onChange={e => setSecretPhrase(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition" required />
+                                <input
+                                    type="text"
+                                    name="secretPhrase"
+                                    autocomplete="off"
+                                    placeholder={isRegister ? "Crie sua Frase Secreta" : "Frase Secreta"}
+                                    value={secretPhrase}
+                                    onChange={e => setSecretPhrase(e.target.value)}
+                                    className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition"
+                                    required
+                                />
                             </div>
 
                             {isRegister && (
                                 <>
                                     <div className="relative">
                                         <QrCode className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
-                                        <input type="text" placeholder="Sua Chave PIX" value={pixKey} onChange={e => setPixKey(e.target.value)} className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition" required />
+                                        <input
+                                            type="text"
+                                            name="pixKey"
+                                            autocomplete="off"
+                                            placeholder="Sua Chave PIX"
+                                            value={pixKey}
+                                            onChange={e => setPixKey(e.target.value)}
+                                            className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition"
+                                            required
+                                        />
                                     </div>
                                     <div className="relative">
                                         <Repeat className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
-                                        <input type="text" placeholder="Código de Indicação (Obrigatorio)" value={referralCode} onChange={e => setReferralCode(e.target.value)} className="w-full bg-background border border-primary-500/30 rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition" required />
+                                        <input
+                                            type="text"
+                                            name="referralCode"
+                                            autocomplete="off"
+                                            placeholder="Código de Indicação (Obrigatorio)"
+                                            value={referralCode}
+                                            onChange={e => setReferralCode(e.target.value)}
+                                            className="w-full bg-background border border-primary-500/30 rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition"
+                                            required
+                                        />
                                     </div>
                                     <p className="text-[10px] text-zinc-500 px-1 italic">O Cred30 é exclusivo. Registros exigem um convite.</p>
                                 </>
@@ -251,6 +333,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                         <ShieldCheck className="absolute left-3 top-3 text-zinc-500" size={20} />
                                         <input
                                             type="text"
+                                            name="twoFactorCode"
                                             placeholder="Código 6 dígitos"
                                             inputMode="numeric"
                                             autoComplete="one-time-code"
@@ -369,6 +452,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                 <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest ml-1">Código de Confirmação</label>
                                 <input
                                     type="text"
+                                    name="verifyCode"
                                     placeholder="000000"
                                     inputMode="numeric"
                                     autoComplete="one-time-code"
