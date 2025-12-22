@@ -2,8 +2,8 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from '../components/layout/main-layout.component';
 import { UpdateNotification } from '../components/ui/update-notification.component';
-import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, repayInstallment, changePassword, upgradePro, claimAdReward } from '../../application/services/storage.service';
-import { apiService } from '../../application/services/api.service';
+import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, repayInstallment, changePassword, upgradePro, claimAdReward, apiService } from '../../application/services/storage.service';
+import { syncService } from '../../application/services/sync.service';
 import { AppState, Quota, Loan, Transaction, User } from '../../domain/types/common.types';
 import { QUOTA_PRICE } from '../../shared/constants/app.constants';
 import { calculateTotalToPay } from '../../shared/utils/financial.utils';
@@ -13,6 +13,8 @@ import { CardModal } from '../components/ui/card-modal.component';
 import { AuthScreen } from '../components/views/AuthScreen';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { AIAssistant } from '../components/AIAssistant';
+import { OfflineNotice } from '../components/ui/offline-notice.component';
+import { useOnlineStatus } from '../hooks/use-online-status';
 
 // Helper para lidar com erro de carregamento de chunks (comum após deploys)
 const lazyWithRetry = (componentImport: () => Promise<any>) =>
@@ -71,6 +73,7 @@ export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const currentView = location.pathname.split('/').pop() || 'dashboard';
+  const isOnline = useOnlineStatus();
   const [showReferral, setShowReferral] = useState(false);
   const [showVip, setShowVip] = useState(false);
 
@@ -106,7 +109,7 @@ export default function App() {
   useEffect(() => {
     loadData();
     const interval = setInterval(() => {
-      if (state.currentUser && !document.hidden) {
+      if (state.currentUser && !document.hidden && isOnline) {
         refreshState();
       }
     }, 15000);
@@ -114,8 +117,33 @@ export default function App() {
     const handleAuthExpired = () => setState(prev => ({ ...prev, currentUser: null }));
     window.addEventListener('auth-expired', handleAuthExpired);
 
+    // Sync Offline Actions logic
+    const handleActionQueued = (e: any) => {
+      setShowSuccess({
+        isOpen: true,
+        title: 'Modo Offline',
+        message: 'Você está offline. Sua ação foi agendada e será processada assim que a internet voltar.'
+      });
+    };
+
+    const handleSyncCompleted = (e: any) => {
+      const results = e.detail;
+      const successCount = results.filter((r: any) => r.success).length;
+      if (successCount > 0) {
+        setShowSuccess({
+          isOpen: true,
+          title: 'Sincronização Concluída',
+          message: `${successCount} ações offline foram processadas com sucesso!`
+        });
+        refreshState();
+      }
+    };
+
+    window.addEventListener('offline-action-queued', handleActionQueued);
+    window.addEventListener('offline-sync-completed', handleSyncCompleted);
+
     let cleanupNotifications: (() => void) | undefined;
-    if (state.currentUser) {
+    if (state.currentUser && isOnline) {
       cleanupNotifications = apiService.listenToNotifications((notif) => {
         setShowSuccess({
           isOpen: true,
@@ -129,9 +157,17 @@ export default function App() {
     return () => {
       clearInterval(interval);
       window.removeEventListener('auth-expired', handleAuthExpired);
+      window.removeEventListener('offline-action-queued', handleActionQueued);
+      window.removeEventListener('offline-sync-completed', handleSyncCompleted);
       if (cleanupNotifications) cleanupNotifications();
     };
-  }, [state.currentUser?.id]);
+  }, [state.currentUser?.id, isOnline, state.currentUser?.isAdmin, state.currentUser?.role]); // Added missing dependencies
+
+  useEffect(() => {
+    if (isOnline) {
+      syncService.processQueue();
+    }
+  }, [isOnline]);
 
   const loadData = async () => {
     try {
@@ -360,7 +396,11 @@ export default function App() {
     );
   }
 
-  const isStaff = state.currentUser.isAdmin || state.currentUser.role === 'ADMIN' || state.currentUser.role === 'ATTENDANT';
+  const isStaff = React.useMemo(() => {
+    if (!state.currentUser) return false;
+    return state.currentUser.isAdmin || state.currentUser.role === 'ADMIN' || state.currentUser.role === 'ATTENDANT';
+  }, [state.currentUser?.isAdmin, state.currentUser?.role]);
+
   if (isStaff) {
     return (
       <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><RefreshCw className="animate-spin text-primary-500" /></div>}>
@@ -374,6 +414,7 @@ export default function App() {
 
   return (
     <>
+      <OfflineNotice isOnline={isOnline} />
       <UpdateNotification />
       <Routes>
         <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
@@ -451,10 +492,11 @@ export default function App() {
                       onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
                       onError={(title, message) => setShowError({ isOpen: true, title, message })}
                       onRefresh={refreshState}
-                      totalQuotaValue={state.quotas
+                      totalQuotaValue={React.useMemo(() => state.quotas
                         .filter(q => q.userId === state.currentUser!.id)
-                        .reduce((acc, q) => acc + (q.currentValue || 0), 0)
-                      }
+                        .reduce((acc, q) => acc + (q.currentValue || 0), 0),
+                        [state.quotas, state.currentUser?.id]
+                      )}
                     />
                   </Suspense>
                 } />

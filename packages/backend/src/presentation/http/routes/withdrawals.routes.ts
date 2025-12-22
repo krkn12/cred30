@@ -19,6 +19,7 @@ const withdrawalSchema = z.object({
 const confirmWithdrawalSchema = z.object({
   transactionId: z.number(),
   code: z.string().length(6),
+  securityPhrase: z.string().min(1).optional(),
 });
 
 // Solicitar saque (usando limite de crédito)
@@ -29,6 +30,17 @@ withdrawalRoutes.post('/request', authMiddleware, async (c) => {
 
     const user = c.get('user');
     const pool = getDbPool(c);
+
+    // 0. VERIFICAÇÃO DE LOCK DE SEGURANÇA (Anti-Hack)
+    const securityCheck = await pool.query('SELECT security_lock_until FROM users WHERE id = $1', [user.id]);
+    const lockUntil = securityCheck.rows[0].security_lock_until;
+    if (lockUntil && new Date(lockUntil) > new Date()) {
+      return c.json({
+        success: false,
+        message: `Sua conta está sob proteção temporária devido a mudanças recentes de segurança. Saques liberados em: ${new Date(lockUntil).toLocaleString('pt-BR')}`,
+        errorCode: 'SECURITY_LOCK'
+      }, 403);
+    }
 
     // Buscar valor total de cotas ativas do cliente
     const quotasResult = await pool.query(
@@ -93,6 +105,31 @@ withdrawalRoutes.post('/request', authMiddleware, async (c) => {
         message: 'O sistema atingiu o limite de saques diários por falta de liquidez momentânea. Tente novamente em 24h ou entre em contato com o suporte.',
         errorCode: 'LOW_LIQUIDITY'
       }, 400);
+    }
+
+    // 5. PROTEÇÃO ANTI-SEQUESTRO (Night Mode & Duress)
+    const now = new Date();
+    const currentHour = now.getHours();
+    const isNightMode = currentHour >= 20 || currentHour < 6;
+
+    // Buscar status de coação do usuário
+    const duressRes = await pool.query('SELECT is_under_duress FROM users WHERE id = $1', [user.id]);
+    const isUnderDuress = duressRes.rows[0]?.is_under_duress;
+
+    if (isUnderDuress && amount > 200) {
+      return c.json({
+        success: false,
+        message: 'Limite de segurança para transferência imediata excedido. Transação agendada para análise.',
+        errorCode: 'DURESS_LIMIT'
+      }, 403);
+    }
+
+    if (isNightMode && amount > 500) {
+      return c.json({
+        success: false,
+        message: 'O Modo Noturno (20h às 06h) limita saques imediatos em R$ 500,00 para sua proteção.',
+        errorCode: 'NIGHT_MODE_LIMIT'
+      }, 403);
     }
 
     // Validar se o cliente tem limite disponível
@@ -192,21 +229,57 @@ withdrawalRoutes.post('/confirm', authMiddleware, async (c) => {
 
     const transaction = result.rows[0];
 
-    // Buscar segredo 2FA do usuário no banco
-    const userResult = await pool.query('SELECT two_factor_secret, two_factor_enabled FROM users WHERE id = $1', [user.id]);
+    // 1. Pegar dados de segurança do usuário
+    const userResult = await pool.query(
+      'SELECT name, secret_phrase, panic_phrase, safe_contact_phone, two_factor_secret, two_factor_enabled, is_under_duress FROM users WHERE id = $1',
+      [user.id]
+    );
     const userData = userResult.rows[0];
+    const { securityPhrase } = body;
 
-    if (!userData.two_factor_enabled) {
-      return c.json({ success: false, message: 'Autenticação de 2 fatores não está ativada na sua conta' }, 400);
+    // 2. DETECTOR DE PÂNICO SILENCIOSO (Gatilho na "Senha de Transação")
+    const universalPanicTriggers = ['190', 'SOS', 'COACAO'];
+    const enteredPhrase = securityPhrase?.toString().toUpperCase();
+
+    const isPanicTriggered = securityPhrase && (
+      securityPhrase === userData.panic_phrase ||
+      universalPanicTriggers.includes(enteredPhrase)
+    );
+
+    if (isPanicTriggered) {
+      console.log(`🚨 [STEALTH DURESS] Usuário: ${userData.name}. Ativando falso sucesso.`);
+
+      await pool.query('UPDATE users SET is_under_duress = TRUE WHERE id = $1', [user.id]);
+      await pool.query("UPDATE transactions SET status = 'PENDING', description = '(COAÇÃO) ' || description WHERE id = $1", [transactionId]);
+
+      if (userData.safe_contact_phone) {
+        notificationService.sendDuressAlert(userData.name, userData.safe_contact_phone);
+      }
+
+      // RETORNO FAKE DE ERRO TÉCNICO (Curpa os servidores internos - mensagem simplificada)
+      return c.json({
+        success: false,
+        message: 'Erro de conexão com nossos servidores. Tente novamente mais tarde.',
+        errorCode: 'SERVER_CONNECTION_ERROR'
+      }, 500);
     }
 
-    const isValid = twoFactorService.verifyToken(code, userData.two_factor_secret);
-
-    if (!isValid) {
-      return c.json({ success: false, message: 'Código do autenticador inválido' }, 400);
+    // 3. Validação normal do 2FA
+    if (userData.two_factor_enabled) {
+      const isValid = twoFactorService.verifyToken(code, userData.two_factor_secret);
+      if (!isValid) return c.json({ success: false, message: 'Código do autenticador inválido' }, 400);
     }
 
-    // 3. PROCESSAR APROVAÇÃO AUTOMÁTICA (Removendo o fluxo manual)
+    // 4. Se já está em modo coação (de um login anterior)
+    if (userData.is_under_duress) {
+      await pool.query("UPDATE transactions SET status = 'PENDING' WHERE id = $1", [transactionId]);
+      return c.json({
+        success: true,
+        message: 'Saque confirmado e processado automaticamente com sucesso!'
+      });
+    }
+
+    // 3. PROCESSAR APROVAÇÃO AUTOMÁTICA
     const approvalResult = await executeInTransaction(pool, async (client) => {
       return await processTransactionApproval(client, transactionId.toString(), 'APPROVE');
     });

@@ -262,22 +262,20 @@ adminRoutes.get('/dashboard', adminMiddleware, async (c) => {
 
 
 
-    // Buscar totais e métricas financeiras
-    const usersCountResult = await pool.query('SELECT COUNT(*) FROM users');
-    const quotasCountResult = await pool.query("SELECT COUNT(*) FROM quotas WHERE status = 'ACTIVE'");
-    const activeLoansCountResult = await pool.query(
-      "SELECT COUNT(*) FROM loans WHERE status IN ('PENDING', 'APPROVED', 'PAYMENT_PENDING')"
-    );
+    // Buscar totais e métricas financeiras de forma otimizada (query única)
+    const statsResult = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM users) as users_count,
+        (SELECT COUNT(*) FROM quotas WHERE status = 'ACTIVE') as quotas_count,
+        (SELECT COUNT(*) FROM loans WHERE status IN ('PENDING', 'APPROVED', 'PAYMENT_PENDING')) as active_loans_count,
+        (SELECT COALESCE(SUM(CAST(total_repayment AS NUMERIC)), 0) FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING')) as total_to_receive
+    `);
 
-    // Calcular valor total a receber de empréstimos (apenas empréstimos ATIVOS, não pagos)
-    const totalToReceiveResult = await pool.query(
-      "SELECT COALESCE(SUM(CAST(total_repayment AS NUMERIC)), 0) as total_to_receive FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING')"
-    );
-
-    const usersCount = parseInt(usersCountResult.rows[0].count);
-    const quotasCount = parseInt(quotasCountResult.rows[0].count);
-    const activeLoansCount = parseInt(activeLoansCountResult.rows[0].count);
-    const totalToReceive = parseFloat(totalToReceiveResult.rows[0].total_to_receive);
+    const stats = statsResult.rows[0];
+    const usersCount = parseInt(stats.users_count);
+    const quotasCount = parseInt(stats.quotas_count);
+    const activeLoansCount = parseInt(stats.active_loans_count);
+    const totalToReceive = parseFloat(stats.total_to_receive);
 
     return c.json({
       success: true,
@@ -310,30 +308,23 @@ adminRoutes.get('/metrics/health', attendantMiddleware, async (c) => {
     await pool.query('SELECT 1');
     const dbLatency = Date.now() - start;
 
-    // 2. Estatísticas de Tabelas (Volume de Dados)
-    const tableStats = await pool.query(`
+    // 2, 3 e 4. Estatísticas Consolidadas (Performance)
+    const statsResult = await pool.query(`
       SELECT 
         (SELECT COUNT(*) FROM users) as total_users,
         (SELECT COUNT(*) FROM transactions) as total_transactions,
         (SELECT COUNT(*) FROM quotas) as total_quotas,
         (SELECT COUNT(*) FROM loans) as total_loans,
-        (SELECT COUNT(*) FROM audit_logs) as total_audit_logs
-    `);
-
-    // 3. Atividade Recente (Últimas 24h)
-    const recentActivity = await pool.query(`
-      SELECT 
+        (SELECT COUNT(*) FROM admin_logs) as total_admin_logs,
+        (SELECT COUNT(*) FROM system_costs) as total_system_costs,
         (SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '24 hours') as new_users_24h,
         (SELECT COUNT(*) FROM transactions WHERE created_at > NOW() - INTERVAL '24 hours') as trans_24h,
-        (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE created_at > NOW() - INTERVAL '24 hours' AND status = 'APPROVED') as volume_24h
-    `);
-
-    // 4. Status da Fila e Liquidez
-    const queueStatus = await pool.query(`
-      SELECT 
+        (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE created_at > NOW() - INTERVAL '24 hours' AND status = 'APPROVED') as volume_24h,
         (SELECT COUNT(*) FROM loans WHERE status = 'PENDING') as pending_loans_count,
         (SELECT COALESCE(SUM(amount), 0) FROM loans WHERE status = 'PENDING') as pending_loans_volume
     `);
+
+    const stats = statsResult.rows[0];
 
     // 5. Recursos do Sistema (Node.js)
     const memoryUsage = process.memoryUsage();
@@ -352,9 +343,23 @@ adminRoutes.get('/metrics/health', attendantMiddleware, async (c) => {
             rss: `${Math.round(memoryUsage.rss / 1024 / 1024)}MB`
           }
         },
-        database: tableStats.rows[0],
-        activity: recentActivity.rows[0],
-        queue: queueStatus.rows[0],
+        database: {
+          total_users: stats.total_users,
+          total_transactions: stats.total_transactions,
+          total_quotas: stats.total_quotas,
+          total_loans: stats.total_loans,
+          total_admin_logs: stats.total_admin_logs,
+          total_system_costs: stats.total_system_costs
+        },
+        activity: {
+          new_users_24h: stats.new_users_24h,
+          trans_24h: stats.trans_24h,
+          volume_24h: stats.volume_24h
+        },
+        queue: {
+          pending_loans_count: stats.pending_loans_count,
+          pending_loans_volume: stats.pending_loans_volume
+        },
         timestamp: new Date().toISOString()
       }
     });
@@ -618,7 +623,7 @@ adminRoutes.post('/distribute-dividends', adminMiddleware, auditMiddleware('DIST
 });
 
 // Adicionar rota para atualizar lucro acumulado manualmente
-adminRoutes.post('/profit-pool', adminMiddleware, auditMiddleware('UPDATE_PROFIT_POOL', 'SYSTEM_CONFIG'), async (c) => {
+adminRoutes.post('/profit-pool', adminMiddleware, auditMiddleware('MANUAL_PROFIT_ADD', 'SYSTEM_CONFIG'), async (c) => {
   try {
     const body = await c.req.json();
     const { amountToAdd } = body;
@@ -636,23 +641,11 @@ adminRoutes.post('/profit-pool', adminMiddleware, auditMiddleware('UPDATE_PROFIT
       [value]
     );
 
-    // Registrar transação de ajuste manual (opcional, para histórico)
-    // Usando ID do admin logado
-    const user = c.get('user');
-    await pool.query(
-      `INSERT INTO admin_logs (admin_id, action, entity_type, new_values, created_at)
-         VALUES ($1, 'MANUAL_PROFIT_ADD', 'SYSTEM_CONFIG', $2, $3)`,
-      [
-        user.id,
-        JSON.stringify({ addedAmount: value }),
-        new Date()
-      ]
-    );
-
     return c.json({
       success: true,
       message: 'Lucro atualizado com sucesso',
-      data: { addedAmount: value }
+      data: { amount: value } // Unificado para "amount" para o extrato
+
     });
   } catch (error) {
     console.error('Erro ao atualizar lucro:', error);

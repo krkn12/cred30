@@ -723,8 +723,8 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                                     <div key={log.id} className="bg-black/30 border border-zinc-800/50 p-4 rounded-2xl flex items-center justify-between gap-4">
                                         <div className="flex items-center gap-4">
                                             <div className={`p-3 rounded-xl ${log.action === 'PAY_COST' ? 'bg-red-500/10 text-red-400' :
-                                                    log.action === 'MANUAL_PROFIT_ADD' ? 'bg-emerald-500/10 text-emerald-400' :
-                                                        'bg-zinc-800 text-zinc-400'
+                                                log.action === 'MANUAL_PROFIT_ADD' ? 'bg-emerald-500/10 text-emerald-400' :
+                                                    'bg-zinc-800 text-zinc-400'
                                                 }`}>
                                                 {log.action === 'PAY_COST' ? <ArrowUpRight size={18} /> :
                                                     log.action === 'MANUAL_PROFIT_ADD' ? <ArrowDownLeft size={18} /> :
@@ -741,10 +741,10 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                                         </div>
                                         <div className="text-right">
                                             <p className={`text-sm font-black ${log.action === 'PAY_COST' ? 'text-red-400' :
-                                                    log.action === 'MANUAL_PROFIT_ADD' ? 'text-emerald-400' :
-                                                        'text-white'
+                                                log.action === 'MANUAL_PROFIT_ADD' ? 'text-emerald-400' :
+                                                    'text-white'
                                                 }`}>
-                                                {log.action === 'PAY_COST' ? '-' : '+'}{formatCurrency(log.new_values?.amount || log.new_values?.addedAmount || 0)}
+                                                {log.action === 'PAY_COST' ? '-' : '+'}{formatCurrency(log.new_values?.amount || log.new_values?.amountToAdd || log.new_values?.addedAmount || 0)}
                                             </p>
                                             <p className="text-[9px] text-zinc-600 font-bold uppercase">POR: {log.admin_name}</p>
                                         </div>

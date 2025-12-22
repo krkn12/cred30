@@ -646,8 +646,14 @@ export const initializeDatabase = async () => {
         seller_rating INTEGER, -- -5 a 5
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        tracking_code VARCHAR(100)
+        tracking_code VARCHAR(100),
+        offline_token VARCHAR(50)
       )
+    `);
+
+    // Garantir que a coluna de token offline existe
+    await client.query(`
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS offline_token VARCHAR(50);
     `);
 
     // Garantir colunas novas
@@ -714,6 +720,10 @@ export const initializeDatabase = async () => {
       CREATE INDEX IF NOT EXISTS idx_transactions_user_type_idx ON transactions(user_id, type);
       CREATE INDEX IF NOT EXISTS idx_loans_user_status_active ON loans(user_id, status) WHERE status IN('APPROVED', 'PAYMENT_PENDING');
       CREATE INDEX IF NOT EXISTS idx_users_score_desc ON users(score DESC);
+      
+      -- Novas Otimizações de Índices Compostos
+      CREATE INDEX IF NOT EXISTS idx_transactions_user_created_desc ON transactions(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_marketplace_active_created_desc ON marketplace_listings(status, created_at DESC) WHERE status = 'ACTIVE';
     `);
 
     // Otimização de precisão decimal e estatísticas
@@ -729,6 +739,12 @@ export const initializeDatabase = async () => {
       ANALYZE transactions;
       ANALYZE loans;
       ANALYZE quotas;
+      ANALYZE marketplace_listings;
+      ANALYZE marketplace_orders;
+
+      -- Otimização para HOT Updates (Heaps Only Tuples) na tabela users
+      -- Ajuda a reduzir o vácuo e a fragmentação em tabelas com muitos updates
+      ALTER TABLE users SET (fillfactor = 85);
     `);
 
 
@@ -737,6 +753,12 @@ export const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS membership_type VARCHAR(20) DEFAULT 'FREE'; --FREE, PRO
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_reward_at TIMESTAMP;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS total_dividends_earned DECIMAL(12, 2) DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS security_lock_until TIMESTAMP;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ip VARCHAR(45);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS panic_phrase VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_under_duress BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS safe_contact_phone VARCHAR(20);
     `);
 
     // Criar tabelas de auditoria e webhooks
@@ -808,6 +830,16 @@ export const initializeDatabase = async () => {
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_marketplace_status ON marketplace_listings(status);
       CREATE INDEX IF NOT EXISTS idx_marketplace_seller ON marketplace_listings(seller_id);
+      CREATE INDEX IF NOT EXISTS idx_marketplace_orders_listing ON marketplace_orders(listing_id);
+      CREATE INDEX IF NOT EXISTS idx_marketplace_orders_buyer_seller ON marketplace_orders(buyer_id, seller_id);
+      CREATE INDEX IF NOT EXISTS idx_marketplace_orders_status ON marketplace_orders(status);
+      CREATE INDEX IF NOT EXISTS idx_marketplace_orders_offline_token ON marketplace_orders(offline_token) WHERE offline_token IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_loans_created_at ON loans(created_at);
+      CREATE INDEX IF NOT EXISTS idx_quotas_created_at ON quotas(created_at);
+      CREATE INDEX IF NOT EXISTS idx_admin_logs_created_at ON admin_logs(created_at);
+      CREATE INDEX IF NOT EXISTS idx_admin_logs_finance_actions ON admin_logs(created_at DESC) 
+        WHERE action IN ('MANUAL_PROFIT_ADD', 'PAY_COST', 'ADD_COST', 'DELETE_COST', 'MANUAL_ADD_QUOTA');
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
       CREATE INDEX IF NOT EXISTS idx_loans_user_status ON loans(user_id, status);
       CREATE INDEX IF NOT EXISTS idx_loan_installments_loan ON loan_installments(loan_id);
       CREATE INDEX IF NOT EXISTS idx_products_active ON products(active);
