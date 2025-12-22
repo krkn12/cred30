@@ -610,8 +610,7 @@ export const initializeDatabase = async () => {
         seller_rating INTEGER, -- -5 a 5
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        tracking_code VARCHAR(100),
-        dispute_reason TEXT
+        tracking_code VARCHAR(100)
       )
     `);
 
