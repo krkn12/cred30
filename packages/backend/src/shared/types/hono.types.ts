@@ -7,6 +7,8 @@ export interface UserContext {
   joinedAt: number; // Timestamp em milissegundos
   referralCode: string;
   isAdmin: boolean;
+  role: 'MEMBER' | 'ATTENDANT' | 'ADMIN';
+  status: 'ACTIVE' | 'BLOCKED';
   score: number;
   pixKey?: string; // Adicionado para compatibilidade
   twoFactorEnabled?: boolean;

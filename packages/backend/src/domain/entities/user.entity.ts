@@ -9,6 +9,8 @@ export interface User {
   created_at?: Date;
   referral_code?: string;
   is_admin?: boolean;
+  role?: 'MEMBER' | 'ATTENDANT' | 'ADMIN';
+  status?: 'ACTIVE' | 'BLOCKED';
 }
 
 export interface CreateUserRequest {

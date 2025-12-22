@@ -156,6 +156,17 @@ export const initializeDatabase = async () => {
           await client.query('ALTER TABLE users ADD COLUMN title_downloaded_at TIMESTAMP');
         }
 
+        const roleColumn = await client.query(`
+          SELECT column_name FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'role'
+        `);
+
+        if (roleColumn.rows.length === 0) {
+          console.log('Adicionando coluna role e status à tabela users...');
+          await client.query("ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'MEMBER'");
+          await client.query("ALTER TABLE users ADD COLUMN status VARCHAR(20) DEFAULT 'ACTIVE'");
+        }
+
         console.log('Tabela users verificada e atualizada com sucesso');
       }
     }
@@ -182,6 +193,8 @@ export const initializeDatabase = async () => {
         accepted_terms_at TIMESTAMP,
         title_downloaded BOOLEAN DEFAULT FALSE,
         title_downloaded_at TIMESTAMP,
+        role VARCHAR(20) DEFAULT 'MEMBER',
+        status VARCHAR(20) DEFAULT 'ACTIVE',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
