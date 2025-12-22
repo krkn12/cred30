@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { LogOut, Home, PieChart, DollarSign, Settings, TrendingUp, ArrowUpFromLine, Gamepad2, ShoppingBag } from 'lucide-react';
+import { LogOut, Home, PieChart, DollarSign, Settings, TrendingUp, ArrowUpFromLine, Gamepad2, ShoppingBag, HelpCircle, MessageCircle } from 'lucide-react';
 import { AdBanner } from '../ui/AdBanner';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../../../domain/types/common.types';
@@ -85,6 +85,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
     { id: 'portfolio', label: 'Carteira', icon: PieChart },
     { id: 'loans', label: 'Crédito Mútuo', icon: DollarSign },
     { id: 'withdraw', label: 'Sacar', icon: ArrowUpFromLine },
+    { id: 'faq', label: 'Dúvidas', icon: HelpCircle },
   ];
 
   return (

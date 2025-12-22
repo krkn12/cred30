@@ -51,6 +51,7 @@ const MarketplaceView = lazyWithRetry(() => import('../components/views/Marketpl
 const EarnView = lazyWithRetry(() => import('../components/views/EarnView').then(m => ({ default: m.EarnView })));
 const GamesView = lazyWithRetry(() => import('../components/views/GamesView').then(m => ({ default: m.GamesView })));
 const EducationView = lazyWithRetry(() => import('../components/views/EducationView').then(m => ({ default: m.EducationView })));
+const FaqView = lazyWithRetry(() => import('../components/views/FaqView').then(m => ({ default: m.FaqView })));
 
 export default function App() {
   const [state, setState] = useState<AppState>({
@@ -458,6 +459,7 @@ export default function App() {
                 <Route path="earn" element={<Suspense fallback={null}><EarnView state={state} onBack={() => navigate('/app/dashboard')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} onRefresh={refreshState} onUpgrade={handleUpgradeProClick} /></Suspense>} />
                 <Route path="games" element={<Suspense fallback={null}><GamesView onBack={() => navigate('/app/dashboard')} /></Suspense>} />
                 <Route path="education" element={<Suspense fallback={null}><EducationView onBack={() => navigate('/app/dashboard')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} /></Suspense>} />
+                <Route path="faq" element={<Suspense fallback={null}><FaqView /></Suspense>} />
                 <Route path="history" element={<Suspense fallback={null}><HistoryView transactions={state.transactions.filter(t => t.userId === state.currentUser!.id)} /></Suspense>} />
                 <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
               </Routes>
