@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { authMiddleware, adminMiddleware } from '../middleware/auth.middleware';
+import { authMiddleware, adminMiddleware, attendantMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { supportService } from '../../../application/services/support.service';
 
@@ -97,7 +97,7 @@ supportRoutes.post('/escalate', authMiddleware, async (c) => {
 // --- ROTAS DE ADMIN ---
 
 // Listar chats pendentes (Admin)
-supportRoutes.get('/admin/pending', authMiddleware, adminMiddleware, async (c) => {
+supportRoutes.get('/admin/pending', authMiddleware, attendantMiddleware, async (c) => {
     try {
         const pool = getDbPool(c);
         const chats = await supportService.getPendingHumanChats(pool);
@@ -113,7 +113,7 @@ supportRoutes.get('/admin/pending', authMiddleware, adminMiddleware, async (c) =
 });
 
 // Buscar mensagens de um chat específico (Admin)
-supportRoutes.get('/admin/chat/:id', authMiddleware, adminMiddleware, async (c) => {
+supportRoutes.get('/admin/chat/:id', authMiddleware, attendantMiddleware, async (c) => {
     try {
         const pool = getDbPool(c);
         const chatId = parseInt(c.req.param('id'));
@@ -130,7 +130,7 @@ supportRoutes.get('/admin/chat/:id', authMiddleware, adminMiddleware, async (c) 
 });
 
 // Responder como Admin
-supportRoutes.post('/admin/respond', authMiddleware, adminMiddleware, async (c) => {
+supportRoutes.post('/admin/respond', authMiddleware, attendantMiddleware, async (c) => {
     try {
         const admin = c.get('user') as any;
         const pool = getDbPool(c);
@@ -152,7 +152,7 @@ supportRoutes.post('/admin/respond', authMiddleware, adminMiddleware, async (c) 
     }
 });
 // Fechar chat (Admin)
-supportRoutes.post('/admin/close', authMiddleware, adminMiddleware, async (c) => {
+supportRoutes.post('/admin/close', authMiddleware, attendantMiddleware, async (c) => {
     try {
         const admin = c.get('user') as any;
         const pool = getDbPool(c);
@@ -202,7 +202,7 @@ supportRoutes.post('/feedback', authMiddleware, async (c) => {
 });
 
 // Listar feedbacks (Admin)
-supportRoutes.get('/admin/feedback', authMiddleware, adminMiddleware, async (c) => {
+supportRoutes.get('/admin/feedback', authMiddleware, attendantMiddleware, async (c) => {
     try {
         const pool = getDbPool(c);
         const feedbacks = await supportService.getClosedChatsWithFeedback(pool);

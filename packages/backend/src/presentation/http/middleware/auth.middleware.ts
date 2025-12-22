@@ -52,7 +52,7 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
     // Buscar usuário no banco de dados para obter informações atualizadas
     const pool = getDbPool(c);
     const result = await pool.query(
-      'SELECT id, name, email, balance, referral_code, is_admin, score, created_at, pix_key, two_factor_enabled FROM users WHERE id = $1',
+      'SELECT id, name, email, balance, referral_code, is_admin, role, status, score, created_at, pix_key, two_factor_enabled FROM users WHERE id = $1',
       [decoded.userId]
     );
 
@@ -67,6 +67,14 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
 
     const user = result.rows[0];
 
+    // Verificar se o usuário está bloqueado
+    if (user.status !== 'ACTIVE') {
+      return c.json({
+        success: false,
+        message: 'Conta suspensa ou bloqueada. Entre em contato com o suporte.'
+      }, 403);
+    }
+
     // Adicionar usuário ao contexto da requisição
     const userContext: UserContext = {
       id: user.id, // Manter como UUID string
@@ -76,6 +84,8 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
       joinedAt: new Date(user.created_at).getTime(),
       referralCode: user.referral_code,
       isAdmin: Boolean(user.is_admin), // Garantir que seja booleano
+      role: user.role || 'MEMBER',
+      status: user.status || 'ACTIVE',
       score: user.score || 0,
       pixKey: user.pix_key,
       twoFactorEnabled: Boolean(user.two_factor_enabled),
@@ -86,7 +96,8 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
       id: userContext.id,
       name: userContext.name,
       isAdmin: userContext.isAdmin,
-      isAdminType: typeof userContext.isAdmin
+      role: userContext.role,
+      status: userContext.status
     });
 
     c.set('user', userContext);
@@ -96,7 +107,8 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
     console.log('Usuário após set:', {
       exists: !!userAfterSet,
       id: userAfterSet?.id,
-      isAdmin: userAfterSet?.isAdmin
+      isAdmin: userAfterSet?.isAdmin,
+      role: userAfterSet?.role
     });
 
     await next();
@@ -118,17 +130,18 @@ export const adminMiddleware: MiddlewareHandler = async (c, next) => {
     userId: user?.id,
     userEmail: user?.email,
     userIsAdmin: user?.isAdmin,
-    userIsAdminType: typeof user?.isAdmin,
-    isAdminCheck: user?.isAdmin !== true
+    userRole: user?.role,
+    isAdminCheck: user?.isAdmin !== true && user?.role !== 'ADMIN'
   });
 
-  // Verificação apenas por isAdmin === true
-  const isAdminUser = user?.isAdmin === true;
+  // Verificação por isAdmin === true ou role === 'ADMIN'
+  const isAdminUser = user?.isAdmin === true || user?.role === 'ADMIN';
 
   if (!user || !isAdminUser) {
     console.log('adminMiddleware - Acesso negado:', {
-      reason: !user ? 'Usuário não encontrado no contexto' : 'isAdmin não é true',
+      reason: !user ? 'Usuário não encontrado no contexto' : 'Ação proibida para este nível de acesso',
       userIsAdmin: user?.isAdmin,
+      userRole: user?.role,
       userEmail: user?.email,
       isAdminUser
     });
@@ -140,5 +153,21 @@ export const adminMiddleware: MiddlewareHandler = async (c, next) => {
   }
 
   console.log('adminMiddleware - Acesso permitido para:', user.email);
+  await next();
+};
+
+export const attendantMiddleware: MiddlewareHandler = async (c, next) => {
+  const user = c.get('user');
+
+  // Atendentes ou Admins podem acessar áreas de atendimento
+  const hasAccess = user?.role === 'ATTENDANT' || user?.role === 'ADMIN' || user?.isAdmin === true;
+
+  if (!user || !hasAccess) {
+    return c.json({
+      success: false,
+      message: 'Acesso negado. Permissão de atendente necessária.'
+    }, 403);
+  }
+
   await next();
 };

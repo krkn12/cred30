@@ -1614,5 +1614,125 @@ adminRoutes.post('/manual-cost', adminMiddleware, auditMiddleware('RECORD_MANUAL
   }
 });
 
+// --- GESTÃO DE USUÁRIOS E EQUIPE (MODO FINTECH) ---
+
+const updateUserRoleStatusSchema = z.object({
+  userId: z.number(),
+  role: z.enum(['MEMBER', 'ATTENDANT', 'ADMIN']).optional(),
+  status: z.enum(['ACTIVE', 'BLOCKED']).optional()
+});
+
+const createAttendantSchema = z.object({
+  name: z.string().min(3),
+  email: z.string().email(),
+  password: z.string().min(6),
+  secretPhrase: z.string().min(3),
+  pixKey: z.string().min(5)
+});
+
+// Listar todos os usuários com filtros
+adminRoutes.get('/users', adminMiddleware, async (c) => {
+  try {
+    const pool = getDbPool(c);
+    const { search, role, status } = c.req.query();
+
+    let query = `
+      SELECT id, name, email, role, status, balance, score, created_at, pix_key
+      FROM users
+      WHERE 1=1
+    `;
+    const params = [];
+    let paramIndex = 1;
+
+    if (search) {
+      query += ` AND (name ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    if (role) {
+      query += ` AND role = $${paramIndex}`;
+      params.push(role);
+      paramIndex++;
+    }
+
+    if (status) {
+      query += ` AND status = $${paramIndex}`;
+      params.push(status);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT 100`;
+
+    const result = await pool.query(query, params);
+    return c.json({ success: true, data: result.rows });
+  } catch (error: any) {
+    return c.json({ success: false, message: error.message }, 500);
+  }
+});
+
+// Atualizar Role ou Status de um usuário
+adminRoutes.post('/users/update-access', adminMiddleware, auditMiddleware('UPDATE_USER_ACCESS', 'USER'), async (c) => {
+  try {
+    const body = await c.req.json();
+    const { userId, role, status } = updateUserRoleStatusSchema.parse(body);
+    const pool = getDbPool(c);
+
+    const updateFields = [];
+    const params = [];
+    let index = 1;
+
+    if (role) {
+      updateFields.push(`role = $${index++}`);
+      params.push(role);
+    }
+    if (status) {
+      updateFields.push(`status = $${index++}`);
+      params.push(status);
+    }
+
+    if (updateFields.length === 0) {
+      return c.json({ success: false, message: 'Nenhuma alteração fornecida' }, 400);
+    }
+
+    params.push(userId);
+    const query = `UPDATE users SET ${updateFields.join(', ')} WHERE id = $${index} RETURNING id`;
+
+    const result = await pool.query(query, params);
+
+    if (result.rows.length === 0) {
+      return c.json({ success: false, message: 'Usuário não encontrado' }, 404);
+    }
+
+    return c.json({ success: true, message: 'Permissões atualizadas com sucesso' });
+  } catch (error: any) {
+    return c.json({ success: false, message: error.message }, 500);
+  }
+});
+
+// Criar um novo atendente diretamente
+adminRoutes.post('/users/create-attendant', adminMiddleware, auditMiddleware('CREATE_ATTENDANT', 'USER'), async (c) => {
+  try {
+    const body = await c.req.json();
+    const { name, email, password, secretPhrase, pixKey } = createAttendantSchema.parse(body);
+    const pool = getDbPool(c);
+    const bcrypt = require('bcrypt');
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const result = await pool.query(
+      `INSERT INTO users (name, email, password_hash, secret_phrase, pix_key, role, status)
+       VALUES ($1, $2, $3, $4, $5, 'ATTENDANT', 'ACTIVE') RETURNING id`,
+      [name, email, passwordHash, secretPhrase, pixKey]
+    );
+
+    return c.json({ success: true, message: 'Atendente criado com sucesso', data: { id: result.rows[0].id } });
+  } catch (error: any) {
+    if (error.code === '23505') {
+      return c.json({ success: false, message: 'Email já cadastrado' }, 409);
+    }
+    return c.json({ success: false, message: error.message }, 500);
+  }
+});
+
 export { adminRoutes };
 

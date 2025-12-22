@@ -578,6 +578,33 @@ class ApiService {
     const response = await this.request<any>('/users/title-download', { method: 'POST' });
     return response.data;
   }
+
+  // --- Gestão de Equipe e Usuários (Admin) ---
+  async adminGetUsers(options?: { search?: string, role?: string, status?: string }): Promise<any> {
+    const query = new URLSearchParams();
+    if (options?.search) query.append('search', options.search);
+    if (options?.role) query.append('role', options.role);
+    if (options?.status) query.append('status', options.status);
+
+    const response = await this.request<any>(`/admin/users?${query.toString()}`);
+    return response.data;
+  }
+
+  async adminUpdateUserAccess(data: { userId: number, role?: string, status?: string }): Promise<any> {
+    const response = await this.request<any>('/admin/users/update-access', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return response.data;
+  }
+
+  async adminCreateAttendant(data: any): Promise<any> {
+    const response = await this.request<any>('/admin/users/create-attendant', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return response.data;
+  }
 }
 
 // Exportar instância única do serviço
