@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import { PoolClient } from 'pg';
-import { authMiddleware, adminMiddleware } from '../middleware/auth.middleware';
+import { authMiddleware, adminMiddleware, attendantMiddleware } from '../middleware/auth.middleware';
 import { auditMiddleware, initializeAuditTable } from '../../../infrastructure/logging/audit.middleware';
 import { adminRateLimit } from '../middleware/rate-limit.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
