@@ -9,10 +9,13 @@ import {
   DIVIDEND_USER_SHARE,
   DIVIDEND_MAINTENANCE_SHARE,
   QUOTA_PRICE,
+  QUOTA_SHARE_VALUE,
+  QUOTA_ADM_FEE,
   REFERRAL_BONUS
 } from '../../../shared/constants/business.constants';
 import { executeInTransaction, updateUserBalance, createTransaction, updateTransactionStatus, processTransactionApproval, processLoanApproval } from '../../../domain/services/transaction.service';
 import { distributeProfits } from '../../../application/services/profit-distribution.service';
+import { runAutoLiquidation } from '../../../application/services/auto-liquidation.service';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
 import { calculateGatewayCost } from '../../../shared/utils/financial.utils';
 import { simulatePaymentApproval } from '../../../infrastructure/gateways/mercadopago.service';
@@ -270,15 +273,18 @@ adminRoutes.post('/users/add-quota', adminMiddleware, auditMiddleware('MANUAL_AD
         await client.query(
           `INSERT INTO quotas (user_id, purchase_price, current_value, purchase_date, status)
            VALUES ($1, $2, $3, $4, 'ACTIVE')`,
-          [user.id, QUOTA_PRICE, QUOTA_PRICE, new Date()]
+          [user.id, QUOTA_SHARE_VALUE, QUOTA_SHARE_VALUE, new Date()]
         );
       }
 
       // 3. Registrar a entrada de capital das cotas presenteadas (Admin aportando/capitalizando)
-      const giftAmount = quantity * QUOTA_PRICE;
+      const giftTotal = quantity * QUOTA_PRICE;
+      const giftShareValue = quantity * QUOTA_SHARE_VALUE;
+      const giftAdmFee = quantity * QUOTA_ADM_FEE;
+
       await client.query(
         'UPDATE system_config SET system_balance = system_balance + $1',
-        [giftAmount]
+        [giftTotal] // O sistema recebe o valor total (como se o admin estivesse injetando capital)
       );
 
       // 4. Atualizar Score do Usuário (Benefício da Cota)
@@ -1506,6 +1512,39 @@ adminRoutes.post('/marketplace/resolve-dispute', adminMiddleware, async (c) => {
     });
 
     return c.json({ success: true, message: `Disputa resolvida: ${resolution}` });
+  } catch (error: any) {
+    return c.json({ success: false, message: error.message }, 500);
+  }
+});
+
+// Forçar Liquidação Automática
+adminRoutes.post('/run-liquidation', adminMiddleware, auditMiddleware('FORCE_LIQUIDATION', 'LOAN'), async (c) => {
+  try {
+    const pool = getDbPool(c);
+    const result = await runAutoLiquidation(pool);
+    return c.json({
+      success: true,
+      message: `Varredura concluída. ${result.liquidatedCount} garantias executadas.`,
+      data: result
+    });
+  } catch (error: any) {
+    return c.json({ success: false, message: error.message }, 500);
+  }
+});
+
+// Registrar Custo Manual (Despesa)
+adminRoutes.post('/manual-cost', adminMiddleware, auditMiddleware('RECORD_MANUAL_COST', 'SYSTEM_CONFIG'), async (c) => {
+  try {
+    const body = await c.req.json();
+    const { amount, description } = z.object({ amount: z.number().positive(), description: z.string() }).parse(body);
+    const pool = getDbPool(c);
+
+    await pool.query(
+      'UPDATE system_config SET system_balance = system_balance - $1, total_manual_costs = total_manual_costs + $1',
+      [amount]
+    );
+
+    return c.json({ success: true, message: 'Custo registrado e deduzido do caixa.' });
   } catch (error: any) {
     return c.json({ success: false, message: error.message }, 500);
   }

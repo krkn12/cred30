@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { TrendingUp, X as XIcon } from 'lucide-react';
-import { QUOTA_PRICE } from '../../../shared/constants/app.constants';
+import { QUOTA_PRICE, QUOTA_SHARE_VALUE, QUOTA_ADM_FEE } from '../../../shared/constants/app.constants';
 import { calculateTotalToPay } from '../../../shared/utils/financial.utils';
 import { AdBanner } from '../ui/AdBanner';
 
@@ -46,19 +46,26 @@ export const InvestView = ({ onBuy }: { onBuy: (qty: number, method: 'PIX' | 'BA
                 </div>
 
                 <div className="bg-background rounded-xl p-4 border border-surfaceHighlight text-left">
+                    <p className="text-[10px] text-zinc-500 uppercase font-bold mb-3 tracking-widest text-center border-b border-zinc-800 pb-2">Composição do Aporte</p>
+
                     <div className="flex justify-between text-sm mb-2">
-                        <span className="text-zinc-400">Subtotal ({qty}x)</span>
-                        <span className="text-white font-medium">{baseAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        <span className="text-zinc-400">Capital Social ({qty}x)</span>
+                        <span className="text-white font-medium">{(qty * QUOTA_SHARE_VALUE).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
+                    <div className="flex justify-between text-sm mb-2">
+                        <span className="text-zinc-400">Taxa Administrativa</span>
+                        <span className="text-white font-medium">{(qty * QUOTA_ADM_FEE).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    </div>
+
                     {fee > 0 && (
                         <div className="flex justify-between text-sm mb-2 text-yellow-500/90 font-medium">
-                            <span>Taxa de Serviço ({method})</span>
+                            <span>Taxa de Processamento ({method})</span>
                             <span>+ {fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                         </div>
                     )}
                     <div className="h-px bg-surfaceHighlight my-3"></div>
                     <div className="flex justify-between text-lg font-bold">
-                        <span className="text-white">Total</span>
+                        <span className="text-white">Total a Pagar</span>
                         <span className="text-primary-400">{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                 </div>

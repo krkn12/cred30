@@ -253,6 +253,21 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         }
     };
 
+    const handleRunLiquidation = async () => {
+        if (!window.confirm('Iniciar varredura de garantias agora? O sistema executará o lastro de todos os apoios em atraso há mais de 5 dias.')) return;
+        try {
+            const res = await apiService.post('/admin/run-liquidation', {});
+            if (res.success) {
+                onSuccess('Varredura Concluída', res.message);
+                onRefresh();
+            } else {
+                onError('Erro na Liquidação', res.message);
+            }
+        } catch (e: any) {
+            onError('Erro', e.message);
+        }
+    };
+
     const formatCurrency = (val: number) => {
         if (typeof val !== 'number' || isNaN(val)) return 'R$ 0,00';
         return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -567,6 +582,41 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                                         className="w-full bg-zinc-800 hover:bg-red-950 border border-red-900/30 hover:border-red-500/50 text-red-500 font-black py-4 rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3 text-sm uppercase"
                                     >
                                         <AlertTriangle size={20} /> Lançar Despesa
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Ações de Manutenção do Sistema */}
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl lg:col-span-2">
+                            <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
+                                <div className="p-2 bg-primary-500/10 rounded-lg"><ShieldCheck className="text-primary-400" size={20} /></div>
+                                Ações de Segurança e Limpeza
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="p-6 bg-black/20 rounded-2xl border border-zinc-800 flex flex-col justify-between">
+                                    <div>
+                                        <h4 className="font-bold text-white mb-1">Varredura de Garantias</h4>
+                                        <p className="text-xs text-zinc-500 mb-4">Executa automaticamente as licenças de membros com apoio em atraso há mais de 5 dias para recompor o fundo comum.</p>
+                                    </div>
+                                    <button
+                                        onClick={handleRunLiquidation}
+                                        className="w-full bg-primary-500/10 hover:bg-primary-500 text-primary-400 hover:text-black border border-primary-500/30 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <RefreshCw size={18} /> Varrer Inadimplentes Agora
+                                    </button>
+                                </div>
+
+                                <div className="p-6 bg-black/20 rounded-2xl border border-zinc-800 flex flex-col justify-between">
+                                    <div>
+                                        <h4 className="font-bold text-white mb-1">Cache do Sistema</h4>
+                                        <p className="text-xs text-zinc-500 mb-4">Limpa todos os dados temporários e força a sincronização total com o banco de dados principal de todos os clientes.</p>
+                                    </div>
+                                    <button
+                                        onClick={() => { clearAllCache(); onRefresh(); onSuccess("Cache Limpo", "Todos os dados foram sincronizados."); }}
+                                        className="w-full bg-zinc-800 hover:bg-white text-zinc-400 hover:text-black border border-zinc-700 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Trash2 size={18} /> Forçar Sincronização Geral
                                     </button>
                                 </div>
                             </div>

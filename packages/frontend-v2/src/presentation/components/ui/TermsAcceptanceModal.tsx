@@ -50,7 +50,7 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({ isOp
                 >
                     <section className="space-y-4">
                         <h3 className="text-lg md:text-xl font-bold text-primary-400 flex items-center gap-2">
-                            1. Natureza da Cooperativa
+                            1. Natureza da Associação
                         </h3>
                         <p className="text-zinc-400 leading-relaxed text-sm md:text-base">
                             O Cred30 é um sistema de apoio mútuo e cooperação entre membros. Ao se cadastrar, você torna-se um associado participante de uma comunidade de auxílio mútuo privado. A participação é voluntária e baseada na ajuda recíproca.
@@ -63,8 +63,8 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({ isOp
                         </h3>
                         <div className="grid md:grid-cols-2 gap-4">
                             <div className="bg-zinc-900/50 p-5 rounded-2xl border border-zinc-800">
-                                <h4 className="font-bold text-white mb-2 text-sm md:text-base">Valor da Licença</h4>
-                                <p className="text-zinc-500 text-xs md:text-sm leading-relaxed">Cada licença possui o valor nominal fixado em R$ 50,00, podendo ser reajustado conforme deliberação do sistema.</p>
+                                <h4 className="font-bold text-white mb-2 text-sm md:text-base">Detalhamento do Valor</h4>
+                                <p className="text-zinc-500 text-xs md:text-sm leading-relaxed">Cada licença possui o valor de R$ 50,00, composto por R$ 42,00 de Capital Social (resgatável) e R$ 8,00 de taxa administrativa (não resgatável).</p>
                             </div>
                             <div className="bg-zinc-900/50 p-5 rounded-2xl border border-zinc-800">
                                 <h4 className="font-bold text-white mb-2 text-sm md:text-base">Distribuição</h4>

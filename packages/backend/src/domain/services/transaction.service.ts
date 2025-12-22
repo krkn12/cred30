@@ -1,5 +1,5 @@
 import { Pool, PoolClient } from 'pg';
-import { QUOTA_PRICE } from '../../shared/constants/business.constants';
+import { QUOTA_PRICE, QUOTA_SHARE_VALUE, QUOTA_ADM_FEE } from '../../shared/constants/business.constants';
 import { calculateGatewayCost } from '../../shared/utils/financial.utils';
 import { updateScore, SCORE_REWARDS } from '../../application/services/score.service';
 import { logAudit } from '../../application/services/audit.service';
@@ -262,7 +262,7 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
       await client.query(
         `INSERT INTO quotas (user_id, purchase_price, current_value, purchase_date, status)
          VALUES ($1, $2, $3, $4, 'ACTIVE')`,
-        [transaction.user_id, QUOTA_PRICE, QUOTA_PRICE, new Date()]
+        [transaction.user_id, QUOTA_SHARE_VALUE, QUOTA_SHARE_VALUE, new Date()]
       );
     }
 
@@ -334,11 +334,17 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
         [gatewayCost, transaction.id]
       );
 
-      // Atualizar caixa do sistema com o valor PRINCIPAL (valor limpo)
-      // Taxas do gateway são repassadas, então o PRINCIPAL entra integral no caixa.
+      // Calcular separação de valores: R$ 42,00 principal + R$ 8,00 manutenção
+      const totalShareValue = qty * QUOTA_SHARE_VALUE;
+      const totalAdmFee = qty * QUOTA_ADM_FEE;
+
+      // Atualizar caixa do sistema: O principal (R$ 42) entra no caixa, e a taxa de manutenção (R$ 8) também.
+      // A soma total (R$ 50) deve entrar no system_balance para cobrir custos e lastrear saques futuros.
+      // O gateway cost é subtraído conforme regra atual.
+
       await client.query(
-        'UPDATE system_config SET system_balance = system_balance + $1, total_gateway_costs = total_gateway_costs + $2',
-        [principalAmount, gatewayCost]
+        'UPDATE system_config SET system_balance = system_balance + $1 - $2, total_gateway_costs = total_gateway_costs + $2',
+        [parseFloat(transaction.amount), gatewayCost]
       );
 
       // Distribuir a Taxa de Serviço se existir (externa)
