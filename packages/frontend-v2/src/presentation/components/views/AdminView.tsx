@@ -67,7 +67,10 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         setIsLoading(false);
         fetchPendingChatsCount();
         const interval = setInterval(fetchPendingChatsCount, 15000);
+        return () => clearInterval(interval);
+    }, []); // Só no mount
 
+    useEffect(() => {
         if (activeTab === 'payouts') {
             fetchPayoutQueue();
         }
@@ -78,15 +81,10 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
 
         if (activeTab === 'metrics') {
             fetchHealthMetrics();
-            const metricsInterval = setInterval(fetchHealthMetrics, 10000); // Auto-refresh a cada 10s
-            return () => {
-                clearInterval(interval);
-                clearInterval(metricsInterval);
-            };
+            const metricsInterval = setInterval(fetchHealthMetrics, 10000);
+            return () => clearInterval(metricsInterval);
         }
-
-        return () => clearInterval(interval);
-    }, [state, activeTab]);
+    }, [activeTab]); // Só quando a aba muda
 
     const fetchHealthMetrics = async () => {
         if (!healthMetrics) setIsMetricsLoading(true);
@@ -374,10 +372,11 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
             )}
 
             {activeTab === 'metrics' && (
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    {isMetricsLoading ? (
-                        <div className="py-20 text-center text-zinc-500 font-bold uppercase tracking-widest animate-pulse">
-                            Coletando dados do servidor...
+                <div className="space-y-8 animate-in fade-in duration-500">
+                    {!healthMetrics && isMetricsLoading ? (
+                        <div className="py-20 text-center">
+                            <div className="w-16 h-16 border-4 border-primary-500/20 border-t-primary-500 rounded-full animate-spin mx-auto mb-4"></div>
+                            <p className="text-zinc-500 font-bold uppercase tracking-widest text-xs">Coletando dados do servidor...</p>
                         </div>
                     ) : healthMetrics && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
