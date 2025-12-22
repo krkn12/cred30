@@ -29,23 +29,30 @@ export const processDisbursementQueue = async (pool: Pool): Promise<{ processed:
         const result = await pool.query(query);
         const pendingLoans = result.rows;
 
-        // 2. Buscar estatísticas globais do sistema UMA VEZ antes do loop
+        // 2. Buscar estatísticas globais e SALDO REAL do sistema
         const systemStatsRes = await pool.query(`
             SELECT 
+                system_balance::float as real_cash,
                 (SELECT COUNT(*)::int FROM quotas WHERE status = 'ACTIVE') as quotas_count,
                 (SELECT COALESCE(SUM(amount), 0)::float FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING')) as total_loaned
+            FROM system_config 
+            LIMIT 1
         `);
 
-        const systemQuotasCount = systemStatsRes.rows[0].quotas_count;
-        let systemTotalLoaned = systemStatsRes.rows[0].total_loaned;
-        const grossCash = systemQuotasCount * 50; // QUOTA_PRICE = 50
-        const liquidityReserve = grossCash * 0.30;
+        // Se por algum motivo não houver config, usamos 0
+        const row = systemStatsRes.rows[0] || { real_cash: 0, quotas_count: 0, total_loaned: 0 };
+        const realCash = row.real_cash;
+        let systemTotalApprovedButNotWithdrawn = row.total_loaned; // Inclui tudo que já foi aprovado mas pode não ter saído do caixa
+
+        // A reserva de liquidez (30%) é calculada sobre o saldo real para garantir segurança
+        const liquidityReserve = realCash * 0.30;
 
         // 3. Processar cada solicitação conforme a liquidez disponível
         for (const loan of pendingLoans) {
             try {
                 // Cálculo de liquidez em memória para evitar queries repetitivas
-                const operationalCash = grossCash - systemTotalLoaned - liquidityReserve;
+                // Disponível = Dinheiro no Banco - Já Comprometido com Aprovados - Reserva
+                const operationalCash = realCash - systemTotalApprovedButNotWithdrawn - liquidityReserve;
 
                 // Buscar dados específicos do usuário (Limite pessoal)
                 // Nota: calculateUserLoanLimit ainda faz suas próprias queries, 
@@ -74,7 +81,7 @@ export const processDisbursementQueue = async (pool: Pool): Promise<{ processed:
                     if (approvalResult.success) {
                         processed++;
                         // Atualizar liquidez em memória para o próximo item da fila
-                        systemTotalLoaned += parseFloat(loan.amount);
+                        systemTotalApprovedButNotWithdrawn += parseFloat(loan.amount);
                     } else {
                         console.error(`❌ [DISBURSEMENT] Erro ao processar aprovação do Loan ${loan.id}:`, approvalResult.error);
                         errors++;
