@@ -348,4 +348,130 @@ userRoutes.post('/reward-ad', authMiddleware, async (c) => {
   }
 });
 
+// Obter elegibilidade para o Título de Sócio Majoritário
+userRoutes.get('/title-eligibility', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user') as UserContext;
+    const pool = getDbPool(c);
+
+    // 1. Verificar se já baixou
+    const userRes = await pool.query('SELECT title_downloaded, created_at FROM users WHERE id = $1', [user.id]);
+    const { title_downloaded, created_at } = userRes.rows[0];
+
+    if (title_downloaded) {
+      return c.json({
+        success: true,
+        data: { eligible: false, reason: 'Título já emitido e baixado anteriormente.' }
+      });
+    }
+
+    // 2. Contar participações ativas
+    const quotaRes = await pool.query(
+      "SELECT count(*) FROM quotas WHERE user_id = $1 AND status = 'ACTIVE'",
+      [user.id]
+    );
+    const quotaCount = parseInt(quotaRes.rows[0].count);
+
+    // 3. Verificar data da cota mais antiga
+    const oldestQuotaRes = await pool.query(
+      "SELECT purchase_date FROM quotas WHERE user_id = $1 AND status = 'ACTIVE' ORDER BY purchase_date ASC LIMIT 1",
+      [user.id]
+    );
+
+    if (oldestQuotaRes.rows.length === 0) {
+      return c.json({
+        success: true,
+        data: { eligible: false, reason: 'Você ainda não possui participações ativas.' }
+      });
+    }
+
+    const oldestQuotaDate = oldestQuotaRes.rows[0].purchase_date;
+    const oldestQuotaDateObj = new Date(oldestQuotaDate);
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    const hasOneYear = oldestQuotaDateObj <= oneYearAgo;
+    const hasEnoughQuotas = quotaCount >= 500;
+
+    if (!hasEnoughQuotas) {
+      return c.json({
+        success: true,
+        data: {
+          eligible: false,
+          reason: `Você possui ${quotaCount} participações. São necessárias 500 para o título.`,
+          currentCount: quotaCount,
+          neededCount: 500
+        }
+      });
+    }
+
+    if (!hasOneYear) {
+      const daysRemaining = Math.ceil((oldestQuotaDateObj.getTime() + (365 * 24 * 60 * 60 * 1000) - Date.now()) / (1000 * 60 * 60 * 24));
+      return c.json({
+        success: true,
+        data: {
+          eligible: false,
+          reason: `Sua participação mais antiga tem menos de 1 ano. Faltam aproximadamente ${daysRemaining} dias.`,
+          daysRemaining
+        }
+      });
+    }
+
+    return c.json({
+      success: true,
+      data: { eligible: true, message: 'Parabéns! Você é elegível ao Título de Sócio Majoritário.' }
+    });
+
+  } catch (error) {
+    console.error('Erro ao verificar elegibilidade do título:', error);
+    return c.json({ success: false, message: 'Erro ao verificar elegibilidade.' }, 500);
+  }
+});
+
+// Registrar download do título
+userRoutes.post('/title-download', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user') as UserContext;
+    const pool = getDbPool(c);
+
+    // Repetir verificações por segurança
+    const userRes = await pool.query('SELECT title_downloaded, name FROM users WHERE id = $1', [user.id]);
+    if (userRes.rows[0].title_downloaded) {
+      return c.json({ success: false, message: 'Título já emitido anteriormente.' }, 403);
+    }
+
+    const quotaRes = await pool.query("SELECT count(*) FROM quotas WHERE user_id = $1 AND status = 'ACTIVE'", [user.id]);
+    const oldestQuotaRes = await pool.query("SELECT purchase_date FROM quotas WHERE user_id = $1 AND status = 'ACTIVE' ORDER BY purchase_date ASC LIMIT 1", [user.id]);
+
+    const quotaCount = parseInt(quotaRes.rows[0].count);
+    const oldestQuotaDate = new Date(oldestQuotaRes.rows[0]?.purchase_date || Date.now());
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    if (quotaCount < 500 || oldestQuotaDate > oneYearAgo) {
+      return c.json({ success: false, message: 'Requisitos não preenchidos para emissão do título.' }, 403);
+    }
+
+    // Marcar como baixado
+    await pool.query(
+      'UPDATE users SET title_downloaded = TRUE, title_downloaded_at = NOW() WHERE id = $1',
+      [user.id]
+    );
+
+    return c.json({
+      success: true,
+      message: 'Título emitido com sucesso.',
+      data: {
+        userName: userRes.rows[0].name,
+        issueDate: new Date().toLocaleDateString('pt-BR'),
+        quotaCount
+      }
+    });
+
+  } catch (error) {
+    console.error('Erro ao registrar download de título:', error);
+    return c.json({ success: false, message: 'Erro ao processar emissão.' }, 500);
+  }
+});
+
 export { userRoutes };
