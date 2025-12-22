@@ -1,5 +1,7 @@
-// Preço da cota
-export const QUOTA_PRICE = Number(process.env.QUOTA_PRICE) || 50;
+// Estrutura de preço da cota (Total R$ 50,00)
+export const QUOTA_PRICE = 50.00; // Preço de aquisição total
+export const QUOTA_SHARE_VALUE = 42.00; // Valor que vai para o Capital Social (Resgatável)
+export const QUOTA_ADM_FEE = 8.00;   // Taxa de Manutenção Administrativa (Não resgatável)
 
 // Taxa de sustentabilidade do apoio mútuo (20%)
 export const LOAN_INTEREST_RATE = Number(process.env.LOAN_INTEREST_RATE) || 0.2;
@@ -30,7 +32,7 @@ export const MAINTENANCE_OWNER_SHARE = 0.05;    // 5% para Seu Pró-labore (Sal�
 export const REFERRAL_BONUS = 5.00; // R$ 5,00
 
 // --- Taxas de Monetização (Caixa da Cooperativa) ---
-export const QUOTA_PURCHASE_FEE_RATE = 0.02; // 2% de taxa na compra de cotas
+export const QUOTA_PURCHASE_FEE_RATE = 0.0; // Desativado (Substituído pela taxa fixa QUOTA_ADM_FEE)
 export const LOAN_ORIGINATION_FEE_RATE = 0.03; // 3% de taxa de originação (seguro)
 export const WITHDRAWAL_FIXED_FEE = 2.00; // Taxa fixa de R$ 2,00 por saque
 export const MARKETPLACE_ESCROW_FEE_RATE = 0.05; // 5% de taxa de garantia (Escrow) no Mercado Cred30

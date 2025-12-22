@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { QUOTA_PRICE, VESTING_PERIOD_MS, PENALTY_RATE, QUOTA_PURCHASE_FEE_RATE } from '../../../shared/constants/business.constants';
+import { QUOTA_PRICE, VESTING_PERIOD_MS, PENALTY_RATE, QUOTA_SHARE_VALUE, QUOTA_ADM_FEE } from '../../../shared/constants/business.constants';
 import { Quota } from '../../../domain/entities/quota.entity';
 import { UserContext } from '../../../shared/types/hono.types';
 import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction } from '../../../domain/services/transaction.service';
@@ -84,10 +84,11 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
     const body = await c.req.json();
     const { quantity, useBalance, paymentMethod, token, issuer_id, installments } = buyQuotaSchema.parse(body);
 
-    // Calcular valores com taxas conforme o método
+    // Nova Estrutura: R$ 42,00 capital + R$ 8,00 manutenção = R$ 50,00
     const baseCost = quantity * QUOTA_PRICE;
-    const serviceFee = baseCost * QUOTA_PURCHASE_FEE_RATE; // Taxa da plataforma
-    const totalWithServiceFee = baseCost + serviceFee;
+    const totalAdmFee = quantity * QUOTA_ADM_FEE;
+    const totalShareValue = quantity * QUOTA_SHARE_VALUE;
+    const totalWithServiceFee = baseCost; // Total é sempre 50 * quantity
 
     const method: PaymentMethod = useBalance ? 'balance' : (paymentMethod as PaymentMethod);
     const { total: finalCost, fee: userFee } = calculateTotalToPay(totalWithServiceFee, method);
@@ -125,13 +126,10 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
           throw new Error(updateResult.error);
         }
 
-        // Destinar apenas a taxa de serviço (85% para cotistas / 15% Operacional)
-        const feeForProfit = serviceFee * 0.85;
-        const feeForOperational = serviceFee * 0.15;
-
+        // Destinar taxa administrativa ao caixa operacional
         await client.query(
-          'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
-          [feeForOperational, feeForProfit]
+          'UPDATE system_config SET system_balance = system_balance + $1',
+          [totalAdmFee]
         );
 
         // Criar cotas imediatamente (compra com saldo)
@@ -139,7 +137,7 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
           await client.query(
             `INSERT INTO quotas (user_id, purchase_price, current_value, purchase_date, status)
              VALUES ($1, $2, $3, $4, 'ACTIVE')`,
-            [user.id, QUOTA_PRICE, QUOTA_PRICE, new Date()]
+            [user.id, QUOTA_SHARE_VALUE, QUOTA_SHARE_VALUE, new Date()]
           );
         }
 
@@ -149,9 +147,9 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
           user.id,
           'BUY_QUOTA',
           totalWithServiceFee,
-          `Aquisição de ${quantity} participação(ões) (+ R$ ${serviceFee.toFixed(2)} taxa de sustentabilidade) - APROVADA`,
+          `Aquisição de ${quantity} participação(ões) (+ R$ ${totalAdmFee.toFixed(2)} manutenção) - APROVADA`,
           'APPROVED',
-          { quantity, useBalance, paymentMethod: 'balance', serviceFee }
+          { quantity, useBalance, paymentMethod: 'balance', serviceFee: totalAdmFee }
         );
 
         if (!transactionResult.success) {

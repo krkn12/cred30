@@ -45,8 +45,8 @@ const generateLoanContractPDF = async (data: LoanContractData): Promise<any> => 
 
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    centerText('CRED30 - COOPERATIVA DE CRÉDITO', 15, 16);
-    centerText('CONTRATO DE EMPRÉSTIMO PESSOAL', 28, 14);
+    centerText('CRED30 - SISTEMA DE APOIO MÚTUO', 15, 16);
+    centerText('CONTRATO DE MÚTUO ENTRE ASSOCIADOS', 28, 14);
 
     // --- NÚMERO DO CONTRATO ---
     doc.setTextColor(0, 0, 0);

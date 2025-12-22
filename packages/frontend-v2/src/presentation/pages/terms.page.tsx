@@ -46,7 +46,7 @@ const TermsPage = () => {
                             <FileText size={22} /> 1. Aceite e Vigência
                         </h2>
                         <p className="text-zinc-300 text-sm sm:text-base leading-relaxed mb-4">
-                            Ao criar uma conta no Cred30, você declara ter lido, compreendido e aceito integralmente os presentes Termos de Uso. Este documento constitui um contrato vinculante entre você ("Usuário" ou "Membro") e a plataforma Cred30 ("Sistema" ou "Cooperativa").
+                            Ao criar uma conta no Cred30, você declara ter lido, compreendido e aceito integralmente os presentes Termos de Uso. Este documento constitui um contrato vinculante entre você ("Usuário" ou "Membro") e a plataforma Cred30 ("Sistema" ou "Associação").
                         </p>
                         <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl">
                             <div className="flex items-start gap-3">
@@ -82,8 +82,8 @@ const TermsPage = () => {
                         </h2>
                         <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
                             <div className="bg-zinc-900/50 p-5 sm:p-6 rounded-xl sm:rounded-2xl border border-white/5">
-                                <h3 className="font-bold mb-2 text-white">Aporte de Capital</h3>
-                                <p className="text-zinc-400 text-xs sm:text-sm">Cada participação representa um aporte de R$ 50,00 no fundo comum. Isso não é um depósito bancário, mas um direito de participação nos resultados da conta comum.</p>
+                                <h3 className="font-bold mb-2 text-white">Composição do Aporte</h3>
+                                <p className="text-zinc-400 text-xs sm:text-sm">Cada participação possui o valor total de R$ 50,00, sendo decomposta em: <br /> 1. **R$ 42,00** destinados ao Capital Social (valor passível de resgate conforme regras de carência). <br /> 2. **R$ 8,00** destinados à Taxa Administrativa de manutenção e infraestrutura (não resgatável).</p>
                             </div>
                             <div className="bg-zinc-900/50 p-5 sm:p-6 rounded-xl sm:rounded-2xl border border-white/5">
                                 <h3 className="font-bold mb-2 text-white">Excedentes (Participação)</h3>
@@ -160,7 +160,7 @@ const TermsPage = () => {
                             </ul>
                         </div>
                         <p className="text-zinc-300 text-sm sm:text-base leading-relaxed">
-                            A violação de qualquer regra pode resultar em suspensão ou exclusão permanente da cooperativa, sem direito a ressarcimento de valores aportados em licenças, salvo deliberação contrária.
+                            A violação de qualquer regra pode resultar em suspensão ou exclusão permanente do sistema, sem direito a ressarcimento de valores aportados em licenças, salvo deliberação contrária.
                         </p>
                     </section>
 
