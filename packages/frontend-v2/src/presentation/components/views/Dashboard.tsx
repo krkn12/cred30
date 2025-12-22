@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import packageJson from '../../../../package.json';
 import {
     Users, Gamepad2, TrendingUp, DollarSign, ArrowUpFromLine, BookOpen,
     Repeat, Crown, Clock, ArrowDownLeft, ArrowUpRight,
@@ -96,7 +97,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                             <Star size={10} className="text-primary-400" fill="currentColor" />
                             <span className="font-bold text-white">{user.score || 0}</span>
                         </div>
-                        <p className="text-xs text-zinc-500">Membro desde {new Date(user.joinedAt).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</p>
+                        <p className="text-xs text-zinc-500">Membro desde {new Date(user.joinedAt).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })} • v{packageJson.version}</p>
                     </div>
                     <p className="text-xs text-zinc-600 mt-1">Código: <span className="text-zinc-400 font-mono select-all cursor-pointer">{user.referralCode}</span></p>
                 </div>
