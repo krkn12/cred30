@@ -41,14 +41,16 @@ marketplaceRoutes.get('/listings', authMiddleware, async (c) => {
 
         // Otimização: Busca unificada via SQL para reduzir processamento em JS
         const combinedResult = await pool.query(`
-            (SELECT l.id, l.title, l.description, l.price::float, l.image_url, l.category, 
-                    u.name as seller_name, l.seller_id, l.is_boosted, l.created_at, l.status, 'P2P' as type
+            (SELECT l.id::text, l.title, l.description, l.price::float, l.image_url, l.category, 
+                    u.name as seller_name, l.seller_id::text, l.is_boosted, l.created_at, l.status, 'P2P' as type,
+                    NULL as affiliate_url
              FROM marketplace_listings l 
              JOIN users u ON l.seller_id = u.id 
              WHERE l.status = 'ACTIVE')
             UNION ALL
             (SELECT p.id::text, p.title, p.description, p.price::float, p.image_url, p.category, 
-                    'Cred30 Parceiros' as seller_name, '0' as seller_id, true as is_boosted, p.created_at, 'ACTIVE' as status, 'AFFILIATE' as type
+                    'Cred30 Parceiros' as seller_name, '0' as seller_id, true as is_boosted, p.created_at, 'ACTIVE' as status, 'AFFILIATE' as type,
+                    p.affiliate_url
              FROM products p
              WHERE p.active = true)
             ORDER BY is_boosted DESC, created_at DESC
