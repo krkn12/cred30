@@ -181,7 +181,12 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                     </div>
                 )}
 
-                <form onSubmit={handleLogin} className="space-y-3 sm:space-y-4">
+                <form
+                    onSubmit={handleLogin}
+                    method="POST"
+                    action="/login"
+                    className="space-y-3 sm:space-y-4"
+                >
                     {isForgot ? (
                         <>
                             <h2 className="text-white text-lg font-medium text-center mb-4">Recuperar Senha</h2>
@@ -277,7 +282,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                             <div className="relative">
                                 <KeyRound className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
                                 <input
-                                    type="text"
+                                    type="password"
                                     name="secretPhrase"
                                     autocomplete="off"
                                     placeholder={isRegister ? "Crie sua Frase Secreta" : "Frase Secreta"}
@@ -363,12 +368,20 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                             </button>
                         </p>
                         {!isRegister && (
-                            <button onClick={() => setIsForgot(true)} className="text-zinc-500 text-xs sm:text-sm hover:text-zinc-300 py-1">
+                            <button type="button" onClick={() => setIsForgot(true)} className="text-zinc-500 text-xs sm:text-sm hover:text-zinc-300 py-1">
                                 Esqueci minha senha
                             </button>
                         )}
                     </div>
                 )}
+
+                <footer className="mt-8 pt-6 border-t border-white/5 text-center text-[10px] text-zinc-600 space-y-2">
+                    <div className="flex justify-center gap-4">
+                        <a href="/terms" target="_blank" className="hover:text-zinc-400 underline transition-colors">Termos de Uso</a>
+                        <button type="button" onClick={() => setShowTerms(true)} className="hover:text-zinc-400 underline transition-colors">Política de Privacidade</button>
+                    </div>
+                    <p className="font-medium">Cred30 Associativo • © 2025 Comunidade Segura</p>
+                </footer>
             </div>
 
             {/* Email Verification Modal */}
