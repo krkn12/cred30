@@ -89,7 +89,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     }, [state, activeTab]);
 
     const fetchHealthMetrics = async () => {
-        setIsMetricsLoading(true);
+        if (!healthMetrics) setIsMetricsLoading(true);
         try {
             const data = await apiService.getHealthMetrics();
             if (data) setHealthMetrics(data);
