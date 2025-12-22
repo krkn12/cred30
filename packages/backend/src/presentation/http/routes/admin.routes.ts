@@ -236,46 +236,49 @@ adminRoutes.get('/dashboard', adminMiddleware, async (c) => {
     config.total_operational_reserve = parseFloat(String(config.total_operational_reserve || 0));
     config.total_owner_profit = parseFloat(String(config.total_owner_profit || 0));
 
-    // Calcular custos fixos mensais
-    const costsResult = await pool.query('SELECT COALESCE(SUM(amount), 0) as total_costs FROM system_costs');
-    const totalMonthlyCosts = parseFloat(costsResult.rows[0].total_costs);
+    // Buscar totais e métricas financeiras de forma otimizada (query única)
+    const statsResult = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM users) as users_count,
+        (SELECT COALESCE(SUM(CAST(balance AS NUMERIC)), 0) FROM users) as total_user_balances,
+        (SELECT COUNT(*) FROM quotas WHERE status = 'ACTIVE') as quotas_count,
+        (SELECT COUNT(*) FROM loans WHERE status IN ('PENDING', 'APPROVED', 'PAYMENT_PENDING')) as active_loans_count,
+        (SELECT COALESCE(SUM(CAST(total_repayment AS NUMERIC)), 0) FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING')) as total_to_receive,
+        (SELECT COALESCE(SUM(amount), 0) FROM system_costs) as total_monthly_costs
+    `);
+
+    const stats = statsResult.rows[0];
+    const usersCount = parseInt(stats.users_count);
+    const totalUserBalances = parseFloat(stats.total_user_balances);
+    const quotasCount = parseInt(stats.quotas_count);
+    const activeLoansCount = parseInt(stats.active_loans_count);
+    const totalToReceive = parseFloat(stats.total_to_receive);
+    const totalMonthlyCosts = parseFloat(stats.total_monthly_costs);
 
     // Calcular detalhamento de liquidez para o dashboard
+    // Liquidez Real = (Saldo em Conta) - (Saldos dos Usuários) - (Reservas Fixas) - (Custos do Mês) - (Lucros a Distribuir)
     const totalReservesForRealLiquidity = config.total_tax_reserve +
       config.total_operational_reserve +
       config.total_owner_profit +
-      totalMonthlyCosts; // Incluir custos fixos na reserva de liquidez
+      totalMonthlyCosts +
+      config.profit_pool +
+      totalUserBalances;
 
     config.real_liquidity = config.system_balance - totalReservesForRealLiquidity;
     config.total_reserves = totalReservesForRealLiquidity;
+    config.total_user_balances = totalUserBalances;
     config.theoretical_cash = operationalCash;
     config.monthly_fixed_costs = totalMonthlyCosts;
 
     // DEBUG: Informação detalhada de caixa
     console.log('DEBUG - Saúde Financeira:', {
       caixaBruto: config.system_balance,
+      saldosUsuarios: totalUserBalances,
       reservasTotal: totalReservesForRealLiquidity,
       liquidezReal: config.real_liquidity,
       caixaTeorico: operationalCash,
       custosFixos: totalMonthlyCosts
     });
-
-
-
-    // Buscar totais e métricas financeiras de forma otimizada (query única)
-    const statsResult = await pool.query(`
-      SELECT 
-        (SELECT COUNT(*) FROM users) as users_count,
-        (SELECT COUNT(*) FROM quotas WHERE status = 'ACTIVE') as quotas_count,
-        (SELECT COUNT(*) FROM loans WHERE status IN ('PENDING', 'APPROVED', 'PAYMENT_PENDING')) as active_loans_count,
-        (SELECT COALESCE(SUM(CAST(total_repayment AS NUMERIC)), 0) FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING')) as total_to_receive
-    `);
-
-    const stats = statsResult.rows[0];
-    const usersCount = parseInt(stats.users_count);
-    const quotasCount = parseInt(stats.quotas_count);
-    const activeLoansCount = parseInt(stats.active_loans_count);
-    const totalToReceive = parseFloat(stats.total_to_receive);
 
     return c.json({
       success: true,
@@ -379,20 +382,19 @@ adminRoutes.post('/system-balance', adminMiddleware, async (c) => {
 
 // Adicionar lucro ao pool
 // Adicionar lucro ao pool (e distribuir automaticamente agora)
-adminRoutes.post('/profit-pool', adminMiddleware, auditMiddleware('ADD_PROFIT', 'SYSTEM_CONFIG'), async (c) => {
+adminRoutes.post('/profit-pool', adminMiddleware, auditMiddleware('MANUAL_PROFIT_ADD', 'SYSTEM_CONFIG'), async (c) => {
   try {
     const body = await c.req.json();
     let amountToAdd;
 
     // Tentar pegar do schema validado OU do corpo direto (fallback)
-    try {
-      const validated = updateProfitSchema.parse(body);
-      amountToAdd = validated.amountToAdd;
-    } catch {
+    if (body.amountToAdd !== undefined) {
       amountToAdd = parseFloat(body.amountToAdd);
+    } else if (body.amount !== undefined) {
+      amountToAdd = parseFloat(body.amount);
     }
 
-    if (isNaN(amountToAdd)) {
+    if (amountToAdd === undefined || isNaN(amountToAdd)) {
       return c.json({ success: false, message: 'Valor inválido' }, 400);
     }
 
@@ -400,9 +402,9 @@ adminRoutes.post('/profit-pool', adminMiddleware, auditMiddleware('ADD_PROFIT', 
 
     // Executar dentro de transação para garantir consistência: Adiciona e Distribui
     await executeInTransaction(pool, async (client) => {
-      // 1. Adicionar ao pool de lucros
+      // 1. Adicionar ao pool de lucros E ao saldo real (pois é dinheiro novo entrando)
       await client.query(
-        'UPDATE system_config SET profit_pool = profit_pool + $1',
+        'UPDATE system_config SET profit_pool = profit_pool + $1, system_balance = system_balance + $1',
         [amountToAdd]
       );
 
@@ -417,21 +419,14 @@ adminRoutes.post('/profit-pool', adminMiddleware, auditMiddleware('ADD_PROFIT', 
           new Date()
         ]
       );
-
-      // 3. REMOVIDO: Distribuição automática imediata.
-      // O lucro acumula no pool e será distribuído pelo Cron Job.
     });
 
     return c.json({
       success: true,
-      message: `R$ ${amountToAdd.toFixed(2)} adicionado ao acumulado c/ sucesso!`,
+      message: `R$ ${amountToAdd.toFixed(2)} adicionado ao acumulado e ao saldo do sistema!`,
       data: { addedAmount: amountToAdd }
     });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
-    }
-
     console.error('Erro ao adicionar lucro ao pool:', error);
     return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
   }
@@ -622,36 +617,7 @@ adminRoutes.post('/distribute-dividends', adminMiddleware, auditMiddleware('DIST
   }
 });
 
-// Adicionar rota para atualizar lucro acumulado manualmente
-adminRoutes.post('/profit-pool', adminMiddleware, auditMiddleware('MANUAL_PROFIT_ADD', 'SYSTEM_CONFIG'), async (c) => {
-  try {
-    const body = await c.req.json();
-    const { amountToAdd } = body;
-
-    if (amountToAdd === undefined || amountToAdd === null || isNaN(parseFloat(amountToAdd))) {
-      return c.json({ success: false, message: 'Valor inválido' }, 400);
-    }
-
-    const value = parseFloat(amountToAdd);
-    const pool = getDbPool(c);
-
-    // Atualizar profit_pool no system_config
-    await pool.query(
-      'UPDATE system_config SET profit_pool = profit_pool + $1',
-      [value]
-    );
-
-    return c.json({
-      success: true,
-      message: 'Lucro atualizado com sucesso',
-      data: { amount: value } // Unificado para "amount" para o extrato
-
-    });
-  } catch (error) {
-    console.error('Erro ao atualizar lucro:', error);
-    return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
-  }
-});
+// Rota para atualização de saldo via PIX removida ou em outra seção
 
 // Rota auxiliar para atualizar PIX de empréstimos existentes (temporário)
 adminRoutes.post('/fix-loan-pix', adminMiddleware, async (c) => {
