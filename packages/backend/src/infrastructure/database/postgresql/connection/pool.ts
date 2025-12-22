@@ -167,6 +167,16 @@ export const initializeDatabase = async () => {
           await client.query("ALTER TABLE users ADD COLUMN status VARCHAR(20) DEFAULT 'ACTIVE'");
         }
 
+        const checkinColumn = await client.query(`
+          SELECT column_name FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'last_checkin_at'
+        `);
+
+        if (checkinColumn.rows.length === 0) {
+          console.log('Adicionando coluna last_checkin_at à tabela users...');
+          await client.query('ALTER TABLE users ADD COLUMN last_checkin_at TIMESTAMP');
+        }
+
         console.log('Tabela users verificada e atualizada com sucesso');
       }
     }
