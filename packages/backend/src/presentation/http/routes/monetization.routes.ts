@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
 import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/mercadopago.service';
 import { updateScore } from '../../../application/services/score.service';
-import { VERIFIED_BADGE_PRICE, SCORE_BOOST_PRICE, SCORE_BOOST_POINTS } from '../../../shared/constants/business.constants';
+import { VERIFIED_BADGE_PRICE, SCORE_BOOST_PRICE, SCORE_BOOST_POINTS, REPUTATION_CHECK_PRICE } from '../../../shared/constants/business.constants';
 
 const monetizationRoutes = new Hono();
 
@@ -286,6 +286,127 @@ monetizationRoutes.post('/buy-score-boost', authMiddleware, async (c) => {
 
         if (!result.success) return c.json({ success: false, message: result.error }, 400);
         return c.json({ success: true, message: `Boost Ativado! +${SCORE_BOOST_POINTS} pontos adicionados ao seu Score.` });
+    } catch (error: any) {
+        return c.json({ success: false, message: error.message }, 500);
+    }
+});
+
+/**
+ * Check-in Diário (Recompensa por retenção + Ad)
+ */
+monetizationRoutes.post('/daily-checkin', authMiddleware, async (c) => {
+    try {
+        const user = c.get('user') as UserContext;
+        const pool = getDbPool(c);
+
+        const CHECKIN_REWARD = 0.01; // R$ 0,01 por dia
+        const CHECKIN_SCORE = 10;
+
+        const result = await executeInTransaction(pool, async (client: PoolClient) => {
+            // Verificar se já fez hoje
+            const userRes = await client.query('SELECT last_checkin_at FROM users WHERE id = $1', [user.id]);
+            const lastCheckin = userRes.rows[0].last_checkin_at;
+
+            if (lastCheckin) {
+                const lastDate = new Date(lastCheckin).toLocaleDateString();
+                const today = new Date().toLocaleDateString();
+                if (lastDate === today) {
+                    throw new Error('Você já realizou o check-in de hoje! Volte amanhã.');
+                }
+            }
+
+            // Dar recompensa
+            await client.query(
+                'UPDATE users SET balance = balance + $1, score = score + $2, last_checkin_at = NOW() WHERE id = $3',
+                [CHECKIN_REWARD, CHECKIN_SCORE, user.id]
+            );
+
+            await createTransaction(
+                client,
+                user.id,
+                'DAILY_CHECKIN',
+                CHECKIN_REWARD,
+                'Bônus: Check-in Diário Realizado',
+                'APPROVED'
+            );
+
+            return { success: true };
+        });
+
+        if (!result.success) return c.json({ success: false, message: result.error }, 400);
+        return c.json({ success: true, message: `Check-in realizado! +R$ ${CHECKIN_REWARD.toFixed(2)} e +${CHECKIN_SCORE} Score.` });
+    } catch (error: any) {
+        return c.json({ success: false, message: error.message }, 500);
+    }
+});
+
+/**
+ * Consulta de Reputação de Terceiros (Monetização estilo Serasa)
+ */
+monetizationRoutes.get('/reputation-check/:email', authMiddleware, async (c) => {
+    try {
+        const user = c.get('user') as UserContext;
+        const targetEmail = c.req.param('email').toLowerCase().trim();
+        const pool = getDbPool(c);
+
+        const result = await executeInTransaction(pool, async (client: PoolClient) => {
+            // 1. Verificar se o usuário tem saldo para a consulta
+            const userRes = await client.query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [user.id]);
+            if (parseFloat(userRes.rows[0].balance) < REPUTATION_CHECK_PRICE) {
+                throw new Error(`Saldo insuficiente. A consulta de idoneidade custa R$ ${REPUTATION_CHECK_PRICE.toFixed(2)}.`);
+            }
+
+            // 2. Buscar o alvo da consulta
+            const targetRes = await client.query(
+                'SELECT name, score, is_verified, membership_type, created_at, status FROM users WHERE email = $1',
+                [targetEmail]
+            );
+
+            if (targetRes.rows.length === 0) {
+                throw new Error('Nenhum associado encontrado com este e-mail.');
+            }
+
+            const target = targetRes.rows[0];
+
+            // 3. Cobrar a taxa (Revenue 85/15)
+            await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [REPUTATION_CHECK_PRICE, user.id]);
+
+            const feeForProfit = REPUTATION_CHECK_PRICE * 0.85;
+            const feeForOperational = REPUTATION_CHECK_PRICE * 0.15;
+
+            await client.query(
+                'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
+                [feeForOperational, feeForProfit]
+            );
+
+            // 4. Registrar transação
+            await createTransaction(
+                client,
+                user.id,
+                'REPUTATION_CONSULT',
+                -REPUTATION_CHECK_PRICE,
+                `Consulta de Idoneidade: ${targetEmail}`,
+                'APPROVED'
+            );
+
+            // 5. Retornar os dados
+            return {
+                name: target.name,
+                score: target.score,
+                isVerified: target.is_verified,
+                membership: target.membership_type,
+                since: target.created_at,
+                status: target.status
+            };
+        });
+
+        if (!result.success) return c.json({ success: false, message: result.error }, 400);
+
+        return c.json({
+            success: true,
+            message: 'Consulta realizada com sucesso!',
+            data: result.data
+        });
     } catch (error: any) {
         return c.json({ success: false, message: error.message }, 500);
     }
