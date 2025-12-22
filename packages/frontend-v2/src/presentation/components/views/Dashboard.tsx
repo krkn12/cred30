@@ -103,7 +103,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                 </div>
                 <div className="flex flex-col items-end gap-2">
                     <div className="flex gap-2">
-                        <button title="Sair" onClick={onLogout} className="text-zinc-400 hover:text-white p-2 bg-surfaceHighlight rounded-lg transition-colors">
+                        <button onClick={onLogout} className="text-zinc-400 hover:text-white p-2 bg-surfaceHighlight rounded-lg transition-colors" aria-label="Sair do sistema">
                             <LogOut size={20} />
                         </button>
                     </div>

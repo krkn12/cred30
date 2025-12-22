@@ -169,7 +169,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                     <div className="mb-4 sm:mb-6 bg-red-500/10 border border-red-500/20 text-red-500 p-3 sm:p-4 rounded-xl flex items-center gap-2 sm:gap-3 animate-in fade-in slide-in-from-top-2">
                         <XCircle size={18} className="shrink-0" />
                         <p className="text-xs sm:text-sm font-medium flex-1">{error}</p>
-                        <button onClick={() => setError(null)} className="hover:text-white"><XCircle size={14} /></button>
+                        <button onClick={() => setError(null)} className="hover:text-white" aria-label="Fechar erro"><XCircle size={14} /></button>
                     </div>
                 )}
 
@@ -196,7 +196,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                     <input
                                         type="email"
                                         name="email"
-                                        autocomplete="email"
+                                        autoComplete="email"
                                         placeholder="Email"
                                         value={email}
                                         onChange={e => setEmail(e.target.value)}
@@ -209,7 +209,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                     <input
                                         type="text"
                                         name="secretPhrase"
-                                        autocomplete="off"
+                                        autoComplete="off"
                                         placeholder="Frase Secreta"
                                         value={secretPhrase}
                                         onChange={e => setSecretPhrase(e.target.value)}
@@ -222,7 +222,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                     <input
                                         type="password"
                                         name="new-password"
-                                        autocomplete="new-password"
+                                        autoComplete="new-password"
                                         placeholder="Nova Senha"
                                         value={newPassword}
                                         onChange={e => setNewPassword(e.target.value)}
@@ -242,7 +242,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                     <input
                                         type="text"
                                         name="name"
-                                        autocomplete="name"
+                                        autoComplete="name"
                                         placeholder="Nome Completo"
                                         value={name}
                                         onChange={e => setName(e.target.value)}
@@ -256,7 +256,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                 <input
                                     type="email"
                                     name="email"
-                                    autocomplete="email"
+                                    autoComplete="email"
                                     placeholder="Email"
                                     value={email}
                                     onChange={e => setEmail(e.target.value)}
@@ -270,7 +270,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                 <input
                                     type="password"
                                     name="password"
-                                    autocomplete={isRegister ? "new-password" : "current-password"}
+                                    autoComplete={isRegister ? "new-password" : "current-password"}
                                     placeholder="Senha"
                                     value={password}
                                     onChange={e => setPassword(e.target.value)}
@@ -284,7 +284,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                 <input
                                     type="password"
                                     name="secretPhrase"
-                                    autocomplete="off"
+                                    autoComplete="off"
                                     placeholder={isRegister ? "Crie sua Frase Secreta" : "Frase Secreta"}
                                     value={secretPhrase}
                                     onChange={e => setSecretPhrase(e.target.value)}
@@ -300,7 +300,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                         <input
                                             type="text"
                                             name="pixKey"
-                                            autocomplete="off"
+                                            autoComplete="off"
                                             placeholder="Sua Chave PIX"
                                             value={pixKey}
                                             onChange={e => setPixKey(e.target.value)}
@@ -313,7 +313,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                         <input
                                             type="text"
                                             name="referralCode"
-                                            autocomplete="off"
+                                            autoComplete="off"
                                             placeholder="Código de Indicação (Obrigatorio)"
                                             value={referralCode}
                                             onChange={e => setReferralCode(e.target.value)}
@@ -388,7 +388,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
             {showVerifyModal && (
                 <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300 backdrop-blur-md">
                     <div className="bg-zinc-950 border border-zinc-800 rounded-[2.5rem] p-6 md:p-10 w-full max-w-md relative shadow-[0_0_80px_rgba(6,182,212,0.15)] max-h-[90vh] overflow-y-auto custom-scrollbar">
-                        <button onClick={() => setShowVerifyModal(false)} className="absolute top-4 right-4 md:top-6 md:right-6 text-zinc-500 hover:text-white transition-colors z-10">
+                        <button onClick={() => setShowVerifyModal(false)} className="absolute top-4 right-4 md:top-6 md:right-6 text-zinc-500 hover:text-white transition-colors z-10" aria-label="Fechar modal">
                             <XCircle size={24} />
                         </button>
 
