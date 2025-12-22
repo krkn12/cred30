@@ -360,7 +360,8 @@ export default function App() {
     );
   }
 
-  if (state.currentUser.isAdmin) {
+  const isStaff = state.currentUser.isAdmin || state.currentUser.role === 'ADMIN' || state.currentUser.role === 'ATTENDANT';
+  if (isStaff) {
     return (
       <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><RefreshCw className="animate-spin text-primary-500" /></div>}>
         <Routes>

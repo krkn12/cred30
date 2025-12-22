@@ -10,6 +10,8 @@ export interface User {
   score?: number;
   secretPhrase?: string;
   twoFactorEnabled?: boolean;
+  role?: 'MEMBER' | 'ATTENDANT' | 'ADMIN';
+  status?: 'ACTIVE' | 'BLOCKED';
   membership_type?: 'FREE' | 'PRO';
 }
 
