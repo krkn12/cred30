@@ -567,6 +567,17 @@ class ApiService {
     const response = await this.request<any>('/support/admin/feedback');
     return response.data;
   }
+
+  // --- Título de Sócio Majoritário ---
+  async checkTitleEligibility(): Promise<{ eligible: boolean, message?: string, reason?: string, currentCount?: number, neededCount?: number, daysRemaining?: number }> {
+    const response = await this.request<any>('/users/title-eligibility');
+    return response.data;
+  }
+
+  async downloadTitle(): Promise<any> {
+    const response = await this.request<any>('/users/title-download', { method: 'POST' });
+    return response.data;
+  }
 }
 
 // Exportar instância única do serviço

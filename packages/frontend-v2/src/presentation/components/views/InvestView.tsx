@@ -45,6 +45,16 @@ export const InvestView = ({ onBuy }: { onBuy: (qty: number, method: 'PIX' | 'BA
                     <button onClick={() => setMethod('BALANCE')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${method === 'BALANCE' ? 'bg-primary-500 text-black' : 'text-zinc-500 hover:text-zinc-300'}`}>SALDO</button>
                 </div>
 
+                <div className="flex justify-between items-center bg-black/20 p-4 rounded-2xl mb-6 border border-white/5">
+                    <div className="text-left">
+                        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Meta de Participação</p>
+                        <p className="text-xs text-emerald-400 font-bold">Título de Sócio Majoritário</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-xl font-bold text-white">500+</p>
+                    </div>
+                </div>
+
                 <div className="bg-background rounded-xl p-4 border border-surfaceHighlight text-left">
                     <p className="text-[10px] text-zinc-500 uppercase font-bold mb-3 tracking-widest text-center border-b border-zinc-800 pb-2">Composição do Aporte</p>
 
