@@ -285,6 +285,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                         <button
                             onClick={() => { clearAllCache(); onRefresh(); onSuccess("Atualizado", "Dados sincronizados."); }}
                             className="group bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700/50 hover:border-primary-500/50 px-6 py-3.5 rounded-2xl flex items-center gap-3 transition-all duration-300 text-sm font-bold text-zinc-300 shadow-lg"
+                            aria-label="Atualizar dados do sistema"
                         >
                             <RefreshCw size={18} className={isLoading ? "animate-spin" : "group-hover:rotate-180 transition-transform duration-500"} />
                             {isLoading ? "Sincronizando" : "Atualizar Sistema"}
@@ -292,6 +293,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                         <button
                             onClick={onLogout}
                             className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 px-6 py-3.5 rounded-2xl flex items-center gap-3 transition-all duration-300 text-sm font-bold text-red-500 shadow-lg"
+                            aria-label="Sair do painel administrativo"
                         >
                             <LogOut size={18} /> Sair
                         </button>

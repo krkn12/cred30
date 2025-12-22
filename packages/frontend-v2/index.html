@@ -11,8 +11,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
     <title>Cred30 | Clube de Apoio Mútuo e Comunidade Colaborativa</title>
 
     <!-- SEO & Social Sharing -->
@@ -21,6 +20,11 @@
     <meta name="keywords"
         content="Cred30, apoio mútuo, educação financeira, comunidade colaborativa, clube de benefícios, microcrédito, finanças pessoais, cooperativismo">
     <link rel="canonical" href="https://cred30.site/" />
+
+    <!-- Performance Optimizations -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://sdk.mercadopago.com">
 
     <!-- Open Graph / Facebook / WhatsApp -->
     <meta property="og:type" content="website">
@@ -37,9 +41,15 @@
     <meta property="twitter:description"
         content="A maior comunidade colaborativa de apoio mútuo e educação financeira. Junte-se ao Cred30.">
     <meta property="twitter:image" content="https://cred30.site/pwa-512x512.png">
+
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet" />
-    <script src="https://sdk.mercadopago.com/js/v2"></script>
+        rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet" />
+    </noscript>
+
+    <script src="https://sdk.mercadopago.com/js/v2" defer></script>
 </head>
 
 <body class="bg-background text-white antialiased">
