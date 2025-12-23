@@ -14,12 +14,28 @@ const monetizationRoutes = new Hono();
 
 const PRO_UPGRADE_FEE = 29.90;
 
+const cardDataSchema = {
+    creditCard: z.object({
+        holderName: z.string(),
+        number: z.string(),
+        expiryMonth: z.string(),
+        expiryYear: z.string(),
+        ccv: z.string(),
+    }).optional(),
+    creditCardHolderInfo: z.object({
+        name: z.string(),
+        email: z.string(),
+        cpfCnpj: z.string(),
+        postalCode: z.string(),
+        addressNumber: z.string(),
+        phone: z.string(),
+    }).optional(),
+};
+
 const upgradeProSchema = z.object({
     method: z.enum(['balance', 'pix', 'card']).default('balance'),
-    token: z.string().optional(),
-    issuer_id: z.union([z.string(), z.number()]).optional(),
     installments: z.number().optional(),
-    payment_method_id: z.string().optional(),
+    ...cardDataSchema
 });
 
 /**
@@ -79,7 +95,7 @@ monetizationRoutes.post('/reward-video', authMiddleware, async (c) => {
 monetizationRoutes.post('/upgrade-pro', authMiddleware, async (c) => {
     try {
         const body = await c.req.json();
-        const { method, token, issuer_id, installments, payment_method_id } = upgradeProSchema.parse(body);
+        const { method, installments } = upgradeProSchema.parse(body);
 
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
@@ -146,18 +162,17 @@ monetizationRoutes.post('/upgrade-pro', authMiddleware, async (c) => {
                 name: userName
             });
         } else {
-            if (!token) return c.json({ success: false, message: 'Token do cartão é obrigatório' }, 400);
+            if (!body.creditCard) return c.json({ success: false, message: 'Dados do cartão são obrigatórios' }, 400);
             paymentData = await createCardPayment({
                 amount: finalAmount,
-                token,
                 description: `Upgrade PRO`,
                 email: userCheck.rows[0].email,
                 external_reference: user.id.toString(),
                 installments: installments || 1,
-                payment_method_id,
-                issuer_id: issuer_id ? Number(issuer_id) : undefined,
                 cpf: userCpf,
-                name: userName
+                name: userName,
+                creditCard: body.creditCard,
+                creditCardHolderInfo: body.creditCardHolderInfo
             });
         }
 
