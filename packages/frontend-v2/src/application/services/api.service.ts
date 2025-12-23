@@ -397,6 +397,25 @@ class ApiService {
 
 
 
+  // --- GOVERNANÇA (VOTAÇÃO) ---
+  async getProposals(): Promise<any> {
+    const response = await this.request<any>('/voting/proposals');
+    return response.data;
+  }
+
+  async createProposal(title: string, description: string): Promise<any> {
+    return await this.request<any>('/voting/proposal', {
+      method: 'POST',
+      body: JSON.stringify({ title, description }),
+    });
+  }
+
+  async closeProposal(proposalId: number): Promise<any> {
+    return await this.request<any>(`/voting/proposal/${proposalId}/close`, {
+      method: 'POST',
+    });
+  }
+
   // Fila de Pagamentos (Payout Queue)
   async getPayoutQueue(): Promise<any> {
     const response = await this.request<any>('/admin/payout-queue');
