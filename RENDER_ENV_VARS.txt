@@ -1,8 +1,15 @@
 DATABASE_URL=postgres://postgres.vjlaimnounewluthadza:nVLofKG6EFG83clD@aws-1-ca-central-1.pooler.supabase.com:5432/postgres?sslmode=require
 JWT_SECRET=jjWz8VoN0zoHh4EIwIqrjBnFCS9/pdk8UirSCZRfjdopB70pWhiQakh0YKvDcacx6BYmlifwVJy1NVgbj0HdmA==
+
+# Asaas Payment Gateway (NOVO - Substitui Mercado Pago)
+ASAAS_API_KEY=$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OjczMmEwZjU1LTJkNWMtNDhhMy05ZDU0LWI5ODEzMmZlZDg3ZDo6JGFhY2hfZWJhNzBjNTYtYWJjNS00ZjA5LWFjNTAtYzYxYWQyODFmZmZh
+ASAAS_SANDBOX=true
+
+# Mercado Pago (OBSOLETO - Manter por compatibilidade)
 MP_ACCESS_TOKEN=APP_USR-5215518777253904-100720-23751ee683fe030a6064507ab3850725-265115639
 MP_CLIENT_ID=5215518777253904
 MP_CLIENT_SECRET=9drEgbrl7JnrZneNZBpj24gd6GhsNovf
+
 SMTP_HOST=smtp.resend.com
 SMTP_USER=resend
 SMTP_PASS=

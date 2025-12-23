@@ -8,7 +8,7 @@ import { UserContext } from '../../../shared/types/hono.types';
 import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction } from '../../../domain/services/transaction.service';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
 import { financialRateLimit } from '../middleware/rate-limit.middleware';
-import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/mercadopago.service';
+import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/asaas.service';
 import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
 
 // Função auxiliar para registrar auditoria financeira

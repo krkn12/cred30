@@ -6,7 +6,7 @@ import { PoolClient } from 'pg';
 import { executeInTransaction, createTransaction } from '../../../domain/services/transaction.service';
 import { z } from 'zod';
 import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
-import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/mercadopago.service';
+import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/asaas.service';
 import { updateScore } from '../../../application/services/score.service';
 import { VERIFIED_BADGE_PRICE, SCORE_BOOST_PRICE, SCORE_BOOST_POINTS, REPUTATION_CHECK_PRICE } from '../../../shared/constants/business.constants';
 

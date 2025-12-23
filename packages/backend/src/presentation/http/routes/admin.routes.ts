@@ -19,7 +19,7 @@ import { distributeProfits } from '../../../application/services/profit-distribu
 import { runAutoLiquidation } from '../../../application/services/auto-liquidation.service';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
 import { calculateGatewayCost } from '../../../shared/utils/financial.utils';
-import { simulatePaymentApproval } from '../../../infrastructure/gateways/mercadopago.service';
+import { simulatePaymentApproval, createPayout, detectPixKeyType, getAccountBalance } from '../../../infrastructure/gateways/asaas.service';
 
 interface PaymentApprovalResult {
   success: boolean;
@@ -584,41 +584,99 @@ adminRoutes.post('/confirm-payout', adminMiddleware, auditMiddleware('CONFIRM_PA
 
     await executeInTransaction(pool, async (client) => {
       if (type === 'TRANSACTION') {
-        // Atualizar status do pagamento
-        await client.query(
-          "UPDATE transactions SET payout_status = 'PAID', processed_at = $1 WHERE id = $2",
-          [new Date(), id]
-        );
-
-        // Buscar dados da transação para notificar o usuário
+        // Buscar dados da transação e do usuário
         const txResult = await client.query(
-          'SELECT user_id, amount FROM transactions WHERE id = $1',
+          `SELECT t.user_id, t.amount, t.metadata, u.pix_key, u.name, u.email
+           FROM transactions t
+           JOIN users u ON t.user_id = u.id
+           WHERE t.id = $1`,
           [id]
         );
 
-        if (txResult.rows.length > 0) {
-          const { user_id, amount } = txResult.rows[0];
+        if (txResult.rows.length === 0) {
+          throw new Error('Transação não encontrada');
+        }
 
-          // Criar notificação solicitando avaliação
-          await client.query(
-            `INSERT INTO notifications (user_id, title, message, type, metadata, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
-            [
-              user_id,
-              '💸 Seu saque foi processado!',
-              `O valor de R$ ${parseFloat(amount).toFixed(2)} foi enviado para sua chave PIX. Que tal avaliar sua experiência?`,
-              'PAYOUT_COMPLETED',
-              JSON.stringify({ transactionId: id, amount: parseFloat(amount), requiresReview: true }),
-              new Date()
-            ]
-          );
+        const { user_id, amount, metadata, pix_key, name } = txResult.rows[0];
+        const netAmount = metadata?.netAmount || parseFloat(amount);
+        const pixKeyToUse = metadata?.pixKey || pix_key;
+
+        if (!pixKeyToUse) {
+          throw new Error('Usuário não possui chave PIX cadastrada');
+        }
+
+        // Tentar enviar PIX automaticamente via Asaas
+        let payoutResult = null;
+        let payoutError = null;
+
+        try {
+          const pixKeyType = detectPixKeyType(pixKeyToUse);
+          payoutResult = await createPayout({
+            pixKey: pixKeyToUse,
+            pixKeyType,
+            amount: netAmount,
+            description: `Saque Cred30 - ${name?.split(' ')[0] || 'Cliente'}`
+          });
+
+          console.log('[PAYOUT ASAAS] Sucesso:', payoutResult);
+        } catch (err: any) {
+          console.error('[PAYOUT ASAAS] Erro:', err);
+          payoutError = err.message;
+        }
+
+        // Atualizar status do pagamento
+        const payoutStatus = payoutResult ? 'PAID' : 'PENDING_MANUAL';
+        await client.query(
+          `UPDATE transactions 
+           SET payout_status = $1, 
+               processed_at = $2, 
+               metadata = metadata || $3::jsonb 
+           WHERE id = $4`,
+          [
+            payoutStatus,
+            new Date(),
+            JSON.stringify({
+              asaas_transfer_id: payoutResult?.id,
+              asaas_transfer_status: payoutResult?.status,
+              payout_error: payoutError,
+              payout_method: payoutResult ? 'AUTOMATIC' : 'MANUAL_PENDING'
+            }),
+            id
+          ]
+        );
+
+        // Criar notificação
+        const notifMessage = payoutResult
+          ? `O valor de R$ ${netAmount.toFixed(2)} foi enviado para sua chave PIX automaticamente! Que tal avaliar sua experiência?`
+          : `Seu saque de R$ ${netAmount.toFixed(2)} está sendo processado manualmente. Em breve será enviado para sua chave PIX.`;
+
+        await client.query(
+          `INSERT INTO notifications (user_id, title, message, type, metadata, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            user_id,
+            payoutResult ? '💸 Seu saque foi processado!' : '⏳ Saque em processamento',
+            notifMessage,
+            'PAYOUT_COMPLETED',
+            JSON.stringify({
+              transactionId: id,
+              amount: netAmount,
+              requiresReview: !!payoutResult,
+              automatic: !!payoutResult
+            }),
+            new Date()
+          ]
+        );
+
+        if (payoutError) {
+          throw new Error(`Pagamento registrado mas falhou envio automático: ${payoutError}. Você pode tentar novamente ou fazer manualmente.`);
         }
       } else {
         throw new Error('Tipo de confirmação não suportado');
       }
     });
 
-    return c.json({ success: true, message: 'Pagamento confirmado c/ sucesso!' });
+    return c.json({ success: true, message: 'Pagamento processado via PIX automático!' });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);

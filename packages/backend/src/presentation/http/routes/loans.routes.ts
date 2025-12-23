@@ -4,7 +4,7 @@ import { authMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { LOAN_INTEREST_RATE, ONE_MONTH_MS, PENALTY_RATE, LOAN_ORIGINATION_FEE_RATE } from '../../../shared/constants/business.constants';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
-import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/mercadopago.service';
+import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/asaas.service';
 import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
 import { executeInTransaction, processLoanApproval } from '../../../domain/services/transaction.service';
 import { calculateUserLoanLimit } from '../../../application/services/credit-analysis.service';

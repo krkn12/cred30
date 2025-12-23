@@ -2,13 +2,14 @@ import { Hono } from 'hono';
 import { PoolClient } from 'pg';
 import crypto from 'crypto';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { checkPaymentStatus } from '../../../infrastructure/gateways/mercadopago.service';
+import { checkPaymentStatus } from '../../../infrastructure/gateways/asaas.service';
 import { executeInTransaction, processTransactionApproval } from '../../../domain/services/transaction.service';
 import { logWebhook, updateWebhookStatus } from '../../../application/services/audit.service';
 
 const webhookRoutes = new Hono();
 
-webhookRoutes.post('/mercadopago', async (c) => {
+// Webhook do Asaas
+webhookRoutes.post('/asaas', async (c) => {
     const pool = getDbPool(c);
     let webhookLogId: number | null = null;
 
@@ -16,83 +17,122 @@ webhookRoutes.post('/mercadopago', async (c) => {
         const body = await c.req.json();
 
         // 1. Persistir Webhook IMEDIATAMENTE (Segurança contra queda de servidor)
-        webhookLogId = await logWebhook(pool, 'mercadopago', body);
+        webhookLogId = await logWebhook(pool, 'asaas', body);
 
-        const xSignature = c.req.header('x-signature');
-        const xRequestId = c.req.header('x-request-id');
-        const secret = process.env.MP_WEBHOOK_SECRET;
+        // Asaas envia um token de autenticação no header
+        const asaasAccessToken = c.req.header('asaas-access-token');
+        const expectedToken = process.env.ASAAS_WEBHOOK_TOKEN;
 
-        console.log(`[WEBHOOK MP] Recebido (ID Log: ${webhookLogId}):`, JSON.stringify(body));
+        console.log(`[WEBHOOK ASAAS] Recebido (ID Log: ${webhookLogId}):`, JSON.stringify(body));
 
-        // Validação de Assinatura
-        if (secret && xSignature && xRequestId) {
-            try {
-                const parts = xSignature.split(',');
-                let ts = '';
-                let v1 = '';
-                parts.forEach(part => {
-                    const [key, value] = part.split('=');
-                    if (key === 'ts') ts = value;
-                    if (key === 'v1') v1 = value;
-                });
-
-                const resourceId = body.data?.id || body.id;
-                const manifest = `id:${resourceId};request-id:${xRequestId};ts:${ts};`;
-                const hmac = crypto.createHmac('sha256', secret);
-                const digest = hmac.update(manifest).digest('hex');
-
-                if (digest !== v1) {
-                    console.error('[WEBHOOK MP] Assinatura Inválida!');
-                    if (webhookLogId) await updateWebhookStatus(pool, webhookLogId, 'FAILED', 'Invalid Signature');
-                    return c.json({ success: false, message: 'Invalid signature' }, 401);
-                }
-            } catch (err: any) {
-                console.error('[WEBHOOK MP] Erro validação:', err);
-            }
+        // Validação de Token (opcional, mas recomendado)
+        if (expectedToken && asaasAccessToken !== expectedToken) {
+            console.error('[WEBHOOK ASAAS] Token Inválido!');
+            if (webhookLogId) await updateWebhookStatus(pool, webhookLogId, 'FAILED', 'Invalid Token');
+            return c.json({ success: false, message: 'Invalid token' }, 401);
         }
 
-        const paymentId = body.data?.id || (body.type === 'payment' ? body.id : null);
+        // Asaas envia eventos com a estrutura: { event: "PAYMENT_RECEIVED", payment: { id, status, ... } }
+        const event = body.event;
+        const payment = body.payment;
 
-        if (paymentId) {
-            const status = await checkPaymentStatus(parseInt(paymentId));
+        if (!payment) {
+            console.log('[WEBHOOK ASAAS] Payload sem payment:', body);
+            if (webhookLogId) await updateWebhookStatus(pool, webhookLogId, 'COMPLETED', 'No payment in payload');
+            return c.json({ success: true });
+        }
 
-            if (status === 'approved') {
-                const result = await executeInTransaction(pool, async (client: PoolClient) => {
-                    const txResult = await client.query(
-                        "SELECT id FROM transactions WHERE metadata->>'mp_id' = $1 AND status = 'PENDING'",
-                        [paymentId.toString()]
+        const paymentId = payment.id;
+        const status = payment.status;
+
+        console.log(`[WEBHOOK ASAAS] Event: ${event}, PaymentId: ${paymentId}, Status: ${status}`);
+
+        // Eventos de sucesso no Asaas
+        const successStatuses = ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'];
+
+        if (successStatuses.includes(status)) {
+            const result = await executeInTransaction(pool, async (client: PoolClient) => {
+                // Buscar transação pelo ID do Asaas (salvo em metadata)
+                const txResult = await client.query(
+                    "SELECT id FROM transactions WHERE metadata->>'asaas_id' = $1 AND status = 'PENDING'",
+                    [paymentId]
+                );
+
+                if (txResult.rows.length > 0) {
+                    const transactionId = txResult.rows[0].id;
+                    await processTransactionApproval(client, transactionId, 'APPROVE');
+                    return { processed: true, transactionId };
+                }
+
+                // Tentar buscar pelo external_reference também
+                const externalRef = payment.externalReference;
+                if (externalRef) {
+                    const txByRefResult = await client.query(
+                        "SELECT id FROM transactions WHERE metadata->>'external_reference' = $1 AND status = 'PENDING'",
+                        [externalRef]
                     );
 
-                    if (txResult.rows.length > 0) {
-                        const transactionId = txResult.rows[0].id;
+                    if (txByRefResult.rows.length > 0) {
+                        const transactionId = txByRefResult.rows[0].id;
                         await processTransactionApproval(client, transactionId, 'APPROVE');
                         return { processed: true, transactionId };
                     }
-
-                    await client.query(
-                        "UPDATE transactions SET metadata = metadata || jsonb_build_object('mp_status', $1) WHERE metadata->>'mp_id' = $2",
-                        [status, paymentId.toString()]
-                    );
-                    return { processed: false };
-                });
-
-                if (webhookLogId && result.success) {
-                    await updateWebhookStatus(pool, webhookLogId, 'COMPLETED');
                 }
-            } else {
-                // Pagamento não aprovado ainda (ex: pending, rejected), apenas logamos o status
-                if (webhookLogId) await updateWebhookStatus(pool, webhookLogId, 'COMPLETED', `Status: ${status}`);
+
+                // Atualizar metadata mesmo se não encontrar transação pendente
+                await client.query(
+                    "UPDATE transactions SET metadata = metadata || jsonb_build_object('asaas_status', $1) WHERE metadata->>'asaas_id' = $2",
+                    [status, paymentId]
+                );
+                return { processed: false };
+            });
+
+            if (webhookLogId && result.success) {
+                await updateWebhookStatus(pool, webhookLogId, 'COMPLETED');
             }
         } else {
-            if (webhookLogId) await updateWebhookStatus(pool, webhookLogId, 'COMPLETED', 'No paymentId found in payload');
+            // Pagamento não aprovado ainda (ex: PENDING, OVERDUE), apenas logamos o status
+            if (webhookLogId) await updateWebhookStatus(pool, webhookLogId, 'COMPLETED', `Status: ${status}`);
         }
 
         return c.json({ success: true });
     } catch (error: any) {
-        console.error('[WEBHOOK MP] Erro:', error);
+        console.error('[WEBHOOK ASAAS] Erro:', error);
         if (webhookLogId) await updateWebhookStatus(pool, webhookLogId, 'FAILED', error.message);
-        // Retornamos 200 para evitar que o MP fique tentando infinitamente se for erro de lógica nossa,
-        // mas o log PENDING/FAILED nos avisará da falha técnica.
+        return c.json({ success: false, error: error.message }, 200);
+    }
+});
+
+// Manter webhook do Mercado Pago para compatibilidade (transições)
+webhookRoutes.post('/mercadopago', async (c) => {
+    console.log('[WEBHOOK MP] Recebido mas gateway migrado para Asaas');
+    return c.json({ success: true, message: 'Gateway migrado para Asaas' });
+});
+
+// Webhook de transferências (payouts) do Asaas
+webhookRoutes.post('/asaas/transfer', async (c) => {
+    const pool = getDbPool(c);
+
+    try {
+        const body = await c.req.json();
+        console.log('[WEBHOOK ASAAS TRANSFER] Recebido:', JSON.stringify(body));
+
+        const transfer = body.transfer;
+        if (!transfer) {
+            return c.json({ success: true, message: 'No transfer in payload' });
+        }
+
+        // Atualizar status do payout na transação correspondente
+        if (transfer.status === 'DONE' || transfer.status === 'CONFIRMED') {
+            await pool.query(
+                "UPDATE transactions SET payout_status = 'PAID', metadata = metadata || jsonb_build_object('asaas_transfer_status', $1) WHERE metadata->>'asaas_transfer_id' = $2",
+                [transfer.status, transfer.id]
+            );
+        }
+
+        return c.json({ success: true });
+    } catch (error: any) {
+        console.error('[WEBHOOK ASAAS TRANSFER] Erro:', error);
         return c.json({ success: false, error: error.message }, 200);
     }
 });
