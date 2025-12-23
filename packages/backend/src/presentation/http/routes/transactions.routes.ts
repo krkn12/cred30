@@ -100,6 +100,23 @@ transactionRoutes.post('/withdraw', authMiddleware, async (c) => {
       }, 400);
     }
 
+    // Verificar se usuário tem CPF cadastrado (obrigatório para saque)
+    const userCheck = await pool.query(
+      'SELECT cpf, name, email FROM users WHERE id = $1',
+      [user.id]
+    );
+
+    if (!userCheck.rows[0]?.cpf) {
+      return c.json({
+        success: false,
+        message: 'CPF obrigatório para realizar saques. Cadastre seu CPF nas configurações do perfil.',
+        code: 'CPF_REQUIRED'
+      }, 400);
+    }
+
+    const userCpf = userCheck.rows[0].cpf;
+    const userName = userCheck.rows[0].name;
+
     // Buscar valor total de cotas ativas do cliente
     const quotasResult = await pool.query(
       "SELECT COALESCE(SUM(current_value), 0) as total_quota_value FROM quotas WHERE user_id = $1 AND status = 'ACTIVE'",

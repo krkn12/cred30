@@ -52,7 +52,7 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
     // Buscar usuário no banco de dados para obter informações atualizadas
     const pool = getDbPool(c);
     const result = await pool.query(
-      'SELECT id, name, email, balance, referral_code, is_admin, role, status, score, created_at, pix_key, two_factor_enabled FROM users WHERE id = $1',
+      'SELECT id, name, email, balance, referral_code, is_admin, role, status, score, created_at, pix_key, two_factor_enabled, cpf FROM users WHERE id = $1',
       [decoded.userId]
     );
 
@@ -89,6 +89,7 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
       score: user.score || 0,
       pixKey: user.pix_key,
       twoFactorEnabled: Boolean(user.two_factor_enabled),
+      cpf: user.cpf || null,
     };
 
     // Log para depuração

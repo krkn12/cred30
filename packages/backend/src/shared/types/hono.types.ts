@@ -12,6 +12,7 @@ export interface UserContext {
   score: number;
   pixKey?: string; // Adicionado para compatibilidade
   twoFactorEnabled?: boolean;
+  cpf?: string | null; // CPF do usuário (opcional, obrigatório para saque)
 }
 
 // Estender o tipo de variáveis do Hono
