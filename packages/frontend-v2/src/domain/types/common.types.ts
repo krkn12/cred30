@@ -88,6 +88,7 @@ export interface AppState {
     totalReserves?: number;
     theoreticalCash?: number;
     monthlyFixedCosts?: number;
+    activeProposalsCount?: number;
     systemConfig?: any; // To avoid lint errors when accessing raw config
   };
 }
