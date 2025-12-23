@@ -89,7 +89,7 @@ const asaasRequest = async (endpoint: string, options: RequestInit = {}): Promis
 };
 
 /**
- * Busca ou cria um cliente no Asaas
+ * Busca ou cria um cliente no Asaas (e atualiza CPF se necessário)
  */
 const getOrCreateCustomer = async (email: string, name: string, cpf?: string): Promise<string> => {
     try {
@@ -97,7 +97,21 @@ const getOrCreateCustomer = async (email: string, name: string, cpf?: string): P
         const searchResult = await asaasRequest(`/customers?email=${encodeURIComponent(email)}`);
 
         if (searchResult.data && searchResult.data.length > 0) {
-            return searchResult.data[0].id;
+            const existingCustomer = searchResult.data[0];
+
+            // Se o cliente existe mas não tem CPF, e temos CPF para atualizar
+            if (cpf && !existingCustomer.cpfCnpj) {
+                console.log(`[ASAAS] Atualizando CPF do cliente ${existingCustomer.id}...`);
+                await asaasRequest(`/customers/${existingCustomer.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        cpfCnpj: cpf.replace(/\D/g, ''), // Apenas números
+                    }),
+                });
+                console.log(`[ASAAS] CPF atualizado com sucesso para cliente ${existingCustomer.id}`);
+            }
+
+            return existingCustomer.id;
         }
 
         // Criar novo cliente
@@ -106,7 +120,7 @@ const getOrCreateCustomer = async (email: string, name: string, cpf?: string): P
             body: JSON.stringify({
                 name: name || email.split('@')[0],
                 email: email,
-                cpfCnpj: cpf || undefined,
+                cpfCnpj: cpf ? cpf.replace(/\D/g, '') : undefined,
                 notificationDisabled: true,
             }),
         });
