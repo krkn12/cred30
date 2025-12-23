@@ -244,7 +244,8 @@ adminRoutes.get('/dashboard', adminMiddleware, async (c) => {
         (SELECT COUNT(*) FROM quotas WHERE status = 'ACTIVE') as quotas_count,
         (SELECT COUNT(*) FROM loans WHERE status IN ('PENDING', 'APPROVED', 'PAYMENT_PENDING')) as active_loans_count,
         (SELECT COALESCE(SUM(CAST(total_repayment AS NUMERIC)), 0) FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING')) as total_to_receive,
-        (SELECT COALESCE(SUM(amount), 0) FROM system_costs) as total_monthly_costs
+        (SELECT COALESCE(SUM(amount), 0) FROM system_costs) as total_monthly_costs,
+        (SELECT COUNT(*) FROM voting_proposals WHERE status = 'ACTIVE') as active_proposals_count
     `);
 
     const stats = statsResult.rows[0];
@@ -254,6 +255,7 @@ adminRoutes.get('/dashboard', adminMiddleware, async (c) => {
     const activeLoansCount = parseInt(stats.active_loans_count);
     const totalToReceive = parseFloat(stats.total_to_receive);
     const totalMonthlyCosts = parseFloat(stats.total_monthly_costs);
+    const activeProposalsCount = parseInt(stats.active_proposals_count || 0);
 
     // Calcular detalhamento de liquidez para o dashboard
     // Liquidez Real = (Saldo em Conta) - (Saldos dos Usuários) - (Reservas Fixas) - (Custos do Mês)
@@ -290,6 +292,7 @@ adminRoutes.get('/dashboard', adminMiddleware, async (c) => {
           activeLoansCount,
           totalLoaned,
           totalToReceive,
+          activeProposalsCount,
         },
       },
     });
@@ -385,7 +388,7 @@ adminRoutes.post('/system-balance', adminMiddleware, async (c) => {
 adminRoutes.post('/profit-pool', adminMiddleware, auditMiddleware('MANUAL_PROFIT_ADD', 'SYSTEM_CONFIG'), async (c) => {
   try {
     const body = await c.req.json();
-    let amountToAdd;
+    let amountToAdd: number | undefined = undefined;
 
     // Tentar pegar do schema validado OU do corpo direto (fallback)
     if (body.amountToAdd !== undefined) {
@@ -394,7 +397,8 @@ adminRoutes.post('/profit-pool', adminMiddleware, auditMiddleware('MANUAL_PROFIT
       amountToAdd = parseFloat(body.amount);
     }
 
-    if (amountToAdd === undefined || isNaN(amountToAdd)) {
+    const amountVal = amountToAdd as number;
+    if (amountVal === undefined || isNaN(amountVal)) {
       return c.json({ success: false, message: 'Valor inválido' }, 400);
     }
 
@@ -405,7 +409,7 @@ adminRoutes.post('/profit-pool', adminMiddleware, auditMiddleware('MANUAL_PROFIT
       // 1. Adicionar ao pool de lucros E ao saldo real (pois é dinheiro novo entrando)
       await client.query(
         'UPDATE system_config SET profit_pool = profit_pool + $1, system_balance = system_balance + $1',
-        [amountToAdd]
+        [amountVal]
       );
 
       // 2. Registrar auditoria manual
@@ -415,7 +419,7 @@ adminRoutes.post('/profit-pool', adminMiddleware, auditMiddleware('MANUAL_PROFIT
              VALUES ($1, 'MANUAL_PROFIT_ADD', 'SYSTEM_CONFIG', $2, $3)`,
         [
           user.id,
-          JSON.stringify({ addedAmount: amountToAdd }),
+          JSON.stringify({ addedAmount: amountVal }),
           new Date()
         ]
       );
@@ -423,8 +427,8 @@ adminRoutes.post('/profit-pool', adminMiddleware, auditMiddleware('MANUAL_PROFIT
 
     return c.json({
       success: true,
-      message: `R$ ${amountToAdd.toFixed(2)} adicionado ao acumulado e ao saldo do sistema!`,
-      data: { addedAmount: amountToAdd }
+      message: `R$ ${amountVal.toFixed(2)} adicionado ao acumulado e ao saldo do sistema!`,
+      data: { addedAmount: amountVal }
     });
   } catch (error) {
     console.error('Erro ao adicionar lucro ao pool:', error);

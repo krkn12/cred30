@@ -146,10 +146,13 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     };
 
     const fetchProposals = async () => {
+        console.log('AdminView: Iniciando busca de propostas...');
         try {
             const res = await apiService.getProposals();
+            console.log('AdminView: Resposta de propostas:', res);
             if (res.success) {
                 setProposals(res.data || []);
+                console.log('AdminView: Propostas definidas no estado:', res.data?.length || 0);
             }
         } catch (e) {
             console.error('Erro ao buscar propostas:', e);
@@ -494,6 +497,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                         <MetricCard title="Participações" value={state.stats?.quotasCount ?? 0} subtitle="Licenças em Operação" icon={PieChart} color="cyan" />
                         <MetricCard title="Custo Fixo Mensal" value={formatCurrency(state.stats?.systemConfig?.monthly_fixed_costs || 0)} subtitle="Despesas Recorrentes" icon={TrendingUp} color="orange" />
                         <MetricCard title="Liquidez Real" value={formatCurrency(state.stats?.systemConfig?.real_liquidity ?? state.systemBalance)} subtitle="Disponível p/ Saque/Apoio" icon={DollarSign} color="emerald" />
+                        <MetricCard title="Votações Ativas" value={state.stats?.activeProposalsCount ?? 0} subtitle="Governança em Aberto" icon={Vote} color="purple" />
                     </div>
                 </div>
             )}

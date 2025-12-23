@@ -155,8 +155,8 @@ export const loadState = async (): Promise<AppState> => {
             systemBalance,
             profitPool,
             stats,
-            'dashboard.data?.systemConfig?.systemBalance': dashboard.data?.systemConfig?.systemBalance,
-            'dashboard.systemConfig?.systemBalance': dashboard.systemConfig?.systemBalance
+            'dashboard.systemConfig?.system_balance': dashboard.systemConfig?.system_balance,
+            'dashboard.systemConfig?.profit_pool': dashboard.systemConfig?.profit_pool
           });
 
           // Atualizar cache do dashboard
