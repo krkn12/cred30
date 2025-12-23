@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import {
     Search, Tag, ShoppingBag, PlusCircle, ImageIcon, Zap, Sparkles,
     ChevronRight, ArrowLeft, ShieldCheck, Heart, Share2, MessageCircle,
-    Truck, Clock, CheckCircle2, History, Package, RefreshCw, Wand2, X as XIcon
+    Truck, Clock, CheckCircle2, History, Package, RefreshCw, Wand2, X as XIcon,
+    QrCode, WifiOff, ScanLine
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { Scanner } from '@yudiel/react-qr-scanner';
 import { AppState } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { OfflineMarketplaceView } from './OfflineMarketplaceView';
 
 interface MarketplaceViewProps {
     state: AppState;
@@ -57,7 +61,11 @@ const NativeAdCard = ({ title, price, category, img }: any) => (
 );
 
 export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: MarketplaceViewProps) => {
-    const [view, setView] = useState<'browse' | 'create' | 'my-orders' | 'details' | 'offline-sync' | 'missions'>('browse');
+    const [view, setView] = useState<'browse' | 'create' | 'my-orders' | 'details' | 'missions' | 'offline'>('browse');
+    const [pendingOfflineSales, setPendingOfflineSales] = useState<any[]>(() => {
+        const saved = localStorage.getItem('cred30_offline_sales');
+        return saved ? JSON.parse(saved) : [];
+    });
     const [listings, setListings] = useState<any[]>([]);
     const [myOrders, setMyOrders] = useState<any[]>([]);
     const [missions, setMissions] = useState<any[]>([]);
@@ -81,6 +89,33 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
     const categories = ['ELETRÔNICOS', 'VEÍCULOS', 'IMÓVEIS', 'SERVIÇOS', 'MODA', 'OUTROS'];
     const [aiLoading, setAiLoading] = useState(false);
+
+    const handleSaveOfflineSale = (sale: any) => {
+        const newSales = [...pendingOfflineSales, sale];
+        setPendingOfflineSales(newSales);
+        localStorage.setItem('cred30_offline_sales', JSON.stringify(newSales));
+    };
+
+    const handleSyncOffline = async () => {
+        if (pendingOfflineSales.length === 0) return;
+        try {
+            setIsLoading(true);
+            const response = await apiService.post('/marketplace/offline/sync', { transactions: pendingOfflineSales });
+            if (response.success) {
+                setPendingOfflineSales([]);
+                localStorage.removeItem('cred30_offline_sales');
+                onSuccess('Sincronizado!', 'Vendas offline enviadas com sucesso.');
+                setView('my-orders');
+            } else {
+                onError('Erro', 'Falha ao sincronizar.');
+            }
+        } catch (error) {
+            console.error(error);
+            onError('Erro', 'Falha na conexão.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
         fetchData();
@@ -248,12 +283,12 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                     </div>
                 </button>
                 <button
-                    onClick={() => setView('offline-sync')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${view === 'offline-sync' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
+                    onClick={() => setView('offline')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${view === 'offline' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
                 >
                     <div className="flex items-center justify-center gap-1">
-                        <Zap size={10} className={view === 'offline-sync' ? 'text-primary-400' : 'text-zinc-500'} />
-                        Modo Interior
+                        <Zap size={10} className={view === 'offline' ? 'text-primary-400' : 'text-zinc-500'} />
+                        Modo Offline
                     </div>
                 </button>
             </div>
@@ -699,210 +734,188 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 </div>
             )}
 
-            {view === 'offline-sync' && (
-                <div className="space-y-6 animate-in fade-in duration-300">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center space-y-4">
-                        <div className="w-16 h-16 bg-primary-500/10 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <Zap className="text-primary-400" size={32} />
-                        </div>
-                        <h3 className="text-xl font-black text-white uppercase tracking-tight">Modo Interior / Sem Sinal</h3>
-                        <p className="text-sm text-zinc-400 leading-relaxed">
-                            Use esta seção para validar compras presenciais quando ambos estiverem sem internet.
-                            O vendedor digita o código gerado no celular do comprador.
-                        </p>
-                    </div>
-
-                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6">
-                        <h4 className="text-xs font-black text-white uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <CheckCircle2 size={16} className="text-primary-400" /> Sou o Vendedor
-                        </h4>
-                        <div className="space-y-3">
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase ml-1">Código Recebido do Comprador</p>
-                            <input
-                                type="text"
-                                value={redeemCode}
-                                onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
-                                placeholder="EX: CR30-X4K2P-12"
-                                className="w-full bg-black border border-zinc-800 rounded-2xl px-6 py-4 text-white font-mono text-xl focus:border-primary-500 outline-none transition-all"
-                            />
-                            <button
-                                onClick={handleRedeemOfflineCode}
-                                className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl shadow-lg transition active:scale-[0.98] uppercase text-xs tracking-widest"
-                            >
-                                Validar e Receber Saldo
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="bg-zinc-900/40 border border-zinc-800/50 rounded-2xl p-4 flex gap-4 items-center">
-                        <div className="p-2 bg-zinc-800 rounded-lg text-zinc-500"><Clock size={20} /></div>
-                        <div>
-                            <p className="text-[10px] font-bold text-white uppercase">Como funciona?</p>
-                            <p className="text-[10px] text-zinc-500">O App guarda a validação localmente. O saldo será transferido assim que o celular do vendedor encontrar um sinal de internet.</p>
-                        </div>
-                    </div>
-                </div>
+            {view === 'offline' && (
+                <OfflineMarketplaceView
+                    user={state.currentUser}
+                    pendingSales={pendingOfflineSales}
+                    onSaveSale={handleSaveOfflineSale}
+                    onSync={handleSyncOffline}
+                />
             )}
 
-            {view === 'details' && selectedItem && (
-                <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl animate-in fade-in duration-300 overflow-y-auto">
-                    <div className="max-w-xl mx-auto min-h-screen bg-zinc-950 flex flex-col">
-                        <div className="sticky top-0 z-10 p-4 flex items-center justify-between bg-zinc-950/80 backdrop-blur-md">
-                            <button onClick={() => setView('browse')} className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition">
-                                <ArrowLeft size={24} />
-                            </button>
-                            <div className="flex gap-2">
-                                <button className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition"><Share2 size={20} /></button>
-                                <button className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition"><Heart size={20} /></button>
-                            </div>
-                        </div>
 
-                        <div className="aspect-[4/3] bg-zinc-900 relative">
-                            {selectedItem.image_url ? (
-                                <img src={selectedItem.image_url} alt={selectedItem.title} className="w-full h-full object-cover" />
-                            ) : (
-                                <ImageIcon size={64} className="text-zinc-800 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                            )}
-                        </div>
-
-                        <div className="p-6 space-y-8">
-                            <div>
-                                <div className="flex justify-between items-start mb-2">
-                                    <span className="text-[10px] font-black bg-primary-500/10 text-primary-400 px-2 py-0.5 rounded uppercase tracking-widest">{selectedItem.category}</span>
-                                    {selectedItem.is_boosted && <span className="text-[10px] font-black bg-primary-400 text-black px-2 py-0.5 rounded animate-pulse">DESTAQUE</span>}
-                                </div>
-                                <h1 className="text-3xl font-black text-white tracking-tight leading-none mb-1">{selectedItem.title}</h1>
-                                <p className="text-2xl font-black text-primary-400">{formatCurrency(parseFloat(selectedItem.price))}</p>
-                            </div>
-
-                            <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6 space-y-4">
-                                <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                                    <Package size={14} className="text-primary-400" /> Descrição do Item
-                                </h4>
-                                <p className="text-sm text-zinc-400 leading-relaxed whitespace-pre-wrap">{selectedItem.description}</p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-400"><ShieldCheck size={16} /></div>
-                                        <span className="text-[10px] font-black text-zinc-300 uppercase">Segurança</span>
-                                    </div>
-                                    <p className="text-[10px] text-zinc-500 leading-tight">Pagamento protegido por Escrow Cred30.</p>
-                                </div>
-                                <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <div className="p-1.5 bg-primary-500/10 rounded-lg text-primary-400"><Truck size={16} /></div>
-                                        <span className="text-[10px] font-black text-zinc-300 uppercase">Logística</span>
-                                    </div>
-                                    <p className="text-[10px] text-zinc-500 leading-tight">Retirada ou Apoio Colaborativo (Sem Vínculo Empregatício).</p>
-                                </div>
-                            </div>
-
-                            <div className="sticky bottom-6 mt-12 bg-black border border-zinc-800 p-4 rounded-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
-                                <div className="flex-1">
-                                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Preço Final</p>
-                                    <p className="text-xl font-black text-white">{formatCurrency(parseFloat(selectedItem.price) + (deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee || '0') : 0))}</p>
-                                </div>
-                                <button
-                                    className="flex-[2] bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition shadow-lg shadow-primary-500/20 flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
-                                    onClick={() => {
-                                        if (!navigator.onLine) {
-                                            generateOfflineVoucher(selectedItem);
-                                            return;
-                                        }
-
-                                        // Se for afiliado, abre link
-                                        if (selectedItem.type === 'AFFILIATE') {
-                                            window.open(selectedItem.affiliate_url, '_blank');
-                                            onSuccess('Redirecionando', 'Aproveite a oferta do parceiro!');
-                                            return;
-                                        }
-
-                                        // Confirmação de Compra com Delivery
-                                        setConfirmData({
-                                            isOpen: true,
-                                            title: deliveryOption === 'COURIER_REQUEST' ? 'Confirmar Compra + Entrega' : 'Confirmar Compra',
-                                            message: `Deseja comprar "${selectedItem.title}" por ${formatCurrency(parseFloat(selectedItem.price))} ${deliveryOption === 'COURIER_REQUEST' ? `+ R$ ${offeredFee} de ajuda de custo?` : '?'}`,
-                                            confirmText: 'CONFIRMAR PAGAMENTO',
-                                            type: 'success',
-                                            onConfirm: async () => {
-                                                try {
-                                                    const res = await apiService.post<any>('/marketplace/buy', {
-                                                        listingId: selectedItem.id,
-                                                        deliveryType: deliveryOption,
-                                                        offeredDeliveryFee: parseFloat(offeredFee),
-                                                        deliveryAddress: 'Endereço Principal', // TODO: Pegar do user ou input
-                                                        contactPhone: '000000000'
-                                                    });
-                                                    if (res.success) {
-                                                        onSuccess('Sucesso!', 'Compra realizada. Veja detalhes em Seus Pedidos.');
-                                                        setView('my-orders');
-                                                        setConfirmData(null);
-                                                    }
-                                                } catch (err: any) {
-                                                    onError('Erro', err.message);
-                                                }
-                                            }
-                                        });
-                                    }}
-                                >
-                                    {!navigator.onLine ? 'GERAR VOUCHER OFFLINE' : (selectedItem.type === 'AFFILIATE' ? 'Ver Oferta Parceira' : 'Comprar Agora')}
-                                    <ChevronRight size={18} />
+            {
+                view === 'details' && selectedItem && (
+                    <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl animate-in fade-in duration-300 overflow-y-auto">
+                        <div className="max-w-xl mx-auto min-h-screen bg-zinc-950 flex flex-col">
+                            <div className="sticky top-0 z-10 p-4 flex items-center justify-between bg-zinc-950/80 backdrop-blur-md">
+                                <button onClick={() => setView('browse')} className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition">
+                                    <ArrowLeft size={24} />
                                 </button>
+                                <div className="flex gap-2">
+                                    <button className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition"><Share2 size={20} /></button>
+                                    <button className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition"><Heart size={20} /></button>
+                                </div>
                             </div>
 
-                            {selectedItem.type !== 'AFFILIATE' && (
-                                <div className="mt-4 pt-4 border-t border-zinc-800 space-y-3">
-                                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Opções de Logística</p>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setDeliveryOption('SELF_PICKUP')}
-                                            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition ${deliveryOption === 'SELF_PICKUP' ? 'bg-zinc-800 border-zinc-600 text-white' : 'bg-transparent border-zinc-800 text-zinc-500'}`}
-                                        >
-                                            Vou Retirar
-                                        </button>
-                                        <button
-                                            onClick={() => setDeliveryOption('COURIER_REQUEST')}
-                                            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition ${deliveryOption === 'COURIER_REQUEST' ? 'bg-indigo-900/40 border-indigo-500/50 text-indigo-300' : 'bg-transparent border-zinc-800 text-zinc-500'}`}
-                                        >
-                                            Solicitar Colaborador
-                                        </button>
-                                    </div>
+                            <div className="aspect-[4/3] bg-zinc-900 relative">
+                                {selectedItem.image_url ? (
+                                    <img src={selectedItem.image_url} alt={selectedItem.title} className="w-full h-full object-cover" />
+                                ) : (
+                                    <ImageIcon size={64} className="text-zinc-800 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                                )}
+                            </div>
 
-                                    {deliveryOption === 'COURIER_REQUEST' && (
-                                        <div className="animate-in slide-in-from-top duration-300">
-                                            <label className="text-[9px] text-zinc-500 font-bold uppercase block mb-1">Oferta de Ajuda de Custo (R$)</label>
-                                            <input
-                                                type="number"
-                                                value={offeredFee}
-                                                onChange={(e) => setOfferedFee(e.target.value)}
-                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-white text-sm focus:border-indigo-500 outline-none"
-                                                placeholder="Valor para o entregador (Ex: 10.00)"
-                                            />
-                                            <p className="text-[9px] text-zinc-600 mt-1 italic">Este valor será pago integralmente ao membro que realizar a entrega.</p>
+                            <div className="p-6 space-y-8">
+                                <div>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <span className="text-[10px] font-black bg-primary-500/10 text-primary-400 px-2 py-0.5 rounded uppercase tracking-widest">{selectedItem.category}</span>
+                                        {selectedItem.is_boosted && <span className="text-[10px] font-black bg-primary-400 text-black px-2 py-0.5 rounded animate-pulse">DESTAQUE</span>}
+                                    </div>
+                                    <h1 className="text-3xl font-black text-white tracking-tight leading-none mb-1">{selectedItem.title}</h1>
+                                    <p className="text-2xl font-black text-primary-400">{formatCurrency(parseFloat(selectedItem.price))}</p>
+                                </div>
+
+                                <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6 space-y-4">
+                                    <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                        <Package size={14} className="text-primary-400" /> Descrição do Item
+                                    </h4>
+                                    <p className="text-sm text-zinc-400 leading-relaxed whitespace-pre-wrap">{selectedItem.description}</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-400"><ShieldCheck size={16} /></div>
+                                            <span className="text-[10px] font-black text-zinc-300 uppercase">Segurança</span>
                                         </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {offlineVoucher && (
-                                <div className="mt-6 bg-primary-500/10 border border-primary-500/30 p-6 rounded-3xl animate-in zoom-in duration-300">
-                                    <div className="text-center space-y-2">
-                                        <p className="text-[10px] text-primary-400 font-black uppercase tracking-widest">Código de Pagamento Offline</p>
-                                        <p className="text-4xl font-black text-white font-mono tracking-tighter">{offlineVoucher.code}</p>
-                                        <p className="text-[11px] text-zinc-400 leading-tight">O vendedor deve digitar este código no "Modo Interior" do App dele para validar sua compra.</p>
+                                        <p className="text-[10px] text-zinc-500 leading-tight">Pagamento protegido por Escrow Cred30.</p>
+                                    </div>
+                                    <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <div className="p-1.5 bg-primary-500/10 rounded-lg text-primary-400"><Truck size={16} /></div>
+                                            <span className="text-[10px] font-black text-zinc-300 uppercase">Logística</span>
+                                        </div>
+                                        <p className="text-[10px] text-zinc-500 leading-tight">Retirada ou Apoio Colaborativo (Sem Vínculo Empregatício).</p>
                                     </div>
                                 </div>
-                            )}
-                            <div className="flex items-center justify-center gap-4 mt-4 text-[10px] text-zinc-500 font-bold uppercase tracking-widest border-t border-zinc-800 pt-4">
-                                <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-500" /> Transação Segura</span>
-                                <span className="flex items-center gap-1"><Truck size={12} /> Entrega Combinada</span>
+
+                                <div className="sticky bottom-6 mt-12 bg-black border border-zinc-800 p-4 rounded-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
+                                    <div className="flex-1">
+                                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Preço Final</p>
+                                        <p className="text-xl font-black text-white">{formatCurrency(parseFloat(selectedItem.price) + (deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee || '0') : 0))}</p>
+                                    </div>
+                                    <button
+                                        className="flex-[2] bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition shadow-lg shadow-primary-500/20 flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
+                                        onClick={() => {
+                                            if (!navigator.onLine) {
+                                                generateOfflineVoucher(selectedItem);
+                                                return;
+                                            }
+
+                                            // Se for afiliado, abre link
+                                            if (selectedItem.type === 'AFFILIATE') {
+                                                window.open(selectedItem.affiliate_url, '_blank');
+                                                onSuccess('Redirecionando', 'Aproveite a oferta do parceiro!');
+                                                return;
+                                            }
+
+                                            // Confirmação de Compra com Delivery
+                                            setConfirmData({
+                                                isOpen: true,
+                                                title: deliveryOption === 'COURIER_REQUEST' ? 'Confirmar Compra + Entrega' : 'Confirmar Compra',
+                                                message: `Deseja comprar "${selectedItem.title}" por ${formatCurrency(parseFloat(selectedItem.price))} ${deliveryOption === 'COURIER_REQUEST' ? `+ R$ ${offeredFee} de ajuda de custo?` : '?'}`,
+                                                confirmText: 'CONFIRMAR PAGAMENTO',
+                                                type: 'success',
+                                                onConfirm: async () => {
+                                                    try {
+                                                        const res = await apiService.post<any>('/marketplace/buy', {
+                                                            listingId: selectedItem.id,
+                                                            deliveryType: deliveryOption,
+                                                            offeredDeliveryFee: parseFloat(offeredFee),
+                                                            deliveryAddress: 'Endereço Principal', // TODO: Pegar do user ou input
+                                                            contactPhone: '000000000'
+                                                        });
+                                                        if (res.success) {
+                                                            onSuccess('Sucesso!', 'Compra realizada. Veja detalhes em Seus Pedidos.');
+                                                            setView('my-orders');
+                                                            setConfirmData(null);
+                                                        }
+                                                    } catch (err: any) {
+                                                        onError('Erro', err.message);
+                                                    }
+                                                }
+                                            });
+                                        }}
+                                    >
+                                        {!navigator.onLine ? 'GERAR VOUCHER OFFLINE' : (selectedItem.type === 'AFFILIATE' ? 'Ver Oferta Parceira' : 'Comprar Agora')}
+                                        <ChevronRight size={18} />
+                                    </button>
+                                </div>
+
+                                {selectedItem.type !== 'AFFILIATE' && (
+                                    <div className="mt-4 pt-4 border-t border-zinc-800 space-y-3">
+                                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Opções de Logística</p>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setDeliveryOption('SELF_PICKUP')}
+                                                className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition ${deliveryOption === 'SELF_PICKUP' ? 'bg-zinc-800 border-zinc-600 text-white' : 'bg-transparent border-zinc-800 text-zinc-500'}`}
+                                            >
+                                                Vou Retirar
+                                            </button>
+                                            <button
+                                                onClick={() => setDeliveryOption('COURIER_REQUEST')}
+                                                className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition ${deliveryOption === 'COURIER_REQUEST' ? 'bg-indigo-900/40 border-indigo-500/50 text-indigo-300' : 'bg-transparent border-zinc-800 text-zinc-500'}`}
+                                            >
+                                                Solicitar Colaborador
+                                            </button>
+                                        </div>
+
+                                        {deliveryOption === 'COURIER_REQUEST' && (
+                                            <div className="animate-in slide-in-from-top duration-300">
+                                                <label className="text-[9px] text-zinc-500 font-bold uppercase block mb-1">Oferta de Ajuda de Custo (R$)</label>
+                                                <input
+                                                    type="number"
+                                                    value={offeredFee}
+                                                    onChange={(e) => setOfferedFee(e.target.value)}
+                                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-white text-sm focus:border-indigo-500 outline-none"
+                                                    placeholder="Valor para o entregador (Ex: 10.00)"
+                                                />
+                                                <p className="text-[9px] text-zinc-600 mt-1 italic">Este valor será pago integralmente ao membro que realizar a entrega.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {offlineVoucher && (
+                                    <div className="mt-6 bg-primary-500/10 border border-primary-500/30 p-6 rounded-3xl animate-in zoom-in duration-300">
+                                        <div className="text-center space-y-2">
+                                            <p className="text-[10px] text-primary-400 font-black uppercase tracking-widest">Código de Pagamento Offline</p>
+                                            <p className="text-4xl font-black text-white font-mono tracking-tighter">{offlineVoucher.code}</p>
+                                            <p className="text-[11px] text-zinc-400 leading-tight">O vendedor deve digitar este código no "Modo Interior" do App dele para validar sua compra.</p>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="flex items-center justify-center gap-4 mt-4 text-[10px] text-zinc-500 font-bold uppercase tracking-widest border-t border-zinc-800 pt-4">
+                                    <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-500" /> Transação Segura</span>
+                                    <span className="flex items-center gap-1"><Truck size={12} /> Entrega Combinada</span>
+                                </div>
                             </div>
                         </div>
+                        {confirmData && (
+                            <ConfirmModal
+                                isOpen={confirmData.isOpen}
+                                onClose={() => setConfirmData(null)}
+                                onConfirm={confirmData.onConfirm}
+                                title={confirmData.title}
+                                message={confirmData.message}
+                                confirmText={confirmData.confirmText}
+                                type={confirmData.type}
+                            />
+                        )}
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {confirmData && (
                 <ConfirmModal

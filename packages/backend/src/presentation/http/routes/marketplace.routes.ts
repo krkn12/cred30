@@ -37,6 +37,20 @@ const buyOnCreditSchema = z.object({
     offeredDeliveryFee: z.number().min(0).optional().default(0),
 });
 
+const offlineTransactionSchema = z.object({
+    id: z.string(),
+    buyerId: z.string(),
+    sellerId: z.string(),
+    amount: z.number(),
+    itemTitle: z.string(),
+    timestamp: z.number(),
+    signature: z.string().optional()
+});
+
+const syncOfflineSchema = z.object({
+    transactions: z.array(offlineTransactionSchema)
+});
+
 /**
  * Listar todos os anúncios ativos no Mercado Cred30
  */
@@ -705,6 +719,78 @@ marketplaceRoutes.post('/logistic/mission/:id/pickup', authMiddleware, async (c)
         return c.json({ success: true, message: 'Coleta confirmada! Inicie o trajeto.' });
     } catch (error) {
         return c.json({ success: false, message: 'Erro ao confirmar coleta' }, 500);
+    }
+});
+
+/**
+ * Sincronização de Vendas Offline
+ * Recebe uma lista de transações realizadas sem internet e processa.
+ */
+marketplaceRoutes.post('/offline/sync', authMiddleware, async (c) => {
+    try {
+        const user = c.get('user') as UserContext;
+        const pool = getDbPool(c);
+        const body = await c.req.json();
+        const { transactions } = syncOfflineSchema.parse(body);
+
+        const results = [];
+
+        for (const tx of transactions) {
+            const existing = await pool.query('SELECT id FROM marketplace_orders WHERE offline_token = $1', [tx.id]);
+            if (existing.rows.length > 0) {
+                results.push({ id: tx.id, status: 'ALREADY_PROCESSED' });
+                continue;
+            }
+
+            if (tx.sellerId !== user.id) {
+                results.push({ id: tx.id, status: 'SKIPPED', message: 'Seller ID mismatch' });
+                continue;
+            }
+
+            try {
+                await executeInTransaction(pool, async (client) => {
+                    // 1. Tentar debitar do comprador (Prioridade da Sincronização)
+                    // Se não tiver saldo, o sistema pode optar por deixar negativo ou falhar.
+                    // Para o modelo Trust Protocol, vamos tentar o débito padrão. 
+                    // Se falhar (exceção), o catch pega e retorna FAILED.
+                    const balanceCheck = await lockUserBalance(client, tx.buyerId, tx.amount);
+                    if (!balanceCheck.success) {
+                        throw new Error(`Saldo insuficiente no comprador ${tx.buyerId}`);
+                    }
+
+                    const fee = tx.amount * MARKETPLACE_ESCROW_FEE_RATE;
+                    const sellerAmount = tx.amount - fee;
+
+                    await updateUserBalance(client, tx.buyerId, tx.amount, 'debit');
+                    await updateUserBalance(client, tx.sellerId, sellerAmount, 'credit');
+
+                    const orderResult = await client.query(
+                        `INSERT INTO marketplace_orders (
+                            listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, 
+                            status, payment_method, offline_token, delivery_status, delivered_at
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()) RETURNING id`,
+                        [null, tx.buyerId, tx.sellerId, tx.amount, fee, sellerAmount, 'COMPLETED', 'OFFLINE_QR', tx.id, 'DELIVERED']
+                    );
+
+                    const orderId = orderResult.rows[0].id;
+
+                    await createTransaction(client, tx.buyerId, 'MARKET_PURCHASE', tx.amount, `Compra Presencial: ${tx.itemTitle}`, 'APPROVED', { orderId });
+                    await createTransaction(client, tx.sellerId, 'MARKET_SALE', sellerAmount, `Venda Presencial: ${tx.itemTitle}`, 'APPROVED', { orderId });
+
+                    return { orderId };
+                });
+                results.push({ id: tx.id, status: 'SUCCESS' });
+            } catch (err: any) {
+                console.error(`Error processing offline tx ${tx.id}:`, err);
+                results.push({ id: tx.id, status: 'FAILED', message: err.message });
+            }
+        }
+
+        return c.json({ success: true, results });
+
+    } catch (error) {
+        console.error('Offline Sync Error:', error);
+        return c.json({ success: false, message: 'Erro na sincronização' }, 500);
     }
 });
 
