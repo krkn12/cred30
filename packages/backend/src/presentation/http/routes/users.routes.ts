@@ -393,6 +393,42 @@ userRoutes.post('/change-password', authMiddleware, async (c) => {
   }
 });
 
+// Atualizar CPF do usuário
+userRoutes.post('/update-cpf', authMiddleware, async (c) => {
+  try {
+    const { cpf } = await c.req.json();
+    const userContext = c.get('user') as UserContext;
+    const pool = getDbPool(c);
+
+    // Validar formato do CPF (apenas números, 11 dígitos)
+    const cleanCpf = cpf?.replace(/\D/g, '');
+    if (!cleanCpf || cleanCpf.length !== 11) {
+      return c.json({ success: false, message: 'CPF inválido. Informe 11 dígitos.' }, 400);
+    }
+
+    // Verificar se CPF já está em uso por outro usuário
+    const existingCpf = await pool.query(
+      'SELECT id FROM users WHERE cpf = $1 AND id != $2',
+      [cleanCpf, userContext.id]
+    );
+
+    if (existingCpf.rows.length > 0) {
+      return c.json({ success: false, message: 'CPF já cadastrado por outro usuário.' }, 409);
+    }
+
+    // Atualizar CPF do usuário
+    await pool.query(
+      'UPDATE users SET cpf = $1 WHERE id = $2',
+      [cleanCpf, userContext.id]
+    );
+
+    return c.json({ success: true, message: 'CPF atualizado com sucesso!' });
+  } catch (error) {
+    console.error('Erro ao atualizar CPF:', error);
+    return c.json({ success: false, message: 'Erro interno ao atualizar CPF' }, 500);
+  }
+});
+
 // Recompensa por assistir anúncio (Gera Score - Seguro para o Caixa)
 userRoutes.post('/reward-ad', authMiddleware, async (c) => {
   try {

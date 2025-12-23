@@ -111,6 +111,14 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
       }, 400);
     }
 
+    // Buscar CPF do usuário para criar cobrança no Asaas
+    const userInfoResult = await pool.query(
+      'SELECT cpf, name, email FROM users WHERE id = $1',
+      [user.id]
+    );
+    const userCpf = userInfoResult.rows[0]?.cpf;
+    const userFullName = userInfoResult.rows[0]?.name;
+
     // Executar operação dentro de transação ACID
     const result = await executeInTransaction(pool, async (client) => {
       // Se estiver usando saldo, verificar e bloquear
@@ -237,19 +245,23 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
               token,
               issuer_id: issuer_id ? Number(issuer_id) : undefined,
               installments: installments,
-              payment_method_id: 'master' // O Brick enviará o ID correto se necessário, mas para o SDKv2 o token já contém a info
+              payment_method_id: 'master',
+              cpf: userCpf,
+              name: userFullName
             });
           } else {
             mpData = await createPixPayment({
               amount: finalCost,
               description: `Aquisição de ${quantity} participação(ões) no sistema Cred30`,
               email: user.email,
-              external_reference
+              external_reference,
+              cpf: userCpf,
+              name: userFullName
             });
           }
         } catch (mpError) {
-          console.error('Erro ao gerar cobrança Mercado Pago:', mpError);
-          // Prosseguir mesmo sem MP automático, admin verá como pendente normal
+          console.error('Erro ao gerar cobrança Asaas:', mpError);
+          // Prosseguir mesmo sem Asaas automático, admin verá como pendente normal
         }
 
         const transactionResult = await createTransaction(
