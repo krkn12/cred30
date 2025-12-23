@@ -137,6 +137,23 @@ export const CardModal: React.FC<CardModalProps> = ({
                 <form onSubmit={handleFormSubmit} className="space-y-5">
                     {/* Card Preview Simulation Style */}
                     <div className="space-y-4">
+                        {/* Payment Flags & Badges */}
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-2 px-1">
+                            <div className="flex items-center gap-2 opacity-70 grayscale hover:grayscale-0 transition-all duration-500">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png" alt="Visa" className="h-4 object-contain" />
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-4 object-contain" />
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/f/f1/Elo_logo.png" alt="Elo" className="h-4 object-contain bg-white rounded-sm px-0.5" />
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg" alt="Amex" className="h-4 object-contain" />
+                            </div>
+                            <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1">
+                                <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest">Processado por</span>
+                                <div className="flex items-center gap-1">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                    <span className="text-[10px] font-black text-white tracking-tighter">asaas</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="relative">
                             <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1 mb-1 block">Número do Cartão</label>
                             <div className="relative">

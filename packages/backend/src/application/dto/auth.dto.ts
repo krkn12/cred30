@@ -31,6 +31,8 @@ export interface AuthResponseDto {
     joinedAt: string;
     referralCode: string;
     isAdmin: boolean;
+    score: number;
+    cpf?: string;
   };
   token: string;
   isFirstUser?: boolean;

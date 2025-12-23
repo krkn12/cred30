@@ -9,7 +9,7 @@ export class AuthenticateUseCase {
   constructor(
     private readonly userRepository: UserRepositoryInterface,
     private readonly jwtSecret: string
-  ) {}
+  ) { }
 
   async execute(data: LoginDto): Promise<AuthResponseDto> {
     // Buscar usuário no banco
@@ -19,7 +19,7 @@ export class AuthenticateUseCase {
     }
 
     // Verificar senha
-    const isPasswordValid = user.password 
+    const isPasswordValid = user.password
       ? await bcrypt.compare(data.password, user.password)
       : data.password === user.password;
 
@@ -32,10 +32,10 @@ export class AuthenticateUseCase {
 
     // Gerar token JWT
     const token = jwt.sign(
-      { 
-        userId: user.id, 
+      {
+        userId: user.id,
         isAdmin: user.isAdmin,
-        email: user.email 
+        email: user.email
       },
       this.jwtSecret,
       { expiresIn: '7d' }
@@ -51,6 +51,8 @@ export class AuthenticateUseCase {
         joinedAt: user.createdAt.toISOString(),
         referralCode: user.referralCode,
         isAdmin: user.isAdmin,
+        score: user.score,
+        cpf: user.cpf,
       },
       token,
     };
