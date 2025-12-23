@@ -229,7 +229,12 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify({ cpf }),
     });
-    return response.data!;
+
+    if (!response.success && response.message) {
+      throw new Error(response.message);
+    }
+
+    return response.data || { success: true, message: 'CPF atualizado com sucesso!' };
   }
 
   // Método para obter perfil do usuário
