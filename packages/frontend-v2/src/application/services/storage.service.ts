@@ -16,7 +16,7 @@ const convertApiUserToUser = (apiUser: any): User => {
     joinedAt: apiUser.joinedAt,
     referralCode: apiUser.referralCode,
     isAdmin: apiUser.isAdmin || false,
-    score: apiUser.score || 300,
+    score: apiUser.score ?? 0,
     twoFactorEnabled: apiUser.twoFactorEnabled || false,
     cpf: apiUser.cpf || null, // CPF do usuário (obrigatório para saque)
   };
