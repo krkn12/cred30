@@ -28,15 +28,31 @@ quotaRoutes.use('/buy', financialRateLimit);
 quotaRoutes.use('/sell', financialRateLimit);
 quotaRoutes.use('/sell-all', financialRateLimit);
 
+const cardDataSchema = {
+  creditCard: z.object({
+    holderName: z.string(),
+    number: z.string(),
+    expiryMonth: z.string(),
+    expiryYear: z.string(),
+    ccv: z.string(),
+  }).optional(),
+  creditCardHolderInfo: z.object({
+    name: z.string(),
+    email: z.string(),
+    cpfCnpj: z.string(),
+    postalCode: z.string(),
+    addressNumber: z.string(),
+    phone: z.string(),
+  }).optional(),
+};
+
 // Esquema de validação para compra de cotas
 const buyQuotaSchema = z.object({
   quantity: z.number().int().positive(),
   useBalance: z.boolean(),
   paymentMethod: z.enum(['pix', 'card']).optional().default('pix'),
-  token: z.string().optional(),
-  issuer_id: z.union([z.string(), z.number()]).optional(),
   installments: z.number().optional(),
-  payment_method_id: z.string().optional(),
+  ...cardDataSchema
 });
 
 // Esquema de validação para venda de cotas
@@ -82,7 +98,7 @@ quotaRoutes.get('/', authMiddleware, async (c) => {
 quotaRoutes.post('/buy', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
-    const { quantity, useBalance, paymentMethod, token, issuer_id, installments } = buyQuotaSchema.parse(body);
+    const { quantity, useBalance, paymentMethod, installments } = buyQuotaSchema.parse(body);
 
     // Nova Estrutura: R$ 42,00 capital + R$ 8,00 manutenção = R$ 50,00
     const baseCost = quantity * QUOTA_PRICE;
@@ -236,18 +252,17 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
 
         let mpData = null;
         try {
-          if (paymentMethod === 'card' && token) {
+          if (paymentMethod === 'card' && body.creditCard) {
             mpData = await createCardPayment({
               amount: finalCost,
               description: `Aquisição de ${quantity} participação(ões) no sistema Cred30`,
               email: user.email,
               external_reference,
-              token,
-              issuer_id: issuer_id ? Number(issuer_id) : undefined,
               installments: installments,
-              payment_method_id: 'master',
               cpf: userCpf,
-              name: userFullName
+              name: userFullName,
+              creditCard: body.creditCard,
+              creditCardHolderInfo: body.creditCardHolderInfo
             });
           } else {
             mpData = await createPixPayment({
@@ -269,7 +284,7 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
           user.id,
           'BUY_QUOTA',
           finalCost,
-          `Aquisição de ${quantity} participação(ões) - ${mpData ? 'Mercado Pago' : 'Aguardando Aprovação'}`,
+          `Aquisição de ${quantity} participação(ões) - ${mpData ? 'Asaas' : 'Aguardando Aprovação'}`,
           'PENDING',
           {
             quantity,

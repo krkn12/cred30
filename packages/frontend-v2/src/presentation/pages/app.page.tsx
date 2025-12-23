@@ -575,6 +575,7 @@ export default function App() {
                 onClose={() => setCardModalData(prev => ({ ...prev, isOpen: false }))}
                 amount={cardModalData.amount}
                 userEmail={state.currentUser?.email || ''}
+                currentUser={state.currentUser}
                 onSubmit={async (formData) => {
                   try {
                     if (cardModalData.type === 'QUOTA') {

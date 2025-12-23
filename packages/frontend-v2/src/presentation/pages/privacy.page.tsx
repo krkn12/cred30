@@ -36,7 +36,7 @@ const PrivacyPage = () => {
                         <Lock size={14} /> Conforme LGPD
                     </div>
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-3 sm:mb-4 tracking-tight">Política de Privacidade</h1>
-                    <p className="text-zinc-400 text-sm sm:text-lg">Última atualização: 20 de Dezembro de 2024</p>
+                    <p className="text-zinc-400 text-sm sm:text-lg">Última atualização: 23 de Dezembro de 2025</p>
                 </div>
 
                 <div className="space-y-8 sm:space-y-12">
@@ -118,7 +118,7 @@ const PrivacyPage = () => {
                         </p>
                         <ul className="text-zinc-400 text-xs sm:text-sm space-y-2 ml-2">
                             <li><strong className="text-white">• Entre Membros (Mercado):</strong> Ao realizar uma compra ou venda no Mercado Cred30, seu nome e status do pedido serão compartilhados com a outra parte da transação para viabilizar a entrega e comunicação.</li>
-                            <li><strong className="text-white">• Gateway de Pagamento:</strong> Dados necessários para processar pagamentos são transmitidos ao Mercado Pago de forma segura.</li>
+                            <li><strong className="text-white">• Gateway de Pagamento:</strong> Dados necessários para processar pagamentos são transmitidos ao Asaas de forma segura.</li>
                             <li><strong className="text-white">• Parceiros de Publicidade:</strong> Informações técnicas não identificáveis (como IP e tipo de dispositivo) podem ser compartilhadas com parceiros de mídia para exibição de anúncios.</li>
                             <li><strong className="text-white">• Obrigação Legal:</strong> Mediante ordem judicial ou requisição de autoridades competentes.</li>
                         </ul>

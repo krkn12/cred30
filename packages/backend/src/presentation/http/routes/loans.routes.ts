@@ -18,6 +18,24 @@ const createLoanSchema = z.object({
   installments: z.number().int().min(1).max(12),
 });
 
+const cardDataSchema = {
+  creditCard: z.object({
+    holderName: z.string(),
+    number: z.string(),
+    expiryMonth: z.string(),
+    expiryYear: z.string(),
+    ccv: z.string(),
+  }).optional(),
+  creditCardHolderInfo: z.object({
+    name: z.string(),
+    email: z.string(),
+    cpfCnpj: z.string(),
+    postalCode: z.string(),
+    addressNumber: z.string(),
+    phone: z.string(),
+  }).optional(),
+};
+
 // Esquema de validação para pagamento de empréstimo
 const repayLoanSchema = z.object({
   loanId: z.union([z.string(), z.number()]).transform((val) => {
@@ -28,10 +46,8 @@ const repayLoanSchema = z.object({
   }),
   useBalance: z.boolean(),
   paymentMethod: z.enum(['pix', 'card']).optional().default('pix'),
-  token: z.string().optional(),
-  issuer_id: z.union([z.string(), z.number()]).optional(),
   installments: z.number().optional(),
-  payment_method_id: z.string().optional(),
+  ...cardDataSchema
 });
 
 // Esquema de validação para pagamento parcelado
@@ -45,10 +61,8 @@ const repayInstallmentSchema = z.object({
   installmentAmount: z.number().positive(),
   useBalance: z.boolean(),
   paymentMethod: z.enum(['pix', 'card']).optional().default('pix'),
-  token: z.string().optional(),
-  issuer_id: z.union([z.string(), z.number()]).optional(),
   installments: z.number().optional(),
-  payment_method_id: z.string().optional(),
+  ...cardDataSchema
 });
 
 // Listar empréstimos do usuário
@@ -276,7 +290,7 @@ loanRoutes.post('/request', authMiddleware, async (c) => {
 loanRoutes.post('/repay', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
-    const { loanId, useBalance, paymentMethod, token, issuer_id, installments } = repayLoanSchema.parse(body);
+    const { loanId, useBalance, paymentMethod, installments } = repayLoanSchema.parse(body);
 
     const user = c.get('user');
     const pool = getDbPool(c);
@@ -341,21 +355,20 @@ loanRoutes.post('/repay', authMiddleware, async (c) => {
       ['PAYMENT_PENDING', loanId]
     );
 
-    // Se for externo (não usa saldo), gerar pagamento MP
-    let mpData = null;
+    let mpData: any = null;
     if (!useBalance) {
       try {
-        if (paymentMethod === 'card' && token) {
+        if (paymentMethod === 'card' && body.creditCard) {
           mpData = await createCardPayment({
             amount: finalCost,
             description: `Reposição total de apoio no sistema Cred30`,
             email: user.email,
             external_reference: `REPAY_${loanId}_${Date.now()}`,
-            token,
-            issuer_id: issuer_id ? Number(issuer_id) : undefined,
             installments: installments,
             cpf: userCpf,
-            name: userName
+            name: userName,
+            creditCard: body.creditCard,
+            creditCardHolderInfo: body.creditCardHolderInfo
           });
         } else {
           mpData = await createPixPayment({
@@ -380,7 +393,7 @@ loanRoutes.post('/repay', authMiddleware, async (c) => {
       [
         user.id,
         finalCost,
-        `Reposição de Apoio Mútuo (${useBalance ? 'Saldo' : (mpData ? 'Mercado Pago' : 'Externo')}) - Aguardando Confirmação`,
+        `Reposição de Apoio Mútuo (${useBalance ? 'Saldo' : (mpData ? 'Asaas' : 'Externo')}) - Aguardando Confirmação`,
         JSON.stringify({
           loanId,
           useBalance,
@@ -425,7 +438,7 @@ loanRoutes.post('/repay', authMiddleware, async (c) => {
 loanRoutes.post('/repay-installment', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
-    const { loanId, installmentAmount, useBalance, paymentMethod, token, issuer_id, installments } = repayInstallmentSchema.parse(body);
+    const { loanId, installmentAmount, useBalance, paymentMethod, installments } = repayInstallmentSchema.parse(body);
 
     const user = c.get('user');
     const pool = getDbPool(c);
@@ -476,20 +489,20 @@ loanRoutes.post('/repay-installment', authMiddleware, async (c) => {
     const newPaidAmount = paidAmount + installmentAmount;
 
     // Se for pagamento via PIX/Cartão (não usa saldo), criar transação PENDENTE e NÃO registrar parcela ainda
+    let mpData: any = null;
     if (!useBalance) {
-      let mpData = null;
       try {
-        if (paymentMethod === 'card' && token) {
+        if (paymentMethod === 'card' && body.creditCard) {
           mpData = await createCardPayment({
             amount: finalInstallmentCost,
             description: `Pagamento de parcela de apoio no Cred30`,
             email: user.email,
             external_reference: `INSTALLMENT_${loanId}_${Date.now()}`,
-            token,
-            issuer_id: issuer_id ? Number(issuer_id) : undefined,
             installments: installments,
             cpf: userCpf,
-            name: userName
+            name: userName,
+            creditCard: body.creditCard,
+            creditCardHolderInfo: body.creditCardHolderInfo
           });
         } else {
           mpData = await createPixPayment({
@@ -512,7 +525,7 @@ loanRoutes.post('/repay-installment', authMiddleware, async (c) => {
         [
           user.id,
           finalInstallmentCost,
-          `Pagamento parcela (${mpData ? 'Mercado Pago' : 'Externo'}) - Aguardando Confirmação`,
+          `Pagamento parcela (${mpData ? 'Asaas' : 'Externo'}) - Aguardando Confirmação`,
           JSON.stringify({
             loanId,
             installmentAmount,
