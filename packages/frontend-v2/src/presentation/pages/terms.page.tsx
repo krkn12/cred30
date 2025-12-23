@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ScrollText, ShieldCheck, Scale, Users, Gavel, AlertTriangle, CreditCard, ClockIcon, FileText, Zap, ShoppingBag, Tag, Lock } from 'lucide-react';
+import { ArrowLeft, ScrollText, ShieldCheck, Scale, Users, Gavel, AlertTriangle, CreditCard, ClockIcon, FileText, Zap, ShoppingBag, Tag, Lock, CheckCircle2 } from 'lucide-react';
 
 const TermsPage = () => {
     const navigate = useNavigate();
@@ -37,7 +37,7 @@ const TermsPage = () => {
                     </div>
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-3 sm:mb-4 tracking-tight">Regulamento Interno</h1>
                     <p className="text-zinc-400 text-sm sm:text-base leading-relaxed max-w-2xl">
-                        A Cred30 NÃO é um banco, NÃO é uma fintech e NÃO é uma instituição financeira. 
+                        A Cred30 NÃO é um banco, NÃO é uma fintech e NÃO é uma instituição financeira.
                         Este software gere um <strong>Clube de Benefícios Privado</strong> baseado em ajuda mútua e troca comunitária.
                     </p>
                 </div>
