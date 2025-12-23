@@ -70,7 +70,7 @@ const PrivacyPage = () => {
                                 <h3 className="font-bold text-white text-sm mb-2">Dados de Uso</h3>
                                 <ul className="text-zinc-400 text-xs space-y-1">
                                     <li>• Histórico de transações</li>
-                                    <li>• Score de crédito interno</li>
+                                    <li>• Pontuação de engajamento</li>
                                     <li>• Logs de acesso (IP, data/hora)</li>
                                     <li>• Preferências de configuração</li>
                                 </ul>
@@ -99,7 +99,7 @@ const PrivacyPage = () => {
                             </div>
                             <div className="bg-zinc-900/50 p-5 sm:p-6 rounded-xl sm:rounded-2xl border border-white/5">
                                 <h3 className="font-bold mb-2 text-white">Autenticação 2FA</h3>
-                                <p className="text-zinc-400 text-xs sm:text-sm">Operações sensíveis (saques, alteração de dados) exigem autenticação de dois fatores via app autenticador (TOTP).</p>
+                                <p className="text-zinc-400 text-xs sm:text-sm">Operações sensíveis (retiradas, alteração de dados) exigem autenticação de dois fatores via app autenticador (TOTP).</p>
                             </div>
                             <div className="bg-zinc-900/50 p-5 sm:p-6 rounded-xl sm:rounded-2xl border border-white/5">
                                 <h3 className="font-bold mb-2 text-white">Backups</h3>
@@ -127,7 +127,7 @@ const PrivacyPage = () => {
                     {/* Seção 4 */}
                     <section className="bg-zinc-900/30 border border-white/5 p-5 sm:p-8 rounded-2xl sm:rounded-3xl">
                         <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-3 text-purple-400">
-                            <Fingerprint size={22} /> 4. Score de Crédito
+                            <Fingerprint size={22} /> 4. Pontuação Interna
                         </h2>
                         <p className="text-zinc-300 text-sm sm:text-base leading-relaxed mb-4">
                             O score é uma pontuação interna baseada no seu comportamento na plataforma. Ele é <strong className="text-white">privado</strong> e utilizado exclusivamente para:
@@ -139,7 +139,7 @@ const PrivacyPage = () => {
                         </ul>
                         <div className="mt-4 bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl">
                             <p className="text-blue-300 text-xs sm:text-sm">
-                                Seu score não é compartilhado com bureaus de crédito externos (SPC, Serasa, etc.).
+                                Sua pontuação não é compartilhada com bureaus de crédito externos (SPC, Serasa, etc.).
                             </p>
                         </div>
                     </section>

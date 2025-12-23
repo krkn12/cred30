@@ -31,7 +31,7 @@ export const AdBanner = ({ type, title, description, actionText }: AdBannerProps
                     <div>
                         <div className="flex items-center gap-2 mb-0.5">
                             <h4 className="text-sm font-bold text-white group-hover:text-primary-400 transition-colors">
-                                {title || 'Oferta Exclusiva Cred30'}
+                                {title || 'Oferta de Parceiro'}
                             </h4>
                             <span className="text-[8px] bg-zinc-800 text-zinc-500 px-1 rounded border border-zinc-700">EXTERNO</span>
                         </div>
@@ -74,10 +74,10 @@ export const AdBanner = ({ type, title, description, actionText }: AdBannerProps
                     </button>
                 </div>
                 <div className="p-4">
-                    <h4 className="text-sm font-bold text-white mb-1">{title || 'Cartão com Limite Imediato'}</h4>
-                    <p className="text-xs text-zinc-500 mb-3">{description || 'Aproveite as melhores taxas do mercado parceiro.'}</p>
+                    <h4 className="text-sm font-bold text-white mb-1">{title || 'Oportunidades Parceiras'}</h4>
+                    <p className="text-xs text-zinc-500 mb-3">{description || 'Explore benefícios de nossos parceiros.'}</p>
                     <button className="w-full py-2 bg-zinc-800 group-hover:bg-primary-500 group-hover:text-black rounded-lg text-xs font-bold transition-all">
-                        {actionText || 'SAIBA MAIS'}
+                        {actionText || 'VER MAIS'}
                     </button>
                     <p className="text-[7px] text-zinc-700 mt-2 text-center uppercase tracking-tighter leading-none">
                         A Cred30 não garante e não se responsabiliza pelo conteúdo, ofertas ou segurança de links externos.
@@ -98,7 +98,7 @@ export const AdBanner = ({ type, title, description, actionText }: AdBannerProps
             </div>
             <div className="flex-1">
                 <p className="text-[10px] text-zinc-500 leading-tight">
-                    {description || 'Dica: Conheça os cartões parceiros com aprovação facilitada.'}
+                    {description || 'Dica: Confira benefícios selecionados de parceiros.'}
                     <span className="ml-1 opacity-50 italic">(Parceiro Externo)</span>
                 </p>
             </div>

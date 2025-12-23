@@ -126,7 +126,7 @@ const TermsPage = () => {
                             </li>
                             <li className="flex gap-3">
                                 <CheckCircle2 size={16} className="text-emerald-500 mt-1 shrink-0" />
-                                <span className="text-zinc-300 text-sm italic">Para resgates acima de R$ 2.000,00, o clube poderá solicitar comprovação de origem dos recursos ou identificação adicional para proteção do associado ostensivo.</span>
+                                <span className="text-zinc-300 text-sm italic">Para retiradas acima de R$ 2.000,00, o clube poderá solicitar comprovação de origem dos recursos ou identificação adicional para proteção do associado ostensivo.</span>
                             </li>
                             <li className="flex gap-3">
                                 <CheckCircle2 size={16} className="text-emerald-500 mt-1 shrink-0" />
@@ -142,7 +142,7 @@ const TermsPage = () => {
                             Este regulamento tem força de CONTRATO SOCIAL PRIVADO entre as partes.
                         </p>
                         <p className="text-[9px] text-zinc-700 max-w-lg mx-auto leading-relaxed">
-                            Foro eleito: Brasil. O uso continuado da plataforma implica na assinatura digital irrevogável deste estatuto. Qualquer dúvida deve ser sanada via suporte administrativo antes da realização de qualquer aporte.
+                            Foro eleito: Brasil. O uso continuado da plataforma implica na assinatura digital irrevogável deste estatuto. Qualquer dúvida deve ser sanada via suporte administrativo antes da realização de qualquer contribuição.
                         </p>
 
                     </section>
