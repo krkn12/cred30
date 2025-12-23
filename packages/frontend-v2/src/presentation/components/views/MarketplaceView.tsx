@@ -57,9 +57,12 @@ const NativeAdCard = ({ title, price, category, img }: any) => (
 );
 
 export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: MarketplaceViewProps) => {
-    const [view, setView] = useState<'browse' | 'create' | 'my-orders' | 'details' | 'offline-sync'>('browse');
+    const [view, setView] = useState<'browse' | 'create' | 'my-orders' | 'details' | 'offline-sync' | 'missions'>('browse');
     const [listings, setListings] = useState<any[]>([]);
     const [myOrders, setMyOrders] = useState<any[]>([]);
+    const [missions, setMissions] = useState<any[]>([]);
+    const [deliveryOption, setDeliveryOption] = useState<'SELF_PICKUP' | 'COURIER_REQUEST'>('SELF_PICKUP');
+    const [offeredFee, setOfferedFee] = useState<string>('5.00');
     const [isLoading, setIsLoading] = useState(true);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -97,6 +100,11 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 if (response.success) {
                     const data = response.data;
                     setMyOrders(Array.isArray(data) ? data : (data?.orders || []));
+                }
+            } else if (view === 'missions') {
+                const response = await apiService.get<any>('/marketplace/logistic/missions');
+                if (response.success) {
+                    setMissions(response.data);
                 }
             }
         } catch (error) {
@@ -229,6 +237,15 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                     className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${view === 'my-orders' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
                 >
                     Meus Pedidos
+                </button>
+                <button
+                    onClick={() => setView('missions')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${view === 'missions' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
+                >
+                    <div className="flex items-center justify-center gap-1">
+                        <Truck size={10} className={view === 'missions' ? 'text-primary-400' : 'text-zinc-500'} />
+                        Missões
+                    </div>
                 </button>
                 <button
                     onClick={() => setView('offline-sync')}
@@ -560,6 +577,83 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 </div>
             )}
 
+            {view === 'missions' && (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                    <div className="bg-gradient-to-br from-indigo-900/40 to-indigo-600/10 border border-indigo-500/20 rounded-3xl p-6 relative overflow-hidden">
+                        <div className="relative z-10">
+                            <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Mural de Missões</h3>
+                            <p className="text-sm text-zinc-400 max-w-sm">
+                                Ganhe dinheiro extra ajudando outros membros com a logística. Aceite missões que cruzam com seu caminho.
+                            </p>
+                        </div>
+                        <Truck className="absolute -right-4 -bottom-4 text-indigo-500/20 w-32 h-32 rotate-12" />
+                    </div>
+
+                    {missions.length === 0 ? (
+                        <div className="py-20 text-center bg-zinc-900/50 border border-zinc-800 rounded-3xl">
+                            <Truck size={48} className="text-zinc-800 mx-auto mb-4" />
+                            <p className="text-zinc-500 text-sm">Nenhuma missão de logística disponível no momento.</p>
+                            <p className="text-[10px] text-zinc-600 mt-2">Novas oportunidades aparecem quando membros solicitam apoio.</p>
+                        </div>
+                    ) : (
+                        <div className="grid gap-4">
+                            {missions.map(mission => (
+                                <div key={mission.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex flex-col md:flex-row gap-5 items-start md:items-center group hover:border-indigo-500/40 transition-all">
+                                    <div className="w-16 h-16 bg-zinc-950 rounded-xl overflow-hidden shrink-0 border border-zinc-800">
+                                        <img src={mission.image_url} alt={mission.item_title} className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-[10px] font-black bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded uppercase tracking-widest">TRANSPORTE</span>
+                                            <span className="text-[10px] text-zinc-500 font-bold uppercase">• {new Date(mission.created_at).toLocaleDateString()}</span>
+                                        </div>
+                                        <h4 className="font-bold text-white text-base">{mission.item_title}</h4>
+                                        <p className="text-xs text-zinc-400 mt-1 flex items-center gap-1">
+                                            <span className="text-zinc-500">De:</span> {mission.seller_name.split(' ')[0]} <ArrowLeft size={10} className="rotate-180" /> <span className="text-zinc-500">Para:</span> {mission.buyer_name.split(' ')[0]}
+                                        </p>
+                                        <p className="text-xs text-zinc-500 mt-1">
+                                            Local: <strong>{mission.delivery_address}</strong>
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-2 w-full md:w-auto mt-2 md:mt-0 pt-4 md:pt-0 border-t md:border-0 border-zinc-800">
+                                        <div className="text-right">
+                                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Recompensa</p>
+                                            <p className="text-xl font-black text-emerald-400">{formatCurrency(parseFloat(mission.delivery_fee))}</p>
+                                        </div>
+                                        <button
+                                            onClick={async () => {
+                                                setConfirmData({
+                                                    isOpen: true,
+                                                    title: 'Aceitar Missão?',
+                                                    message: 'Você se compromete a retirar o produto com o vendedor e entregar ao comprador. Ao aceitar, enviaremos o código de coleta.',
+                                                    confirmText: 'ACEITAR MISSÃO',
+                                                    type: 'info',
+                                                    onConfirm: async () => {
+                                                        try {
+                                                            const res = await apiService.post<any>(`/marketplace/logistic/mission/${mission.id}/accept`, {});
+                                                            if (res.success) {
+                                                                onSuccess('Missão Aceita!', `Código de Coleta: ${res.data.pickupCode}. Mostre ao vendedor.`);
+                                                                setConfirmData(null);
+                                                                fetchData(); // refresh
+                                                            }
+                                                        } catch (err: any) {
+                                                            onError('Erro', err.message);
+                                                        }
+                                                    }
+                                                });
+                                            }}
+                                            className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3 px-6 rounded-xl transition shadow-lg shadow-indigo-600/20 text-xs uppercase tracking-widest"
+                                        >
+                                            Aceitar
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {view === 'offline-sync' && (
                 <div className="space-y-6 animate-in fade-in duration-300">
                     <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center space-y-4">
@@ -654,46 +748,111 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl">
                                     <div className="flex items-center gap-2 mb-1">
                                         <div className="p-1.5 bg-primary-500/10 rounded-lg text-primary-400"><Truck size={16} /></div>
-                                        <span className="text-[10px] font-black text-zinc-300 uppercase">Entrega</span>
+                                        <span className="text-[10px] font-black text-zinc-300 uppercase">Logística</span>
                                     </div>
-                                    <p className="text-[10px] text-zinc-500 leading-tight">Combinar diretamente com o vendedor.</p>
+                                    <p className="text-[10px] text-zinc-500 leading-tight">Retirada ou Apoio Colaborativo (Sem Vínculo Empregatício).</p>
                                 </div>
                             </div>
 
                             <div className="sticky bottom-6 mt-12 bg-black border border-zinc-800 p-4 rounded-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1">
-                                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Preço Final</p>
-                                        <p className="text-xl font-black text-white">{formatCurrency(parseFloat(selectedItem.price))}</p>
-                                    </div>
-                                    <button
-                                        className="flex-[2] bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition shadow-lg shadow-primary-500/20 flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
-                                        onClick={() => {
-                                            if (!navigator.onLine) {
-                                                generateOfflineVoucher(selectedItem);
-                                            } else {
-                                                onSuccess('Interesse Registrado', 'O vendedor foi notificado sobre seu interesse!');
-                                            }
-                                        }}
-                                    >
-                                        {!navigator.onLine ? 'GERAR VOUCHER OFFLINE' : (selectedItem.type === 'AFFILIATE' ? 'Ver Oferta Parceira' : 'Comprar Agora')}
-                                        <ChevronRight size={18} />
-                                    </button>
+                                <div className="flex-1">
+                                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Preço Final</p>
+                                    <p className="text-xl font-black text-white">{formatCurrency(parseFloat(selectedItem.price) + (deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee || '0') : 0))}</p>
                                 </div>
+                                <button
+                                    className="flex-[2] bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition shadow-lg shadow-primary-500/20 flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
+                                    onClick={() => {
+                                        if (!navigator.onLine) {
+                                            generateOfflineVoucher(selectedItem);
+                                            return;
+                                        }
 
-                                {offlineVoucher && (
-                                    <div className="mt-6 bg-primary-500/10 border border-primary-500/30 p-6 rounded-3xl animate-in zoom-in duration-300">
-                                        <div className="text-center space-y-2">
-                                            <p className="text-[10px] text-primary-400 font-black uppercase tracking-widest">Código de Pagamento Offline</p>
-                                            <p className="text-4xl font-black text-white font-mono tracking-tighter">{offlineVoucher.code}</p>
-                                            <p className="text-[11px] text-zinc-400 leading-tight">O vendedor deve digitar este código no "Modo Interior" do App dele para validar sua compra.</p>
-                                        </div>
+                                        // Se for afiliado, abre link
+                                        if (selectedItem.type === 'AFFILIATE') {
+                                            window.open(selectedItem.affiliate_url, '_blank');
+                                            onSuccess('Redirecionando', 'Aproveite a oferta do parceiro!');
+                                            return;
+                                        }
+
+                                        // Confirmação de Compra com Delivery
+                                        setConfirmData({
+                                            isOpen: true,
+                                            title: deliveryOption === 'COURIER_REQUEST' ? 'Confirmar Compra + Entrega' : 'Confirmar Compra',
+                                            message: `Deseja comprar "${selectedItem.title}" por ${formatCurrency(parseFloat(selectedItem.price))} ${deliveryOption === 'COURIER_REQUEST' ? `+ R$ ${offeredFee} de ajuda de custo?` : '?'}`,
+                                            confirmText: 'CONFIRMAR PAGAMENTO',
+                                            type: 'success',
+                                            onConfirm: async () => {
+                                                try {
+                                                    const res = await apiService.post<any>('/marketplace/buy', {
+                                                        listingId: selectedItem.id,
+                                                        deliveryType: deliveryOption,
+                                                        offeredDeliveryFee: parseFloat(offeredFee),
+                                                        deliveryAddress: 'Endereço Principal', // TODO: Pegar do user ou input
+                                                        contactPhone: '000000000'
+                                                    });
+                                                    if (res.success) {
+                                                        onSuccess('Sucesso!', 'Compra realizada. Veja detalhes em Seus Pedidos.');
+                                                        setView('my-orders');
+                                                        setConfirmData(null);
+                                                    }
+                                                } catch (err: any) {
+                                                    onError('Erro', err.message);
+                                                }
+                                            }
+                                        });
+                                    }}
+                                >
+                                    {!navigator.onLine ? 'GERAR VOUCHER OFFLINE' : (selectedItem.type === 'AFFILIATE' ? 'Ver Oferta Parceira' : 'Comprar Agora')}
+                                    <ChevronRight size={18} />
+                                </button>
+                            </div>
+
+                            {selectedItem.type !== 'AFFILIATE' && (
+                                <div className="mt-4 pt-4 border-t border-zinc-800 space-y-3">
+                                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Opções de Logística</p>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setDeliveryOption('SELF_PICKUP')}
+                                            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition ${deliveryOption === 'SELF_PICKUP' ? 'bg-zinc-800 border-zinc-600 text-white' : 'bg-transparent border-zinc-800 text-zinc-500'}`}
+                                        >
+                                            Vou Retirar
+                                        </button>
+                                        <button
+                                            onClick={() => setDeliveryOption('COURIER_REQUEST')}
+                                            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition ${deliveryOption === 'COURIER_REQUEST' ? 'bg-indigo-900/40 border-indigo-500/50 text-indigo-300' : 'bg-transparent border-zinc-800 text-zinc-500'}`}
+                                        >
+                                            Solicitar Colaborador
+                                        </button>
                                     </div>
-                                )}
-                                <div className="flex items-center justify-center gap-4 mt-4 text-[10px] text-zinc-500 font-bold uppercase tracking-widest border-t border-zinc-800 pt-4">
-                                    <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-500" /> Transação Segura</span>
-                                    <span className="flex items-center gap-1"><Truck size={12} /> Entrega Combinada</span>
+
+                                    {deliveryOption === 'COURIER_REQUEST' && (
+                                        <div className="animate-in slide-in-from-top duration-300">
+                                            <label className="text-[9px] text-zinc-500 font-bold uppercase block mb-1">Oferta de Ajuda de Custo (R$)</label>
+                                            <input
+                                                type="number"
+                                                value={offeredFee}
+                                                onChange={(e) => setOfferedFee(e.target.value)}
+                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-white text-sm focus:border-indigo-500 outline-none"
+                                                placeholder="Valor para o entregador (Ex: 10.00)"
+                                            />
+                                            <p className="text-[9px] text-zinc-600 mt-1 italic">Este valor será pago integralmente ao membro que realizar a entrega.</p>
+                                        </div>
+                                    )}
                                 </div>
+                            )}
+
+                            {offlineVoucher && (
+                                <div className="mt-6 bg-primary-500/10 border border-primary-500/30 p-6 rounded-3xl animate-in zoom-in duration-300">
+                                    <div className="text-center space-y-2">
+                                        <p className="text-[10px] text-primary-400 font-black uppercase tracking-widest">Código de Pagamento Offline</p>
+                                        <p className="text-4xl font-black text-white font-mono tracking-tighter">{offlineVoucher.code}</p>
+                                        <p className="text-[11px] text-zinc-400 leading-tight">O vendedor deve digitar este código no "Modo Interior" do App dele para validar sua compra.</p>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="flex items-center justify-center gap-4 mt-4 text-[10px] text-zinc-500 font-bold uppercase tracking-widest border-t border-zinc-800 pt-4">
+                                <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-500" /> Transação Segura</span>
+                                <span className="flex items-center gap-1"><Truck size={12} /> Entrega Combinada</span>
                             </div>
                         </div>
                     </div>

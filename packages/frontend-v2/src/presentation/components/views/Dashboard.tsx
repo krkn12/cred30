@@ -203,7 +203,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                                 <Zap size={20} className="text-yellow-500 fill-yellow-500" />
                                 Central de Prêmios
                             </h3>
-                            <p className="text-xs text-zinc-400">Cumpra tarefas e ganhe Score para aumentar seu limite</p>
+                            <p className="text-xs text-zinc-400">Cumpra tarefas e ganhe Score para aumentar seu nível e reputação</p>
                         </div>
                     </div>
 
@@ -382,7 +382,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                 </div>
 
                 {/* Banner de Adsterra na Dashboard */}
-                <AdBanner type="NATIVE" title="Cartão com Limite Alto" description="Aproveite ofertas de parceiros Cred30." actionText="VER AGORA" />
+                <AdBanner type="NATIVE" title="Oportunidades Parceiras" description="Explore benefícios de nossos parceiros." actionText="VER AGORA" />
             </div>
 
             {/* Recent Transactions (Extrato) */}

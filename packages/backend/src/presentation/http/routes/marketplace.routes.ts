@@ -24,6 +24,8 @@ const buyListingSchema = z.object({
     deliveryAddress: z.string().min(10, 'Endereço muito curto').optional(),
     contactPhone: z.string().min(8, 'Telefone inválido').optional(),
     offlineToken: z.string().optional(),
+    deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST']).optional().default('SELF_PICKUP'),
+    offeredDeliveryFee: z.number().min(0).optional().default(0),
 });
 
 const buyOnCreditSchema = z.object({
@@ -31,6 +33,8 @@ const buyOnCreditSchema = z.object({
     installments: z.number().int().min(1).max(MARKET_CREDIT_MAX_INSTALLMENTS),
     deliveryAddress: z.string().min(10, 'Endereço muito curto').optional(),
     contactPhone: z.string().min(8, 'Telefone inválido').optional(),
+    deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST']).optional().default('SELF_PICKUP'),
+    offeredDeliveryFee: z.number().min(0).optional().default(0),
 });
 
 /**
@@ -164,10 +168,21 @@ marketplaceRoutes.post('/buy-on-credit', authMiddleware, async (c) => {
 
             await client.query('UPDATE marketplace_listings SET status = $1 WHERE id = $2', ['SOLD', listingId]);
 
+            const deliveryStatus = buyOnCreditSchema.parse(body).deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE';
+            const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            // Note: For credit, we don't charge the fee upfront from balance because it's financed, 
+            // BUT usually delivery fee is paid upfront or included in loan used. 
+            // For simplicity here: we include fee in the loan amount if requested.
+
+            // Recalculate if fee included
+            const fee = buyOnCreditSchema.parse(body).offeredDeliveryFee;
+            const totalWithFee = price + fee;
+            const totalAmountWithInterest = totalWithFee * (1 + totalInterestRate);
+
             const orderResult = await client.query(
-                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, contact_phone)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-                [listingId, user.id, listing.seller_id, price, price * MARKETPLACE_ESCROW_FEE_RATE, price * (1 - MARKETPLACE_ESCROW_FEE_RATE), 'WAITING_SHIPPING', 'CRED30_CREDIT', deliveryAddress, contactPhone]
+                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, contact_phone, delivery_status, delivery_fee, pickup_code)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
+                [listingId, user.id, listing.seller_id, totalWithFee, price * MARKETPLACE_ESCROW_FEE_RATE, price * (1 - MARKETPLACE_ESCROW_FEE_RATE), 'WAITING_SHIPPING', 'CRED30_CREDIT', deliveryAddress, contactPhone, deliveryStatus, fee, pickupCode]
             );
             const orderId = orderResult.rows[0].id;
 
@@ -209,16 +224,22 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c) => {
         const sellerAmount = price - fee;
 
         const result = await executeInTransaction(pool, async (client) => {
-            const balanceCheck = await lockUserBalance(client, user.id, price);
-            if (!balanceCheck.success) throw new Error('Saldo insuficiente.');
+            const { deliveryType, offeredDeliveryFee } = buyListingSchema.parse(body);
+            const totalToPay = price + offeredDeliveryFee;
 
-            await updateUserBalance(client, user.id, price, 'debit');
+            const balanceCheck = await lockUserBalance(client, user.id, totalToPay);
+            if (!balanceCheck.success) throw new Error('Saldo insuficiente (Preço + Entrega).');
+
+            await updateUserBalance(client, user.id, totalToPay, 'debit');
             await client.query('UPDATE marketplace_listings SET status = $1 WHERE id = $2', ['SOLD', listingId]);
 
+            const deliveryStatus = deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE';
+            const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
             const orderResult = await client.query(
-                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, contact_phone, offline_token)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
-                [listingId, user.id, listing.seller_id, price, fee, sellerAmount, 'WAITING_SHIPPING', 'BALANCE', deliveryAddress, contactPhone, offlineToken]
+                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, contact_phone, offline_token, delivery_status, delivery_fee, pickup_code)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
+                [listingId, user.id, listing.seller_id, price, fee, sellerAmount, 'WAITING_SHIPPING', 'BALANCE', deliveryAddress, contactPhone, offlineToken, deliveryStatus, offeredDeliveryFee, pickupCode]
             );
             const orderId = orderResult.rows[0].id;
 
@@ -407,19 +428,39 @@ marketplaceRoutes.post('/order/:id/receive', authMiddleware, async (c) => {
         const result = await executeInTransaction(pool, async (client) => {
             // 1. Finalizar pedido
             await client.query(
-                'UPDATE marketplace_orders SET status = $1, updated_at = NOW() WHERE id = $2',
-                ['COMPLETED', orderId]
+                'UPDATE marketplace_orders SET status = $1, delivery_status = $2, updated_at = NOW() WHERE id = $3',
+                ['COMPLETED', 'DELIVERED', orderId]
             );
 
             // 2. Liberar saldo para o vendedor (valor líquido)
             const sellerAmount = parseFloat(order.seller_amount);
 
-            // Se foi no crediário, o dinheiro sai do caixa do sistema para o vendedor
+            // Verifica se tem taxa de entrega para pagar ao courier
+            const courierFee = parseFloat(order.delivery_fee || '0');
+            const courierId = order.courier_id;
+
+            // Se foi no crediário, o dinheiro sai do caixa do sistema para o vendedor + courier
             if (order.payment_method === 'CRED30_CREDIT') {
-                await client.query('UPDATE system_config SET system_balance = system_balance - $1', [order.amount]);
+                // Diminui do caixa do sistema o valor pago ao vendedor + taxa entrega
+                await client.query('UPDATE system_config SET system_balance = system_balance - $1', [order.amount]); // Amount inclui o delivery_fee se for financiado
             }
 
+            // Pagar Vendedor
             await updateUserBalance(client, order.seller_id, sellerAmount, 'credit');
+
+            // Pagar Courier (se houver)
+            if (courierId && courierFee > 0) {
+                await updateUserBalance(client, courierId, courierFee, 'credit');
+                await createTransaction(
+                    client,
+                    courierId,
+                    'LOGISTIC_REWARD',
+                    courierFee,
+                    `Entrega Realizada: ${order.title}`,
+                    'APPROVED',
+                    { orderId }
+                );
+            }
 
             // 3. Contabilizar a taxa de serviço (85% para cotistas / 15% Operacional)
             const feeAmount = parseFloat(order.fee_amount);
@@ -561,6 +602,82 @@ marketplaceRoutes.post('/boost', authMiddleware, async (c) => {
     } catch (error: any) {
         console.error('Error boosting listing:', error);
         return c.json({ success: false, message: error.message || 'Erro ao impulsionar anúncio' }, 500);
+    }
+});
+
+/**
+ * Logística Colaborativa ("Missões")
+ */
+marketplaceRoutes.get('/logistic/missions', authMiddleware, async (c) => {
+    try {
+        const user = c.get('user') as UserContext;
+        const pool = getDbPool(c);
+
+        const result = await pool.query(`
+            SELECT o.id, o.delivery_fee, o.delivery_address, o.created_at,
+                   l.title as item_title, l.image_url,
+                   u_seller.name as seller_name, u_buyer.name as buyer_name
+            FROM marketplace_orders o
+            JOIN marketplace_listings l ON o.listing_id = l.id
+            JOIN users u_seller ON o.seller_id = u_seller.id
+            JOIN users u_buyer ON o.buyer_id = u_buyer.id
+            WHERE o.delivery_status = 'AVAILABLE'
+            AND o.seller_id != $1 AND o.buyer_id != $1
+            ORDER BY o.delivery_fee DESC
+        `, [user.id]);
+
+        return c.json({ success: true, data: result.rows });
+    } catch (error) {
+        console.error('Error listing missions:', error);
+        return c.json({ success: false, message: 'Erro ao buscar missões' }, 500);
+    }
+});
+
+marketplaceRoutes.post('/logistic/mission/:id/accept', authMiddleware, async (c) => {
+    try {
+        const user = c.get('user') as UserContext;
+        const pool = getDbPool(c);
+        const orderId = c.req.param('id');
+
+        const result = await pool.query(
+            `UPDATE marketplace_orders 
+             SET delivery_status = 'ACCEPTED', courier_id = $1, updated_at = NOW()
+             WHERE id = $2 AND delivery_status = 'AVAILABLE'
+             RETURNING pickup_code`,
+            [user.id, orderId]
+        );
+
+        if (result.rows.length === 0) return c.json({ success: false, message: 'Missão não disponível.' }, 404);
+
+        return c.json({
+            success: true,
+            message: 'Missão aceita! Dirija-se ao vendedor.',
+            pickupCode: result.rows[0].pickup_code
+        });
+    } catch (error) {
+        return c.json({ success: false, message: 'Erro ao aceitar missão' }, 500);
+    }
+});
+
+marketplaceRoutes.post('/logistic/mission/:id/pickup', authMiddleware, async (c) => {
+    try {
+        const user = c.get('user') as UserContext;
+        const pool = getDbPool(c);
+        const orderId = c.req.param('id');
+        const { pickupCode } = await c.req.json();
+
+        const result = await pool.query(
+            `UPDATE marketplace_orders 
+             SET delivery_status = 'IN_TRANSIT', updated_at = NOW()
+             WHERE id = $1 AND courier_id = $2 AND pickup_code = $3 AND delivery_status = 'ACCEPTED'`,
+            [orderId, user.id, pickupCode]
+        );
+
+        if (result.rowCount === 0) return c.json({ success: false, message: 'Código inválido ou missão não encontrada.' }, 400);
+
+        return c.json({ success: true, message: 'Coleta confirmada! Inicie o trajeto.' });
+    } catch (error) {
+        return c.json({ success: false, message: 'Erro ao confirmar coleta' }, 500);
     }
 });
 

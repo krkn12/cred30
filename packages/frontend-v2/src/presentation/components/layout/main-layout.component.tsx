@@ -79,12 +79,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
 
   const navItems = [
     { id: 'dashboard', label: 'Início', icon: Home },
-    { id: 'marketplace', label: 'Mercado', icon: ShoppingBag },
-    { id: 'invest', label: 'Cotas', icon: TrendingUp },
-    { id: 'games', label: 'Jogos', icon: Gamepad2 },
-    { id: 'portfolio', label: 'Carteira', icon: PieChart },
-    { id: 'loans', label: 'Crédito Mútuo', icon: DollarSign },
-    { id: 'withdraw', label: 'Sacar', icon: ArrowUpFromLine },
+    { id: 'marketplace', label: 'Clube', icon: ShoppingBag },
+    { id: 'invest', label: 'Ativação', icon: TrendingUp },
+    { id: 'games', label: 'Diversão', icon: Gamepad2 },
+    { id: 'portfolio', label: 'Meus Ativos', icon: PieChart },
+    { id: 'loans', label: 'Apoio', icon: DollarSign },
+    { id: 'withdraw', label: 'Resgatar', icon: ArrowUpFromLine },
     { id: 'faq', label: 'Dúvidas', icon: HelpCircle },
   ];
 
