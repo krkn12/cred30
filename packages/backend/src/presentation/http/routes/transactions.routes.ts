@@ -6,6 +6,7 @@ import { Transaction } from '../../../domain/entities/transaction.entity';
 import { UserContext } from '../../../shared/types/hono.types';
 import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction } from '../../../domain/services/transaction.service';
 import { financialRateLimit } from '../middleware/rate-limit.middleware';
+import { createPayout, detectPixKeyType } from '../../../infrastructure/gateways/asaas.service';
 
 const transactionRoutes = new Hono();
 
@@ -67,7 +68,7 @@ transactionRoutes.get('/', authMiddleware, async (c) => {
   }
 });
 
-// Solicitar saque
+// Solicitar saque - AUTOMÁTICO via Asaas
 transactionRoutes.post('/withdraw', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
@@ -88,6 +89,14 @@ transactionRoutes.post('/withdraw', authMiddleware, async (c) => {
       return c.json({
         success: false,
         message: 'Valor máximo por saque é R$ 10.000,00'
+      }, 400);
+    }
+
+    // Validar chave PIX
+    if (!pixKey || pixKey.length < 5) {
+      return c.json({
+        success: false,
+        message: 'Chave PIX inválida'
       }, 400);
     }
 
@@ -119,25 +128,57 @@ transactionRoutes.post('/withdraw', authMiddleware, async (c) => {
         throw new Error(updateResult.error);
       }
 
-      // Adicionar taxa ao lucro de juros do sistema
-      await client.query(
-        'UPDATE system_config SET profit_pool = profit_pool + $1',
-        [fee]
-      );
+      // Adicionar taxa ao lucro do sistema
+      if (fee > 0) {
+        await client.query(
+          'UPDATE system_config SET profit_pool = profit_pool + $1',
+          [fee]
+        );
+      }
 
-      // Criar transação de saque com informações detalhadas
+      // ENVIAR PIX AUTOMATICAMENTE VIA ASAAS
+      let payoutResult = null;
+      let payoutError = null;
+
+      try {
+        const pixKeyType = detectPixKeyType(pixKey);
+        payoutResult = await createPayout({
+          pixKey: pixKey,
+          pixKeyType,
+          amount: netAmount,
+          description: `Saque Cred30 - ${user.name?.split(' ')[0] || 'Cliente'}`
+        });
+
+        console.log('[SAQUE AUTOMÁTICO] PIX enviado com sucesso:', payoutResult);
+      } catch (err: any) {
+        console.error('[SAQUE AUTOMÁTICO] Erro ao enviar PIX:', err);
+        payoutError = err.message;
+      }
+
+      // Determinar status da transação
+      const transactionStatus = payoutResult ? 'APPROVED' : 'PENDING';
+      const payoutStatus = payoutResult ? 'PAID' : 'PENDING_MANUAL';
+
+      // Criar transação de saque
       const transactionResult = await createTransaction(
         client,
         user.id,
         'WITHDRAWAL',
         amount,
-        `Solicitação de Saque (${pixKey})`,
-        'PENDING',
+        payoutResult
+          ? `Saque automático processado (PIX: ${pixKey})`
+          : `Saque pendente de processamento manual (${pixKey})`,
+        transactionStatus,
         {
           pixKey,
           fee: fee,
           netAmount: netAmount,
-          totalAmount: amount
+          totalAmount: amount,
+          asaas_transfer_id: payoutResult?.id,
+          asaas_transfer_status: payoutResult?.status,
+          payout_error: payoutError,
+          payout_method: payoutResult ? 'AUTOMATIC' : 'MANUAL_PENDING',
+          processed_at: payoutResult ? new Date().toISOString() : null
         }
       );
 
@@ -145,11 +186,42 @@ transactionRoutes.post('/withdraw', authMiddleware, async (c) => {
         throw new Error(transactionResult.error);
       }
 
+      // Atualizar payout_status na transação
+      await client.query(
+        "UPDATE transactions SET payout_status = $1, processed_at = $2 WHERE id = $3",
+        [payoutStatus, payoutResult ? new Date() : null, transactionResult.transactionId]
+      );
+
+      // Criar notificação para o usuário
+      const notifMessage = payoutResult
+        ? `Seu saque de R$ ${netAmount.toFixed(2)} foi enviado para sua chave PIX! Confira sua conta.`
+        : `Seu saque de R$ ${netAmount.toFixed(2)} está sendo processado. Em breve será enviado para sua chave PIX.`;
+
+      await client.query(
+        `INSERT INTO notifications (user_id, title, message, type, metadata, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          user.id,
+          payoutResult ? '💸 PIX Enviado!' : '⏳ Saque em Processamento',
+          notifMessage,
+          'PAYOUT_COMPLETED',
+          JSON.stringify({
+            transactionId: transactionResult.transactionId,
+            amount: netAmount,
+            requiresReview: !!payoutResult,
+            automatic: !!payoutResult
+          }),
+          new Date()
+        ]
+      );
+
       return {
         transactionId: transactionResult.transactionId,
         newBalance: updateResult.newBalance,
         fee: fee,
-        netAmount: netAmount
+        netAmount: netAmount,
+        automatic: !!payoutResult,
+        payoutId: payoutResult?.id
       };
     });
 
@@ -160,15 +232,22 @@ transactionRoutes.post('/withdraw', authMiddleware, async (c) => {
       }, 400);
     }
 
+    const isAutomatic = result.data?.automatic;
+
     return c.json({
       success: true,
-      message: 'Saque solicitado com sucesso! Aguarde processamento.',
+      message: isAutomatic
+        ? `PIX de R$ ${result.data?.netAmount.toFixed(2)} enviado automaticamente para sua chave!`
+        : 'Saque registrado! Será processado manualmente em breve.',
       data: {
         transactionId: result.data?.transactionId,
         newBalance: result.data?.newBalance,
         fee: result.data?.fee,
         netAmount: result.data?.netAmount,
-        message: `Taxa de R$ ${result.data?.fee.toFixed(2)} adicionada ao lucro de juros. Valor a ser transferido: R$ ${result.data?.netAmount.toFixed(2)}`
+        automatic: isAutomatic,
+        message: isAutomatic
+          ? `✅ Saque processado instantaneamente! Taxa: R$ ${result.data?.fee.toFixed(2)}`
+          : `⏳ Aguardando processamento. Taxa: R$ ${result.data?.fee.toFixed(2)}`
       },
     });
   } catch (error) {
@@ -179,6 +258,7 @@ transactionRoutes.post('/withdraw', authMiddleware, async (c) => {
     return c.json({ success: false, message: error instanceof Error ? error.message : 'Erro interno do servidor' }, 500);
   }
 });
+
 
 // Obter saldo do usuário
 transactionRoutes.get('/balance', authMiddleware, async (c) => {
