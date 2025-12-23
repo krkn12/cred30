@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { TrendingUp, X as XIcon, Lock, DollarSign, Award, Download, ShieldCheck, Calendar, Info } from 'lucide-react';
 import { Quota } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
