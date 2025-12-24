@@ -445,18 +445,23 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
     const netAmount = parseFloat(metadata.netAmount || transaction.amount);
     const feeAmount = parseFloat(metadata.feeAmount || '0');
 
-    // --- RE-VALIDAÇÃO DE LIQUIDEZ REAL ---
+    // --- RE-VALIDAÇÃO DE LIQUIDEZ REAL (Somente Warning) ---
+    // Não vamos bloquear a aprovação técnica da transação aqui, pois o usuário já teve o saldo debitado na solicitação.
+    // Se não houver liquidez no caixa do banco (Asaas), o Admin verá isso na fila de pagamentos "PENDING_PAYMENT" e não conseguirá pagar.
+    // Bloquear aqui causaria um estado inconsistente onde o usuário vê "Erro 500" mas o dinheiro já saiu da conta dele (Pending).
+
     const configRes = await client.query("SELECT system_balance, total_tax_reserve, total_operational_reserve, total_owner_profit FROM system_config LIMIT 1");
-    const config = configRes.rows[0];
+    const config = configRes.rows[0] || {};
 
-    const totalReserves = parseFloat(config.total_tax_reserve) +
-      parseFloat(config.total_operational_reserve) +
-      parseFloat(config.total_owner_profit);
+    const totalReserves = (parseFloat(config.total_tax_reserve || '0')) +
+      (parseFloat(config.total_operational_reserve || '0')) +
+      (parseFloat(config.total_owner_profit || '0'));
 
-    const realLiquidity = parseFloat(config.system_balance) - totalReserves;
+    const realLiquidity = (parseFloat(config.system_balance || '0')) - totalReserves;
 
+    // Apenas logar aviso se liquidez estiver baixa, mas prosseguir para criar o registro de pagamento pendente
     if (netAmount > realLiquidity) {
-      throw new Error(`Aprovação bloqueada: Liquidez real insuficiente no caixa (Disponível: R$ ${realLiquidity.toFixed(2)}, Reservas: R$ ${totalReserves.toFixed(2)}).`);
+      console.warn(`[WARNING] Saque aprovado com liquidez apertada. Disponível: ${realLiquidity}, Solicitado: ${netAmount}`);
     }
 
     let feeForOperational = 0;
