@@ -382,9 +382,9 @@ authRoutes.post('/reset-password', async (c) => {
     // Hash da nova senha
     const hashedPassword = await bcrypt.hash(validatedData.newPassword, 10);
 
-    // Atualizar senha e colocar trava de 24h (Reset via Frase é sensível)
+    // Atualizar senha e colocar trava de 48h (Segurança Reforçada)
     const lockDate = new Date();
-    lockDate.setHours(lockDate.getHours() + 24);
+    lockDate.setHours(lockDate.getHours() + 48);
 
     await pool.query(
       'UPDATE users SET password_hash = $1, security_lock_until = $2 WHERE id = $3',
@@ -425,7 +425,7 @@ authRoutes.post('/verify-2fa', async (c) => {
     }
 
     const lockDate = new Date();
-    lockDate.setHours(lockDate.getHours() + 24);
+    lockDate.setHours(lockDate.getHours() + 48);
 
     await pool.query(
       'UPDATE users SET two_factor_enabled = TRUE, security_lock_until = $1 WHERE id = $2',
@@ -674,16 +674,21 @@ authRoutes.post('/recover-2fa', async (c) => {
 
     // GERAR NOVO 2FA e desabilitar o antigo
     const newSecret = twoFactorService.generateSecret();
-    const qrCode = twoFactorService.generateQRCode(newSecret, data.email);
+    const qrCode = await twoFactorService.generateQrCode(twoFactorService.generateOtpUri(data.email, newSecret));
+
+    // Trava de segurança de 48h após recuperação
+    const lockDate = new Date();
+    lockDate.setHours(lockDate.getHours() + 48);
 
     // Atualizar usuário com novo segredo e MANTER 2FA DESABILITADO
     // O usuário precisará ativar novamente após escanear o QR Code
     await pool.query(
       `UPDATE users 
        SET two_factor_secret = $1, 
-           two_factor_enabled = FALSE 
-       WHERE id = $2`,
-      [newSecret, user.id]
+           two_factor_enabled = FALSE,
+           security_lock_until = $2
+       WHERE id = $3`,
+      [newSecret, lockDate, user.id]
     );
 
     // Log de segurança
@@ -728,14 +733,19 @@ authRoutes.post('/admin/disable-2fa', authMiddleware, async (c) => {
 
     const pool = getDbPool(c);
 
+    // Trava de segurança de 48h após intervenção administrativa
+    const lockDate = new Date();
+    lockDate.setHours(lockDate.getHours() + 48);
+
     // Desabilitar 2FA do usuário
     const result = await pool.query(
       `UPDATE users 
        SET two_factor_enabled = FALSE, 
-           two_factor_secret = NULL 
-       WHERE id = $1 
+           two_factor_secret = NULL,
+           security_lock_until = $1
+       WHERE id = $2 
        RETURNING email`,
-      [userId]
+      [lockDate, userId]
     );
 
     if (result.rows.length === 0) {
@@ -751,6 +761,77 @@ authRoutes.post('/admin/disable-2fa', authMiddleware, async (c) => {
 
   } catch (error) {
     console.error('Erro ao desabilitar 2FA:', error);
+    return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
+  }
+});
+
+// Rota para admin resetar segurança de um usuário (Senha, Frase e 2FA)
+authRoutes.post('/admin/reset-user-security', authMiddleware, async (c) => {
+  try {
+    const userPayload = c.get('user');
+
+    // Verificar se é admin
+    if (!userPayload?.isAdmin) {
+      return c.json({ success: false, message: 'Acesso negado' }, 403);
+    }
+
+    const { userId, newPassword, newSecretPhrase, disable2FA } = await c.req.json();
+
+    if (!userId) {
+      return c.json({ success: false, message: 'ID do usuário é obrigatório' }, 400);
+    }
+
+    const pool = getDbPool(c);
+    const updates: string[] = [];
+    const params: any[] = [];
+    let pIdx = 1;
+
+    // Trava de segurança de 48h SEMPRE que o admin intervém em segurança
+    const lockDate = new Date();
+    lockDate.setHours(lockDate.getHours() + 48);
+
+    updates.push(`security_lock_until = $${pIdx++}`);
+    params.push(lockDate);
+
+    if (newPassword) {
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      updates.push(`password_hash = $${pIdx++}`);
+      params.push(hashedPassword);
+    }
+
+    if (newSecretPhrase) {
+      updates.push(`secret_phrase = $${pIdx++}`);
+      params.push(newSecretPhrase);
+    }
+
+    if (disable2FA) {
+      updates.push(`two_factor_enabled = FALSE`);
+      updates.push(`two_factor_secret = NULL`);
+    }
+
+    if (updates.length <= 1) { // Só a trava (que já adicionamos)
+      return c.json({ success: false, message: 'Nenhuma alteração solicitada' }, 400);
+    }
+
+    params.push(userId);
+    const query = `UPDATE users SET ${updates.join(', ')} WHERE id = $${pIdx} RETURNING email`;
+
+    const result = await pool.query(query, params);
+
+    if (result.rows.length === 0) {
+      return c.json({ success: false, message: 'Usuário não encontrado' }, 404);
+    }
+
+    console.log(`[ADMIN] Reset de segurança realizado pelo admin ${userPayload.id} para usuário ${userId}: ${updates.join(', ')}`);
+
+    return c.json({
+      success: true,
+      message: `Segurança atualizada para ${result.rows[0].email}. Conta em modo de segurança por 48h.`,
+      lockUntil: lockDate.getTime()
+    });
+
+  } catch (error) {
+    console.error('Erro no reset de segurança admin:', error);
     return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
   }
 });

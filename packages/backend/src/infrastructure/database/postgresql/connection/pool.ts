@@ -672,6 +672,13 @@ export const initializeDatabase = async () => {
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS disputed_at TIMESTAMP;
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS buyer_rating INTEGER;
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS seller_rating INTEGER;
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS pickup_address TEXT;
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_status VARCHAR(30) DEFAULT 'NONE';
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_fee DECIMAL(10, 2) DEFAULT 0;
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS courier_id INTEGER REFERENCES users(id);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS pickup_code VARCHAR(10);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
     `);
 
     // --- SISTEMA DE SUPORTE VIA CHAT (IA + HUMANO) ---

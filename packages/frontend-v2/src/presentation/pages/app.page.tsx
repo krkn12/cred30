@@ -646,32 +646,47 @@ export default function App() {
               </Routes>
 
               {showReferral && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowReferral(false)}>
-                  <div className="bg-surface border border-surfaceHighlight rounded-3xl p-8 w-full max-w-sm relative animate-in fade-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
-                    <button title="Fechar" onClick={() => setShowReferral(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white">✕</button>
-                    <div className="text-center mb-6">
-                      <div className="w-16 h-16 bg-primary-500/10 rounded-2xl flex items-center justify-center text-primary-400 mx-auto mb-4">
-                        <Users size={32} />
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center z-[500] p-0 sm:p-4 animate-in fade-in duration-300" onClick={() => setShowReferral(false)}>
+                  <div className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-surfaceHighlight rounded-t-[2.5rem] sm:rounded-3xl p-8 w-full sm:max-w-sm relative animate-in slide-in-from-bottom-full sm:zoom-in-95 duration-500 sm:duration-300" onClick={e => e.stopPropagation()}>
+                    <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-6 sm:hidden opacity-50" />
+
+                    <button title="Fechar" onClick={() => setShowReferral(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white hidden sm:block">✕</button>
+
+                    <div className="text-center mb-8">
+                      <div className="w-20 h-20 bg-primary-500/10 rounded-3xl flex items-center justify-center text-primary-400 mx-auto mb-4 shadow-xl shadow-primary-900/20 ring-1 ring-primary-500/20">
+                        <Users size={40} strokeWidth={2.5} />
                       </div>
-                      <h3 className="text-xl font-bold text-white mb-2">Convidar Membro</h3>
-                      <p className="text-zinc-400 text-sm">O Cred30 é exclusivo. Use seu link para convidar pessoas.</p>
+                      <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Convidar Membro</h3>
+                      <p className="text-zinc-400 text-sm font-medium leading-relaxed">O Cred30 é um clube exclusivo. Use seu link para convidar pessoas de confiança.</p>
                     </div>
-                    <div className="space-y-4">
-                      <div className="bg-background border border-surfaceHighlight rounded-xl p-4">
-                        <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Seu Código</p>
-                        <p className="text-white font-mono text-lg font-bold tracking-wider">{state.currentUser.referralCode}</p>
+
+                    <div className="space-y-6">
+                      <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5 text-center group cursor-copy active:bg-zinc-800 transition-colors" onClick={() => {
+                        const link = `${window.location.origin}/auth?ref=${state.currentUser!.referralCode}`;
+                        navigator.clipboard.writeText(link);
+                        setShowSuccess({ isOpen: true, title: 'Copiado!', message: 'Link de convite pronto para enviar!' });
+                      }}>
+                        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-1">Seu Código de Acesso</p>
+                        <p className="text-white font-mono text-2xl font-black tracking-[0.2em] group-hover:text-primary-400 transition-colors">{state.currentUser!.referralCode}</p>
                       </div>
+
                       <button
                         onClick={() => {
-                          const link = `${window.location.origin}/auth?ref=${state.currentUser.referralCode}`;
+                          const link = `${window.location.origin}/auth?ref=${state.currentUser!.referralCode}`;
                           navigator.clipboard.writeText(link);
-                          setShowSuccess({ isOpen: true, title: 'Copiado!', message: 'Link copiado.' });
+                          setShowSuccess({ isOpen: true, title: 'Copiado!', message: 'Link de convite pronto para enviar!' });
                         }}
-                        className="w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-4 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20"
+                        className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black uppercase tracking-widest py-5 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-2xl shadow-primary-500/20 active:scale-95"
                       >
-                        <Copy size={18} /> Copiar Link
+                        <Copy size={20} /> COPIAR LINK
                       </button>
-                      <p className="text-[10px] text-zinc-500 text-center italic">Você ganha R$ 5,00 por indicação ativa.</p>
+
+                      <div className="bg-primary-500/5 border border-primary-500/10 rounded-xl p-3 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center text-primary-400 shrink-0">
+                          <TrendingUp size={16} />
+                        </div>
+                        <p className="text-[10px] sm:text-xs text-zinc-400 leading-tight">Você acumula <span className="text-primary-400 font-black">R$ 5,00</span> e <span className="text-primary-400 font-black">Score</span> por cada novo membro ativo que indicar.</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -713,27 +728,35 @@ export default function App() {
               />
 
               {showSuccess.isOpen && (
-                <div className="fixed bottom-24 left-4 right-4 md:top-6 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-auto md:min-w-[400px] z-[9999] animate-in slide-in-from-bottom-5 md:slide-in-from-top-5 duration-300 pointer-events-none">
-                  <div className="bg-[#050505] border border-emerald-500/30 rounded-2xl p-4 flex items-center gap-4 shadow-2xl shadow-emerald-900/40 pointer-events-auto ring-1 ring-emerald-500/20">
-                    <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-black shrink-0 shadow-lg shadow-emerald-500/30"><Check size={24} strokeWidth={3} /></div>
-                    <div className="flex-1 pr-4">
-                      <h4 className="text-white font-black text-sm tracking-tight uppercase">{showSuccess.title}</h4>
-                      <p className="text-zinc-400 text-xs font-medium leading-relaxed">{showSuccess.message}</p>
+                <div className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] sm:w-auto sm:min-w-[400px] z-[9999] animate-in slide-in-from-top-10 duration-500">
+                  <div className="bg-[#050505]/90 backdrop-blur-xl border border-emerald-500/30 rounded-3xl p-4 flex items-center gap-4 shadow-[0_20px_50px_rgba(16,185,129,0.2)] ring-1 ring-emerald-500/20">
+                    <div className="w-11 h-11 bg-emerald-500 rounded-2xl flex items-center justify-center text-black shrink-0 shadow-lg shadow-emerald-500/30">
+                      <Check size={24} strokeWidth={4} />
                     </div>
-                    <button onClick={() => setShowSuccess({ ...showSuccess, isOpen: false })} className="text-zinc-500 hover:text-white transition-colors bg-zinc-900/50 p-2 rounded-lg"><XIcon size={16} /></button>
+                    <div className="flex-1">
+                      <h4 className="text-white font-black text-[10px] tracking-widest uppercase mb-0.5">{showSuccess.title}</h4>
+                      <p className="text-zinc-400 text-xs font-bold leading-tight">{showSuccess.message}</p>
+                    </div>
+                    <button onClick={() => setShowSuccess({ ...showSuccess, isOpen: false })} className="text-zinc-500 hover:text-white transition-colors bg-white/5 p-2 rounded-xl">
+                      <XIcon size={16} />
+                    </button>
                   </div>
                 </div>
               )}
 
               {showError.isOpen && (
-                <div className="fixed bottom-24 left-4 right-4 md:top-6 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-auto md:min-w-[400px] z-[9999] animate-in slide-in-from-bottom-5 md:slide-in-from-top-5 duration-300 pointer-events-none">
-                  <div className="bg-[#050505] border border-red-500/30 rounded-2xl p-4 flex items-center gap-4 shadow-2xl shadow-red-900/40 pointer-events-auto ring-1 ring-red-500/20">
-                    <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-red-500/30"><AlertTriangle size={24} strokeWidth={3} /></div>
-                    <div className="flex-1 pr-4">
-                      <h4 className="text-white font-black text-sm tracking-tight uppercase">{showError.title}</h4>
-                      <p className="text-zinc-400 text-xs font-medium leading-relaxed">{showError.message}</p>
+                <div className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] sm:w-auto sm:min-w-[400px] z-[9999] animate-in slide-in-from-top-10 duration-500">
+                  <div className="bg-[#050505]/90 backdrop-blur-xl border border-red-500/30 rounded-3xl p-4 flex items-center gap-4 shadow-[0_20px_50px_rgba(239,68,68,0.2)] ring-1 ring-red-500/20">
+                    <div className="w-11 h-11 bg-red-500 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-red-500/30">
+                      <AlertTriangle size={24} strokeWidth={3} />
                     </div>
-                    <button onClick={() => setShowError({ ...showError, isOpen: false })} className="text-zinc-500 hover:text-white transition-colors bg-zinc-900/50 p-2 rounded-lg"><XIcon size={16} /></button>
+                    <div className="flex-1">
+                      <h4 className="text-white font-black text-[10px] tracking-widest uppercase mb-0.5">{showError.title}</h4>
+                      <p className="text-zinc-400 text-xs font-bold leading-tight">{showError.message}</p>
+                    </div>
+                    <button onClick={() => setShowError({ ...showError, isOpen: false })} className="text-zinc-500 hover:text-white transition-colors bg-white/5 p-2 rounded-xl">
+                      <XIcon size={16} />
+                    </button>
                   </div>
                 </div>
               )}

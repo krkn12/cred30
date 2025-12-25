@@ -190,20 +190,24 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
       </main>
 
       {/* Mobile Bottom Nav - Floating Dock (Elevado para não cobrar o Ad) */}
-      <div className="md:hidden fixed bottom-[160px] left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/50 rounded-2xl flex justify-between items-center px-4 py-3 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] z-30">
-        {navItems.map((item) => (
+      <div className="md:hidden fixed bottom-[110px] left-1/2 -translate-x-1/2 w-[92%] max-w-sm bg-black/60 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] flex justify-around items-center px-4 py-4 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] z-30 ring-1 ring-white/5">
+        {navItems.filter(i => ['dashboard', 'marketplace', 'promo-videos', 'invest', 'loans'].includes(i.id)).map((item) => (
           <button
             key={item.id}
             onClick={() => handleNavigation(item.id)}
-            className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all relative ${currentView === item.id
-              ? 'text-primary-400 -translate-y-2'
+            className={`flex flex-col items-center gap-1 transition-all duration-300 relative ${currentView === item.id
+              ? 'text-primary-400 -translate-y-1 scale-110'
               : 'text-zinc-500 hover:text-zinc-300'
               }`}
           >
-            <div className={`p-2 rounded-full transition-all ${currentView === item.id ? 'bg-primary-400/20 shadow-[0_0_15px_rgba(34,211,238,0.3)]' : ''}`}>
-              <item.icon size={22} strokeWidth={currentView === item.id ? 2.5 : 2} />
+            <div className={`p-2 rounded-2xl transition-all duration-500 ${currentView === item.id
+              ? 'bg-primary-500/10 shadow-[0_0_20px_rgba(34,211,238,0.2)] ring-1 ring-primary-500/20'
+              : 'hover:bg-white/5'}`}>
+              <item.icon size={20} strokeWidth={currentView === item.id ? 2.5 : 2} />
             </div>
-            {currentView === item.id && <span className="absolute -bottom-4 w-1 h-1 bg-primary-400 rounded-full"></span>}
+            {currentView === item.id && (
+              <span className="absolute -bottom-2 w-1.5 h-1.5 bg-primary-400 rounded-full animate-in zoom-in duration-300 shadow-[0_0_10px_rgba(34,211,238,1)]"></span>
+            )}
           </button>
         ))}
       </div>

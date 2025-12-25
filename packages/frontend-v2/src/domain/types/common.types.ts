@@ -14,6 +14,7 @@ export interface User {
   status?: 'ACTIVE' | 'BLOCKED';
   membership_type?: 'FREE' | 'PRO';
   cpf?: string | null; // CPF do usuário (obrigatório para saque)
+  securityLockUntil?: number; // Timestamp em milissegundos
 }
 
 export interface Quota {

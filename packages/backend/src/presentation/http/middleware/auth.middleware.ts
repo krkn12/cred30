@@ -52,7 +52,7 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
     // Buscar usuário no banco de dados para obter informações atualizadas
     const pool = getDbPool(c);
     const result = await pool.query(
-      'SELECT id, name, email, balance, referral_code, is_admin, role, status, score, created_at, pix_key, two_factor_enabled, cpf FROM users WHERE id = $1',
+      'SELECT id, name, email, balance, referral_code, is_admin, role, status, score, created_at, pix_key, two_factor_enabled, cpf, security_lock_until FROM users WHERE id = $1',
       [decoded.userId]
     );
 
@@ -90,6 +90,7 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
       pixKey: user.pix_key,
       twoFactorEnabled: Boolean(user.two_factor_enabled),
       cpf: user.cpf || null,
+      securityLockUntil: user.security_lock_until ? new Date(user.security_lock_until).getTime() : undefined,
     };
 
     // Log para depuração
@@ -98,7 +99,8 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
       name: userContext.name,
       isAdmin: userContext.isAdmin,
       role: userContext.role,
-      status: userContext.status
+      status: userContext.status,
+      lockUntil: user.security_lock_until
     });
 
     c.set('user', userContext);
@@ -120,6 +122,25 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
 
     return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
   }
+};
+
+// Middleware para bloquear ações sensíveis se houver trava de segurança ativa
+export const securityLockMiddleware: MiddlewareHandler = async (c, next) => {
+  const user = c.get('user');
+
+  if (user?.securityLockUntil) {
+    const now = Date.now();
+    if (now < user.securityLockUntil) {
+      const remainingHours = Math.ceil((user.securityLockUntil - now) / (1000 * 60 * 60));
+      return c.json({
+        success: false,
+        message: `Por segurança, sua conta está em modo 'Apenas Visualização' por mais ${remainingHours} horas após o recente reset de segurança. Suas transações e saques serão liberados após este período.`,
+        lockRemainingHours: remainingHours
+      }, 403);
+    }
+  }
+
+  await next();
 };
 
 export const adminMiddleware: MiddlewareHandler = async (c, next) => {
