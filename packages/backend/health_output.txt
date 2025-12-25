@@ -1,0 +1,24 @@
+[dotenv@17.2.3] injecting env (15) from .env -- tip: ­ƒôí add observability to secrets: https://dotenvx.com/ops
+=== SYSTEM_CONFIG ===
+System Balance: 2347.35
+Profit Pool: 20.20
+Tax Reserve: 0.00
+Operational Reserve: 0.00
+Owner Profit: 0.00
+
+=== COTAS ATIVAS ===
+Quantidade: 2
+Valor Total: 84.00
+
+=== SALDOS USU├üRIOS (PASSIVO) ===
+Total que devemos aos usu├írios: 0.00
+
+=== EMPR├ëSTIMOS ATIVOS ===
+Total emprestado: 0
+
+=== VALIDA├ç├âO ===
+Caixa esperado (Cotas - Empr├®stimos): 84.00
+System Balance atual: 2347.35
+Diferen├ºa: 2263.35
+
+ÔÜá´©Å  ALERTA: System Balance parece inflado!

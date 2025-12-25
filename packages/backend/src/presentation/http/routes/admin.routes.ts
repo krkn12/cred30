@@ -20,6 +20,7 @@ import { runAutoLiquidation } from '../../../application/services/auto-liquidati
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
 import { calculateGatewayCost } from '../../../shared/utils/financial.utils';
 import { simulatePaymentApproval, createPayout, detectPixKeyType, getAccountBalance } from '../../../infrastructure/gateways/asaas.service';
+import { CacheService, addCacheHeaders } from '../../../infrastructure/cache/memory-cache.service';
 
 interface PaymentApprovalResult {
   success: boolean;
@@ -186,9 +187,16 @@ adminRoutes.get('/finance-history', adminMiddleware, async (c) => {
   }
 });
 
-// Dashboard administrativo
+// Dashboard administrativo (com cache de 2 minutos)
 adminRoutes.get('/dashboard', adminMiddleware, async (c) => {
   try {
+    // Verificar cache primeiro
+    const cachedData = CacheService.getAdminDashboard();
+    if (cachedData) {
+      addCacheHeaders(c, true, 120000);
+      return c.json({ success: true, data: cachedData, cached: true });
+    }
+
     const pool = getDbPool(c);
 
     // Buscar configurações do sistema
@@ -282,19 +290,26 @@ adminRoutes.get('/dashboard', adminMiddleware, async (c) => {
       custosFixos: totalMonthlyCosts
     });
 
+    // Preparar dados para resposta e cache
+    const dashboardData = {
+      systemConfig: config,
+      stats: {
+        usersCount,
+        quotasCount,
+        activeLoansCount,
+        totalLoaned,
+        totalToReceive,
+        activeProposalsCount,
+      },
+    };
+
+    // Salvar no cache por 2 minutos
+    CacheService.setAdminDashboard(dashboardData);
+    addCacheHeaders(c, false, 120000);
+
     return c.json({
       success: true,
-      data: {
-        systemConfig: config,
-        stats: {
-          usersCount,
-          quotasCount,
-          activeLoansCount,
-          totalLoaned,
-          totalToReceive,
-          activeProposalsCount,
-        },
-      },
+      data: dashboardData,
     });
   } catch (error) {
     console.error('Erro ao carregar dashboard administrativo:', error);
@@ -577,12 +592,16 @@ adminRoutes.get('/payout-queue', adminMiddleware, async (c) => {
 
 // Confirmar Pagamento Efetuado (PIX enviado)
 adminRoutes.post('/confirm-payout', adminMiddleware, auditMiddleware('CONFIRM_PAYOUT', 'TRANSACTION_LOAN'), async (c) => {
+  console.log('[CONFIRM-PAYOUT] Iniciando...');
   try {
     const body = await c.req.json();
+    console.log('[CONFIRM-PAYOUT] Body recebido:', body);
     const { id, type } = payoutActionSchema.parse(body);
+    console.log('[CONFIRM-PAYOUT] Dados validados - ID:', id, 'Type:', type);
     const pool = getDbPool(c);
 
-    await executeInTransaction(pool, async (client) => {
+    console.log('[CONFIRM-PAYOUT] Iniciando transação...');
+    const txResult = await executeInTransaction(pool, async (client) => {
       if (type === 'TRANSACTION') {
         // Buscar dados da transação e do usuário
         const txResult = await client.query(
@@ -601,6 +620,8 @@ adminRoutes.post('/confirm-payout', adminMiddleware, auditMiddleware('CONFIRM_PA
         const netAmount = metadata?.netAmount || parseFloat(amount);
         const pixKeyToUse = metadata?.pixKey || pix_key;
 
+        console.log('[CONFIRM-PAYOUT] Transação encontrada:', { id, netAmount, pixKeyToUse });
+
         if (!pixKeyToUse) {
           throw new Error('Usuário não possui chave PIX cadastrada');
         }
@@ -611,6 +632,7 @@ adminRoutes.post('/confirm-payout', adminMiddleware, auditMiddleware('CONFIRM_PA
 
         try {
           const pixKeyType = detectPixKeyType(pixKeyToUse);
+          console.log('[CONFIRM-PAYOUT] Chamando createPayout...');
           payoutResult = await createPayout({
             pixKey: pixKeyToUse,
             pixKeyType,
@@ -626,6 +648,8 @@ adminRoutes.post('/confirm-payout', adminMiddleware, auditMiddleware('CONFIRM_PA
 
         // Atualizar status do pagamento
         const payoutStatus = payoutResult ? 'PAID' : 'PENDING_MANUAL';
+        console.log('[CONFIRM-PAYOUT] Atualizando status para:', payoutStatus);
+
         await client.query(
           `UPDATE transactions 
            SET payout_status = $1, 
@@ -644,6 +668,8 @@ adminRoutes.post('/confirm-payout', adminMiddleware, auditMiddleware('CONFIRM_PA
             id
           ]
         );
+
+        console.log('[CONFIRM-PAYOUT] Transação atualizada com sucesso!');
 
         // Criar notificação
         const notifMessage = payoutResult
@@ -671,10 +697,19 @@ adminRoutes.post('/confirm-payout', adminMiddleware, auditMiddleware('CONFIRM_PA
         if (payoutError) {
           throw new Error(`Pagamento registrado mas falhou envio automático: ${payoutError}. Você pode tentar novamente ou fazer manualmente.`);
         }
+
+        return { success: true };
       } else {
         throw new Error('Tipo de confirmação não suportado');
       }
     });
+
+    console.log('[CONFIRM-PAYOUT] Resultado da transação:', txResult);
+
+    if (!txResult.success) {
+      console.error('[CONFIRM-PAYOUT] Transação falhou:', txResult.error);
+      return c.json({ success: false, message: txResult.error || 'Erro ao processar pagamento' }, 500);
+    }
 
     return c.json({ success: true, message: 'Pagamento processado via PIX automático!' });
   } catch (error) {

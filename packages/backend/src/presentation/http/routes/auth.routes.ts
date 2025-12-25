@@ -195,7 +195,7 @@ authRoutes.post('/login', async (c) => {
       return c.json({ success: false, message: firstError, errors: error.errors }, 400);
     }
     console.error('Erro no login:', error);
-    return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
+    return c.json({ success: false, message: 'Erro interno do servidor', debug: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined }, 500);
   }
 });
 

@@ -142,15 +142,35 @@ export default defineConfig({
         outDir: 'dist',
         sourcemap: false,
         minify: 'esbuild',
+        target: 'es2020',
         rollupOptions: {
             output: {
-                manualChunks: {
-                    'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-                    'vendor-core': ['axios', 'lucide-react', '@headlessui/react'],
-                    'vendor-utils': ['jspdf', '@google/genai']
+                manualChunks: (id) => {
+                    // React core - carregado sempre
+                    if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+                        return 'vendor-react';
+                    }
+                    // UI libraries
+                    if (id.includes('lucide-react') || id.includes('@headlessui')) {
+                        return 'vendor-ui';
+                    }
+                    // Heavy utilities - lazy loaded
+                    if (id.includes('jspdf') || id.includes('@google/genai')) {
+                        return 'vendor-heavy';
+                    }
+                    // Admin views - lazy loaded separately
+                    if (id.includes('/views/Admin') || id.includes('/views/Support')) {
+                        return 'chunk-admin';
+                    }
+                    // Axios - network requests
+                    if (id.includes('axios')) {
+                        return 'vendor-network';
+                    }
                 }
             }
         },
-        chunkSizeWarningLimit: 1000
+        chunkSizeWarningLimit: 800,
+        cssCodeSplit: true,
+        assetsInlineLimit: 4096
     }
 })

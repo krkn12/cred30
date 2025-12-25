@@ -7,7 +7,7 @@ import { syncService } from '../../application/services/sync.service';
 import { AppState, Quota, Loan, Transaction, User } from '../../domain/types/common.types';
 import { QUOTA_PRICE } from '../../shared/constants/app.constants';
 import { calculateTotalToPay } from '../../shared/utils/financial.utils';
-import { Check, X as XIcon, RefreshCw, AlertTriangle, Users, Copy, Wallet, TrendingUp, ArrowUpFromLine } from 'lucide-react';
+import { Check, X as XIcon, RefreshCw, AlertTriangle, Users, Copy, Wallet, TrendingUp, ArrowUpFromLine, Lock, Download } from 'lucide-react';
 import { PIXModal } from '../components/ui/pix-modal.component';
 import { CardModal } from '../components/ui/card-modal.component';
 import { AuthScreen } from '../components/views/AuthScreen';
@@ -16,6 +16,7 @@ import { ReviewModal } from '../components/ui/ReviewModal';
 import { AIAssistant } from '../components/AIAssistant';
 import { OfflineNotice } from '../components/ui/offline-notice.component';
 import { useOnlineStatus } from '../hooks/use-online-status';
+import { PWAEnforcer, PWAInstallBanner, isPWAInstalled, isDesktopDevice, usePWAInstall } from '../components/ui/pwa-enforcer.component';
 
 // Helper para lidar com erro de carregamento de chunks (comum após deploys)
 const lazyWithRetry = (componentImport: () => Promise<any>) =>
@@ -56,6 +57,75 @@ const GamesView = lazyWithRetry(() => import('../components/views/GamesView').th
 const EducationView = lazyWithRetry(() => import('../components/views/EducationView').then(m => ({ default: m.EducationView })));
 const FaqView = lazyWithRetry(() => import('../components/views/FaqView').then(m => ({ default: m.FaqView })));
 const VotingView = lazyWithRetry(() => import('../components/views/VotingView').then(m => ({ default: m.VotingView })));
+
+// Componente de bloqueio para clientes desktop tentando acessar via web
+const DesktopPWABlocker = () => {
+  const { isInstallable, promptInstall } = usePWAInstall();
+
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="max-w-lg w-full">
+        {/* Card principal de bloqueio */}
+        <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-red-500/30 rounded-3xl p-8 shadow-2xl shadow-red-900/20 text-center">
+          <div className="w-20 h-20 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-red-500/20">
+            <Lock className="text-red-400" size={40} />
+          </div>
+
+          <h1 className="text-2xl font-black text-white mb-3 tracking-tight">
+            Acesse pelo Aplicativo
+          </h1>
+
+          <p className="text-zinc-400 text-sm leading-relaxed mb-6">
+            Para sua segurança, o acesso ao Cred30 via navegador web em computadores não é permitido.
+            <br /><br />
+            <strong className="text-white">Instale o aplicativo oficial</strong> para continuar.
+          </p>
+
+          {/* Alerta de segurança */}
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-6 text-left">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="text-amber-400 shrink-0 mt-0.5" size={18} />
+              <p className="text-amber-200/80 text-xs leading-relaxed">
+                O aplicativo instalado oferece proteção adicional contra phishing,
+                mantém suas sessões mais seguras e garante que você está acessando o sistema oficial.
+              </p>
+            </div>
+          </div>
+
+          {/* Botão de instalação */}
+          {isInstallable ? (
+            <button
+              onClick={promptInstall}
+              className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl text-sm flex items-center justify-center gap-3 transition shadow-lg shadow-primary-500/20 mb-4"
+            >
+              <Download size={20} />
+              INSTALAR APLICATIVO CRED30
+            </button>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-zinc-500 text-xs">
+                Se o botão de instalação não aparecer, siga os passos abaixo:
+              </p>
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-left">
+                <p className="text-xs text-zinc-400 mb-2 font-bold uppercase tracking-widest">Como instalar:</p>
+                <ol className="text-xs text-zinc-300 space-y-2 list-decimal list-inside">
+                  <li>Clique nos <strong>3 pontos (⋮)</strong> no canto superior direito do navegador</li>
+                  <li>Selecione <strong>"Instalar Cred30"</strong> ou <strong>"Adicionar à área de trabalho"</strong></li>
+                  <li>Confirme a instalação</li>
+                  <li>Abra o app instalado no seu desktop</li>
+                </ol>
+              </div>
+            </div>
+          )}
+
+          <p className="text-[10px] text-zinc-600 mt-6 uppercase tracking-widest">
+            Proteção contra fraudes • Cred30 Seguro
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function App() {
   const [state, setState] = useState<AppState>({
@@ -409,7 +479,16 @@ export default function App() {
     return <div className="min-h-screen bg-black flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary-500"></div></div>;
   }
 
+  // Verificação de acesso: Clientes desktop SÓ podem acessar via PWA instalado
+  const isDesktop = isDesktopDevice();
+  const isInstalled = isPWAInstalled();
+
   if (!state.currentUser) {
+    // BLOQUEIA clientes desktop tentando acessar via web (não PWA)
+    if (isDesktop && !isInstalled) {
+      return <DesktopPWABlocker />;
+    }
+
     return (
       <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><RefreshCw className="animate-spin text-primary-500" /></div>}>
         <Routes>
@@ -426,19 +505,23 @@ export default function App() {
 
   if (isStaff) {
     return (
-      <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><RefreshCw className="animate-spin text-primary-500" /></div>}>
-        <Routes>
-          <Route path="/admin" element={<AdminView state={state} onRefresh={refreshState} onLogout={handleLogout} onSuccess={(title, msg) => { setShowSuccess({ isOpen: true, title, message: msg }); }} onError={(title, msg) => { setShowError({ isOpen: true, title, message: msg }); }} />} />
-          <Route path="*" element={<Navigate to="/admin" replace />} />
-        </Routes>
-      </Suspense>
+      <PWAEnforcer isAdmin={true}>
+        <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><RefreshCw className="animate-spin text-primary-500" /></div>}>
+          <Routes>
+            <Route path="/admin" element={<AdminView state={state} onRefresh={refreshState} onLogout={handleLogout} onSuccess={(title, msg) => { setShowSuccess({ isOpen: true, title, message: msg }); }} onError={(title, msg) => { setShowError({ isOpen: true, title, message: msg }); }} />} />
+            <Route path="*" element={<Navigate to="/admin" replace />} />
+          </Routes>
+        </Suspense>
+      </PWAEnforcer>
     )
   }
 
+
   return (
-    <>
+    <PWAEnforcer isAdmin={false}>
       <OfflineNotice isOnline={isOnline} />
       <UpdateNotification />
+      <PWAInstallBanner />
       <Routes>
         <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
         <Route path="/auth" element={<Navigate to="/app/dashboard" replace />} />
@@ -648,6 +731,6 @@ export default function App() {
           </>
         } />
       </Routes>
-    </>
+    </PWAEnforcer>
   );
 }

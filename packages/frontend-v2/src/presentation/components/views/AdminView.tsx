@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import packageJson from '../../../../package.json';
 import {
     ShieldCheck, RefreshCw, LogOut, Users, PieChart, DollarSign, PiggyBank, Coins, ArrowUpFromLine, ArrowDownLeft, TrendingUp, Clock, ArrowUpRight, Check, X as XIcon, AlertTriangle, Settings as SettingsIcon, ShoppingBag as ShoppingBagIcon, UserPlus, Trash2, MessageSquare, ExternalLink, Send, Clipboard, Gift, Activity, Cpu, Database, HardDrive, Zap, Search, Vote, Gavel, BarChart3, Plus
@@ -13,6 +13,7 @@ import { apiService } from '../../../application/services/api.service';
 import { AdminStoreManager } from '../features/store/admin-store.component';
 import { SupportAdminView } from './SupportAdminView';
 import { AdminUserManagement } from '../features/admin/AdminUserManagement';
+import { useDebounce } from '../../hooks/use-performance';
 
 interface AdminViewProps {
     state: AppState;
@@ -22,7 +23,8 @@ interface AdminViewProps {
     onError: (title: string, message: string) => void;
 }
 
-const MetricCard = ({ title, value, subtitle, icon: Icon, color }: any) => {
+// Componente memoizado para evitar re-renders desnecessários
+const MetricCard = memo(({ title, value, subtitle, icon: Icon, color }: any) => {
     const colorClasses: any = {
         blue: "from-blue-600 to-blue-700 border-blue-500/30 shadow-blue-500/10",
         cyan: "from-primary-600 to-primary-700 border-primary-500/30 shadow-primary-500/10",
@@ -45,7 +47,9 @@ const MetricCard = ({ title, value, subtitle, icon: Icon, color }: any) => {
             <p className="text-[10px] opacity-90 mt-1 font-medium uppercase">{subtitle}</p>
         </div>
     );
-};
+});
+
+MetricCard.displayName = 'MetricCard';
 
 export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: AdminViewProps) => {
 
@@ -67,6 +71,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const [healthMetrics, setHealthMetrics] = useState<any>(null);
     const [isMetricsLoading, setIsMetricsLoading] = useState(false);
     const [metricsSearch, setMetricsSearch] = useState('');
+    const debouncedMetricsSearch = useDebounce(metricsSearch, 300); // Debounce de 300ms
 
     const [systemCosts, setSystemCosts] = useState<any[]>([]);
     const [newCostDescription, setNewCostDescription] = useState('');
@@ -216,12 +221,16 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     };
 
     const handleConfirmPayout = async (id: any, type: 'TRANSACTION' | 'LOAN') => {
+        console.log('[DEBUG] handleConfirmPayout chamado:', { id, type });
         try {
+            console.log('[DEBUG] Chamando API confirmPayout...');
             await apiService.confirmPayout(id.toString(), type);
+            console.log('[DEBUG] API retornou sucesso!');
             onSuccess('Sucesso', 'Pagamento registrado com sucesso!');
             fetchPayoutQueue();
-        } catch (e) {
-            onError('Erro', 'Falha ao confirmar pagamento.');
+        } catch (e: any) {
+            console.error('[DEBUG] Erro no confirmPayout:', e);
+            onError('Erro', e.message || 'Falha ao confirmar pagamento.');
         }
     };
 
@@ -424,9 +433,10 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         }
     };
 
-    const formatCurrency = (val: number) => {
-        if (typeof val !== 'number' || isNaN(val)) return 'R$ 0,00';
-        return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const formatCurrency = (val: number | string) => {
+        const numVal = typeof val === 'string' ? parseFloat(val) : val;
+        if (typeof numVal !== 'number' || isNaN(numVal)) return 'R$ 0,00';
+        return numVal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     };
 
     return (

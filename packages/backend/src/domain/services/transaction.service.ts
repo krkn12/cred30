@@ -193,10 +193,10 @@ export async function updateTransactionStatus(
  * Processa a aprovação ou rejeição de uma transação (BUY_QUOTA, WITHDRAWAL, etc)
  */
 export const processTransactionApproval = async (client: PoolClient, id: string, action: 'APPROVE' | 'REJECT') => {
-  // 1. Buscar transação com bloqueio
+  // 1. Buscar transação com bloqueio (aceita PENDING ou PENDING_CONFIRMATION para saques)
   const transactionResult = await client.query(
-    'SELECT * FROM transactions WHERE id = $1 AND status = $2 FOR UPDATE',
-    [id, 'PENDING']
+    'SELECT * FROM transactions WHERE id = $1 AND status IN ($2, $3) FOR UPDATE',
+    [id, 'PENDING', 'PENDING_CONFIRMATION']
   );
 
   if (transactionResult.rows.length === 0) {

@@ -1,0 +1,141 @@
+[dotenv@17.2.3] injecting env (15) from .env -- tip: ÔÜÖ´©Å  enable debug logging with { debug: true }
+=== VERIFICANDO CONTA ASAAS ===
+Ambiente: SANDBOX
+API Key (primeiros chars): $aact_hmlg_000MzkwOD...
+
+--- Saldo da Conta ---
+Resposta: {
+  "balance": 201.07
+}
+
+--- ├Ültimas Transfer├¬ncias (Payouts) ---
+Resposta: {
+  "object": "list",
+  "hasMore": false,
+  "totalCount": 0,
+  "limit": 5,
+  "offset": 0,
+  "data": []
+}
+
+--- ├Ültimos Pagamentos Recebidos ---
+Resposta: {
+  "object": "list",
+  "hasMore": false,
+  "totalCount": 2,
+  "limit": 5,
+  "offset": 0,
+  "data": [
+    {
+      "object": "payment",
+      "id": "pay_vcejm8pxdh0b67qo",
+      "dateCreated": "2025-12-24",
+      "customer": "cus_000007336611",
+      "installment": "4af229fa-02be-4f59-87b3-3cb80bbd46cc",
+      "checkoutSession": null,
+      "paymentLink": null,
+      "value": 155.13,
+      "netValue": 151.56,
+      "originalValue": null,
+      "interestValue": null,
+      "description": "Parcela 1 de 1. Aquisi├º├úo de 3 participa├º├úo(├Áes) no sistema Cred30",
+      "billingType": "CREDIT_CARD",
+      "confirmedDate": "2025-12-24",
+      "creditCard": {
+        "creditCardNumber": "4444",
+        "creditCardBrand": "VISA",
+        "creditCardToken": "cd10882b-5b4b-4209-a3b3-0fb4689684cb"
+      },
+      "pixTransaction": null,
+      "status": "RECEIVED",
+      "dueDate": "2025-12-24",
+      "originalDueDate": "2025-12-24",
+      "paymentDate": "2025-12-24",
+      "clientPaymentDate": "2025-12-24",
+      "installmentNumber": 1,
+      "invoiceUrl": "https://sandbox.asaas.com/i/vcejm8pxdh0b67qo",
+      "invoiceNumber": "12398839",
+      "externalReference": "BUY_QUOTA_2_1766549641818",
+      "deleted": false,
+      "anticipated": false,
+      "anticipable": false,
+      "creditDate": "2025-12-24",
+      "estimatedCreditDate": "2025-12-24",
+      "transactionReceiptUrl": "https://sandbox.asaas.com/comprovantes/h/UEFZTUVOVF9SRUNFSVZFRDpwYXlfdmNlam04cHhkaDBiNjdxbw%3D%3D",
+      "nossoNumero": null,
+      "bankSlipUrl": null,
+      "lastInvoiceViewedDate": null,
+      "lastBankSlipViewedDate": null,
+      "discount": {
+        "value": 0,
+        "limitDate": null,
+        "dueDateLimitDays": 0,
+        "type": "FIXED"
+      },
+      "fine": {
+        "value": 0,
+        "type": "FIXED"
+      },
+      "interest": {
+        "value": 0,
+        "type": "PERCENTAGE"
+      },
+      "postalService": false,
+      "escrow": null,
+      "refunds": null
+    },
+    {
+      "object": "payment",
+      "id": "pay_6cr1pry93nuvhqya",
+      "dateCreated": "2025-12-23",
+      "customer": "cus_000007336611",
+      "checkoutSession": null,
+      "paymentLink": null,
+      "value": 50.5,
+      "netValue": 49.51,
+      "originalValue": null,
+      "interestValue": null,
+      "description": "Aquisi├º├úo de 1 participa├º├úo(├Áes) no sistema Cred30",
+      "billingType": "PIX",
+      "confirmedDate": "2025-12-23",
+      "pixTransaction": "73cd9606-370d-4811-ae6b-7ba4ae872f10",
+      "pixQrCodeId": "b9c3b568-136d-41e1-b69e-389c3b2a3ecc",
+      "status": "RECEIVED",
+      "dueDate": "2025-12-24",
+      "originalDueDate": "2025-12-24",
+      "paymentDate": "2025-12-23",
+      "clientPaymentDate": "2025-12-23",
+      "installmentNumber": null,
+      "invoiceUrl": "https://sandbox.asaas.com/i/6cr1pry93nuvhqya",
+      "invoiceNumber": "12388014",
+      "externalReference": "BUY_QUOTA_2_1766468773831",
+      "deleted": false,
+      "anticipated": false,
+      "anticipable": false,
+      "creditDate": "2025-12-23",
+      "estimatedCreditDate": "2025-12-23",
+      "transactionReceiptUrl": "https://sandbox.asaas.com/comprovantes/h/UEFZTUVOVF9SRUNFSVZFRDpwYXlfNmNyMXByeTkzbnV2aHF5YQ%3D%3D",
+      "nossoNumero": null,
+      "bankSlipUrl": null,
+      "lastInvoiceViewedDate": null,
+      "lastBankSlipViewedDate": null,
+      "discount": {
+        "value": 0,
+        "limitDate": null,
+        "dueDateLimitDays": 0,
+        "type": "FIXED"
+      },
+      "fine": {
+        "value": 0,
+        "type": "FIXED"
+      },
+      "interest": {
+        "value": 0,
+        "type": "PERCENTAGE"
+      },
+      "postalService": false,
+      "escrow": null,
+      "refunds": null
+    }
+  ]
+}

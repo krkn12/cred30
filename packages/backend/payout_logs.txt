@@ -1,0 +1,48 @@
+[dotenv@17.2.3] injecting env (15) from .env -- tip: ÔÜÖ´©Å  load multiple .env files with { path: ['.env.local', '.env'] }
+=== TRANSA├ç├òES DE SAQUE ===
+
+ID: 32
+Valor: R$ 25.20
+Status: APPROVED
+Payout Status: PENDING_PAYMENT
+Metadata: {
+  "type": "CREDIT_WITHDRAWAL",
+  "pixKey": "32588589",
+  "feeAmount": 2,
+  "netAmount": 23.2,
+  "availableCredit": -25.2,
+  "balanceDeducted": true,
+  "totalLoanAmount": 0
+}
+---
+
+ID: 31
+Valor: R$ 25.20
+Status: APPROVED
+Payout Status: PENDING_PAYMENT
+Metadata: {
+  "type": "CREDIT_WITHDRAWAL",
+  "pixKey": "32588589",
+  "feeAmount": 2,
+  "netAmount": 23.2,
+  "availableCredit": 0,
+  "balanceDeducted": true,
+  "totalLoanAmount": 0
+}
+---
+
+ID: 9
+Valor: R$ 25.21
+Status: PENDING_CONFIRMATION
+Payout Status: NONE
+Metadata: {
+  "type": "CREDIT_WITHDRAWAL",
+  "pixKey": "32588589",
+  "feeAmount": 7,
+  "netAmount": 18.21,
+  "availableCredit": 0,
+  "balanceDeducted": true,
+  "totalLoanAmount": 0
+}
+---
+

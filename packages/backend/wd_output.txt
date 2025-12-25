@@ -1,0 +1,28 @@
+[dotenv@17.2.3] injecting env (15) from .env -- tip: ÔÜÖ´©Å  write to custom object with { processEnv: myObject }
+Recent WITHDRAWAL transactions:
+---
+ID: 31
+Amount: 25.20
+Status: APPROVED
+Metadata: {
+  "type": "CREDIT_WITHDRAWAL",
+  "pixKey": "32588589",
+  "feeAmount": 2,
+  "netAmount": 23.2,
+  "availableCredit": 0,
+  "balanceDeducted": true,
+  "totalLoanAmount": 0
+}
+---
+ID: 9
+Amount: 25.21
+Status: PENDING_CONFIRMATION
+Metadata: {
+  "type": "CREDIT_WITHDRAWAL",
+  "pixKey": "32588589",
+  "feeAmount": 7,
+  "netAmount": 18.21,
+  "availableCredit": 0,
+  "balanceDeducted": true,
+  "totalLoanAmount": 0
+}

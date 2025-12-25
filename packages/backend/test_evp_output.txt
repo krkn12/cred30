@@ -1,0 +1,18 @@
+[dotenv@17.2.3] injecting env (15) from .env -- tip: ÔÜÖ´©Å  write to custom object with { processEnv: myObject }
+=== TESTANDO TRANSFER├èNCIA PIX (EVP) ===
+Ambiente: SANDBOX
+
+Dados do teste:
+Chave PIX: adc50268-9ef7-4d96-bf7e-3ce6ad99e007
+Tipo: EVP
+Valor: 1
+
+ÔØî ERRO na transfer├¬ncia:
+{
+  "errors": [
+    {
+      "code": "invalid_action",
+      "description": "A chave informada n├úo foi encontrada."
+    }
+  ]
+}
