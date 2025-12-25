@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { LOAN_INTEREST_RATE, ONE_MONTH_MS, PENALTY_RATE, LOAN_ORIGINATION_FEE_RATE } from '../../../shared/constants/business.constants';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
@@ -11,6 +11,11 @@ import { calculateUserLoanLimit } from '../../../application/services/credit-ana
 import { PoolClient } from 'pg';
 
 const loanRoutes = new Hono();
+
+// Aplicar trava de segurança para solicitações e pagamentos
+loanRoutes.use('/request', securityLockMiddleware);
+loanRoutes.use('/repay', securityLockMiddleware);
+loanRoutes.use('/repay-installment', securityLockMiddleware);
 
 // Esquema de validação para solicitação de empréstimo
 const createLoanSchema = z.object({

@@ -435,6 +435,92 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
     console.log(`[UPGRADE_PRO] Usuário ${transaction.user_id} agora é PRO via transação ${id}`);
   }
 
+  // COMPRA NO MARKETPLACE
+  if (transaction.type === 'MARKET_PURCHASE') {
+    let metadata: any = transaction.metadata || {};
+    if (typeof metadata === 'string') {
+      try { metadata = JSON.parse(metadata); } catch { metadata = {}; }
+    }
+
+    if (metadata.orderId) {
+      // 1. Atualizar status do pedido para 'Aguardando Envio'
+      await client.query(
+        "UPDATE marketplace_orders SET status = 'WAITING_SHIPPING', updated_at = NOW() WHERE id = $1",
+        [metadata.orderId]
+      );
+
+      // 2. Se houver taxa de gateway externa (PIX/Cartão), contabilizar
+      if (metadata.externalReference || metadata.gatewayId) {
+        const paymentMethod = metadata.paymentMethod || 'pix';
+        const baseAmount = parseFloat(transaction.amount);
+        const gatewayCost = calculateGatewayCost(baseAmount, paymentMethod as any);
+
+        await client.query(
+          'UPDATE transactions SET gateway_cost = $1 WHERE id = $2',
+          [gatewayCost, transaction.id]
+        );
+
+        await client.query(
+          'UPDATE system_config SET system_balance = system_balance + $1 - $2, total_gateway_costs = total_gateway_costs + $2',
+          [parseFloat(transaction.amount), gatewayCost]
+        );
+      }
+
+      console.log(`[MARKET_PURCHASE] Pedido ${metadata.orderId} aprovado via transação ${id}`);
+    }
+  }
+
+  // IMPULSIONAMENTO NO MARKETPLACE
+  if (transaction.type === 'MARKET_BOOST') {
+    let metadata: any = transaction.metadata || {};
+    if (typeof metadata === 'string') {
+      try { metadata = JSON.parse(metadata); } catch { metadata = {}; }
+    }
+
+    if (metadata.listingId) {
+      // 1. Ativar o Boost no anúncio
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      await client.query(
+        'UPDATE marketplace_listings SET is_boosted = TRUE, boost_expires_at = $1 WHERE id = $2',
+        [expiresAt, metadata.listingId]
+      );
+
+      // 2. Distribuir a taxa (85% para cotistas / 15% Operacional)
+      // Se for pagamento externo, considerar o gateway fee
+      const boostFee = Math.abs(parseFloat(transaction.amount));
+      let gatewayCost = 0;
+
+      if (metadata.asaas_id || metadata.external_reference) {
+        const paymentMethod = metadata.paymentMethod || 'pix';
+        gatewayCost = calculateGatewayCost(boostFee, paymentMethod as any);
+
+        await client.query(
+          'UPDATE transactions SET gateway_cost = $1 WHERE id = $2',
+          [gatewayCost, transaction.id]
+        );
+
+        await client.query(
+          'UPDATE system_config SET total_gateway_costs = total_gateway_costs + $1',
+          [gatewayCost]
+        );
+      }
+
+      // Valor líquido para distribuição (depois do gateway cost)
+      const netBoostFee = boostFee - gatewayCost;
+      const feeForProfit = netBoostFee * 0.85;
+      const feeForOperational = netBoostFee * 0.15;
+
+      await client.query(
+        'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
+        [feeForOperational, feeForProfit]
+      );
+
+      console.log(`[MARKET_BOOST] Anúncio ${metadata.listingId} impulsionado via transação ${id}`);
+    }
+  }
+
   // SAQUE (Dedução real do caixa operacional)
   if (transaction.type === 'WITHDRAWAL') {
     let metadata: any = transaction.metadata || {};

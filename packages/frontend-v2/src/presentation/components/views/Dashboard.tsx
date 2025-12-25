@@ -87,8 +87,27 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
 
     const isPositive = (type: string) => ['DEPOSIT', 'DIVIDEND', 'REFERRAL_BONUS', 'LOAN_RECEIVED', 'QUOTA_SELL', 'EDUCATION_REWARD', 'GAME_WIN', 'ADMIN_GIFT'].includes(type);
 
+    const isLocked = user.securityLockUntil ? user.securityLockUntil > Date.now() : false;
+    const lockTimeRemaining = user.securityLockUntil ? Math.ceil((user.securityLockUntil - Date.now()) / (1000 * 60 * 60)) : 0;
+
     return (
         <div className="space-y-8 pb-24">
+            {/* Alerta de Segurança */}
+            {isLocked && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+                        <ShieldCheck className="w-6 h-6 text-red-500" />
+                    </div>
+                    <div>
+                        <h3 className="text-red-500 font-bold text-sm">Modo de Segurança Ativo</h3>
+                        <p className="text-zinc-400 text-xs mt-1 leading-relaxed">
+                            Sua conta está em modo "Apenas Visualização" por mais <strong>{lockTimeRemaining} horas</strong> devido a uma alteração recente de segurança.
+                            Transações, saques e empréstimos serão liberados após este período por sua proteção.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* Header Mobile Otimizado */}
             <div className="flex justify-between items-start">
                 <div>
@@ -115,20 +134,20 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
             </div>
 
             {/* Main Stats Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {/* Balance Card - Destaque Principal */}
-                <div className="bg-gradient-to-br from-primary-600 to-primary-800 rounded-2xl p-6 text-white shadow-[0_0_30px_rgba(6,182,212,0.2)] md:col-span-2 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform"><Wallet size={80} /></div>
+                <div className="bg-gradient-to-br from-primary-600 to-primary-800 rounded-3xl p-5 sm:p-6 text-white shadow-[0_20px_50px_rgba(6,182,212,0.15)] col-span-2 relative overflow-hidden group">
+                    <div className="absolute -top-4 -right-4 p-4 opacity-10 group-hover:scale-110 transition-transform rotate-12"><Wallet size={120} /></div>
                     <div className="relative z-10">
-                        <div className="flex items-center gap-2 mb-2 opacity-90">
-                            <span className="text-sm font-medium">Saldo Disponível</span>
+                        <div className="flex items-center gap-2 mb-1 opacity-80">
+                            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest">Saldo Total</span>
                         </div>
-                        <h2 className="text-4xl font-bold tracking-tight mb-4">{formatCurrency(user.balance)}</h2>
-                        <div className="flex gap-3">
-                            <button onClick={onWithdraw} className="bg-black/20 hover:bg-black/40 text-white text-xs font-bold py-2 px-4 rounded-lg backdrop-blur-sm transition flex items-center gap-2 border border-white/10">
+                        <h2 className="text-3xl sm:text-4xl font-black tracking-tighter mb-5">{formatCurrency(user.balance)}</h2>
+                        <div className="flex gap-2">
+                            <button onClick={onWithdraw} className="flex-1 bg-black/20 hover:bg-black/40 text-white text-[10px] sm:text-xs font-black uppercase tracking-wider py-3 px-3 rounded-xl backdrop-blur-md transition flex items-center justify-center gap-2 border border-white/10 active:scale-95">
                                 <ArrowUpFromLine size={14} /> Resgatar
                             </button>
-                            <button onClick={onBuyQuota} className="bg-white text-primary-900 hover:bg-zinc-100 text-xs font-bold py-2 px-4 rounded-lg shadow-lg transition flex items-center gap-2">
+                            <button onClick={onBuyQuota} className="flex-1 bg-white text-primary-900 hover:bg-zinc-100 text-[10px] sm:text-xs font-black uppercase tracking-wider py-3 px-3 rounded-xl shadow-xl transition flex items-center justify-center gap-2 active:scale-95">
                                 <TrendingUp size={14} /> Participar
                             </button>
                         </div>
@@ -136,42 +155,43 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                 </div>
 
                 {/* Investment Card */}
-                <div className="bg-surface border border-surfaceHighlight rounded-2xl p-6 relative">
-                    <div className="absolute top-0 right-0 p-2 opacity-10"><TrendingUp size={40} /></div>
+                <div className="bg-surface border border-surfaceHighlight rounded-2xl p-4 sm:p-6 relative overflow-hidden">
+                    <div className="absolute -top-2 -right-2 p-2 opacity-5 rotate-12"><TrendingUp size={60} /></div>
                     <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-2">
-                            <PieChart size={20} className="text-primary-400" />
-                            <span className="text-sm font-medium text-zinc-400">Minhas Licenças</span>
+                            <PieChart size={16} className="text-primary-400" />
+                            <span className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider">Licenças</span>
                         </div>
-                        <h3 className="text-2xl font-bold text-white">{formatCurrency(totalInvested)}</h3>
-                        <p className="text-xs text-zinc-400 mt-1">{userQuotas.length} licenças ativas</p>
+                        <h3 className="text-lg sm:text-2xl font-black text-white">{formatCurrency(totalInvested)}</h3>
+                        <p className="text-[9px] sm:text-xs text-zinc-500 mt-1 font-medium">{userQuotas.length} ativas</p>
                     </div>
                 </div>
 
                 {/* Earnings Card */}
-                <div className="bg-surface border border-surfaceHighlight rounded-2xl p-6 relative">
-                    <div className="absolute top-0 right-0 p-2 opacity-10"><ArrowUpRight size={40} /></div>
+                <div className="bg-surface border border-surfaceHighlight rounded-2xl p-4 sm:p-6 relative overflow-hidden">
+                    <div className="absolute -top-2 -right-2 p-2 opacity-5 rotate-12"><ArrowUpRight size={60} /></div>
                     <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-2">
-                            <ArrowUpFromLine size={20} className="text-emerald-400" />
-                            <span className="text-sm font-medium text-zinc-400">Meus Benefícios</span>
+                            <ArrowUpFromLine size={16} className="text-emerald-400" />
+                            <span className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider">Lucros</span>
                         </div>
-                        <h3 className="text-2xl font-bold text-emerald-400">{formatCurrency(totalEarnings)}</h3>
-                        <p className="text-xs text-zinc-500 mt-1">Recompensas do Clube</p>
+                        <h3 className="text-lg sm:text-2xl font-black text-emerald-400">{formatCurrency(totalEarnings)}</h3>
+                        <p className="text-[9px] sm:text-xs text-zinc-600 mt-1 font-medium">Acumulado</p>
                     </div>
                 </div>
 
-
-                {/* Debt Card */}
-                <div className="bg-surface border border-surfaceHighlight rounded-2xl p-6 relative">
-                    <div className="absolute top-0 right-0 p-2 opacity-10"><AlertTriangle size={40} /></div>
-                    <div className="relative z-10">
+                {/* Debt Card (Ocupa 2 colunas no mobile se sobrar ou 1 se preferir) */}
+                <div className="bg-surface border border-surfaceHighlight rounded-2xl p-4 sm:p-6 relative overflow-hidden col-span-2 sm:col-span-1">
+                    <div className="absolute -top-2 -right-2 p-2 opacity-5 rotate-12"><AlertTriangle size={60} /></div>
+                    <div className="relative z-10 flex flex-col sm:block justify-center h-full">
                         <div className="flex items-center gap-2 mb-2">
-                            <DollarSign size={20} className="text-red-400" />
-                            <span className="text-sm font-medium text-zinc-400">Auxílios Ativos</span>
+                            <DollarSign size={16} className="text-red-400" />
+                            <span className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider">Apoios</span>
                         </div>
-                        <h3 className="text-2xl font-bold text-red-400">{formatCurrency(totalDebt)}</h3>
-                        <p className="text-xs text-zinc-400 mt-1">{userLoans.length} contratos ativos</p>
+                        <div className="flex items-baseline justify-between sm:block">
+                            <h3 className="text-lg sm:text-2xl font-black text-red-500">{formatCurrency(totalDebt)}</h3>
+                            <p className="text-[9px] sm:text-xs text-zinc-600 mt-1 font-medium">{userLoans.length} contratos</p>
+                        </div>
                     </div>
                 </div>
             </div>

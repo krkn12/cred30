@@ -128,8 +128,26 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
         }
     };
 
+    const isLocked = user.securityLockUntil ? user.securityLockUntil > Date.now() : false;
+    const lockTimeRemaining = user.securityLockUntil ? Math.ceil((user.securityLockUntil - Date.now()) / (1000 * 60 * 60)) : 0;
+
     return (
         <div className="space-y-6">
+            {/* Alerta de Segurança */}
+            {isLocked && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+                        <ShieldCheck className="w-6 h-6 text-red-500" />
+                    </div>
+                    <div>
+                        <h3 className="text-red-500 font-bold text-sm">Modo de Segurança Ativo</h3>
+                        <p className="text-zinc-400 text-[10px] mt-1 leading-relaxed">
+                            Sua conta está em modo "Apenas Visualização" por mais <strong>{lockTimeRemaining} horas</strong> devido a uma alteração recente de segurança.
+                            Transações, saques e empréstimos serão liberados após este período por sua proteção.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             <div className="bg-surface border border-surfaceHighlight rounded-2xl p-6">
                 <h3 className="text-lg font-bold text-white mb-4">Perfil</h3>

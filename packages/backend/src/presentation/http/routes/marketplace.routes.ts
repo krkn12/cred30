@@ -1,14 +1,22 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { MARKETPLACE_ESCROW_FEE_RATE, MARKET_CREDIT_INTEREST_RATE, MARKET_CREDIT_MAX_INSTALLMENTS, MARKET_CREDIT_MIN_SCORE, MARKET_CREDIT_MIN_QUOTAS, LOGISTICS_SUSTAINABILITY_FEE_RATE } from '../../../shared/constants/business.constants';
 import { UserContext } from '../../../shared/types/hono.types';
 import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction, lockSystemConfig } from '../../../domain/services/transaction.service';
 import { calculateUserLoanLimit } from '../../../application/services/credit-analysis.service';
 import { updateScore } from '../../../application/services/score.service';
+import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
+import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/asaas.service';
 
 const marketplaceRoutes = new Hono();
+
+// Aplicar trava de segurança para ações sensíveis de mercado
+marketplaceRoutes.use('/create', securityLockMiddleware);
+marketplaceRoutes.use('/buy', securityLockMiddleware);
+marketplaceRoutes.use('/buy-on-credit', securityLockMiddleware);
+marketplaceRoutes.use('/boost', securityLockMiddleware);
 
 // Esquemas de validação
 const createListingSchema = z.object({
@@ -26,6 +34,16 @@ const buyListingSchema = z.object({
     offlineToken: z.string().optional(),
     deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST']).optional().default('SELF_PICKUP'),
     offeredDeliveryFee: z.number().min(0).optional().default(0),
+    pickupAddress: z.string().optional(),
+    paymentMethod: z.enum(['BALANCE', 'PIX', 'CARD']).default('BALANCE'),
+    creditCard: z.object({
+        holderName: z.string(),
+        number: z.string(),
+        expiryMonth: z.string(),
+        expiryYear: z.string(),
+        ccv: z.string(),
+        cpf: z.string(),
+    }).optional(),
 });
 
 const buyOnCreditSchema = z.object({
@@ -35,6 +53,7 @@ const buyOnCreditSchema = z.object({
     contactPhone: z.string().min(8, 'Telefone inválido').optional(),
     deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST']).optional().default('SELF_PICKUP'),
     offeredDeliveryFee: z.number().min(0).optional().default(0),
+    pickupAddress: z.string().optional(),
 });
 
 const offlineTransactionSchema = z.object({
@@ -173,6 +192,10 @@ marketplaceRoutes.post('/buy-on-credit', authMiddleware, async (c) => {
 
         if (listing.seller_id === user.id) return c.json({ success: false, message: 'Você não pode comprar de si mesmo.' }, 400);
 
+        // Buscar endereço do vendedor para coleta
+        const sellerRes = await pool.query('SELECT address FROM users WHERE id = $1', [listing.seller_id]);
+        const finalPickupAddress = body.pickupAddress || sellerRes.rows[0]?.address || 'A combinar com o vendedor';
+
         const totalInterestRate = MARKET_CREDIT_INTEREST_RATE * installments;
         const totalAmountWithInterest = price * (1 + totalInterestRate);
 
@@ -194,9 +217,9 @@ marketplaceRoutes.post('/buy-on-credit', authMiddleware, async (c) => {
             const totalAmountWithInterest = totalWithFee * (1 + totalInterestRate);
 
             const orderResult = await client.query(
-                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, contact_phone, delivery_status, delivery_fee, pickup_code)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
-                [listingId, user.id, listing.seller_id, totalWithFee, price * MARKETPLACE_ESCROW_FEE_RATE, price * (1 - MARKETPLACE_ESCROW_FEE_RATE), 'WAITING_SHIPPING', 'CRED30_CREDIT', deliveryAddress, contactPhone, deliveryStatus, fee, pickupCode]
+                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, delivery_status, delivery_fee, pickup_code)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
+                [listingId, user.id, listing.seller_id, totalWithFee, price * MARKETPLACE_ESCROW_FEE_RATE, price * (1 - MARKETPLACE_ESCROW_FEE_RATE), 'WAITING_SHIPPING', 'CRED30_CREDIT', deliveryAddress, finalPickupAddress, contactPhone, deliveryStatus, fee, pickupCode]
             );
             const orderId = orderResult.rows[0].id;
 
@@ -225,7 +248,7 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c) => {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
         const body = await c.req.json();
-        const { listingId, deliveryAddress, contactPhone, offlineToken } = buyListingSchema.parse(body);
+        const { listingId, deliveryAddress, contactPhone, offlineToken, paymentMethod, deliveryType, offeredDeliveryFee } = buyListingSchema.parse(body);
 
         const listingResult = await pool.query('SELECT * FROM marketplace_listings WHERE id = $1 AND status = $2', [listingId, 'ACTIVE']);
         if (listingResult.rows.length === 0) return c.json({ success: false, message: 'Item indisponível.' }, 404);
@@ -233,39 +256,125 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c) => {
         const listing = listingResult.rows[0];
         if (listing.seller_id === user.id) return c.json({ success: false, message: 'Você não pode comprar de si mesmo.' }, 400);
 
+        // Buscar endereço do vendedor para coleta
+        const sellerRes = await pool.query('SELECT address FROM users WHERE id = $1', [listing.seller_id]);
+        const finalPickupAddress = body.pickupAddress || sellerRes.rows[0]?.address || 'A combinar com o vendedor';
+
         const price = parseFloat(listing.price);
-        const fee = price * MARKETPLACE_ESCROW_FEE_RATE;
-        const sellerAmount = price - fee;
+        const baseAmountToCharge = price + offeredDeliveryFee;
 
-        const result = await executeInTransaction(pool, async (client) => {
-            const { deliveryType, offeredDeliveryFee } = buyListingSchema.parse(body);
-            const totalToPay = price + offeredDeliveryFee;
+        // Se o pagamento for via saldo
+        if (paymentMethod === 'BALANCE') {
+            const fee = price * MARKETPLACE_ESCROW_FEE_RATE;
+            const sellerAmount = price - fee;
 
-            const balanceCheck = await lockUserBalance(client, user.id, totalToPay);
-            if (!balanceCheck.success) throw new Error('Saldo insuficiente (Preço + Entrega).');
+            const result = await executeInTransaction(pool, async (client) => {
+                const balanceCheck = await lockUserBalance(client, user.id, baseAmountToCharge);
+                if (!balanceCheck.success) throw new Error('Saldo insuficiente (Preço + Entrega).');
 
-            await updateUserBalance(client, user.id, totalToPay, 'debit');
+                await updateUserBalance(client, user.id, baseAmountToCharge, 'debit');
+                await client.query('UPDATE marketplace_listings SET status = $1 WHERE id = $2', ['SOLD', listingId]);
+
+                const deliveryStatus = deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE';
+                const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+                const orderResult = await client.query(
+                    `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, offline_token, delivery_status, delivery_fee, pickup_code)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
+                    [listingId, user.id, listing.seller_id, price, fee, sellerAmount, 'WAITING_SHIPPING', 'BALANCE', deliveryAddress, finalPickupAddress, contactPhone, offlineToken, deliveryStatus, offeredDeliveryFee, pickupCode]
+                );
+                const orderId = orderResult.rows[0].id;
+
+                await createTransaction(client, user.id, 'MARKET_PURCHASE', price, `Compra: ${listing.title}`, 'APPROVED', { orderId, listingId });
+                return { orderId };
+            });
+
+            if (!result.success) return c.json({ success: false, message: result.error }, 400);
+            return c.json({ success: true, message: 'Compra realizada!', orderId: result.data?.orderId });
+        }
+
+        // Pagamento Externo (PIX ou CARTÃO) com repasse de taxa
+        const method = paymentMethod === 'PIX' ? 'pix' : 'card';
+        const paymentCalc = calculateTotalToPay(baseAmountToCharge, method as PaymentMethod);
+        const finalCost = paymentCalc.total;
+        const external_reference = `MARKET_BUY_${user.id}_${listingId}_${Date.now()}`;
+
+        let mpData = null;
+        try {
+            if (paymentMethod === 'CARD' && body.creditCard) {
+                mpData = await createCardPayment({
+                    amount: finalCost,
+                    description: `Compra no Mercado Cred30: ${listing.title}`,
+                    email: user.email,
+                    external_reference,
+                    installments: 1,
+                    cpf: body.creditCard.cpf,
+                    name: body.creditCard.holderName,
+                    creditCard: body.creditCard
+                });
+            } else {
+                // Default to PIX
+                mpData = await createPixPayment({
+                    amount: finalCost,
+                    description: `Compra no Mercado Cred30: ${listing.title}`,
+                    email: user.email,
+                    external_reference,
+                    cpf: user.cpf || '',
+                    name: user.name
+                });
+            }
+        } catch (mpError: any) {
+            console.error('Erro ao gerar cobrança Asaas no Marketplace:', mpError);
+            return c.json({ success: false, message: mpError.message || 'Erro ao processar pagamento externo' }, 400);
+        }
+
+        // Criar Pedido PENDENTE e Reservar Item
+        // Nota: Reservamos o item colocando como 'SOLD' ou um novo status 'PENDING_PAYMENT' 
+        // para evitar que outro compre enquanto o PIX está aberto.
+        const orderId = await executeInTransaction(pool, async (client) => {
+            // Reservar o item
             await client.query('UPDATE marketplace_listings SET status = $1 WHERE id = $2', ['SOLD', listingId]);
 
             const deliveryStatus = deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE';
             const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-            const orderResult = await client.query(
-                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, contact_phone, offline_token, delivery_status, delivery_fee, pickup_code)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
-                [listingId, user.id, listing.seller_id, price, fee, sellerAmount, 'WAITING_SHIPPING', 'BALANCE', deliveryAddress, contactPhone, offlineToken, deliveryStatus, offeredDeliveryFee, pickupCode]
-            );
-            const orderId = orderResult.rows[0].id;
+            // Taxas do Marketplace (Escrow)
+            const escrowFee = price * MARKETPLACE_ESCROW_FEE_RATE;
+            const sellerAmount = price - escrowFee;
 
-            await createTransaction(client, user.id, 'MARKET_PURCHASE', price, `Compra: ${listing.title}`, 'APPROVED', { orderId, listingId });
-            return { orderId };
+            const orderResult = await client.query(
+                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, offline_token, delivery_status, delivery_fee, pickup_code)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
+                [listingId, user.id, listing.seller_id, price, escrowFee, sellerAmount, 'WAITING_PAYMENT', paymentMethod, deliveryAddress, finalPickupAddress, contactPhone, offlineToken, deliveryStatus, offeredDeliveryFee, pickupCode]
+            );
+
+            const oId = orderResult.rows[0].id;
+
+            // Criar Transação Pendente
+            await createTransaction(client, user.id, 'MARKET_PURCHASE', price, `Compra Reservada: ${listing.title}`, 'PENDING', {
+                orderId: oId,
+                listingId,
+                external_reference: external_reference,
+                asaas_id: mpData.id,
+                gatewayFee: paymentCalc.fee
+            });
+
+            return oId;
         });
 
-        if (!result.success) return c.json({ success: false, message: result.error }, 400);
-        return c.json({ success: true, message: 'Compra realizada!', orderId: result.data?.orderId });
+        return c.json({
+            success: true,
+            message: 'Pagamento gerado! Finalize para concluir a compra.',
+            data: {
+                orderId,
+                payment: mpData,
+                totalWithFees: finalCost,
+                gatewayFee: paymentCalc.fee
+            }
+        });
 
     } catch (error) {
-        console.error('Buy Balance Error:', error);
+        console.error('Buy Route Error:', error);
         return c.json({ success: false, message: 'Erro ao processar compra' }, 500);
     }
 });
@@ -552,18 +661,21 @@ marketplaceRoutes.get('/my-orders', authMiddleware, async (c) => {
         const offset = parseInt(c.req.query('offset') || '0');
 
         const result = await pool.query(
-            `SELECT o.*, l.title, l.image_url, 
+            `SELECT o.*, l.title as listing_title, l.image_url as listing_image, 
               ub.name as buyer_name,
               us.name as seller_name,
+              uc.name as courier_name,
+              COALESCE(uc.phone, uc.pix_key) as courier_phone,
               ln.installments, ln.interest_rate, ln.total_repayment
        FROM marketplace_orders o
        JOIN marketplace_listings l ON o.listing_id = l.id
        JOIN users ub ON o.buyer_id = ub.id
        JOIN users us ON o.seller_id = us.id
+       LEFT JOIN users uc ON o.courier_id = uc.id
        LEFT JOIN loans ln ON o.payment_method = 'CRED30_CREDIT' 
             AND ln.metadata->>'orderId' = o.id::text 
             AND ln.user_id = o.buyer_id
-       WHERE o.buyer_id = $1 OR o.seller_id = $1
+       WHERE o.buyer_id = $1 OR o.seller_id = $1 OR o.courier_id = $1
        ORDER BY o.created_at DESC
        LIMIT $2 OFFSET $3`,
             [user.id, limit, offset]
@@ -589,57 +701,113 @@ marketplaceRoutes.post('/boost', authMiddleware, async (c) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
-        const { listingId } = await c.req.json();
+        const body = await c.req.json();
+        const { listingId, paymentMethod = 'BALANCE', creditCard } = body;
         const BOOST_FEE = 5.00; // R$ 5,00 para impulsionar por 7 dias
 
-        const result = await executeInTransaction(pool, async (client) => {
-            // 1. Verificar se o anúncio pertence ao usuário e está ativo
-            const listingRes = await client.query(
-                'SELECT * FROM marketplace_listings WHERE id = $1 AND seller_id = $2 AND status = $3',
-                [listingId, user.id, 'ACTIVE']
-            );
+        // 1. Buscar anúncio
+        const listingRes = await pool.query(
+            'SELECT * FROM marketplace_listings WHERE id = $1 AND seller_id = $2 AND status = $3',
+            [listingId, user.id, 'ACTIVE']
+        );
+        if (listingRes.rows.length === 0) return c.json({ success: false, message: 'Anúncio não encontrado ou inválido' }, 404);
+        const listing = listingRes.rows[0];
 
-            if (listingRes.rows.length === 0) throw new Error('Anúncio não encontrado ou inválido');
+        // PAGAMENTO VIA SALDO
+        if (paymentMethod === 'BALANCE') {
+            const result = await executeInTransaction(pool, async (client) => {
+                const balanceCheck = await lockUserBalance(client, user.id, BOOST_FEE);
+                if (!balanceCheck.success) throw new Error('Saldo insuficiente para impulsionar');
 
-            // 2. Verificar saldo do usuário
-            const userRes = await client.query('SELECT balance FROM users WHERE id = $1', [user.id]);
-            if (parseFloat(userRes.rows[0].balance) < BOOST_FEE) throw new Error('Saldo insuficiente para impulsionar');
+                await updateUserBalance(client, user.id, BOOST_FEE, 'debit');
 
-            // 3. Cobrar taxa e atualizar anúncio
-            await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [BOOST_FEE, user.id]);
+                const expiresAt = new Date();
+                expiresAt.setDate(expiresAt.getDate() + 7);
 
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 7);
+                await client.query(
+                    'UPDATE marketplace_listings SET is_boosted = TRUE, boost_expires_at = $1 WHERE id = $2',
+                    [expiresAt, listingId]
+                );
 
-            await client.query(
-                'UPDATE marketplace_listings SET is_boosted = TRUE, boost_expires_at = $1 WHERE id = $2',
-                [expiresAt, listingId]
-            );
+                const feeForProfit = BOOST_FEE * 0.85;
+                const feeForOperational = BOOST_FEE * 0.15;
 
-            // 4. Distribuir dividendos (85% para cotistas / 15% Operacional)
-            const feeForProfit = BOOST_FEE * 0.85;
-            const feeForOperational = BOOST_FEE * 0.15;
+                await client.query(
+                    'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
+                    [feeForOperational, feeForProfit]
+                );
 
-            await client.query(
-                'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
-                [feeForOperational, feeForProfit]
-            );
+                await createTransaction(
+                    client,
+                    user.id,
+                    'MARKET_BOOST',
+                    BOOST_FEE,
+                    `Impulsionamento de Anúncio: ${listing.title}`,
+                    'APPROVED',
+                    { listingId }
+                );
 
-            // 5. Registrar transação
-            await createTransaction(
-                client,
-                user.id,
-                'MARKET_BOOST',
-                -BOOST_FEE,
-                `Impulsionamento de Anúncio: ${listingRes.rows[0].title}`,
-                'APPROVED'
-            );
+                return { success: true };
+            });
 
-            return { success: true };
+            if (!result.success) return c.json({ success: false, message: result.error }, 400);
+            return c.json({ success: true, message: 'Seu anúncio foi impulsionado!' });
+        }
+
+        // PAGAMENTO EXTERNO (PIX/CARTÃO)
+        const method = paymentMethod === 'PIX' ? 'pix' : 'card';
+        const paymentCalc = calculateTotalToPay(BOOST_FEE, method as PaymentMethod);
+        const finalCost = paymentCalc.total;
+        const external_reference = `MARKET_BOOST_${user.id}_${listingId}_${Date.now()}`;
+
+        let mpData = null;
+        try {
+            if (paymentMethod === 'CARD' && creditCard) {
+                mpData = await createCardPayment({
+                    amount: finalCost,
+                    description: `Impulsionamento de Anúncio: ${listing.title}`,
+                    email: user.email,
+                    external_reference,
+                    installments: 1,
+                    cpf: creditCard.cpf,
+                    name: creditCard.holderName,
+                    creditCard: creditCard
+                });
+            } else {
+                mpData = await createPixPayment({
+                    amount: finalCost,
+                    description: `Impulsionamento de Anúncio: ${listing.title}`,
+                    email: user.email,
+                    external_reference,
+                    cpf: user.cpf || '',
+                    name: user.name
+                });
+            }
+        } catch (mpError: any) {
+            return c.json({ success: false, message: mpError.message || 'Erro ao processar pagamento externo' }, 400);
+        }
+
+        // Criar Transação Pendente
+        await executeInTransaction(pool, async (client) => {
+            await createTransaction(client, user.id, 'MARKET_BOOST', BOOST_FEE, `Impulsionamento Reservado: ${listing.title}`, 'PENDING', {
+                listingId,
+                external_reference: external_reference,
+                asaas_id: mpData.id,
+                gatewayFee: paymentCalc.fee,
+                paymentMethod
+            });
         });
 
-        if (!result.success) return c.json({ success: false, message: result.error }, 400);
-        return c.json({ success: true, message: 'Seu anúncio foi impulsionado! Ele aparecerá no topo por 7 dias.' });
+        return c.json({
+            success: true,
+            message: 'Pagamento de impulsionamento gerado!',
+            data: {
+                payment: mpData,
+                totalWithFees: finalCost,
+                gatewayFee: paymentCalc.fee
+            }
+        });
+
     } catch (error: any) {
         console.error('Error boosting listing:', error);
         return c.json({ success: false, message: error.message || 'Erro ao impulsionar anúncio' }, 500);
@@ -655,7 +823,9 @@ marketplaceRoutes.get('/logistic/missions', authMiddleware, async (c) => {
         const pool = getDbPool(c);
 
         const result = await pool.query(`
-            SELECT o.id, o.delivery_fee, o.delivery_address, o.created_at,
+            SELECT o.id, o.delivery_fee, o.delivery_address, o.pickup_address, o.created_at,
+                   o.contact_phone as buyer_phone,
+                   COALESCE(u_seller.phone, u_seller.pix_key) as seller_phone,
                    l.title as item_title, l.image_url,
                    u_seller.name as seller_name, u_buyer.name as buyer_name
             FROM marketplace_orders o

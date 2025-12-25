@@ -13,6 +13,7 @@ export interface UserContext {
   pixKey?: string; // Adicionado para compatibilidade
   twoFactorEnabled?: boolean;
   cpf?: string | null; // CPF do usuário (opcional, obrigatório para saque)
+  securityLockUntil?: number; // Timestamp em milissegundos
 }
 
 // Estender o tipo de variáveis do Hono

@@ -109,61 +109,71 @@ export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
                 />
             </div>
 
-            {/* Confirmation Modal */}
+            {/* Confirmation Modal - Bottom Sheet on Mobile */}
             {showConfirm && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[110] p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowConfirm(false); }}>
-                    <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 w-full max-w-sm relative animate-fade-in">
-                        <button title="Fechar" onClick={() => setShowConfirm(false)} className="absolute top-4 right-4 text-zinc-400 hover:text-white bg-zinc-800 p-1.5 rounded-full z-10"><XIcon size={24} /></button>
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-500" onClick={(e) => { if (e.target === e.currentTarget) setShowConfirm(false); }}>
+                    <div className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-surfaceHighlight rounded-t-[2.5rem] sm:rounded-3xl p-8 w-full sm:max-w-sm relative shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300">
+                        <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-6 sm:hidden opacity-50" />
 
-                        <h3 className="text-xl font-bold text-white mb-4">Confirmar Aporte</h3>
+                        <button title="Fechar" onClick={() => setShowConfirm(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white bg-zinc-900/50 p-2 rounded-full hidden sm:block"><XIcon size={20} /></button>
 
-                        <div className="bg-background border border-zinc-700 rounded-xl p-4 mb-4 space-y-2">
-                            <div className="flex justify-between text-sm text-zinc-400">
-                                <span>Valor do Aporte</span>
-                                <span className="text-zinc-200">{baseAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        <div className="text-center mb-8">
+                            <div className="w-20 h-20 bg-primary-500/10 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-primary-900/20 ring-1 ring-primary-500/20">
+                                <TrendingUp size={40} className="text-primary-500" strokeWidth={2.5} />
+                            </div>
+                            <h3 className="text-2xl font-black text-white tracking-tight">Confirmar Aporte</h3>
+                            <p className="text-zinc-500 text-sm mt-2 font-medium">Você está adquirindo {qty} unidade(s)</p>
+                        </div>
+
+                        <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-6 mb-8 space-y-4">
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="text-zinc-500 font-bold uppercase tracking-widest">Valor Base</span>
+                                <span className="text-zinc-300 font-black">{baseAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                             </div>
 
                             {fee > 0 && (
-                                <div className="flex justify-between text-sm text-yellow-500/80">
-                                    <span>Taxa de Processamento</span>
-                                    <span>{fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-yellow-500/60 font-bold uppercase tracking-widest">Taxa de Processamento</span>
+                                    <span className="text-yellow-500/80 font-black">+{fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                 </div>
                             )}
 
-                            <div className="h-px bg-zinc-800 my-1"></div>
+                            <div className="h-px bg-white/5 my-2"></div>
 
-                            <div className="flex justify-between text-lg text-white font-bold">
-                                <span>Total Final</span>
-                                <span className="text-primary-400">{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                            <div className="flex justify-between items-baseline">
+                                <span className="text-xs text-zinc-400 font-bold uppercase tracking-widest">Total Final</span>
+                                <span className="text-3xl font-black text-primary-400">{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                             </div>
                         </div>
 
-                        {method === 'BALANCE' ? (
-                            <>
-                                <p className="text-zinc-300 text-sm mb-4">O valor será debitado do seu saldo disponível imediatamente.</p>
-                                <button onClick={handlePurchase} className="w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-3 rounded-xl transition">
-                                    Confirmar Pagamento com Saldo
+                        <div className="space-y-4">
+                            {method === 'BALANCE' ? (
+                                <button
+                                    onClick={handlePurchase}
+                                    className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black uppercase tracking-[0.2em] py-5 rounded-2xl transition-all shadow-xl shadow-primary-500/20 active:scale-[0.98] text-xs"
+                                >
+                                    PAGAR COM MEU SALDO
                                 </button>
-                            </>
-                        ) : (
-                            <>
-                                <p className="text-zinc-300 text-sm mb-4">Um código de pagamento dinâmico será gerado para você.</p>
-                                <button onClick={handlePurchase} className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 rounded-xl transition">
-                                    Gerar Pagamento {method}
+                            ) : (
+                                <button
+                                    onClick={handlePurchase}
+                                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-[0.2em] py-5 rounded-2xl transition-all shadow-xl shadow-emerald-500/20 active:scale-[0.98] text-xs"
+                                >
+                                    GERAR PAGAMENTO {method}
                                 </button>
-                            </>
-                        )}
+                            )}
 
-                        <p className="text-[9px] text-zinc-600 text-center mt-4 leading-relaxed">
-                            Ao confirmar, você declara ciência de que aportes de capital social são regidos pelos Termos de Uso (SCP) e não possuem garantia de rendimento.
+                            <button
+                                onClick={() => setShowConfirm(false)}
+                                className="w-full py-4 text-zinc-600 hover:text-zinc-400 text-[10px] font-black uppercase tracking-[0.3em] transition-all"
+                            >
+                                CANCELAR E VOLTAR
+                            </button>
+                        </div>
+
+                        <p className="text-[9px] text-zinc-600 text-center mt-6 leading-relaxed font-medium">
+                            Ao confirmar, você aceita os termos de sócio-participante (SCP).
                         </p>
-
-                        <button
-                            onClick={() => setShowConfirm(false)}
-                            className="w-full mt-3 py-2 text-zinc-500 hover:text-white text-sm transition-colors"
-                        >
-                            Cancelar e Voltar
-                        </button>
                     </div>
                 </div>
             )}

@@ -346,20 +346,25 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                 </div>
             )}
 
-            {/* Modal de Assistir Vídeo */}
+            {/* Modal de Assistir Vídeo - Bottom Sheet on Mobile */}
             {watchingVideo && (
-                <div className="fixed inset-0 bg-black/95 z-[200] flex flex-col items-center justify-center p-4">
-                    <div className="w-full max-w-lg">
+                <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-500">
+                    <div className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-surfaceHighlight rounded-t-[2.5rem] sm:rounded-3xl p-8 w-full sm:max-w-lg relative animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300 overflow-y-auto max-h-[95vh] custom-scrollbar">
+                        <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-6 sm:hidden opacity-50" />
+
                         {/* Header */}
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-white">{watchingVideo.title}</h3>
-                            <button onClick={cancelWatch} className="text-zinc-500 hover:text-white">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 className="text-2xl font-black text-white tracking-tighter sm:tracking-tight">{watchingVideo.title}</h3>
+                                <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mt-1">por {watchingVideo.promoterName}</p>
+                            </div>
+                            <button onClick={cancelWatch} className="text-zinc-500 hover:text-white bg-zinc-900/50 p-2 rounded-full">
                                 <XIcon size={24} />
                             </button>
                         </div>
 
-                        {/* Video Placeholder / Embed */}
-                        <div className="aspect-video bg-zinc-900 rounded-xl overflow-hidden mb-4 relative">
+                        {/* Video Content */}
+                        <div className="aspect-video bg-black rounded-2xl overflow-hidden mb-8 shadow-2xl ring-1 ring-white/10 relative group">
                             {watchingVideo.platform === 'YOUTUBE' && getVideoId(watchingVideo.videoUrl) ? (
                                 <iframe
                                     src={`https://www.youtube.com/embed/${getVideoId(watchingVideo.videoUrl)}?autoplay=1`}
@@ -368,57 +373,66 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                                     allowFullScreen
                                 />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center">
+                                <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-zinc-900 to-black">
+                                    <Play size={48} className="text-primary-500 opacity-20" />
                                     <a
                                         href={watchingVideo.videoUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="bg-primary-500 text-black px-6 py-3 rounded-xl font-bold flex items-center gap-2"
+                                        className="bg-primary-500 hover:bg-primary-400 text-black px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-2 shadow-xl shadow-primary-500/20 active:scale-95 transition-all"
                                     >
-                                        <ExternalLink size={20} /> Abrir Vídeo
+                                        <ExternalLink size={18} /> ABRIR VÍDEO NOVO
                                     </a>
                                 </div>
                             )}
                         </div>
 
-                        {/* Progress */}
-                        <div className="bg-surface border border-surfaceHighlight rounded-xl p-4 mb-4">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-sm text-zinc-400">Progresso</span>
-                                <span className="text-sm font-bold text-white">
+                        {/* Progress Monitoring */}
+                        <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6 mb-6">
+                            <div className="flex justify-between items-center mb-3">
+                                <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Tempo Assistido</span>
+                                <span className="text-sm font-black text-white font-mono">
                                     {watchProgress}s / {watchingVideo.minWatchSeconds}s
                                 </span>
                             </div>
-                            <div className="w-full bg-background rounded-full h-3 overflow-hidden">
+                            <div className="w-full bg-black rounded-full h-3 overflow-hidden ring-1 ring-white/5">
                                 <div
-                                    className={`h-full transition-all ${watchProgress >= watchingVideo.minWatchSeconds ? 'bg-emerald-500' : 'bg-primary-500'}`}
+                                    className={`h-full transition-all duration-500 shadow-[0_0_15px_rgba(34,211,238,0.3)] ${watchProgress >= watchingVideo.minWatchSeconds ? 'bg-emerald-500' : 'bg-primary-500'}`}
                                     style={{ width: `${Math.min(100, (watchProgress / watchingVideo.minWatchSeconds) * 100)}%` }}
                                 />
                             </div>
 
                             {watchProgress >= watchingVideo.minWatchSeconds ? (
-                                <div className="mt-4">
-                                    <p className="text-emerald-400 text-sm text-center mb-3 flex items-center justify-center gap-2">
-                                        <CheckCircle2 size={16} /> Tempo mínimo atingido!
-                                    </p>
+                                <div className="mt-8 animate-in zoom-in-95 duration-300">
+                                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 mb-4 flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-black shrink-0 shadow-lg shadow-emerald-500/20">
+                                            <CheckCircle2 size={24} strokeWidth={3} />
+                                        </div>
+                                        <p className="text-emerald-400 text-xs font-black uppercase tracking-tight">Tempo atingido! Você já pode resgatar seu lucro.</p>
+                                    </div>
                                     <button
                                         onClick={completeWatch}
-                                        className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-4 rounded-xl transition"
+                                        className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-[0.2em] py-5 rounded-2xl transition-all shadow-xl shadow-emerald-500/20 active:scale-[0.98] text-xs"
                                     >
-                                        Resgatar {watchingVideo.viewerEarning.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        RESGATAR {watchingVideo.viewerEarning.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                     </button>
                                 </div>
                             ) : (
-                                <p className="text-xs text-zinc-500 text-center mt-3">
-                                    Continue assistindo para liberar o ganho...
-                                </p>
+                                <div className="flex items-center justify-center gap-2 mt-6 text-zinc-600">
+                                    <Clock size={14} className="animate-spin" />
+                                    <p className="text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] animate-pulse">
+                                        Aguarde o tempo mínimo para validar...
+                                    </p>
+                                </div>
                             )}
                         </div>
 
-                        {/* Legal */}
-                        <p className="text-[9px] text-zinc-600 text-center">
-                            O conteúdo do vídeo é de responsabilidade do anunciante. O Cred30 apenas intermedia a visualização.
-                        </p>
+                        {/* Anti-Fraud Disclaimer */}
+                        <div className="bg-primary-500/5 border border-primary-500/10 rounded-xl p-4 text-center">
+                            <p className="text-[9px] text-zinc-500 font-medium leading-relaxed">
+                                <span className="text-primary-400 font-black">SEGURANÇA:</span> A visualização é validada pelo ID único da sessão. Não feche o app ou o vídeo antes de completar o tempo mínimo.
+                            </p>
+                        </div>
                     </div>
                 </div>
             )}
@@ -515,45 +529,47 @@ const CreateCampaignModal: React.FC<{
     };
 
     return (
-        <div className="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 w-full max-w-md my-8">
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-bold text-white">Nova Campanha de Vídeo</h3>
-                    <button onClick={onClose} className="text-zinc-500 hover:text-white">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+            <div className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-surfaceHighlight rounded-t-[2.5rem] sm:rounded-3xl p-8 w-full sm:max-w-md relative shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300 overflow-y-auto max-h-[90vh] custom-scrollbar">
+                <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-6 sm:hidden opacity-50" />
+
+                <div className="flex justify-between items-center mb-8">
+                    <h3 className="text-2xl font-black text-white tracking-tight">Anunciar Vídeo</h3>
+                    <button onClick={onClose} className="text-zinc-500 hover:text-white bg-zinc-900/50 p-2 rounded-full">
                         <XIcon size={24} />
                     </button>
                 </div>
 
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-xs text-zinc-400 block mb-1">Título da Campanha *</label>
-                        <input
-                            type="text"
-                            value={form.title}
-                            onChange={e => setForm({ ...form, title: e.target.value })}
-                            placeholder="Ex: Veja meu novo vídeo!"
-                            className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 px-4 text-white"
-                        />
-                    </div>
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="sm:col-span-2">
+                            <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest block mb-2 px-1">Título da Campanha</label>
+                            <input
+                                type="text"
+                                value={form.title}
+                                onChange={e => setForm({ ...form, title: e.target.value })}
+                                placeholder="Dê um nome atrativo..."
+                                className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 px-5 text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-primary-500/50 transition-all font-medium"
+                            />
+                        </div>
 
-                    <div>
-                        <label className="text-xs text-zinc-400 block mb-1">URL do Vídeo *</label>
-                        <input
-                            type="url"
-                            value={form.videoUrl}
-                            onChange={e => setForm({ ...form, videoUrl: e.target.value })}
-                            placeholder="https://youtube.com/watch?v=..."
-                            className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 px-4 text-white"
-                        />
-                    </div>
+                        <div className="sm:col-span-2">
+                            <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest block mb-2 px-1">URL do Vídeo (YouTube, TikTok...)</label>
+                            <input
+                                type="url"
+                                value={form.videoUrl}
+                                onChange={e => setForm({ ...form, videoUrl: e.target.value })}
+                                placeholder="https://..."
+                                className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 px-5 text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-primary-500/50 transition-all font-medium"
+                            />
+                        </div>
 
-                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="text-xs text-zinc-400 block mb-1">Plataforma</label>
+                            <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest block mb-2 px-1">Plataforma</label>
                             <select
                                 value={form.platform}
                                 onChange={e => setForm({ ...form, platform: e.target.value })}
-                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 px-4 text-white"
+                                className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 px-4 text-zinc-100 outline-none appearance-none font-bold"
                             >
                                 <option value="YOUTUBE">YouTube</option>
                                 <option value="TIKTOK">TikTok</option>
@@ -564,142 +580,94 @@ const CreateCampaignModal: React.FC<{
                         </div>
 
                         <div>
-                            <label className="text-xs text-zinc-400 block mb-1">Tempo Mínimo (s)</label>
+                            <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest block mb-2 px-1">Retenção (s)</label>
                             <input
                                 type="number"
                                 value={form.minWatchSeconds}
                                 onChange={e => setForm({ ...form, minWatchSeconds: Number(e.target.value) })}
-                                min={5}
-                                max={300}
-                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 px-4 text-white"
+                                className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 px-5 text-zinc-100 outline-none font-black"
                             />
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-xs text-zinc-400 block mb-1">Preço por View (R$)</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                value={form.pricePerView}
-                                onChange={e => setForm({ ...form, pricePerView: Number(e.target.value) })}
-                                min={0.01}
-                                max={10}
-                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 px-4 text-white"
-                            />
+                    <div className="p-1 bg-zinc-950 rounded-2xl border border-white/5 grid grid-cols-2 gap-1 font-black">
+                        <div className="p-4 bg-zinc-900 rounded-xl">
+                            <label className="text-[9px] text-zinc-500 uppercase block mb-1">Preço/View</label>
+                            <p className="text-white text-lg">R$ {form.pricePerView.toFixed(2)}</p>
                         </div>
-
-                        <div>
-                            <label className="text-xs text-zinc-400 block mb-1">Orçamento Total (R$)</label>
+                        <div className="p-4 bg-zinc-900 rounded-xl">
+                            <label className="text-[9px] text-zinc-500 uppercase block mb-1">Budget Total</label>
                             <input
                                 type="number"
                                 value={form.budget}
                                 onChange={e => setForm({ ...form, budget: Number(e.target.value) })}
-                                min={5}
-                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 px-4 text-white"
+                                className="bg-transparent text-primary-400 text-lg outline-none w-full"
                             />
                         </div>
                     </div>
 
-                    {/* Método de Pagamento */}
+                    {/* Método de Pagamento - Visual Moderno */}
                     <div>
-                        <label className="text-xs text-zinc-400 block mb-2">Método de Pagamento</label>
-                        <div className="grid grid-cols-3 gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setPaymentMethod('BALANCE')}
-                                className={`py-3 rounded-xl font-bold text-sm transition border ${paymentMethod === 'BALANCE'
-                                    ? 'bg-primary-500/20 border-primary-500 text-primary-400'
-                                    : 'bg-background border-surfaceHighlight text-zinc-400 hover:border-zinc-500'}`}
-                            >
-                                💰 Saldo
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setPaymentMethod('PIX')}
-                                className={`py-3 rounded-xl font-bold text-sm transition border ${paymentMethod === 'PIX'
-                                    ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
-                                    : 'bg-background border-surfaceHighlight text-zinc-400 hover:border-zinc-500'}`}
-                            >
-                                📱 PIX
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setPaymentMethod('CARD')}
-                                className={`py-3 rounded-xl font-bold text-sm transition border ${paymentMethod === 'CARD'
-                                    ? 'bg-blue-500/20 border-blue-500 text-blue-400'
-                                    : 'bg-background border-surfaceHighlight text-zinc-400 hover:border-zinc-500'}`}
-                            >
-                                💳 Cartão
-                            </button>
+                        <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest block mb-4 px-1">Forma de Pagamento</label>
+                        <div className="grid grid-cols-3 gap-3">
+                            {[
+                                { id: 'BALANCE', label: 'SALDO', icon: '💰', color: 'primary' },
+                                { id: 'PIX', label: 'PIX', icon: '📱', color: 'emerald' },
+                                { id: 'CARD', label: 'CARD', icon: '💳', color: 'blue' }
+                            ].map((m) => (
+                                <button
+                                    key={m.id}
+                                    type="button"
+                                    onClick={() => setPaymentMethod(m.id as any)}
+                                    className={`flex flex-col items-center gap-2 py-4 rounded-2xl transition-all border-2 ${paymentMethod === m.id
+                                        ? `bg-${m.color}-500/10 border-${m.color}-500/50 text-${m.color}-400 shadow-lg shadow-${m.color}-500/10`
+                                        : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:border-zinc-700'}`}
+                                >
+                                    <span className="text-xl">{m.icon}</span>
+                                    <span className="text-[10px] font-black tracking-widest">{m.label}</span>
+                                </button>
+                            ))}
                         </div>
-                        {paymentMethod === 'BALANCE' && (
-                            <p className="text-[10px] text-zinc-500 mt-2">Seu saldo: {userBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                    </div>
+
+                    {/* Detailed Summary Card */}
+                    <div className="bg-primary-500/5 border border-primary-500/20 rounded-[2rem] p-6 space-y-4">
+                        <div className="flex justify-between items-center group">
+                            <span className="text-xs text-zinc-500 font-bold">Alcance Estimado</span>
+                            <span className="text-base font-black text-white bg-white/5 px-3 py-1 rounded-full">{estimatedViews} VIEWS</span>
+                        </div>
+
+                        <div className="h-px bg-white/5 w-full" />
+
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-xs">
+                                <span className="text-zinc-500 font-semibold">Custo por View (Net)</span>
+                                <span className="text-emerald-400 font-black">{viewerEarning.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                            </div>
+                            <div className="flex justify-between text-[10px]">
+                                <span className="text-zinc-600 font-medium">Lucro dos Sócios (40%)</span>
+                                <span className="text-zinc-500 font-bold">{(form.budget * 0.4).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                            </div>
+                        </div>
+
+                        {paymentMethod !== 'BALANCE' && (
+                            <div className="pt-2 mt-4 border-t border-primary-500/10 flex justify-between items-baseline">
+                                <span className="text-xs text-zinc-400 font-black uppercase tracking-widest">Total Líquido</span>
+                                <span className="text-2xl font-black text-primary-400">{totalToPay.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                            </div>
                         )}
                     </div>
-
-                    {/* Summary */}
-                    <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
-                        <h4 className="text-sm font-bold text-purple-400 mb-2">Resumo da Campanha</h4>
-                        <div className="space-y-1 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-zinc-400">Views Estimadas</span>
-                                <span className="text-white font-bold">~{estimatedViews} views</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-zinc-400">Cada Viewer Ganha (60%)</span>
-                                <span className="text-emerald-400 font-bold">{viewerEarning.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-zinc-400">Quem tem Cotas (25%)</span>
-                                <span className="text-blue-400 font-bold">{quotaHoldersShare.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-zinc-400">Taxa Serviço (15%)</span>
-                                <span className="text-zinc-500">{serviceFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                            </div>
-                            {paymentMethod !== 'BALANCE' && (
-                                <>
-                                    <div className="border-t border-zinc-700 my-2" />
-                                    <div className="flex justify-between">
-                                        <span className="text-zinc-400">Taxa {paymentMethod === 'PIX' ? 'PIX' : 'Cartão'}</span>
-                                        <span className="text-orange-400">{gatewayFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                                    </div>
-                                    <div className="flex justify-between font-bold text-base">
-                                        <span className="text-white">Total a Pagar</span>
-                                        <span className="text-white">{totalToPay.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    {paymentMethod === 'BALANCE' && form.budget > userBalance && (
-                        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 flex items-center gap-2">
-                            <AlertTriangle size={18} className="text-red-400" />
-                            <span className="text-red-400 text-sm">Saldo insuficiente. Você tem R$ {userBalance.toFixed(2)}</span>
-                        </div>
-                    )}
 
                     <button
                         onClick={handleSubmit}
                         disabled={loading || (paymentMethod === 'BALANCE' && form.budget > userBalance)}
-                        className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 disabled:opacity-50 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2"
+                        className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-30 disabled:grayscale text-black font-black uppercase tracking-[0.2em] py-5 rounded-2xl transition-all shadow-[0_20px_40px_-10px_rgba(6,182,212,0.3)] active:scale-[0.98] text-xs"
                     >
-                        {loading ? (
-                            <><Loader2 className="animate-spin" size={20} /> Criando...</>
-                        ) : paymentMethod === 'BALANCE' ? (
-                            <>Criar Campanha por {form.budget.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</>
-                        ) : (
-                            <>Pagar {totalToPay.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} via {paymentMethod}</>
-                        )}
+                        {loading ? 'PROCESSANDO...' : 'CONFIRMAR E ATIVAR'}
                     </button>
-                </div>
 
-                <p className="text-[9px] text-zinc-600 text-center mt-4">
-                    Ao criar uma campanha, você concorda que o conteúdo do vídeo é de sua responsabilidade e não viola nossos Termos de Uso.
-                </p>
+                    <p className="text-[9px] text-zinc-600 text-center uppercase font-bold tracking-tight">Campanha verificada • Proteção contra fraudes ativada</p>
+                </div>
             </div>
         </div>
     );

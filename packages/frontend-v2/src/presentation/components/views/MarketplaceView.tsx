@@ -3,7 +3,7 @@ import {
     Search, Tag, ShoppingBag, PlusCircle, ImageIcon, Zap, Sparkles,
     ChevronRight, ArrowLeft, ShieldCheck, Heart, Share2, MessageCircle,
     Truck, Clock, CheckCircle2, History, Package, RefreshCw, Wand2, X as XIcon,
-    QrCode, WifiOff, ScanLine
+    QrCode, WifiOff, ScanLine, MapPin, Phone
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
@@ -81,6 +81,16 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const [confirmData, setConfirmData] = useState<any>(null);
     const [offlineVoucher, setOfflineVoucher] = useState<{ code: string, amount: number, item: string } | null>(null);
     const [redeemCode, setRedeemCode] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState<'BALANCE' | 'PIX' | 'CARD'>('BALANCE');
+    const [cardData, setCardData] = useState({
+        holderName: '',
+        number: '',
+        expiryMonth: '',
+        expiryYear: '',
+        ccv: '',
+        cpf: ''
+    });
+    const [externalPayment, setExternalPayment] = useState<any>(null);
 
     const [newListing, setNewListing] = useState({
         title: '',
@@ -189,16 +199,34 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         }
     };
 
-    const handleBoostListing = async (id: number) => {
-        try {
-            const response = await apiService.post<any>(`/marketplace/listings/${id}/boost`, {});
-            if (response.success) {
-                onSuccess('Impulsionado!', 'Seu anúncio terá prioridade nas buscas por 24h.');
-                fetchData();
+    const handleBoostListing = async (listing: any) => {
+        setConfirmData({
+            isOpen: true,
+            title: 'Impulsionar Anúncio?',
+            message: `Escolha o método para pagar o destaque de 7 dias (R$ 5,00) para "${listing.title}":`,
+            confirmText: 'IMPULSIONAR AGORA',
+            type: 'success',
+            showPaymentMethods: true, // Flag para o modal mostrar opções
+            onConfirm: async (method: string, card?: any) => {
+                try {
+                    const res = await apiService.post<any>(`/marketplace/listings/${listing.id}/boost`, {
+                        paymentMethod: method,
+                        creditCard: card
+                    });
+                    if (res.success) {
+                        if (method !== 'BALANCE') {
+                            setExternalPayment(res.data);
+                        } else {
+                            onSuccess('Impulsionado!', 'Seu anúncio terá prioridade nas buscas por 7 dias.');
+                            fetchData();
+                        }
+                        setConfirmData(null);
+                    }
+                } catch (err: any) {
+                    onError('Erro', err.message);
+                }
             }
-        } catch (error: any) {
-            onError('Erro', error.message);
-        }
+        });
     };
 
     const generateOfflineVoucher = (item: any) => {
@@ -443,7 +471,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                         </span>
                                                         {item.seller_id === state.currentUser?.id ? (
                                                             <button
-                                                                onClick={() => handleBoostListing(item.id)}
+                                                                onClick={() => handleBoostListing(item)}
                                                                 disabled={item.is_boosted}
                                                                 className={`text-[9px] font-black px-3 py-1.5 rounded-lg flex items-center gap-1 transition ${item.is_boosted ? 'bg-zinc-800 text-zinc-500' : 'bg-primary-500/10 text-primary-400 hover:bg-primary-500 hover:text-black'}`}
                                                             >
@@ -653,7 +681,20 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                         </span>
                                     </div>
                                     <p className="text-lg font-black text-white mt-1">{formatCurrency(parseFloat(order.amount))}</p>
-                                    <p className="text-[10px] text-zinc-500 mt-2 uppercase font-bold">Pedido: #{order.id.toString().slice(-6)}</p>
+                                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                                        <p className="text-[10px] text-zinc-500 uppercase font-bold">Pedido: #{order.id.toString().slice(-6)}</p>
+                                        <span className="text-[9px] font-black px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 capitalize">
+                                            {order.buyer_id === state.currentUser?.id ? 'Compra' : order.seller_id === state.currentUser?.id ? 'Venda' : 'Entrega'}
+                                        </span>
+                                        {order.courier_name && (
+                                            <div className="flex items-center gap-2 text-[10px] text-amber-500 font-black">
+                                                <div className="flex items-center gap-1"><Truck size={12} /> {order.courier_name.split(' ')[0]}</div>
+                                                <div className="flex items-center gap-1 text-zinc-500 font-mono font-normal">
+                                                    <Phone size={10} /> {order.courier_phone}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ))
@@ -692,11 +733,15 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                             <span className="text-[10px] text-zinc-500 font-bold uppercase">• {new Date(mission.created_at).toLocaleDateString()}</span>
                                         </div>
                                         <h4 className="font-bold text-white text-base">{mission.item_title}</h4>
-                                        <p className="text-xs text-zinc-400 mt-1 flex items-center gap-1">
-                                            <span className="text-zinc-500">De:</span> {mission.seller_name.split(' ')[0]} <ArrowLeft size={10} className="rotate-180" /> <span className="text-zinc-500">Para:</span> {mission.buyer_name.split(' ')[0]}
-                                        </p>
-                                        <p className="text-xs text-zinc-500 mt-1">
-                                            Local: <strong>{mission.delivery_address}</strong>
+                                        <p className="text-xs text-zinc-400 mt-2 flex flex-col gap-2">
+                                            <span className="flex flex-col gap-0.5">
+                                                <span className="flex items-center gap-2"><MapPin size={12} className="text-amber-500" /> <span className="text-zinc-500">Coleta:</span> <strong>{mission.pickup_address}</strong> ({mission.seller_name.split(' ')[0]})</span>
+                                                <span className="flex items-center gap-2 pl-5 text-[10px] text-zinc-500 font-mono"><Phone size={10} /> {mission.seller_phone}</span>
+                                            </span>
+                                            <span className="flex flex-col gap-0.5">
+                                                <span className="flex items-center gap-2"><MapPin size={12} className="text-primary-500" /> <span className="text-zinc-500">Entrega:</span> <strong>{mission.delivery_address}</strong> ({mission.buyer_name.split(' ')[0]})</span>
+                                                <span className="flex items-center gap-2 pl-5 text-[10px] text-zinc-500 font-mono"><Phone size={10} /> {mission.buyer_phone}</span>
+                                            </span>
                                         </p>
                                     </div>
                                     <div className="flex flex-col items-end gap-2 w-full md:w-auto mt-2 md:mt-0 pt-4 md:pt-0 border-t md:border-0 border-zinc-800">
@@ -805,12 +850,78 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 </div>
 
                                 <div className="sticky bottom-6 mt-12 bg-black border border-zinc-800 p-4 rounded-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
-                                    <div className="flex-1">
-                                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Preço Final</p>
-                                        <p className="text-xl font-black text-white">{formatCurrency(parseFloat(selectedItem.price) + (deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee || '0') : 0))}</p>
+                                    <div className="flex-1 space-y-4 mb-4">
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Método de Pagamento</p>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {['BALANCE', 'PIX', 'CARD'].map(m => (
+                                                    <button
+                                                        key={m}
+                                                        onClick={() => setPaymentMethod(m as any)}
+                                                        className={`py-2 text-[9px] font-black rounded-lg border transition-all ${paymentMethod === m ? 'bg-primary-500 text-black border-primary-500' : 'bg-zinc-900 text-zinc-500 border-zinc-800'}`}
+                                                    >
+                                                        {m === 'BALANCE' ? 'SALDO' : m}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {paymentMethod === 'CARD' && (
+                                            <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-2">
+                                                <input
+                                                    placeholder="Nº do Cartão"
+                                                    className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                                    value={cardData.number}
+                                                    onChange={e => setCardData({ ...cardData, number: e.target.value.replace(/\s/g, '').slice(0, 16) })}
+                                                />
+                                                <input
+                                                    placeholder="MM/AA"
+                                                    className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                                    onChange={e => {
+                                                        const [m, a] = e.target.value.split('/');
+                                                        setCardData({ ...cardData, expiryMonth: m || '', expiryYear: a ? '20' + a : '' });
+                                                    }}
+                                                />
+                                                <input
+                                                    placeholder="CVV"
+                                                    className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                                    value={cardData.ccv}
+                                                    onChange={e => setCardData({ ...cardData, ccv: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                                                />
+                                                <input
+                                                    placeholder="Nome"
+                                                    className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                                    value={cardData.holderName}
+                                                    onChange={e => setCardData({ ...cardData, holderName: e.target.value })}
+                                                />
+                                                <input
+                                                    placeholder="CPF Titular"
+                                                    className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                                    value={cardData.cpf}
+                                                    onChange={e => setCardData({ ...cardData, cpf: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="flex justify-between items-end">
+                                            <div>
+                                                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Preço Final</p>
+                                                <p className="text-xl font-black text-white">
+                                                    {(() => {
+                                                        const base = parseFloat(selectedItem.price) + (deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee || '0') : 0);
+                                                        if (paymentMethod === 'PIX') return formatCurrency(base + 0.99);
+                                                        if (paymentMethod === 'CARD') return formatCurrency((base + 0.49) / (1 - 0.0299));
+                                                        return formatCurrency(base);
+                                                    })()}
+                                                </p>
+                                                {paymentMethod !== 'BALANCE' && (
+                                                    <p className="text-[8px] text-zinc-600 font-bold uppercase italic">* Taxas inclusas</p>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                     <button
-                                        className="flex-[2] bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition shadow-lg shadow-primary-500/20 flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
+                                        className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition shadow-lg shadow-primary-500/20 flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
                                         onClick={() => {
                                             if (!navigator.onLine) {
                                                 generateOfflineVoucher(selectedItem);
@@ -828,8 +939,8 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                             setConfirmData({
                                                 isOpen: true,
                                                 title: deliveryOption === 'COURIER_REQUEST' ? 'Confirmar Compra + Entrega' : 'Confirmar Compra',
-                                                message: `Deseja comprar "${selectedItem.title}" por ${formatCurrency(parseFloat(selectedItem.price))} ${deliveryOption === 'COURIER_REQUEST' ? `+ R$ ${offeredFee} de ajuda de custo?` : '?'}`,
-                                                confirmText: 'CONFIRMAR PAGAMENTO',
+                                                message: `Deseja comprar "${selectedItem.title}" via ${paymentMethod}?`,
+                                                confirmText: 'CONFIRMAR AGORA',
                                                 type: 'success',
                                                 onConfirm: async () => {
                                                     try {
@@ -838,11 +949,17 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                             deliveryType: deliveryOption,
                                                             offeredDeliveryFee: parseFloat(offeredFee),
                                                             deliveryAddress: 'Endereço Principal', // TODO: Pegar do user ou input
-                                                            contactPhone: '000000000'
+                                                            contactPhone: '000000000',
+                                                            paymentMethod: paymentMethod,
+                                                            creditCard: paymentMethod === 'CARD' ? cardData : undefined
                                                         });
                                                         if (res.success) {
-                                                            onSuccess('Sucesso!', 'Compra realizada. Veja detalhes em Seus Pedidos.');
-                                                            setView('my-orders');
+                                                            if (paymentMethod !== 'BALANCE') {
+                                                                setExternalPayment(res.data);
+                                                            } else {
+                                                                onSuccess('Sucesso!', 'Compra realizada. Veja detalhes em Seus Pedidos.');
+                                                                setView('my-orders');
+                                                            }
                                                             setConfirmData(null);
                                                         }
                                                     } catch (err: any) {
@@ -906,16 +1023,148 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 </div>
                             </div>
                         </div>
+
+                        {/* Modal de Pagamento Externo (PIX/Cartão) */}
+                        {externalPayment && (
+                            <div className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+                                <div className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-zinc-800 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 w-full sm:max-w-sm text-center relative shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300">
+                                    <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-6 sm:hidden opacity-50" />
+
+                                    <button
+                                        onClick={() => { setExternalPayment(null); setView('my-orders'); }}
+                                        className="absolute top-4 right-4 text-zinc-500 hover:text-white bg-zinc-900/50 p-2 rounded-full hidden sm:block"
+                                    >
+                                        <XIcon size={20} />
+                                    </button>
+
+                                    {externalPayment.payment.encodedImage ? (
+                                        <div className="space-y-6">
+                                            <div className="w-20 h-20 bg-primary-500/10 rounded-3xl flex items-center justify-center mx-auto mb-2 shadow-xl shadow-primary-900/20 ring-1 ring-primary-500/20">
+                                                <QrCode size={40} className="text-primary-500" strokeWidth={2.5} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-2xl font-black text-white tracking-tight">Pagamento PIX</h3>
+                                                <p className="text-sm text-zinc-500 mt-1 font-medium">Escaneie ou copie o código abaixo</p>
+                                            </div>
+
+                                            <div className="bg-white p-6 rounded-3xl mx-auto w-fit shadow-2xl ring-4 ring-primary-500/10">
+                                                <img src={`data:image/png;base64,${externalPayment.payment.encodedImage}`} alt="PIX QR Code" className="w-44 h-44" />
+                                            </div>
+
+                                            <div className="bg-zinc-900/50 border border-white/5 p-5 rounded-2xl group cursor-copy active:bg-zinc-800 transition-all"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(externalPayment.payment.payload);
+                                                    onSuccess('Copiado!', 'Código PIX copiado com sucesso.');
+                                                }}>
+                                                <p className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-2">Pix Copia e Cola</p>
+                                                <p className="text-[10px] text-primary-400 font-mono break-all line-clamp-2 font-bold group-hover:text-white transition-colors">
+                                                    {externalPayment.payment.payload}
+                                                </p>
+                                            </div>
+
+                                            <button
+                                                onClick={() => { setExternalPayment(null); setView('my-orders'); }}
+                                                className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-5 rounded-2xl transition-all uppercase tracking-[0.2em] text-[11px] shadow-lg shadow-primary-500/20 active:scale-95"
+                                            >
+                                                JÁ REALIZEI O PAGAMENTO
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-6 py-4">
+                                            <div className="w-20 h-20 bg-emerald-500/10 rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-emerald-900/20 ring-1 ring-emerald-500/20">
+                                                <CheckCircle2 size={40} className="text-emerald-500" strokeWidth={2.5} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <h3 className="text-2xl font-black text-white tracking-tight">Pedido Recebido!</h3>
+                                                <p className="text-sm text-zinc-400 leading-relaxed">Seu pagamento está sendo processado. Em breve seu item estará disponível.</p>
+                                            </div>
+                                            <button
+                                                onClick={() => { setExternalPayment(null); setView('my-orders'); }}
+                                                className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-5 rounded-2xl transition-all uppercase tracking-widest text-[11px] shadow-lg shadow-emerald-500/20 active:scale-95"
+                                            >
+                                                VER MEUS PEDIDOS
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {confirmData && (
                             <ConfirmModal
                                 isOpen={confirmData.isOpen}
                                 onClose={() => setConfirmData(null)}
-                                onConfirm={confirmData.onConfirm}
+                                onConfirm={() => {
+                                    if (confirmData.showPaymentMethods) {
+                                        confirmData.onConfirm(paymentMethod, paymentMethod === 'CARD' ? cardData : undefined);
+                                    } else {
+                                        confirmData.onConfirm();
+                                    }
+                                }}
                                 title={confirmData.title}
                                 message={confirmData.message}
                                 confirmText={confirmData.confirmText}
                                 type={confirmData.type}
-                            />
+                            >
+                                {confirmData.showPaymentMethods && (
+                                    <div className="space-y-4 mb-6">
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Método de Pagamento</p>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {['BALANCE', 'PIX', 'CARD'].map(m => (
+                                                    <button
+                                                        key={m}
+                                                        onClick={() => setPaymentMethod(m as any)}
+                                                        className={`py-2 text-[9px] font-black rounded-lg border transition-all ${paymentMethod === m ? 'bg-primary-500 text-black border-primary-500' : 'bg-zinc-900 text-zinc-500 border-zinc-800'}`}
+                                                    >
+                                                        {m === 'BALANCE' ? 'SALDO' : m}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {paymentMethod === 'CARD' && (
+                                            <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-2">
+                                                <input
+                                                    placeholder="Nº do Cartão"
+                                                    className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                                    onChange={e => setCardData({ ...cardData, number: e.target.value.replace(/\s/g, '').slice(0, 16) })}
+                                                />
+                                                <input
+                                                    placeholder="MM/AA"
+                                                    className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                                    onChange={e => {
+                                                        const [m, a] = e.target.value.split('/');
+                                                        setCardData({ ...cardData, expiryMonth: m || '', expiryYear: a ? '20' + a : '' });
+                                                    }}
+                                                />
+                                                <input
+                                                    placeholder="CVV"
+                                                    className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                                    onChange={e => setCardData({ ...cardData, ccv: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                                                />
+                                                <input
+                                                    placeholder="Nome"
+                                                    className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                                    onChange={e => setCardData({ ...cardData, holderName: e.target.value })}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="pt-2 border-t border-zinc-800">
+                                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Total a Pagar</p>
+                                            <p className="text-xl font-black text-white">
+                                                {(() => {
+                                                    const base = 5.00; // Boost Fee
+                                                    if (paymentMethod === 'PIX') return formatCurrency(base + 0.99);
+                                                    if (paymentMethod === 'CARD') return formatCurrency((base + 0.49) / (1 - 0.0299));
+                                                    return formatCurrency(base);
+                                                })()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                            </ConfirmModal>
                         )}
                     </div>
                 )
@@ -925,12 +1174,77 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 <ConfirmModal
                     isOpen={confirmData.isOpen}
                     onClose={() => setConfirmData(null)}
-                    onConfirm={confirmData.onConfirm}
+                    onConfirm={() => {
+                        if (confirmData.showPaymentMethods) {
+                            confirmData.onConfirm(paymentMethod, paymentMethod === 'CARD' ? cardData : undefined);
+                        } else {
+                            confirmData.onConfirm();
+                        }
+                    }}
                     title={confirmData.title}
                     message={confirmData.message}
                     confirmText={confirmData.confirmText}
                     type={confirmData.type}
-                />
+                >
+                    {confirmData.showPaymentMethods && (
+                        <div className="space-y-4 mb-6">
+                            <div className="space-y-2">
+                                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Método de Pagamento</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {['BALANCE', 'PIX', 'CARD'].map(m => (
+                                        <button
+                                            key={m}
+                                            onClick={() => setPaymentMethod(m as any)}
+                                            className={`py-2 text-[9px] font-black rounded-lg border transition-all ${paymentMethod === m ? 'bg-primary-500 text-black border-primary-500' : 'bg-zinc-900 text-zinc-500 border-zinc-800'}`}
+                                        >
+                                            {m === 'BALANCE' ? 'SALDO' : m}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {paymentMethod === 'CARD' && (
+                                <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-2">
+                                    <input
+                                        placeholder="Nº do Cartão"
+                                        className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                        onChange={e => setCardData({ ...cardData, number: e.target.value.replace(/\s/g, '').slice(0, 16) })}
+                                    />
+                                    <input
+                                        placeholder="MM/AA"
+                                        className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                        onChange={e => {
+                                            const [m, a] = e.target.value.split('/');
+                                            setCardData({ ...cardData, expiryMonth: m || '', expiryYear: a ? '20' + a : '' });
+                                        }}
+                                    />
+                                    <input
+                                        placeholder="CVV"
+                                        className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                        onChange={e => setCardData({ ...cardData, ccv: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                                    />
+                                    <input
+                                        placeholder="Nome"
+                                        className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                        onChange={e => setCardData({ ...cardData, holderName: e.target.value })}
+                                    />
+                                </div>
+                            )}
+
+                            <div className="pt-2 border-t border-zinc-800">
+                                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Total a Pagar</p>
+                                <p className="text-xl font-black text-white">
+                                    {(() => {
+                                        const base = 5.00;
+                                        if (paymentMethod === 'PIX') return formatCurrency(base + 0.99);
+                                        if (paymentMethod === 'CARD') return formatCurrency((base + 0.49) / (1 - 0.0299));
+                                        return formatCurrency(base);
+                                    })()}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </ConfirmModal>
             )}
         </div>
     );

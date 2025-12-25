@@ -199,28 +199,20 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                 </button>
 
                 {confirmModal.isOpen && (
-                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                        <div className="bg-surface rounded-3xl p-6 md:p-8 w-full max-w-sm relative border border-surfaceHighlight shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
-                            <button onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} className="absolute top-4 right-4 text-zinc-500 hover:text-white transition z-10">
+                    <div className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-[500] p-0 sm:p-4 backdrop-blur-md animate-in fade-in duration-300">
+                        <div className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-surfaceHighlight rounded-t-[2.5rem] sm:rounded-3xl p-8 w-full sm:max-w-sm relative shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 duration-500 sm:duration-300">
+                            <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-6 sm:hidden opacity-50" />
+
+                            <button onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} className="absolute top-4 right-4 text-zinc-500 hover:text-white transition hidden sm:block">
                                 <XCircle size={24} />
                             </button>
 
-                            <div className="text-center mb-6">
-                                <div className="w-16 h-16 bg-primary-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                    <ShieldCheck size={32} className="text-primary-500" />
+                            <div className="text-center mb-8">
+                                <div className="w-20 h-20 bg-primary-500/10 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-primary-900/20 ring-1 ring-primary-500/20">
+                                    <ShieldCheck size={40} className="text-primary-500" strokeWidth={2.5} />
                                 </div>
-                                <h3 className="text-xl font-bold text-white">Autenticação 2FA</h3>
-                                <p className="text-zinc-400 text-sm mt-2 mb-6">Insira o código de 6 dígitos do seu autenticador para confirmar o resgate.</p>
-
-                                {twoFactorData?.otpUri && (
-                                    <a
-                                        href={twoFactorData.otpUri}
-                                        className="mb-6 w-full bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 border border-primary-500/30 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-all"
-                                    >
-                                        <ShieldCheck size={18} />
-                                        Abrir no Autenticador
-                                    </a>
-                                )}
+                                <h3 className="text-2xl font-black text-white tracking-tight">Autenticação 2FA</h3>
+                                <p className="text-zinc-500 text-sm mt-2 font-medium">Insira o código do seu autenticador</p>
                             </div>
 
                             <input
@@ -230,16 +222,27 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                                 placeholder="000 000"
                                 value={confirmModal.code}
                                 onChange={e => setConfirmModal({ ...confirmModal, code: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-4 text-center text-2xl tracking-[0.5em] text-white focus:border-primary-500 outline-none mb-6 font-mono"
+                                className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 text-center text-4xl tracking-[0.2em] text-white focus:border-primary-500/50 outline-none mb-8 font-black font-mono transition-all"
                                 autoFocus
                             />
 
-                            <button
-                                onClick={handleConfirmWithCode}
-                                className="w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95"
-                            >
-                                Confirmar e Resgatar
-                            </button>
+                            <div className="space-y-4">
+                                <button
+                                    onClick={handleConfirmWithCode}
+                                    className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black uppercase tracking-widest py-5 rounded-2xl transition-all shadow-2xl shadow-primary-500/20 active:scale-[0.98]"
+                                >
+                                    CONFIRMAR RESGATE
+                                </button>
+
+                                {twoFactorData?.otpUri && (
+                                    <a
+                                        href={twoFactorData.otpUri}
+                                        className="w-full bg-white/5 hover:bg-white/10 text-zinc-400 py-4 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all"
+                                    >
+                                        <ShieldCheck size={14} /> Abrir Autenticador
+                                    </a>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -266,62 +269,70 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                 <p>O resgate será processado via PIX pelo gateway Asaas. O Cred30 não armazena dados bancários. O prazo de processamento pode variar em feriados ou fins de semana. Resgates acima de R$ 2.000,00 podem exigir comprovação de origem dos fundos conforme política anti-lavagem (AML).</p>
             </div>
 
-            {/* Anúncio Intersticial */}
+            {/* Anúncio Intersticial Premium */}
             {showAd && (
-                <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300 backdrop-blur-md">
-                    <div className="w-full max-w-lg relative animate-in zoom-in duration-500">
-                        {/* Botão de Fechar com Timer */}
-                        <div className="absolute -top-12 right-0 flex items-center gap-3">
+                <div className="fixed inset-0 bg-black/95 z-[600] flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 backdrop-blur-2xl">
+                    <div className="w-full max-w-md relative flex flex-col h-[80vh] sm:h-auto">
+                        {/* Status Bar */}
+                        <div className="flex justify-between items-center mb-8 px-2 animate-in slide-in-from-top-4 duration-700">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-primary-500 rounded-full animate-pulse" />
+                                <span className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em]">Resgate Seguro Cred30</span>
+                            </div>
+
                             {adTimer > 0 ? (
-                                <span className="text-zinc-400 text-xs font-bold bg-zinc-800/80 px-3 py-1.5 rounded-full border border-zinc-700">
-                                    O resgate continuará em {adTimer}s...
-                                </span>
+                                <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-full backdrop-blur-md">
+                                    <span className="text-[10px] text-zinc-400 font-bold">Pular em <span className="text-primary-400 font-black">{adTimer}s</span></span>
+                                </div>
                             ) : (
                                 <button
                                     onClick={processWithdrawal}
-                                    className="bg-primary-500 text-black px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2 hover:bg-primary-400 transition-all shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-bounce"
+                                    className="bg-primary-500 text-black px-6 py-2.5 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all shadow-[0_0_30px_rgba(6,182,212,0.5)] active:scale-95"
                                 >
-                                    Pular Anúncio <ArrowUpFromLine size={16} />
+                                    PULAR <ArrowUpFromLine size={14} />
                                 </button>
                             )}
                         </div>
 
-                        {/* Conteúdo do Anúncio */}
-                        <div className="bg-surface border border-primary-500/20 rounded-3xl overflow-hidden shadow-2xl">
-                            <div className="relative aspect-square sm:aspect-video overflow-hidden">
+                        {/* Ad Card */}
+                        <div className="bg-[#0A0A0A] border border-white/5 rounded-[3rem] overflow-hidden shadow-2xl flex-1 flex flex-col animate-in zoom-in-95 duration-500">
+                            <div className="relative flex-1 overflow-hidden group">
                                 <img
                                     src="/ad-banner.png"
                                     alt="Oferta Especial"
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                                <div className="absolute bottom-4 left-6 right-6">
-                                    <span className="bg-primary-500 text-black text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider mb-2 inline-block">Patrocinado</span>
-                                    <h4 className="text-xl font-bold text-white">Ganhe até 10% de Cashback!</h4>
-                                    <p className="text-zinc-300 text-xs mt-1">Sabia que como membro VIP Ouro você recupera parte de cada aporte?</p>
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/20 to-transparent"></div>
+
+                                <div className="absolute bottom-8 left-8 right-8">
+                                    <span className="bg-primary-500 text-black text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest mb-4 inline-block shadow-lg">Oferta VIP</span>
+                                    <h4 className="text-3xl font-black text-white leading-tight tracking-tighter">Multiplique seus ganhos com o VIP!</h4>
+                                    <p className="text-zinc-400 text-sm mt-3 font-medium leading-relaxed">Membros do clube aproveitam taxas zero em todos os resgates acima de R$ 50,00.</p>
                                 </div>
                             </div>
 
-                            <div className="p-6 bg-zinc-900/50 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-primary-500/10 rounded-xl flex items-center justify-center text-primary-400">
-                                        <TrendingUp size={20} />
+                            <div className="p-8 bg-zinc-900/30 flex items-center justify-between border-t border-white/5">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-primary-500/10 rounded-2xl flex items-center justify-center text-primary-400 ring-1 ring-primary-500/20">
+                                        <TrendingUp size={28} />
                                     </div>
                                     <div>
-                                        <p className="text-xs font-bold text-white">Cred30 Rewards</p>
-                                        <p className="text-[10px] text-zinc-500">Aproveite agora mesmo</p>
+                                        <p className="text-sm font-black text-white uppercase tracking-tight">Clube Cred30</p>
+                                        <p className="text-xs text-zinc-500 font-bold">Aproveite agora</p>
                                     </div>
                                 </div>
                                 <button
                                     onClick={() => window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank')}
-                                    className="text-primary-400 text-xs font-bold hover:underline"
+                                    className="bg-white/10 hover:bg-white/20 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all"
                                 >
-                                    VER OFERTA
+                                    CONHECER
                                 </button>
                             </div>
                         </div>
 
-                        <p className="text-center text-[10px] text-zinc-600 mt-4 uppercase tracking-[0.2em]">Anúncio Premium • Cred30 v1.0.139</p>
+                        <div className="mt-8 text-center animate-in fade-in duration-1000 delay-500">
+                            <p className="text-[9px] text-zinc-600 uppercase font-black tracking-[0.3em]">Patrocinado por Cred30 Network</p>
+                        </div>
                     </div>
                 </div>
             )}

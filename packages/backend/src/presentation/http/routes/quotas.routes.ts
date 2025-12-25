@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { QUOTA_PRICE, VESTING_PERIOD_MS, PENALTY_RATE, QUOTA_SHARE_VALUE, QUOTA_ADM_FEE } from '../../../shared/constants/business.constants';
 import { Quota } from '../../../domain/entities/quota.entity';
@@ -27,6 +27,11 @@ const quotaRoutes = new Hono();
 quotaRoutes.use('/buy', financialRateLimit);
 quotaRoutes.use('/sell', financialRateLimit);
 quotaRoutes.use('/sell-all', financialRateLimit);
+
+// Aplicar trava de segurança para ações financeiras
+quotaRoutes.use('/buy', securityLockMiddleware);
+quotaRoutes.use('/sell', securityLockMiddleware);
+quotaRoutes.use('/sell-all', securityLockMiddleware);
 
 const cardDataSchema = {
   creditCard: z.object({

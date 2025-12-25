@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { Transaction } from '../../../domain/entities/transaction.entity';
 import { UserContext } from '../../../shared/types/hono.types';
@@ -69,7 +69,7 @@ transactionRoutes.get('/', authMiddleware, async (c) => {
 });
 
 // Solicitar saque - AUTOMÁTICO via Asaas
-transactionRoutes.post('/withdraw', authMiddleware, async (c) => {
+transactionRoutes.post('/withdraw', authMiddleware, securityLockMiddleware, async (c) => {
   try {
     const body = await c.req.json();
     const { amount, pixKey } = withdrawSchema.parse(body);
