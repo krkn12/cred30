@@ -371,17 +371,25 @@ loanRoutes.post('/repay', authMiddleware, async (c) => {
             creditCardHolderInfo: body.creditCardHolderInfo
           });
         } else {
-          mpData = await createPixPayment({
-            amount: finalCost,
-            description: `Reposição total de apoio no sistema Cred30`,
-            email: user.email,
-            external_reference: `REPAY_${loanId}_${Date.now()}`,
-            cpf: userCpf,
-            name: userName
-          });
+          try {
+            mpData = await createPixPayment({
+              amount: finalCost,
+              description: `Reposição total de apoio no sistema Cred30`,
+              email: user.email,
+              external_reference: `REPAY_${loanId}_${Date.now()}`,
+              cpf: userCpf,
+              name: userName
+            });
+          } catch (pixErr) {
+            console.error('Erro PIX (seguindo manual):', pixErr);
+          }
         }
       } catch (mpError) {
         console.error('Erro ao gerar cobrança Asaas:', mpError);
+        // CORREÇÃO CRÍTICA: Se for cartão, o erro DEVE ser repassado ao frontend
+        if (paymentMethod === 'card') {
+          throw mpError;
+        }
       }
     }
 
@@ -505,17 +513,25 @@ loanRoutes.post('/repay-installment', authMiddleware, async (c) => {
             creditCardHolderInfo: body.creditCardHolderInfo
           });
         } else {
-          mpData = await createPixPayment({
-            amount: finalInstallmentCost,
-            description: `Pagamento de parcela de apoio no Cred30`,
-            email: user.email,
-            external_reference: `INSTALLMENT_${loanId}_${Date.now()}`,
-            cpf: userCpf,
-            name: userName
-          });
+          try {
+            mpData = await createPixPayment({
+              amount: finalInstallmentCost,
+              description: `Pagamento de parcela de apoio no Cred30`,
+              email: user.email,
+              external_reference: `INSTALLMENT_${loanId}_${Date.now()}`,
+              cpf: userCpf,
+              name: userName
+            });
+          } catch (pixErr) {
+            console.error('Erro PIX (seguindo manual):', pixErr);
+          }
         }
       } catch (mpError) {
         console.error('Erro ao gerar cobrança Asaas:', mpError);
+        // CORREÇÃO CRÍTICA: Se for cartão, o erro DEVE ser repassado ao frontend
+        if (paymentMethod === 'card') {
+          throw mpError;
+        }
       }
 
       const transaction = await pool.query(

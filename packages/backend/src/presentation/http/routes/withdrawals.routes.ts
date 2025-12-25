@@ -312,7 +312,11 @@ withdrawalRoutes.post('/confirm', authMiddleware, async (c) => {
       return c.json({ success: false, message: 'Dados inválidos' }, 400);
     }
     console.error('Erro ao confirmar saque:', error);
-    return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
+    console.error('Stack trace:', error instanceof Error ? error.stack : 'N/A');
+    return c.json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Erro interno do servidor'
+    }, 500);
   }
 });
 

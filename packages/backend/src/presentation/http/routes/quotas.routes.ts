@@ -57,7 +57,7 @@ const buyQuotaSchema = z.object({
 
 // Esquema de validação para venda de cotas
 const sellQuotaSchema = z.object({
-  quotaId: z.string(),
+  quotaId: z.union([z.string(), z.number()]).transform((val) => String(val)),
 });
 
 // Listar cotas do usuário
@@ -96,6 +96,9 @@ quotaRoutes.get('/', authMiddleware, async (c) => {
 
 // Comprar cotas
 quotaRoutes.post('/buy', authMiddleware, async (c) => {
+  console.log('============================');
+  console.log('[QUOTAS /buy] REQUEST RECEIVED AT', new Date().toISOString());
+  console.log('============================');
   try {
     const body = await c.req.json();
     console.log('[QUOTAS] Processing /buy request:', JSON.stringify({ ...body, creditCard: 'REDACTED', creditCardHolderInfo: 'REDACTED' }));
@@ -138,8 +141,11 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
 
     // Executar operação dentro de transação ACID
     const result = await executeInTransaction(pool, async (client) => {
+      console.log(`[QUOTAS] Initiating transaction for user ${user.id}, paymentMethod: ${paymentMethod}`);
+
       // Se estiver usando saldo, verificar e bloquear
       if (useBalance) {
+        // ... (código existente) ...
         const balanceCheck = await lockUserBalance(client, user.id, totalWithServiceFee);
         if (!balanceCheck.success) {
           throw new Error(balanceCheck.error);
@@ -189,33 +195,28 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
           throw new Error(transactionResult.error);
         }
 
+        // ... (resto do código de saldo) ...
+
         // 5. Pagamento de Bônus de Indicação (Sustentável: Sai da Receita da Cota)
-        // Se o usuário foi indicado por alguém, pagamos R$ 5,00 ao indicador agora.
         const currentUserRes = await client.query('SELECT referred_by FROM users WHERE id = $1', [user.id]);
         const referredByCode = currentUserRes.rows[0]?.referred_by;
 
         if (referredByCode) {
-          // Tentar achar usuário dono do código
           const referrerRes = await client.query('SELECT id, name FROM users WHERE referral_code = $1', [referredByCode]);
 
           if (referrerRes.rows.length > 0) {
             const referrerId = referrerRes.rows[0].id;
-            const bonusAmount = 5.00; // Valor fixo por conversão (CPA)
+            const bonusAmount = 5.00;
 
             const sysRes = await client.query('SELECT profit_pool FROM system_config LIMIT 1');
             const profitPool = parseFloat(sysRes.rows[0].profit_pool);
 
             if (profitPool >= bonusAmount) {
-              // Creditar bônus
               await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [bonusAmount, referrerId]);
-
-              // Deduzir do Pool de Lucros (Só libera se tiver gerado lucros)
               await client.query(
                 'UPDATE system_config SET profit_pool = profit_pool - $1',
                 [bonusAmount]
               );
-
-              // Registrar transação aprovada
               await createTransaction(
                 client,
                 referrerId,
@@ -225,7 +226,6 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
                 'APPROVED'
               );
             } else {
-              // Registrar transação pendente (aguardando lucro do sistema)
               await createTransaction(
                 client,
                 referrerId,
@@ -251,9 +251,12 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
         // Criar transação pendente (compra via PIX/Cartão)
         const external_reference = `BUY_QUOTA_${user.id}_${Date.now()}`;
 
+        console.log(`[QUOTAS] Processing external payment via ${paymentMethod}`);
+
         let mpData = null;
         try {
           if (paymentMethod === 'card' && body.creditCard) {
+            console.log('[QUOTAS] Calling createCardPayment...');
             mpData = await createCardPayment({
               amount: finalCost,
               description: `Aquisição de ${quantity} participação(ões) no sistema Cred30`,
@@ -265,21 +268,34 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
               creditCard: body.creditCard,
               creditCardHolderInfo: body.creditCardHolderInfo
             });
+            console.log('[QUOTAS] createCardPayment success:', mpData?.id);
           } else {
-            mpData = await createPixPayment({
-              amount: finalCost,
-              description: `Aquisição de ${quantity} participação(ões) no sistema Cred30`,
-              email: user.email,
-              external_reference,
-              cpf: userCpf,
-              name: userFullName
-            });
+            console.log('[QUOTAS] Calling createPixPayment...');
+            try {
+              mpData = await createPixPayment({
+                amount: finalCost,
+                description: `Aquisição de ${quantity} participação(ões) no sistema Cred30`,
+                email: user.email,
+                external_reference,
+                cpf: userCpf,
+                name: userFullName
+              });
+              console.log('[QUOTAS] createPixPayment success:', mpData?.id);
+            } catch (pixErr) {
+              console.error('Erro PIX (seguindo manual):', pixErr);
+            }
           }
         } catch (mpError) {
           console.error('Erro ao gerar cobrança Asaas:', mpError);
-          // Prosseguir mesmo sem Asaas automático, admin verá como pendente normal
+          // CORREÇÃO CRÍTICA: Se for cartão, o erro DEVE ser repassado ao frontend
+          if (paymentMethod === 'card') {
+            console.log('[QUOTAS] Re-throwing card error to frontend');
+            throw mpError;
+          }
+          // Para PIX, seguimos como pendente para processamento manual
         }
 
+        console.log('[QUOTAS] Creating PENDING transaction record...');
         const transactionResult = await createTransaction(
           client,
           user.id,
@@ -301,6 +317,7 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
         );
 
         if (!transactionResult.success) {
+          console.error('[QUOTAS] Failed to create PENDING transaction:', transactionResult.error);
           throw new Error(transactionResult.error);
         }
 
@@ -430,18 +447,31 @@ quotaRoutes.post('/sell', authMiddleware, async (c) => {
     logFinancialAudit('VENDA_COTA_ANTES', user.id, auditBefore);
 
     // Executar dentro de transação para consistência
-    await executeInTransaction(pool, async (client) => {
+    const txResult = await executeInTransaction(pool, async (client) => {
+      console.log(`[SELL_QUOTA] Starting transaction for user ${user.id}, quotaId: ${quotaId}, finalAmount: ${finalAmount}`);
+
       // Remover cota
-      await client.query(
-        'DELETE FROM quotas WHERE id = $1 AND user_id = $2',
+      const deleteResult = await client.query(
+        'DELETE FROM quotas WHERE id = $1 AND user_id = $2 RETURNING id',
         [quotaId, user.id]
       );
 
+      if (deleteResult.rowCount === 0) {
+        throw new Error('Falha ao remover a participação - não encontrada');
+      }
+      console.log(`[SELL_QUOTA] Quota ${quotaId} deleted successfully`);
+
       // Adicionar valor ao saldo do usuário
-      await client.query(
-        'UPDATE users SET balance = balance + $1 WHERE id = $2',
+      const updateResult = await client.query(
+        'UPDATE users SET balance = balance + $1 WHERE id = $2 RETURNING balance',
         [finalAmount, user.id]
       );
+
+      if (updateResult.rowCount === 0) {
+        throw new Error('Falha ao atualizar saldo do usuário');
+      }
+      const newBalance = updateResult.rows[0].balance;
+      console.log(`[SELL_QUOTA] User ${user.id} balance updated to: ${newBalance}`);
 
       // NOTA: Não subtraímos do system_balance aqui. A saída de capital do banco só ocorre no saque.
 
@@ -451,6 +481,7 @@ quotaRoutes.post('/sell', authMiddleware, async (c) => {
           'UPDATE system_config SET profit_pool = profit_pool + $1',
           [profitAmount]
         );
+        console.log(`[SELL_QUOTA] Profit pool increased by ${profitAmount}`);
       }
 
       // Criar transação de cessão
@@ -470,7 +501,21 @@ quotaRoutes.post('/sell', authMiddleware, async (c) => {
           })
         ]
       );
+      console.log(`[SELL_QUOTA] Transaction record created successfully`);
+
+      return { newBalance };
     });
+
+    // Verificar se a transação foi bem sucedida
+    if (!txResult.success) {
+      console.error('[SELL_QUOTA] Transaction failed:', txResult.error);
+      return c.json({
+        success: false,
+        message: txResult.error || 'Erro ao processar cessão de participação'
+      }, 500);
+    }
+
+    console.log(`[SELL_QUOTA] SUCCESS - User ${user.id} sold quota ${quotaId}, received R$ ${finalAmount}`);
 
     // Registrar auditoria após a transação
     const systemStateAfter = await pool.query(`

@@ -57,23 +57,20 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
         console.log('DEBUG - Licenças elegíveis para bônus:', eligibleTotalQuotas);
 
         if (eligibleTotalQuotas === 0) {
-            // Se não há licenças elegíveis, todo o resultado vai para o caixa operacional
-            const profitToTransfer = parseFloat(config.profit_pool);
+            // Se não há licenças elegíveis, o lucro PERMANECE no profit_pool
+            // para a próxima distribuição. NÃO transferimos para system_balance
+            // porque isso inflaria a liquidez artificialmente.
 
-            if (profitToTransfer > 0) {
-                await pool.query(
-                    'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = 0',
-                    [profitToTransfer]
-                );
+            console.log('DEBUG - Nenhuma cota elegível. Lucro permanece no profit_pool:', config.profit_pool);
 
-                return {
-                    success: true,
-                    message: `Não há licenciados elegíveis (ativos em apoios/jogos). Resultado de R$ ${profitToTransfer.toFixed(2)} revertido para o Caixa Operacional.`,
-                    data: { transferredToBalance: profitToTransfer }
-                };
-            }
-
-            return { success: false, message: 'Não há licenças elegíveis e sem resultados para distribuir.' };
+            return {
+                success: false,
+                message: `Não há licenciados elegíveis (ativos em apoios/jogos). O resultado de R$ ${parseFloat(config.profit_pool).toFixed(2)} permanece acumulado para a próxima distribuição.`,
+                data: {
+                    profitPoolRetained: parseFloat(config.profit_pool),
+                    reason: 'NO_ELIGIBLE_QUOTAS'
+                }
+            };
         }
 
         const profit = parseFloat(config.profit_pool);

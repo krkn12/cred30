@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import {
     Search, Tag, ShoppingBag, PlusCircle, ImageIcon, Zap, Sparkles,
     ChevronRight, ArrowLeft, ShieldCheck, Heart, Share2, MessageCircle,
@@ -11,6 +11,7 @@ import { AppState } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { OfflineMarketplaceView } from './OfflineMarketplaceView';
+import { useDebounce } from '../../hooks/use-performance';
 
 interface MarketplaceViewProps {
     state: AppState;
@@ -19,8 +20,8 @@ interface MarketplaceViewProps {
     onError: (title: string, message: string) => void;
 }
 
-// Componentes internos para anúncios
-const AdBanner = ({ type, title, description, actionText }: any) => (
+// Componentes internos para anúncios (memoizados para evitar re-renders)
+const AdBanner = memo(({ type, title, description, actionText }: any) => (
     <div className={`p-4 rounded-2xl border transition-all hover:scale-[1.02] cursor-pointer ${type === 'BANNER'
         ? 'bg-gradient-to-br from-primary-600/20 to-purple-600/10 border-primary-500/20 shadow-lg shadow-primary-500/5'
         : 'bg-zinc-900/50 border-zinc-800'
@@ -37,7 +38,8 @@ const AdBanner = ({ type, title, description, actionText }: any) => (
             </button>
         )}
     </div>
-);
+));
+AdBanner.displayName = 'AdBanner';
 
 const NativeAdCard = ({ title, price, category, img }: any) => (
     <div className="bg-zinc-900/40 border border-zinc-800/50 rounded-2xl overflow-hidden group hover:border-amber-500/30 transition-all flex flex-col relative">
@@ -74,6 +76,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const [isLoading, setIsLoading] = useState(true);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const debouncedSearchQuery = useDebounce(searchQuery, 300); // Debounce de 300ms
     const [selectedCategory, setSelectedCategory] = useState('TODOS');
     const [confirmData, setConfirmData] = useState<any>(null);
     const [offlineVoucher, setOfflineVoucher] = useState<{ code: string, amount: number, item: string } | null>(null);
@@ -353,14 +356,15 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
             {view === 'browse' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-in fade-in duration-300">
                     {(() => {
+                        // Usar debouncedSearchQuery para evitar filtros excessivos durante digitação
                         const filtered = listings.filter(item => {
-                            const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                item.description.toLowerCase().includes(searchQuery.toLowerCase());
+                            const matchesSearch = item.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+                                item.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
                             const matchesCategory = selectedCategory === 'TODOS' || item.category === selectedCategory;
                             return matchesSearch && matchesCategory;
                         });
 
-                        if (filtered.length === 0 && (searchQuery || selectedCategory !== 'TODOS')) {
+                        if (filtered.length === 0 && (debouncedSearchQuery || selectedCategory !== 'TODOS')) {
                             return (
                                 <div className="col-span-full py-20 text-center animate-in fade-in zoom-in duration-300">
                                     <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-4 border border-zinc-800">

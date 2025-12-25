@@ -1,0 +1,40 @@
+[dotenv@17.2.3] injecting env (15) from .env -- tip: ÔÜÖ´©Å  specify custom .env file path with { path: '/custom/path/.env' }
+Recent SELL transactions for user 2:
+[
+  {
+    id: 30,
+    user_id: 2,
+    type: 'SELL_QUOTA',
+    amount: '25.20',
+    description: 'Cess├úo de participa├º├úo (Multa 40%)',
+    status: 'APPROVED',
+    created_at: 2025-12-24T07:27:12.822Z
+  },
+  {
+    id: 8,
+    user_id: 2,
+    type: 'SELL_QUOTA',
+    amount: '25.20',
+    description: 'Resgate total de licen├ºas',
+    status: 'APPROVED',
+    created_at: 2025-12-23T22:58:14.065Z
+  }
+]
+
+All quotas for user 2:
+[
+  {
+    id: 2,
+    status: 'ACTIVE',
+    purchase_price: '42.00',
+    current_value: '42.00'
+  },
+  {
+    id: 4,
+    status: 'ACTIVE',
+    purchase_price: '42.00',
+    current_value: '42.00'
+  }
+]
+
+User 2 balance: 0.00

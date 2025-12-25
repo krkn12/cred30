@@ -73,6 +73,9 @@ const asaasRequest = async (endpoint: string, options: RequestInit = {}): Promis
 
     try {
         console.log(`[ASAAS] Requesting ${endpoint}...`);
+        if (options.body) {
+            console.log('[ASAAS] Payload:', options.body);
+        }
         const response = await fetch(url, {
             ...options,
             signal: controller.signal,
@@ -205,6 +208,8 @@ export const createCardPayment = async (data: PaymentRequest): Promise<PaymentRe
         }
 
         // Criar cobrança com cartão
+        const todayDate = new Date().toISOString().split('T')[0];
+        console.log(`[ASAAS CARD] Creating payment with dueDate: ${todayDate}`);
         const payment = await asaasRequest('/payments', {
             method: 'POST',
             body: JSON.stringify({
@@ -213,6 +218,7 @@ export const createCardPayment = async (data: PaymentRequest): Promise<PaymentRe
                 value: data.amount,
                 description: data.description,
                 externalReference: external_reference,
+                dueDate: todayDate,
                 installmentCount: data.installments || 1,
                 installmentValue: data.installments ? data.amount / data.installments : data.amount,
                 creditCard: {
@@ -261,8 +267,30 @@ export const checkPaymentStatus = async (paymentId: string): Promise<string> => 
 
 /**
  * Cria um payout (transferência PIX para o usuário) - SAQUE AUTOMÁTICO
+ * No modo sandbox, simula uma transferência bem-sucedida já que o Asaas sandbox
+ * não suporta transferências para chaves PIX que não existem no ambiente de teste.
  */
 export const createPayout = async (data: PayoutRequest): Promise<PayoutResponse> => {
+    const isSandbox = process.env.ASAAS_SANDBOX === 'true';
+
+    // No sandbox, simular transferência bem-sucedida
+    if (isSandbox) {
+        console.log('[ASAAS SANDBOX] Simulando transferência PIX:', {
+            pixKey: data.pixKey,
+            amount: data.amount,
+            description: data.description
+        });
+
+        // Retornar resposta simulada de sucesso
+        return {
+            id: `transfer_sandbox_${Date.now()}`,
+            status: 'DONE',
+            value: data.amount,
+            dateCreated: new Date().toISOString(),
+        };
+    }
+
+    // Em produção, usar a API real
     try {
         const transfer = await asaasRequest('/transfers', {
             method: 'POST',

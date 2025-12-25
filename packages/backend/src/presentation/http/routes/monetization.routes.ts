@@ -153,27 +153,38 @@ monetizationRoutes.post('/upgrade-pro', authMiddleware, async (c) => {
         const userName = userCheck.rows[0]?.name;
 
         if (payMethod === 'pix') {
-            paymentData = await createPixPayment({
-                amount: finalAmount,
-                description: `Upgrade PRO - ${userName?.split(' ')[0] || 'Usuário'}`,
-                email: userCheck.rows[0].email,
-                external_reference: user.id.toString(),
-                cpf: userCpf,
-                name: userName
-            });
+            try {
+                paymentData = await createPixPayment({
+                    amount: finalAmount,
+                    description: `Upgrade PRO - ${userName?.split(' ')[0] || 'Usuário'}`,
+                    email: userCheck.rows[0].email,
+                    external_reference: user.id.toString(),
+                    cpf: userCpf,
+                    name: userName
+                });
+            } catch (pixErr) {
+                console.error('Erro PIX Monetization:', pixErr);
+                // PIX pode falhar e seguir manual (embora, para upgrade, talvez fosse melhor falhar também, mas manteremos o padrão)
+                paymentData = { id: null }; // Fallback para não quebrar a criação da transação
+            }
         } else {
             if (!body.creditCard) return c.json({ success: false, message: 'Dados do cartão são obrigatórios' }, 400);
-            paymentData = await createCardPayment({
-                amount: finalAmount,
-                description: `Upgrade PRO`,
-                email: userCheck.rows[0].email,
-                external_reference: user.id.toString(),
-                installments: installments || 1,
-                cpf: userCpf,
-                name: userName,
-                creditCard: body.creditCard,
-                creditCardHolderInfo: body.creditCardHolderInfo
-            });
+            try {
+                paymentData = await createCardPayment({
+                    amount: finalAmount,
+                    description: `Upgrade PRO`,
+                    email: userCheck.rows[0].email,
+                    external_reference: user.id.toString(),
+                    installments: installments || 1,
+                    cpf: userCpf,
+                    name: userName,
+                    creditCard: body.creditCard,
+                    creditCardHolderInfo: body.creditCardHolderInfo
+                });
+            } catch (cardErr) {
+                console.error('Erro Cartão Monetization:', cardErr);
+                throw cardErr; // Cartão DEVE falhar
+            }
         }
 
         // 4. Criar transação pendente
