@@ -67,6 +67,31 @@ webhookRoutes.post('/asaas', async (c) => {
                 // Tentar buscar pelo external_reference também
                 const externalRef = payment.externalReference;
                 if (externalRef) {
+                    // NOVO: Verificar se é um vídeo promocional (PROMO_userId_timestamp)
+                    if (externalRef.startsWith('PROMO_')) {
+                        const parts = externalRef.split('_');
+                        const userId = parts[1];
+
+                        // Ativar o vídeo promocional mais recente desse usuário que está PENDING
+                        const promoResult = await client.query(
+                            `UPDATE promo_videos 
+                             SET status = 'ACTIVE', is_active = TRUE, is_approved = TRUE
+                             WHERE id = (
+                                 SELECT id FROM promo_videos 
+                                 WHERE user_id = $1 AND status = 'PENDING'
+                                 ORDER BY created_at DESC
+                                 LIMIT 1
+                             )
+                             RETURNING id, title`,
+                            [userId]
+                        );
+
+                        if (promoResult.rows.length > 0) {
+                            console.log(`[WEBHOOK ASAAS] Vídeo promocional ativado: ${promoResult.rows[0].title} (ID: ${promoResult.rows[0].id})`);
+                            return { processed: true, promoVideoId: promoResult.rows[0].id };
+                        }
+                    }
+
                     const txByRefResult = await client.query(
                         "SELECT id FROM transactions WHERE metadata->>'external_reference' = $1 AND status = 'PENDING'",
                         [externalRef]
