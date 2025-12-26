@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, DollarSign, Clock, Eye, ChevronRight, Plus, X as XIcon, CheckCircle2, AlertTriangle, Youtube, Film, ExternalLink, Loader2 } from 'lucide-react';
+import { Play, Pause, DollarSign, Clock, Eye, ChevronRight, Plus, X as XIcon, CheckCircle2, AlertTriangle, Youtube, Film, ExternalLink, Loader2, Wallet, Smartphone, CreditCard } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 
 interface PromoVideo {
@@ -611,9 +611,9 @@ const CreateCampaignModal: React.FC<{
                         <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest block mb-4 px-1">Forma de Pagamento</label>
                         <div className="grid grid-cols-3 gap-3">
                             {[
-                                { id: 'BALANCE', label: 'SALDO', icon: '💰', color: 'primary' },
-                                { id: 'PIX', label: 'PIX', icon: '📱', color: 'emerald' },
-                                { id: 'CARD', label: 'CARD', icon: '💳', color: 'blue' }
+                                { id: 'BALANCE', label: 'SALDO', icon: <Wallet size={20} />, color: 'primary' },
+                                { id: 'PIX', label: 'PIX', icon: <Smartphone size={20} />, color: 'emerald' },
+                                { id: 'CARD', label: 'CARD', icon: <CreditCard size={20} />, color: 'blue' }
                             ].map((m) => (
                                 <button
                                     key={m.id}
@@ -623,7 +623,7 @@ const CreateCampaignModal: React.FC<{
                                         ? `bg-${m.color}-500/10 border-${m.color}-500/50 text-${m.color}-400 shadow-lg shadow-${m.color}-500/10`
                                         : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:border-zinc-700'}`}
                                 >
-                                    <span className="text-xl">{m.icon}</span>
+                                    {m.icon}
                                     <span className="text-[10px] font-black tracking-widest">{m.label}</span>
                                 </button>
                             ))}
