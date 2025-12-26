@@ -16,6 +16,7 @@ interface PromoVideo {
     totalViews: number;
     targetViews: number;
     viewerEarning: number;
+    isOwner?: boolean;
 }
 
 interface MyCampaign {
@@ -232,7 +233,7 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                     ) : (
                         <div className="space-y-3">
                             {videos.map(video => (
-                                <div key={video.id} className="bg-surface border border-surfaceHighlight rounded-2xl overflow-hidden hover:border-primary-500/50 transition">
+                                <div key={video.id} className={`bg-surface border rounded-2xl overflow-hidden transition ${video.isOwner ? 'border-primary-500/30 bg-primary-500/5' : 'border-surfaceHighlight hover:border-primary-500/50'}`}>
                                     <div className="flex">
                                         {/* Thumbnail */}
                                         <div className="relative w-32 h-24 flex-shrink-0">
@@ -247,6 +248,11 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                                             <div className="absolute bottom-1 right-1 bg-black/80 text-[10px] text-white px-1 rounded">
                                                 {Math.floor(video.durationSeconds / 60)}:{String(video.durationSeconds % 60).padStart(2, '0')}
                                             </div>
+                                            {video.isOwner && (
+                                                <div className="absolute top-1 left-1 bg-primary-500 text-black text-[8px] px-1.5 py-0.5 rounded font-bold">
+                                                    SEU VÍDEO
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Info */}
@@ -256,14 +262,20 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                                                     {getPlatformIcon(video.platform)}
                                                     <h4 className="text-sm font-bold text-white line-clamp-1">{video.title}</h4>
                                                 </div>
-                                                <p className="text-xs text-zinc-500">por {video.promoterName}</p>
+                                                <p className="text-xs text-zinc-500">{video.isOwner ? 'Sua campanha' : `por ${video.promoterName}`}</p>
                                             </div>
 
                                             <div className="flex items-center justify-between mt-2">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-emerald-400 font-bold text-sm">
-                                                        +{video.viewerEarning.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                                    </span>
+                                                    {video.isOwner ? (
+                                                        <span className="text-zinc-500 text-xs font-bold">
+                                                            {video.totalViews} views
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-emerald-400 font-bold text-sm">
+                                                            +{video.viewerEarning.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                        </span>
+                                                    )}
                                                     <span className="text-[10px] text-zinc-500 flex items-center gap-1">
                                                         <Clock size={10} />
                                                         {video.minWatchSeconds}s
@@ -271,9 +283,9 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                                                 </div>
                                                 <button
                                                     onClick={() => startWatching(video)}
-                                                    className="bg-primary-500 hover:bg-primary-400 text-black px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1"
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${video.isOwner ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700' : 'bg-primary-500 hover:bg-primary-400 text-black'}`}
                                                 >
-                                                    Assistir <ChevronRight size={14} />
+                                                    {video.isOwner ? 'Ver' : 'Assistir'} <ChevronRight size={14} />
                                                 </button>
                                             </div>
                                         </div>
@@ -404,24 +416,43 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
 
                             {watchProgress >= watchingVideo.minWatchSeconds ? (
                                 <div className="mt-8 animate-in zoom-in-95 duration-300">
-                                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 mb-4 flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-black shrink-0 shadow-lg shadow-emerald-500/20">
-                                            <CheckCircle2 size={24} strokeWidth={3} />
-                                        </div>
-                                        <p className="text-emerald-400 text-xs font-black uppercase tracking-tight">Tempo atingido! Você já pode resgatar seu lucro.</p>
-                                    </div>
-                                    <button
-                                        onClick={completeWatch}
-                                        className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-[0.2em] py-5 rounded-2xl transition-all shadow-xl shadow-emerald-500/20 active:scale-[0.98] text-xs"
-                                    >
-                                        RESGATAR {watchingVideo.viewerEarning.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                    </button>
+                                    {watchingVideo.isOwner ? (
+                                        <>
+                                            <div className="bg-primary-500/10 border border-primary-500/20 rounded-2xl p-4 mb-4 flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center text-black shrink-0 shadow-lg shadow-primary-500/20">
+                                                    <CheckCircle2 size={24} strokeWidth={3} />
+                                                </div>
+                                                <p className="text-primary-400 text-xs font-black uppercase tracking-tight">Prévia completa! Este é seu próprio vídeo.</p>
+                                            </div>
+                                            <button
+                                                onClick={cancelWatch}
+                                                className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-black uppercase tracking-[0.2em] py-5 rounded-2xl transition-all text-xs"
+                                            >
+                                                FECHAR PRÉVIA
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 mb-4 flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-black shrink-0 shadow-lg shadow-emerald-500/20">
+                                                    <CheckCircle2 size={24} strokeWidth={3} />
+                                                </div>
+                                                <p className="text-emerald-400 text-xs font-black uppercase tracking-tight">Tempo atingido! Você já pode resgatar seu lucro.</p>
+                                            </div>
+                                            <button
+                                                onClick={completeWatch}
+                                                className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-[0.2em] py-5 rounded-2xl transition-all shadow-xl shadow-emerald-500/20 active:scale-[0.98] text-xs"
+                                            >
+                                                RESGATAR {watchingVideo.viewerEarning.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="flex items-center justify-center gap-2 mt-6 text-zinc-600">
                                     <Clock size={14} className="animate-spin" />
                                     <p className="text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] animate-pulse">
-                                        Aguarde o tempo mínimo para validar...
+                                        {watchingVideo.isOwner ? 'Assistindo prévia...' : 'Aguarde o tempo mínimo para validar...'}
                                     </p>
                                 </div>
                             )}

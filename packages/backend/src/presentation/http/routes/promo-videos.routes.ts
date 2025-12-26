@@ -55,13 +55,13 @@ promoVideosRoutes.get('/feed', async (c) => {
 
         const result = await pool.query(`
             SELECT pv.*, u.name as promoter_name,
-                   (SELECT COUNT(*) FROM promo_video_views pvv WHERE pvv.video_id = pv.id AND pvv.completed = TRUE) as completed_views
+                   (SELECT COUNT(*) FROM promo_video_views pvv WHERE pvv.video_id = pv.id AND pvv.completed = TRUE) as completed_views,
+                   (pv.user_id = $1) as is_owner
             FROM promo_videos pv
             JOIN users u ON pv.user_id = u.id
             WHERE pv.is_active = TRUE 
               AND pv.status = 'ACTIVE'
               AND pv.budget > pv.spent
-              AND pv.user_id != $1
               AND NOT EXISTS (
                   SELECT 1 FROM promo_video_views pvv 
                   WHERE pvv.video_id = pv.id AND pvv.viewer_id = $1
@@ -85,7 +85,8 @@ promoVideosRoutes.get('/feed', async (c) => {
                 promoterName: v.promoter_name,
                 totalViews: v.total_views,
                 targetViews: v.target_views,
-                viewerEarning: parseFloat(v.price_per_view) * VIEWER_SHARE,
+                viewerEarning: v.is_owner ? 0 : parseFloat(v.price_per_view) * VIEWER_SHARE,
+                isOwner: v.is_owner, // Flag para o frontend
             }))
         });
     } catch (error) {
@@ -226,7 +227,20 @@ promoVideosRoutes.post('/:videoId/start-view', async (c) => {
         if (videoResult.rows.length === 0) return c.json({ success: false, message: 'Vídeo não disponível' }, 404);
         const video = videoResult.rows[0];
 
-        if (Number(video.user_id) === Number(userPayload.id)) return c.json({ success: false, message: 'Próprio vídeo' }, 400);
+        const isOwner = Number(video.user_id) === Number(userPayload.id);
+
+        // Se é o dono, permite ver mas não ganha nada
+        if (isOwner) {
+            return c.json({
+                success: true,
+                data: {
+                    viewId: null, // Sem ID de view
+                    minWatchSeconds: video.min_watch_seconds,
+                    viewerEarning: 0,
+                    isOwner: true,
+                }
+            });
+        }
 
         const existingView = await pool.query(
             'SELECT id FROM promo_video_views WHERE video_id = $1 AND viewer_id = $2',
@@ -251,6 +265,7 @@ promoVideosRoutes.post('/:videoId/start-view', async (c) => {
                 viewId: viewResult.rows[0].id,
                 minWatchSeconds: video.min_watch_seconds,
                 viewerEarning: parseFloat(video.price_per_view) * VIEWER_SHARE,
+                isOwner: false,
             }
         });
     } catch (error) {
