@@ -120,7 +120,7 @@ promoVideosRoutes.post('/create', async (c) => {
         const pool = getDbPool(c);
 
         const grossPPV = data.pricePerView;
-        const targetViews = Math.floor(data.budget / grossPPV);
+        const targetViews = Math.floor((data.budget / grossPPV) * 1.02); // 2% bonus views
         const viewerPool = data.budget * VIEWER_SHARE;
 
         const userResult = await pool.query('SELECT name, email, cpf, balance FROM users WHERE id = $1', [userPayload.id]);

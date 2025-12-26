@@ -589,7 +589,7 @@ const CreateCampaignModal: React.FC<{
     const ASAAS_CARD_FEE_PERCENT = 0.0299;
     const ASAAS_CARD_FIXED_FEE = 0.49;
 
-    const estimatedViews = Math.floor(form.budget / form.pricePerView);
+    const estimatedViews = Math.floor((form.budget / form.pricePerView) * 1.02); // 2% bonus views
     const viewerEarning = form.pricePerView * 0.60;
     const quotaHoldersShare = form.pricePerView * 0.25;
     const serviceFee = form.pricePerView * 0.15;
@@ -768,7 +768,10 @@ const CreateCampaignModal: React.FC<{
                     {/* Detailed Summary Card */}
                     <div className="bg-primary-500/5 border border-primary-500/20 rounded-[2rem] p-6 space-y-4">
                         <div className="flex justify-between items-center group">
-                            <span className="text-xs text-zinc-500 font-bold">Alcance Estimado</span>
+                            <div className="flex flex-col">
+                                <span className="text-xs text-zinc-500 font-bold">Alcance Estimado</span>
+                                <span className="text-[10px] text-primary-400 font-black animate-pulse">+2% BÔNUS INCLUSO</span>
+                            </div>
                             <span className="text-base font-black text-white bg-white/5 px-3 py-1 rounded-full">{estimatedViews} VIEWS</span>
                         </div>
 
