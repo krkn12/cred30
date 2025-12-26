@@ -1,6 +1,0 @@
-{
-  "timestamp": "2025-12-12T21:59:01.041Z",
-  "success": false,
-  "error": "Usuário não encontrado",
-  "stack": "Error: Usuário não encontrado\n    at AdminFlowTester.request (file:///C:/Users/josia/Desktop/projetos/cred30/test-admin-flow.js:36:15)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async AdminFlowTester.login (file:///C:/Users/josia/Desktop/projetos/cred30/test-admin-flow.js:48:22)\n    at async AdminFlowTester.runFullTest (file:///C:/Users/josia/Desktop/projetos/cred30/test-admin-flow.js:172:21)"
-}
