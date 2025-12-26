@@ -127,7 +127,7 @@ promoVideosRoutes.post('/create', async (c) => {
                         user_id, title, description, video_url, thumbnail_url, platform,
                         duration_seconds, price_per_view, min_watch_seconds, budget, spent, 
                         target_views, status, is_active, is_approved
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 9, $10, 0, $11, 'ACTIVE', TRUE, TRUE)
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0, $11, 'ACTIVE', TRUE, TRUE)
                     RETURNING id
                 `, [
                     userPayload.id, data.title, data.description || null, data.videoUrl,
