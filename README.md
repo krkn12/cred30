@@ -6,36 +6,51 @@ Cred30 é uma plataforma de cooperação que permite aportes associativos com di
 
 Este é um monorepo que contém:
 
-- **packages/frontend**: Aplicação React + TypeScript + Vite
+- **packages/frontend-v2**: Aplicação React + TypeScript + Vite (PWA)
 - **packages/backend**: API Hono + TypeScript + PostgreSQL
 - **docs/**: Documentação do projeto
 - **scripts/**: Scripts utilitários e de desenvolvimento
 - **config/**: Arquivos de configuração compartilhados
 - **docker/**: Configurações Docker
-- **tools/**: Ferramentas de desenvolvimento (ESLint, Prettier, TypeScript)
 
 ## 🚀 Funcionalidades
 
+### Core
 - 🏦 **Aportes Associativos**: Participe com cotas a partir de R$ 50,00 e receba excedentes operacionais proporcionais
 - 💰 **Apoio Mútuo**: Solicite apoio social com taxa de sustentabilidade de 20%
 - 👥 **Reposição de Saldos**: Transfira seus resultados para sua conta via PIX
-- 🎯 **Sistema de Indicação**: Bônus de R$ 5,00 por cada novo membro indicado
-- 👑 **Níveis VIP**: Benefícios exclusivos para membros engajados
-- 🤖 **Assistente IA**: Dicas de gestão e educação cooperativa
+
+### Indicação & Benefícios
+- 🎁 **Benefício de Boas-Vindas**: Usuários indicados ganham taxas especiais por até 3 usos:
+  - Taxa de juros de **3,5%** (ao invés de 20%)
+  - Taxa de saque de **R$ 1,00** (50% de desconto)
+  - Taxa de marketplace de **2,5%** (50% de desconto)
+- ⭐ **Score por Indicação**: Ganhe +50 pontos de Score por cada novo membro ativo
+
+### Marketplace & Economia
+- 🛒 **Marketplace Cred30**: Compre e venda produtos com garantia de escrow
+- 🚚 **Entrega por Motoboy**: Sistema integrado de entregas
+- 💳 **Pagamento via Saldo ou PIX**: Múltiplas formas de pagamento
+
+### Engajamento
+- 👑 **Níveis VIP**: Bronze, Prata, Ouro e Fundador
+- 📚 **Educação Financeira**: Cursos e conteúdo educacional
+- 🗳️ **Governança**: Sistema de votação e propostas
+- 🤖 **Assistente IA**: Dicas de gestão e suporte inteligente
 
 ## 🛠️ Tecnologias
 
-- **Frontend**: React + TypeScript + Vite + Tailwind CSS
+- **Frontend**: React 18 + TypeScript + Vite + Tailwind CSS
 - **Backend**: Hono + TypeScript + PostgreSQL + Bun
-- **Autenticação**: JWT
-- **Estilo**: Dark mode com design moderno
-- **Infraestrutura**: Docker + Docker Compose
+- **Autenticação**: JWT + 2FA (TOTP)
+- **Pagamentos**: Asaas (PIX, Cartão)
+- **Hospedagem**: Firebase Hosting (PWA)
+- **Banco de Dados**: PostgreSQL (Supabase/Railway)
 
 ## 📋 Pré-requisitos
 
 - Node.js 18+
-- Docker e Docker Compose
-- npm ou yarn
+- npm
 - Bun (para o backend)
 
 ## 🔧 Configuração do Ambiente
@@ -56,13 +71,7 @@ npm install
 3. Configure as variáveis de ambiente:
 
 ```bash
-cp config/.env.example config/.env
-```
-
-4. Inicie o banco de dados:
-
-```bash
-npm run docker:up
+cp packages/backend/.env.example packages/backend/.env
 ```
 
 ## 🏃‍♂️ Executando o Projeto
@@ -80,36 +89,14 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
-### Build
+### Build e Deploy
 
 ```bash
-# Build de todos os pacotes
+# Build de produção
 npm run build
 
-# Build específico
-npm run build:backend
-npm run build:frontend
-```
-
-### Testes
-
-```bash
-# Executar todos os testes
-npm run test
-
-# Testes específicos
-npm run test:backend
-npm run test:frontend
-```
-
-### Lint e Formatação
-
-```bash
-# Lint de todos os pacotes
-npm run lint
-
-# Formatar código
-npm run format
+# Deploy completo (bump version + deploy)
+npm run release
 ```
 
 ## 📁 Estrutura de Diretórios
@@ -117,38 +104,23 @@ npm run format
 ```
 cred30/
 ├── packages/
-│   ├── frontend/           # Aplicação React
+│   ├── frontend-v2/        # PWA React
 │   │   ├── src/
-│   │   │   ├── presentation/   # Componentes React, páginas
-│   │   │   ├── application/    # Services, stores, mappers
-│   │   │   ├── domain/         # Entidades, tipos de domínio
-│   │   │   ├── infrastructure/ # Implementações de infraestrutura
-│   │   │   └── shared/         # Utilitários compartilhados
-│   │   ├── tests/
+│   │   │   ├── presentation/   # Componentes, páginas, views
+│   │   │   ├── application/    # Services, hooks
+│   │   │   ├── domain/         # Tipos, entidades
+│   │   │   └── shared/         # Utilitários, constantes
 │   │   └── package.json
 │   └── backend/            # API Hono
 │       ├── src/
-│       │   ├── presentation/   # Controllers, routes, middleware
-│       │   ├── application/    # Use cases, DTOs, validators
-│       │   ├── domain/         # Entidades, repositórios, serviços
-│       │   ├── infrastructure/ # Banco de dados, cache, logging
-│       │   └── shared/         # Utilitários compartilhados
-│       ├── tests/
+│       │   ├── presentation/   # Routes, middleware
+│       │   ├── application/    # Services, use cases
+│       │   ├── domain/         # Entities, services
+│       │   ├── infrastructure/ # Database, gateways
+│       │   └── shared/         # Constants, types
 │       └── package.json
 ├── docs/                   # Documentação
-│   ├── api/                # Documentação da API
-│   ├── deployment/         # Guias de deploy
-│   └── development/        # Guias de desenvolvimento
 ├── scripts/                # Scripts utilitários
-│   ├── database/           # Scripts de banco de dados
-│   ├── deployment/         # Scripts de deploy
-│   └── development/        # Scripts de desenvolvimento
-├── config/                 # Configurações compartilhadas
-├── docker/                 # Arquivos Docker
-├── tools/                  # Ferramentas de desenvolvimento
-│   ├── eslint/             # Configurações ESLint
-│   ├── prettier/           # Configurações Prettier
-│   └── typescript/         # Configurações TypeScript
 └── package.json           # Package.json raiz (monorepo)
 ```
 
@@ -157,22 +129,29 @@ cred30/
 Para acessar o painel administrativo:
 
 1. Crie uma conta normalmente
-2. Defina o campo `isAdmin` como `true` no banco de dados
-3. Faça login com a conta criada
+2. No banco de dados, defina `is_admin = true` para o usuário
+3. Faça login - será redirecionado automaticamente para `/admin`
+
+## 🌐 URLs de Produção
+
+- **App**: https://cred30-prod-app-2025.web.app
+- **API**: Configurada via variáveis de ambiente
+
+## 📊 Constantes de Negócio
+
+| Constante | Valor Normal | Com Benefício |
+|-----------|--------------|---------------|
+| Taxa de Juros | 20% | 3,5% |
+| Taxa de Originação | 3% | 1,5% |
+| Taxa de Saque | R$ 2,00 | R$ 1,00 |
+| Taxa Marketplace | 5% | 2,5% |
+| Usos do Benefício | - | 3 usos |
 
 ## 🐛 Problemas Conhecidos
 
-- **Porta em uso**: Se a porta 3000 ou 3001 estiver em uso, o Vite tentará automaticamente usar outra porta
-- **Banco de dados não iniciado**: Certifique-se de que o PostgreSQL está rodando antes de iniciar o backend
-- **CORS**: Se encontrar problemas de CORS, verifique as configurações no backend
-
-## 🤝 Contribuição
-
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
-3. Commit suas mudanças (`git commit -am 'Adiciona nova funcionalidade'`)
-4. Push para a branch (`git push origin feature/nova-funcionalidade`)
-5. Abra um Pull Request
+- **Porta em uso**: O Vite tentará automaticamente usar outra porta
+- **Banco não iniciado**: Verifique se o PostgreSQL está acessível
+- **PWA obrigatório**: Usuários precisam instalar o app para acessar
 
 ## 📄 Licença
 
