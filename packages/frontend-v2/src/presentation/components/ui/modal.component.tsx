@@ -1,4 +1,5 @@
 import React from 'react';
+import { X, AlertTriangle, Info } from 'lucide-react';
 
 interface ModalProps {
   isOpen: boolean;
@@ -34,9 +35,7 @@ export const Modal: React.FC<ModalProps> = ({
             className="text-gray-400 hover:text-gray-600 transition-colors"
             title="Fechar"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-6 h-6" />
           </button>
         </div>
         <div className="p-6">
@@ -82,27 +81,24 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     info: 'text-blue-600'
   };
 
+  const getIcon = () => {
+    switch (type) {
+      case 'danger':
+      case 'warning':
+        return <AlertTriangle className="w-6 h-6" />;
+      case 'info':
+      default:
+        return <Info className="w-6 h-6" />;
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
         <div className="p-6">
           <div className="flex items-center mb-4">
             <div className={`flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center ${iconColors[type]}`}>
-              {type === 'danger' && (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              )}
-              {type === 'warning' && (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              )}
-              {type === 'info' && (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              )}
+              {getIcon()}
             </div>
             <h3 className="ml-3 text-lg font-semibold text-gray-900">{title}</h3>
           </div>
