@@ -235,6 +235,11 @@ userRoutes.get('/sync', authMiddleware, async (c) => {
     const data = result.rows[0];
     const stats = data.user_stats;
 
+    if (!stats) {
+      console.error(`[SYNC_ERROR] Usuário ${user.id} não encontrado no banco de dados durante o sync.`);
+      return c.json({ success: false, message: 'Usuário não sincronizado' }, 404);
+    }
+
     // Obter benefício de boas-vindas (Indicação)
     const welcomeBenefit = await getWelcomeBenefit(pool, user.id);
 
@@ -243,15 +248,15 @@ userRoutes.get('/sync', authMiddleware, async (c) => {
       data: {
         user: {
           ...user,
-          balance: parseFloat(stats.balance),
-          score: stats.score,
-          membership_type: stats.membership_type,
-          is_verified: stats.is_verified,
+          balance: parseFloat(stats.balance || '0'),
+          score: stats.score || 0,
+          membership_type: stats.membership_type || 'MEMBER',
+          is_verified: stats.is_verified || false,
           security_lock_until: stats.security_lock_until
         },
         stats: {
-          activeQuotas: parseInt(stats.quota_count),
-          debtTotal: parseFloat(stats.debt_total),
+          activeQuotas: parseInt(stats.quota_count || '0'),
+          debtTotal: parseFloat(stats.debt_total || '0'),
           securityLock: stats.security_lock_until && new Date(stats.security_lock_until) > new Date() ? stats.security_lock_until : null
         },
         transactions: data.transactions || [],
@@ -262,16 +267,16 @@ userRoutes.get('/sync', authMiddleware, async (c) => {
           maxUses: WELCOME_BENEFIT_MAX_USES,
           description: getWelcomeBenefitDescription(welcomeBenefit),
           discountedRates: welcomeBenefit.hasDiscount ? {
-            loanInterestRate: `${(welcomeBenefit.loanInterestRate * 100).toFixed(1)}%`,
-            loanOriginationFeeRate: `${(welcomeBenefit.loanOriginationFeeRate * 100).toFixed(1)}%`,
-            withdrawalFee: `R$ ${welcomeBenefit.withdrawalFee.toFixed(2)}`,
-            marketplaceEscrowFeeRate: `${(welcomeBenefit.marketplaceEscrowFeeRate * 100).toFixed(1)}%`
+            loanInterestRate: `${((welcomeBenefit.loanInterestRate || 0) * 100).toFixed(1)}%`,
+            loanOriginationFeeRate: `${((welcomeBenefit.loanOriginationFeeRate || 0) * 100).toFixed(1)}%`,
+            withdrawalFee: `R$ ${(welcomeBenefit.withdrawalFee || 0).toFixed(2)}`,
+            marketplaceEscrowFeeRate: `${((welcomeBenefit.marketplaceEscrowFeeRate || 0) * 100).toFixed(1)}%`
           } : null
         }
       }
     });
-  } catch (error) {
-    console.error('Erro no Super Sync:', error);
+  } catch (error: any) {
+    console.error('Erro no Super Sync:', error.message, error.stack);
     return c.json({ success: false, message: 'Erro ao sincronizar dados consolidados' }, 500);
   }
 });
