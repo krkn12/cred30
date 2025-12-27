@@ -1483,7 +1483,7 @@ adminRoutes.post('/simulate-mp-payment', adminMiddleware, async (c) => {
 
     // 1. Tentar aprovar no Mercado Pago de verdade (só funciona em Sandbox)
     try {
-      await simulatePaymentApproval(parseInt(paymentId));
+      await simulatePaymentApproval(paymentId);
       console.log(`[ADMIN] Status atualizado no Mercado Pago para 'approved'`);
     } catch (mpError: any) {
       console.warn(`[ADMIN] Aviso: Não foi possível atualizar no Mercado Pago: ${mpError.message}`);

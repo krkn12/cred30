@@ -94,27 +94,21 @@ export const loadState = async (): Promise<AppState> => {
       };
     }
 
-    // Obter dados do usuário
-    const userProfile = await apiService.getUserProfile();
-    const currentUser = convertApiUserToUser(userProfile.user);
+    // Obter dados consolidados (Otimização Máxima)
+    const syncResponse = await apiService.get<any>('/users/sync');
+    const syncData = syncResponse.data;
 
-
-    // Obter transações do usuário
-    const transactionsResponse = await apiService.getUserTransactions();
-    const transactions = transactionsResponse.transactions.map(convertApiTransactionToTransaction);
-
-    // Obter cotas do usuário
-    const quotasResponse = await apiService.getUserQuotas();
-    const quotas = quotasResponse.quotas.map(convertApiQuotaToQuota);
-
-    // Obter empréstimos do usuário
-    const loansResponse = await apiService.getUserLoans();
-    const loans = loansResponse.loans.map(convertApiLoanToLoan);
+    const currentUser = convertApiUserToUser(syncData.user);
+    const transactions = syncData.transactions.map(convertApiTransactionToTransaction);
+    const quotas = syncData.quotas.map(convertApiQuotaToQuota);
+    const loans = syncData.loans.map(convertApiLoanToLoan);
+    const welcomeBenefit = syncData.welcomeBenefit;
+    let stats = syncData.stats;
 
     // Se for administrador, obter dados do dashboard
     let systemBalance = 0;
     let profitPool = 0;
-    let stats: any = null;
+    // Removida declaração redundante de stats aqui
 
     if (currentUser.isAdmin) {
       try {
@@ -183,6 +177,7 @@ export const loadState = async (): Promise<AppState> => {
       systemBalance,
       profitPool,
       stats,
+      welcomeBenefit,
     };
   } catch (error) {
     console.error('Erro ao carregar estado da aplicação:', error);

@@ -11,6 +11,11 @@ export interface User {
   is_admin?: boolean;
   role?: 'MEMBER' | 'ATTENDANT' | 'ADMIN';
   status?: 'ACTIVE' | 'BLOCKED';
+  score?: number;
+  cpf?: string;
+  membership_type?: 'FREE' | 'PRO';
+  two_factor_enabled?: boolean;
+  last_login_at?: Date;
 }
 
 export interface CreateUserRequest {

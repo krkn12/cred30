@@ -186,7 +186,7 @@ userRoutes.get('/balance', authMiddleware, async (c) => {
 });
 
 /**
- * Endpoint de Sincronização Consolidada (Otimização de Performance)
+ * Endpoint de Sincronização Consolidada (Otimização Máxima de Performance)
  * Retorna todos os dados vitais para a home em uma única chamada de banco.
  */
 userRoutes.get('/sync', authMiddleware, async (c) => {
@@ -194,19 +194,49 @@ userRoutes.get('/sync', authMiddleware, async (c) => {
     const user = c.get('user') as UserContext;
     const pool = getDbPool(c);
 
+    // Consulta consolidada usando subqueries e agregação JSON para performance extrema
     const result = await pool.query(`
+      WITH user_stats AS (
+        SELECT 
+          u.balance,
+          u.score,
+          u.membership_type,
+          u.is_verified,
+          u.security_lock_until,
+          (SELECT COUNT(*) FROM quotas WHERE user_id = u.id AND status = 'ACTIVE') as quota_count,
+          (SELECT COALESCE(SUM(total_repayment), 0) FROM loans WHERE user_id = u.id AND status IN ('APPROVED', 'PAYMENT_PENDING')) as debt_total
+        FROM users u WHERE u.id = $1
+      ),
+      recent_tx AS (
+        SELECT json_agg(t) FROM (
+          SELECT id, type, amount, created_at as date, description, status, metadata
+          FROM transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20
+        ) t
+      ),
+      active_quotas AS (
+        SELECT json_agg(q) FROM (
+          SELECT id, user_id as "userId", purchase_price as "purchasePrice", current_value as "currentValue", purchase_date as "purchaseDate", status, yield_rate as "yieldRate"
+          FROM quotas WHERE user_id = $1 ORDER BY purchase_date DESC
+        ) q
+      ),
+      active_loans AS (
+        SELECT json_agg(l) FROM (
+          SELECT id, user_id as "userId", amount, total_repayment as "totalRepayment", installments, interest_rate as "interestRate", status, created_at as "createdAt", due_date as "dueDate"
+          FROM loans WHERE user_id = $1 ORDER BY created_at DESC
+        ) l
+      )
       SELECT 
-        u.balance,
-        u.score,
-        (SELECT COUNT(*) FROM quotas WHERE user_id = u.id AND status = 'ACTIVE') as active_quotas,
-        (SELECT COALESCE(SUM(total_repayment - COALESCE((metadata->>'paidAmount')::float, 0)), 0) 
-         FROM loans WHERE user_id = u.id AND status IN ('APPROVED', 'PAYMENT_PENDING')) as debt_total,
-        (SELECT security_lock_until FROM users WHERE id = u.id) as lock_until
-      FROM users u
-      WHERE u.id = $1
+        (SELECT row_to_json(us) FROM user_stats us) as user_stats,
+        (SELECT * FROM recent_tx) as transactions,
+        (SELECT * FROM active_quotas) as quotas,
+        (SELECT * FROM active_loans) as loans
     `, [user.id]);
 
-    const stats = result.rows[0];
+    const data = result.rows[0];
+    const stats = data.user_stats;
+
+    // Obter benefício de boas-vindas (Indicação)
+    const welcomeBenefit = await getWelcomeBenefit(pool, user.id);
 
     return c.json({
       success: true,
@@ -215,17 +245,34 @@ userRoutes.get('/sync', authMiddleware, async (c) => {
           ...user,
           balance: parseFloat(stats.balance),
           score: stats.score,
+          membership_type: stats.membership_type,
+          is_verified: stats.is_verified,
+          security_lock_until: stats.security_lock_until
         },
         stats: {
-          activeQuotas: parseInt(stats.active_quotas),
+          activeQuotas: parseInt(stats.quota_count),
           debtTotal: parseFloat(stats.debt_total),
-          securityLock: stats.lock_until && new Date(stats.lock_until) > new Date() ? stats.lock_until : null
+          securityLock: stats.security_lock_until && new Date(stats.security_lock_until) > new Date() ? stats.security_lock_until : null
+        },
+        transactions: data.transactions || [],
+        quotas: data.quotas || [],
+        loans: data.loans || [],
+        welcomeBenefit: {
+          ...welcomeBenefit,
+          maxUses: WELCOME_BENEFIT_MAX_USES,
+          description: getWelcomeBenefitDescription(welcomeBenefit),
+          discountedRates: welcomeBenefit.hasDiscount ? {
+            loanInterestRate: `${(welcomeBenefit.loanInterestRate * 100).toFixed(1)}%`,
+            loanOriginationFeeRate: `${(welcomeBenefit.loanOriginationFeeRate * 100).toFixed(1)}%`,
+            withdrawalFee: `R$ ${welcomeBenefit.withdrawalFee.toFixed(2)}`,
+            marketplaceEscrowFeeRate: `${(welcomeBenefit.marketplaceEscrowFeeRate * 100).toFixed(1)}%`
+          } : null
         }
       }
     });
   } catch (error) {
-    console.error('Erro no Sync:', error);
-    return c.json({ success: false, message: 'Erro ao sincronizar dados' }, 500);
+    console.error('Erro no Super Sync:', error);
+    return c.json({ success: false, message: 'Erro ao sincronizar dados consolidados' }, 500);
   }
 });
 
