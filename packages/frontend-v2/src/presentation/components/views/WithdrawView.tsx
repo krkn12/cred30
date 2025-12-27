@@ -4,6 +4,7 @@ import { ArrowUpFromLine, ShieldCheck, Clock, XCircle, TrendingUp } from 'lucide
 import { User } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 import { confirmWithdrawal } from '../../../application/services/storage.service';
+import { WITHDRAWAL_FEE_FIXED, WELCOME_WITHDRAWAL_FIXED_FEE } from '../../../shared/constants/app.constants';
 
 interface WithdrawViewProps {
     balance: number;
@@ -27,10 +28,15 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
         const amount = parseFloat(val) || 0;
         const valid = val !== '' && amount > 0 && amount <= balance;
         const free = totalQuotaValue >= amount;
-        const f = (valid && !free) ? Math.max(5, amount * 0.02) : 0;
-        const net = valid ? amount - f : 0;
+
+        // Verifica se o usuário tem benefício de boas-vindas ativo
+        const hasWelcomeBenefit = (currentUser as any)?.welcomeBenefit?.hasDiscount;
+        const baseFee = hasWelcomeBenefit ? WELCOME_WITHDRAWAL_FIXED_FEE : WITHDRAWAL_FEE_FIXED;
+
+        const f = (valid && !free) ? baseFee : 0;
+        const net = valid ? Math.max(0, amount - f) : 0;
         return { isValidAmount: valid, withdrawalAmount: amount, isFree: free, fee: f, netAmount: net };
-    }, [val, balance, totalQuotaValue]);
+    }, [val, balance, totalQuotaValue, currentUser]);
 
 
     const [twoFactorData, setTwoFactorData] = useState<{ otpUri: string } | null>(null);
@@ -170,7 +176,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                         {isValidAmount && (
                             <div className="mt-3 p-3 bg-zinc-800/50 rounded-lg text-xs space-y-1">
                                 <div className="flex justify-between">
-                                    <span className="text-zinc-400">Taxa de resgate ({isFree ? 'Grátis' : '2%'})</span>
+                                    <span className="text-zinc-400">Taxa de resgate ({isFree ? 'Grátis' : 'Taxa Fixa'})</span>
                                     <span className={isFree ? 'text-emerald-400' : 'text-zinc-300'}>
                                         {isFree ? 'R$ 0,00' : fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                     </span>
@@ -254,10 +260,10 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                     <span>Processamento em até 24h úteis</span>
                 </p>
                 <p className="text-xs text-zinc-400 mt-2">
-                    Taxa mínima de R$ 5,00 ou 2% do valor do resgate.
+                    Taxa fixa de manutenção por saque de {WITHDRAWAL_FEE_FIXED.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.
                 </p>
                 <p className="text-xs text-emerald-400/80 mt-2">
-                    💡 <strong>Benefício VIP:</strong> Se o valor das suas participações for maior ou igual ao resgate, a taxa é <strong>ZERO</strong>!
+                    💡 <strong>Benefício VIP:</strong> Se o valor das suas participações (cotas) for maior ou igual ao resgate, a taxa é <strong>ZERO</strong>!
                 </p>
                 <p className="text-xs text-zinc-400 mt-2">
                     <strong>Importante:</strong> Você está resgatando do seu saldo disponível na conta.

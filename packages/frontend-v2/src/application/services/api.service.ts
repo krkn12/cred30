@@ -699,7 +699,7 @@ class ApiService {
     if (options?.status) query.append('status', options.status);
 
     const response = await this.request<any>(`/admin/users?${query.toString()}`);
-    return response.data;
+    return response;
   }
 
   async adminUpdateUserAccess(data: { userId: number, role?: string, status?: string }): Promise<any> {
@@ -707,7 +707,7 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(data)
     });
-    return response.data;
+    return response;
   }
 
   async adminCreateAttendant(data: any): Promise<any> {
@@ -715,7 +715,7 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(data)
     });
-    return response.data;
+    return response;
   }
 }
 
