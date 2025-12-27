@@ -9,6 +9,8 @@ export interface User {
   referralCode: string;
   referredBy?: string;
   isAdmin: boolean;
+  score?: number;
+  cpf?: string;
   createdAt: Date;
   updatedAt: Date;
 }

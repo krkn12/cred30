@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { UserRepositoryInterface } from '../../../domain/repositories/user.repository.interface';
+import { UserRepositoryInterface, User } from '../../../domain/repositories/user.repository.interface';
 import { LoginDto, AuthResponseDto } from '../../dto/auth.dto';
 import { UnauthorizedError } from '../../../shared/errors/unauthorized.error';
 import { NotFoundError } from '../../../shared/errors/not-found.error';
@@ -13,7 +13,7 @@ export class AuthenticateUseCase {
 
   async execute(data: LoginDto): Promise<AuthResponseDto> {
     // Buscar usuário no banco
-    const user = await this.userRepository.findByEmail(data.email);
+    const user: User | null = await this.userRepository.findByEmail(data.email);
     if (!user) {
       throw new NotFoundError('Usuário não encontrado');
     }
@@ -51,7 +51,7 @@ export class AuthenticateUseCase {
         joinedAt: user.createdAt.toISOString(),
         referralCode: user.referralCode,
         isAdmin: user.isAdmin,
-        score: user.score,
+        score: user.score || 0,
         cpf: user.cpf,
       },
       token,

@@ -6,7 +6,7 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [
-        react(),
+        react() as any,
         VitePWA({
             registerType: 'autoUpdate',
             injectRegister: 'inline',
@@ -120,7 +120,7 @@ export default defineConfig({
                     }
                 ]
             }
-        })
+        }) as any
     ],
     resolve: {
         alias: {

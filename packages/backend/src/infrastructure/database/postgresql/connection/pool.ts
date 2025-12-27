@@ -47,6 +47,22 @@ export const getDbPool = (c?: any): Pool => {
   return dbPool;
 };
 
+// Monitoramento de performance e log de queries lentas
+const originalQuery = pool.query;
+pool.query = async function (this: any, text: any, params: any) {
+  const start = Date.now();
+  try {
+    const res = await (originalQuery.apply(this, [text, params] as any) as any);
+    const duration = Date.now() - start;
+    if (duration > 1000) {
+      console.warn(`[SLOW DATABASE QUERY] ${duration}ms - ${typeof text === 'string' ? text : text.text}`);
+    }
+    return res;
+  } catch (err) {
+    throw err;
+  }
+} as any;
+
 export const setDbPool = (pool: Pool) => {
   dbPool = pool;
 };

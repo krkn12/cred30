@@ -15,6 +15,8 @@ export interface User {
   membership_type?: 'FREE' | 'PRO';
   cpf?: string | null; // CPF do usuário (obrigatório para saque)
   securityLockUntil?: number; // Timestamp em milissegundos
+  total_dividends_earned?: number;
+  last_login_at?: string;
 }
 
 export interface Quota {
@@ -92,6 +94,13 @@ export interface AppState {
     monthlyFixedCosts?: number;
     activeProposalsCount?: number;
     systemConfig?: any; // To avoid lint errors when accessing raw config
+  };
+  welcomeBenefit?: {
+    hasDiscount: boolean;
+    usesRemaining: number;
+    maxUses: number;
+    description: string;
+    discountedRates: any;
   };
 }
 

@@ -207,8 +207,11 @@ export default function App() {
   const refreshState = async () => {
     try {
       const newState = await loadState();
-      setState(newState);
-    } catch (e) { console.error(e); }
+      setState({ ...newState, isLoading: false });
+    } catch (e) {
+      console.error(e);
+      setState(prev => ({ ...prev, isLoading: false }));
+    }
   };
 
   const handleLogout = async () => {
@@ -405,7 +408,20 @@ export default function App() {
   };
 
   if (state.isLoading) {
-    return <div className="min-h-screen bg-black flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary-500"></div></div>;
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
+        <div className="relative">
+          <div className="w-24 h-24 bg-primary-500/10 rounded-[2rem] border border-primary-500/20 flex items-center justify-center shadow-[0_0_50px_rgba(6,182,212,0.15)] animate-pulse">
+            <img src="/pwa-192x192.png" alt="Cred30" className="w-16 h-16 rounded-2xl" />
+          </div>
+          <div className="absolute inset-0 w-24 h-24 border-2 border-primary-500 border-t-transparent rounded-[2rem] animate-spin" />
+        </div>
+        <div className="mt-8 space-y-2">
+          <h1 className="text-2xl font-black text-white tracking-tighter">Cred<span className="text-primary-400">30</span></h1>
+          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.4em] animate-pulse">Sincronizando Dados...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!state.currentUser) {

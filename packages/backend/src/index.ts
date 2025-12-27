@@ -23,6 +23,8 @@ import { votingRoutes } from './presentation/http/routes/voting.routes';
 import { initializeScheduler } from './scheduler';
 
 import { logger } from 'hono/logger';
+import { secureHeaders } from 'hono/secure-headers';
+import { timing } from 'hono/timing';
 import { monetizationRoutes } from './presentation/http/routes/monetization.routes';
 import { supportRoutes } from './presentation/http/routes/support.routes';
 import { promoVideosRoutes } from './presentation/http/routes/promo-videos.routes';
@@ -34,6 +36,8 @@ const app = new Hono();
 app.use('*', cors());
 app.use('*', compress());
 app.use('*', logger());
+app.use('*', secureHeaders());
+app.use('*', timing());
 
 async function startServer() {
   try {
