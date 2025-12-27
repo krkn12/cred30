@@ -233,7 +233,9 @@ export const createCardPayment = async (data: PaymentRequest): Promise<PaymentRe
                     email: data.creditCardHolderInfo.email,
                     cpfCnpj: data.creditCardHolderInfo.cpfCnpj,
                     postalCode: data.creditCardHolderInfo.postalCode,
+                    addressName: 'Não Informado', // Asaas exige endereço em produção
                     addressNumber: data.creditCardHolderInfo.addressNumber,
+                    province: 'Não Informado', // Asaas exige bairro em produção
                     phone: data.creditCardHolderInfo.phone,
                 },
             }),
