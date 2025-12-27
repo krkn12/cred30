@@ -1,52 +1,60 @@
-
 import {
-    MERCADO_PAGO_PIX_FEE_PERCENT,
-    MERCADO_PAGO_FIXED_FEE,
-    MERCADO_PAGO_CARD_FEE_PERCENT,
-    MERCADO_PAGO_CARD_FIXED_FEE
+    ASAAS_PIX_FEE_PERCENT,
+    ASAAS_PIX_FIXED_FEE,
+    ASAAS_BOLETO_FIXED_FEE,
+    ASAAS_CARD_FEE_PERCENT,
+    ASAAS_CARD_FIXED_FEE,
+    ASAAS_CARD_INSTALLMENTS_FEES
 } from '../constants/business.constants';
 
-export type PaymentMethod = 'pix' | 'card' | 'balance';
+export type PaymentMethod = 'pix' | 'card' | 'balance' | 'boleto';
+
+/**
+ * Retorna as taxas adequadas para o método e parcelamento
+ */
+const getFeesForMethod = (method: PaymentMethod, installments: number = 1) => {
+    switch (method) {
+        case 'pix':
+            return { percent: ASAAS_PIX_FEE_PERCENT, fixed: ASAAS_PIX_FIXED_FEE };
+        case 'boleto':
+            return { percent: 0, fixed: ASAAS_BOLETO_FIXED_FEE };
+        case 'card':
+            let percent = ASAAS_CARD_FEE_PERCENT;
+            if (installments > 12) percent = ASAAS_CARD_INSTALLMENTS_FEES['13-21'];
+            else if (installments > 6) percent = ASAAS_CARD_INSTALLMENTS_FEES['7-12'];
+            else if (installments > 1) percent = ASAAS_CARD_INSTALLMENTS_FEES['2-6'];
+            return { percent, fixed: ASAAS_CARD_FIXED_FEE };
+        default:
+            return { percent: 0, fixed: 0 };
+    }
+};
 
 /**
  * Calcula o custo do gateway para um determinado valor baseado no método
  */
-export const calculateGatewayCost = (amount: number, method: PaymentMethod = 'pix'): number => {
+export const calculateGatewayCost = (amount: number, method: PaymentMethod = 'pix', installments: number = 1): number => {
     if (!amount || amount <= 0 || method === 'balance') return 0;
 
-    const percent = method === 'pix' ? MERCADO_PAGO_PIX_FEE_PERCENT : MERCADO_PAGO_CARD_FEE_PERCENT;
-    const fixed = method === 'pix' ? MERCADO_PAGO_FIXED_FEE : MERCADO_PAGO_CARD_FIXED_FEE;
-
+    const { percent, fixed } = getFeesForMethod(method, installments);
     const totalCost = (amount * percent) + fixed;
     return Number(totalCost.toFixed(2));
 };
 
 /**
- * Calcula o valor total que o usuário deve pagar
- * Se for PIX, o sistema absorve a taxa (Total = Valor Bruto)
- * Se for CARTÃO, a taxa é acrescida (Total = Valor Bruto + Taxa)
+ * Calcula o valor total que o usuário deve pagar (Gross-up)
+ * Total = (Valor + TaxaFixa) / (1 - TaxaPercentual)
  */
-export const calculateTotalToPay = (amount: number, method: PaymentMethod = 'pix'): {
+export const calculateTotalToPay = (amount: number, method: PaymentMethod = 'pix', installments: number = 1): {
     baseAmount: number;
     fee: number;
     total: number;
 } => {
     if (method === 'balance') {
-        return {
-            baseAmount: amount,
-            fee: 0,
-            total: amount
-        };
+        return { baseAmount: amount, fee: 0, total: amount };
     }
 
-    // Para métodos externos (PIX e Cartão), usamos a fórmula de Gross-up 
-    // para que o valor LÍQUIDO recebido seja exatamente o amount.
-    // Fórmula: Total = (Valor + TaxaFixa) / (1 - TaxaPercentual)
+    const { percent, fixed } = getFeesForMethod(method, installments);
 
-    const percent = method === 'pix' ? MERCADO_PAGO_PIX_FEE_PERCENT : MERCADO_PAGO_CARD_FEE_PERCENT;
-    const fixed = method === 'pix' ? MERCADO_PAGO_FIXED_FEE : MERCADO_PAGO_CARD_FIXED_FEE;
-
-    // Se o valor for 100 e taxa 1%, queremos (100+0)/0.99 = 101.01
     const total = (amount + fixed) / (1 - percent);
     const fee = total - amount;
 

@@ -68,12 +68,33 @@ export const SCORE_BOOST_PRICE = 15.00; // Preço do pacote de +100 Score
 export const SCORE_BOOST_POINTS = 100; // Pontos ganhos no pacote
 export const REPUTATION_CHECK_PRICE = 35.00; // Preço da consulta de reputação (Serasa Standard)
 
-// Taxas do Asaas (Gateway de Pagamento)
-// Alias com nomes corretos para Asaas
-export const ASAAS_PIX_FEE_PERCENT = 0.00; // 0% (Asaas cobra taxa fixa no plano padrão)
-export const ASAAS_PIX_FIXED_FEE = 0.99;   // R$ 0,99 fixo por transação PIX
-export const ASAAS_CARD_FEE_PERCENT = 0.0299; // 2.99%
-export const ASAAS_CARD_FIXED_FEE = 0.49; // R$ 0,49
+// Taxas oficiais do Asaas (Gateway de Pagamento)
+export const ASAAS_PIX_FEE_PERCENT = 0.00; // 0% (Gratuito conforme solicitado)
+export const ASAAS_PIX_FIXED_FEE = 0.00;   // R$ 0,00 (Gratuito conforme solicitado)
+
+// Boleto Bancário
+export const ASAAS_BOLETO_FIXED_FEE = 0.99; // Preço promocional até 22/03/2026
+
+// Cartão de Crédito (Taxas Promocionais vigentes)
+export const ASAAS_CARD_FEE_PERCENT = 0.0199; // 1.99% à vista (Promocional)
+export const ASAAS_CARD_FIXED_FEE = 0.49;    // R$ 0,49 por transação
+
+// Escalonamento parcelado (Promocional)
+export const ASAAS_CARD_INSTALLMENTS_FEES = {
+    '1': 0.0199,    // 1.99%
+    '2-6': 0.0249,  // 2.49%
+    '7-12': 0.0299, // 2.99%
+    '13-21': 0.0329 // 3.29%
+};
+
+// Custos Operacionais de Movimentação (Saída)
+export const ASAAS_TED_FEE = 5.00; // R$ 5,00 por transferência TED
+export const ASAAS_PIX_OUT_FEE = 0.00; // PIX Saída é gratuito no Asaas
+
+// Notificações e Serviços Extras
+export const ASAAS_WHATSAPP_FEE = 0.55; // R$ 0,55 por notificação
+export const ASAAS_SMS_FEE = 0.99;      // R$ 0,99 por SMS
+export const ASAAS_SERASA_NEG_FEE = 9.90; // R$ 9,90 por negativação
 
 // Compatibilidade
 export const MERCADO_PAGO_PIX_FEE_PERCENT = ASAAS_PIX_FEE_PERCENT;

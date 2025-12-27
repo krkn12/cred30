@@ -681,6 +681,59 @@ export const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
     `);
 
+    // --- SISTEMA DE PROMOÇÃO DE VÍDEOS (VIEW-TO-EARN) ---
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS promo_videos (
+        id SERIAL PRIMARY KEY,
+        user_id ${userIdType} NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(200) NOT NULL,
+        description TEXT,
+        video_url TEXT NOT NULL,
+        thumbnail_url TEXT,
+        platform VARCHAR(50) DEFAULT 'YOUTUBE',
+        duration_seconds INTEGER DEFAULT 60,
+        price_per_view DECIMAL(10,2) NOT NULL DEFAULT 0.05,
+        min_watch_seconds INTEGER NOT NULL DEFAULT 30,
+        budget DECIMAL(10,2) NOT NULL DEFAULT 0,
+        spent DECIMAL(10,2) NOT NULL DEFAULT 0,
+        max_views INTEGER,
+        target_views INTEGER DEFAULT 1000,
+        daily_limit INTEGER DEFAULT 100,
+        status VARCHAR(20) DEFAULT 'PENDING',
+        is_active BOOLEAN DEFAULT FALSE,
+        total_views INTEGER DEFAULT 0,
+        unique_viewers INTEGER DEFAULT 0,
+        total_watch_time INTEGER DEFAULT 0,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        approved_at TIMESTAMP WITH TIME ZONE,
+        completed_at TIMESTAMP WITH TIME ZONE,
+        expires_at TIMESTAMP WITH TIME ZONE,
+        is_approved BOOLEAN DEFAULT FALSE,
+        approved_by INTEGER REFERENCES users(id),
+        rejection_reason TEXT,
+        tag VARCHAR(30) DEFAULT 'OUTROS'
+      );
+
+      CREATE TABLE IF NOT EXISTS promo_video_views (
+        id SERIAL PRIMARY KEY,
+        video_id INTEGER NOT NULL REFERENCES promo_videos(id) ON DELETE CASCADE,
+        viewer_id ${userIdType} NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        watch_time_seconds INTEGER NOT NULL DEFAULT 0,
+        completed BOOLEAN DEFAULT FALSE,
+        earned DECIMAL(10,2) DEFAULT 0,
+        paid_at TIMESTAMP WITH TIME ZONE,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        device_fingerprint VARCHAR(100),
+        started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        finished_at TIMESTAMP WITH TIME ZONE,
+        UNIQUE(video_id, viewer_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_promo_videos_user_v2 ON promo_videos(user_id);
+      CREATE INDEX IF NOT EXISTS idx_promo_videos_status_v2 ON promo_videos(status, is_active);
+    `);
+
     // --- SISTEMA DE SUPORTE VIA CHAT (IA + HUMANO) ---
     console.log('Verificando tabelas de suporte...');
     await client.query(`
