@@ -527,6 +527,7 @@ const CreateCampaignModal: React.FC<{
 }> = ({ userBalance, onClose, onSuccess, onError }) => {
     const [loading, setLoading] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<'BALANCE' | 'PIX' | 'CARD'>('BALANCE');
+    const [payerCpfCnpj, setPayerCpfCnpj] = useState('');
     const [form, setForm] = useState({
         title: '',
         description: '',
@@ -567,6 +568,11 @@ const CreateCampaignModal: React.FC<{
             return;
         }
 
+        if (paymentMethod !== 'BALANCE' && !payerCpfCnpj) {
+            onError('Erro', 'Informe o CPF ou CNPJ para o pagamento');
+            return;
+        }
+
         // Só valida saldo se for pagar com saldo
         if (paymentMethod === 'BALANCE' && form.budget > userBalance) {
             onError('Saldo Insuficiente', `Você tem R$ ${userBalance.toFixed(2)} de saldo`);
@@ -575,7 +581,7 @@ const CreateCampaignModal: React.FC<{
 
         setLoading(true);
         try {
-            const res = await apiService.post<any>('/promo-videos/create', { ...form, paymentMethod });
+            const res = await apiService.post<any>('/promo-videos/create', { ...form, paymentMethod, payerCpfCnpj: payerCpfCnpj.replace(/\D/g, '') });
 
             if (res.success) {
                 // Se for PIX, abrimos o modal de pagamento do Asaas ou mostramos o QR
@@ -720,6 +726,20 @@ const CreateCampaignModal: React.FC<{
                                 </button>
                             ))}
                         </div>
+
+                        {(paymentMethod === 'PIX' || paymentMethod === 'CARD') && (
+                            <div className="mt-4 animate-in slide-in-from-top-2">
+                                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest block mb-2 px-1">CPF ou CNPJ (Obrigatório)</label>
+                                <input
+                                    type="text"
+                                    value={payerCpfCnpj}
+                                    onChange={e => setPayerCpfCnpj(e.target.value)}
+                                    placeholder="000.000.000-00"
+                                    maxLength={18}
+                                    className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 px-5 text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-primary-500/50 transition-all font-medium"
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {/* Detailed Summary Card */}
