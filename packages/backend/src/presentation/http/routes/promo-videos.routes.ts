@@ -256,29 +256,29 @@ promoVideosRoutes.get('/:id/payment', async (c) => {
 
         const video = videoResult.rows[0];
 
-        if (video.payment_id) {
-            // Se temos o ID salvo, buscamos direto no Asaas (incluindo o QR code fresco)
-            // Precisamos de uma função no asaas.service.ts para 'getPayment(id)' completo com QR code.
-            // Como createPixPayment retorna tudo, podemos tentar reutilizar ou fazer nova chamada.
-            // Para simplificar, vamos chamar asaasRequest direto aqui ou adicionar helper.
-            // Vamos adicionar um helper 'getPaymentWithPixQrCode' no service.
-            // Por enquanto, vou assumir q posso recuperar o PIX QR Code via endpoint específico do Asaas se for PIX.
-            const paymentStatus = await checkPaymentStatus(video.payment_id);
-
-            // Se estiver pendente e for PIX, precisamos do QR code de novo
-            // Vou usar uma chamada direta aqui simulada, mas o ideal é atualizar o asaas.service.ts
-            // Hack: chamar `createPixPayment` de novo criaria novo pagamento.
-            // Vou usar `checkPaymentStatus` que já existe mas ela só retorna status.
-            // Melhor adicionar `getPaymentDetails` no asaas.service.tsx
-            return c.json({ success: false, message: 'Implementar getPaymentDetails no service' }, 501);
-        } else {
-            // Tentar recuperar por external_reference ou descrição "sem querer"
-            // Muito arriscado, melhor pedir pro usuário recriar se for muito antigo.
+        if (!video.payment_id) {
             return c.json({ success: false, message: 'Pagamento não vinculado. Recrie a campanha.' }, 404);
         }
 
+        // Buscar detalhes completos do pagamento no Asaas (incluindo QR Code se PIX)
+        const paymentDetails = await getPaymentDetails(video.payment_id);
+
+        return c.json({
+            success: true,
+            data: {
+                paymentId: paymentDetails.id,
+                status: paymentDetails.status,
+                invoiceUrl: paymentDetails.invoiceUrl,
+                pixCopiaECola: paymentDetails.pixCopiaECola,
+                qrCodeBase64: paymentDetails.qr_code_base64,
+                expirationDate: paymentDetails.expirationDate,
+                budgetGross: parseFloat(video.budget_gross),
+            }
+        });
+
     } catch (error: any) {
-        return c.json({ success: false, message: 'Erro ao buscar pagamento' }, 500);
+        console.error('[PROMO-VIDEOS] Erro ao buscar pagamento:', error);
+        return c.json({ success: false, message: error.message || 'Erro ao buscar pagamento' }, 500);
     }
 });
 
