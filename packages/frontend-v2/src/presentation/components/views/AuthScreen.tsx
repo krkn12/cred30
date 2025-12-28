@@ -173,340 +173,342 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
     };
 
     return (
-        <main className="min-h-screen flex items-center justify-center bg-background p-3 sm:p-6 md:p-8 relative">
-            <div className="w-full max-w-[98vw] sm:max-w-md bg-surface border border-surfaceHighlight p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-2xl relative overflow-hidden max-h-[95vh] overflow-y-auto">
-                <div className="absolute top-0 left-0 w-full h-1.5 sm:h-2 bg-gradient-to-r from-primary-400 to-primary-600"></div>
-
-                {/* Botão Voltar - Dentro do card */}
-                <button
-                    type="button"
-                    onClick={() => navigate('/')}
-                    className="flex items-center gap-1.5 text-zinc-500 hover:text-white transition-colors text-xs font-medium group mb-4 sm:mb-6 mt-1"
-                >
-                    <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-                    Voltar
-                </button>
-
-                <div className="text-center mb-4 sm:mb-8">
-                    <img src="/pwa-192x192.png" alt="Cred30 Logo" width="80" height="80" className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl shadow-[0_0_25px_rgba(6,182,212,0.4)] mx-auto mb-4" />
-                    <h1 className="text-xl sm:text-3xl font-bold text-white tracking-tighter">Cred<span className="text-primary-400">30</span></h1>
-                    <p className="text-zinc-400 mt-1 text-[10px] sm:text-sm">Sua liberdade financeira começa aqui.</p>
+        <div className="min-h-screen w-full flex bg-background">
+            {/* Desktop Side Image */}
+            <div className="hidden lg:flex w-1/2 bg-zinc-900 relative overflow-hidden items-center justify-center">
+                <div className="absolute inset-0 z-0">
+                    <img
+                        src="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?q=80&w=2832&auto=format&fit=crop"
+                        alt="Background"
+                        className="w-full h-full object-cover opacity-20"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background via-transpose to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-transparent" />
                 </div>
 
-                {/* Custom Error Alert */}
-                {error && (
-                    <div className="mb-4 sm:mb-6 bg-red-500/10 border border-red-500/20 text-red-500 p-3 sm:p-4 rounded-xl flex items-center gap-2 sm:gap-3 animate-in fade-in slide-in-from-top-2">
-                        <XCircle size={18} className="shrink-0" />
-                        <p className="text-xs sm:text-sm font-medium flex-1">{error}</p>
-                        <button onClick={() => setError(null)} className="hover:text-white" aria-label="Fechar erro"><XCircle size={14} /></button>
+                <div className="relative z-10 p-12 max-w-lg text-center">
+                    <div className="w-24 h-24 bg-primary-500/10 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-primary-500/20 shadow-[0_0_40px_rgba(6,182,212,0.2)]">
+                        <img src="/pwa-192x192.png" alt="Cred30 Logo" className="w-16 h-16 drop-shadow-2xl" />
                     </div>
-                )}
+                    <h1 className="text-5xl font-black text-white mb-6 tracking-tight">
+                        Cred<span className="text-primary-400">30</span>
+                    </h1>
+                    <p className="text-xl text-zinc-400 font-medium leading-relaxed">
+                        A revolução do microcrédito associativo.
+                        <br />
+                        <span className="text-primary-400">Sem juros abusivos. Sem bancos.</span>
+                    </p>
+                </div>
+            </div>
 
-                {/* Custom Success Alert */}
-                {success && (
-                    <div className="mb-4 sm:mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 p-3 sm:p-4 rounded-xl flex items-center gap-2 sm:gap-3 animate-in fade-in slide-in-from-top-2">
-                        <Check size={18} className="shrink-0" />
-                        <p className="text-xs sm:text-sm font-medium">{success}</p>
+            {/* Form Side */}
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 md:p-12 relative overflow-y-auto">
+                <div className="w-full max-w-md space-y-8">
+                    {/* Header Mobile Only */}
+                    <div className="lg:hidden text-center mb-8">
+                        <div className="w-16 h-16 bg-primary-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-primary-500/20">
+                            <img src="/pwa-192x192.png" alt="Cred30 Logo" className="w-10 h-10" />
+                        </div>
+                        <h2 className="text-2xl font-black text-white">Cred<span className="text-primary-400">30</span></h2>
                     </div>
-                )}
 
-                <form
-                    onSubmit={handleLogin}
-                    method="POST"
-                    action="/login"
-                    className="space-y-3 sm:space-y-4"
-                >
-                    {isForgot ? (
-                        <>
-                            <h2 className="text-white text-lg font-medium text-center mb-4">Recuperar Senha</h2>
-                            <div className="space-y-4">
-                                <div className="relative">
-                                    <Users className="absolute left-3 top-3 text-zinc-500" size={20} />
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        autoComplete="email"
-                                        placeholder="Email"
-                                        value={email}
-                                        onChange={e => setEmail(e.target.value)}
-                                        className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition"
-                                        required
-                                    />
-                                </div>
-                                <div className="relative">
-                                    <KeyRound className="absolute left-3 top-3 text-zinc-500" size={20} />
-                                    <input
-                                        type="text"
-                                        name="secretPhrase"
-                                        autoComplete="off"
-                                        placeholder="Frase Secreta"
-                                        value={secretPhrase}
-                                        onChange={e => setSecretPhrase(e.target.value)}
-                                        className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition"
-                                        required
-                                    />
-                                </div>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-3 text-zinc-500" size={20} />
-                                    <input
-                                        type="password"
-                                        name="new-password"
-                                        autoComplete="new-password"
-                                        placeholder="Nova Senha"
-                                        value={newPassword}
-                                        onChange={e => setNewPassword(e.target.value)}
-                                        className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition"
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            <button type="submit" className="w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(6,182,212,0.3)] mt-4">Redefinir Senha</button>
-                            <button type="button" onClick={() => setIsForgot(false)} className="w-full text-zinc-400 text-sm hover:text-white mt-2">Voltar para Login</button>
+                    <div className="bg-surface border border-surfaceHighlight p-6 sm:p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary-400 to-primary-600"></div>
 
-                            <div className="mt-8 p-4 bg-primary-500/5 rounded-xl border border-primary-500/10 text-center">
-                                <p className="text-zinc-400 text-xs mb-2 text-balance leading-relaxed">Esqueceu a senha E a frase secreta? Por segurança, sua conta foi bloqueada para auto-recuperação.</p>
-                                <a
-                                    href="https://wa.me/550000000000?text=Olá, perdi minha senha e frase secreta da Cred30 e preciso de ajuda com a recuperação de identidade."
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary-400 hover:text-primary-300 text-xs font-bold underline decoration-primary-500/30"
-                                >
-                                    Falar com Suporte Humano
-                                </a>
+                        {/* Custom Error Alert */}
+                        {error && (
+                            <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                                <XCircle size={20} className="shrink-0" />
+                                <p className="text-sm font-medium flex-1 leading-tight">{error}</p>
+                                <button onClick={() => setError(null)} className="hover:text-white"><XCircle size={16} /></button>
                             </div>
-                        </>
-                    ) : isRecover2FA ? (
-                        <>
-                            <h2 className="text-white text-lg font-medium text-center mb-4">Recuperar Autenticador 2FA</h2>
-                            <p className="text-zinc-400 text-sm text-center mb-4 text-balance">
-                                Perdeu acesso ao seu app autenticador? Use seu email, senha e frase secreta para gerar um novo QR Code.
-                            </p>
-                            <div className="space-y-4">
-                                <div className="relative">
-                                    <Users className="absolute left-3 top-3 text-zinc-500" size={20} />
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        autoComplete="email"
-                                        placeholder="Email"
-                                        value={email}
-                                        onChange={e => setEmail(e.target.value)}
-                                        className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition"
-                                        required
-                                    />
-                                </div>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-3 text-zinc-500" size={20} />
-                                    <input
-                                        type="password"
-                                        name="password"
-                                        autoComplete="current-password"
-                                        placeholder="Senha"
-                                        value={password}
-                                        onChange={e => setPassword(e.target.value)}
-                                        className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition"
-                                        required
-                                    />
-                                </div>
-                                <div className="relative">
-                                    <KeyRound className="absolute left-3 top-3 text-zinc-500" size={20} />
-                                    <input
-                                        type="text"
-                                        name="secretPhrase"
-                                        autoComplete="off"
-                                        placeholder="Frase Secreta"
-                                        value={secretPhrase}
-                                        onChange={e => setSecretPhrase(e.target.value)}
-                                        className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition"
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            <button type="button" onClick={handleRecover2FA} className="w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(6,182,212,0.3)] mt-4">Recuperar 2FA</button>
-                            <button type="button" onClick={() => setIsRecover2FA(false)} className="w-full text-zinc-400 text-sm hover:text-white mt-2">Voltar para Login</button>
+                        )}
 
-                            <div className="mt-8 p-4 bg-primary-500/5 rounded-xl border border-primary-500/10 text-center">
-                                <p className="text-zinc-400 text-xs mb-2 text-balance leading-relaxed">Não lembra a frase secreta? O suporte pode desativar seu 2FA após confirmar sua identidade.</p>
-                                <a
-                                    href="https://wa.me/550000000000?text=Olá, perdi meu autenticador e não lembro minha frase secreta. Preciso de ajuda administrativa."
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary-400 hover:text-primary-300 text-xs font-bold underline decoration-primary-500/30"
-                                >
-                                    Falar com Suporte Humano
-                                </a>
+                        {/* Custom Success Alert */}
+                        {success && (
+                            <div className="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 p-4 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                                <Check size={20} className="shrink-0" />
+                                <p className="text-sm font-medium">{success}</p>
                             </div>
-                        </>
-                    ) : (
-                        <>
-                            {isRegister && (
-                                <div className="relative">
-                                    <Users className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
-                                    <input
-                                        type="text"
-                                        name="name"
-                                        autoComplete="name"
-                                        placeholder="Nome Completo"
-                                        value={name}
-                                        onChange={e => setName(e.target.value)}
-                                        className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition"
-                                        required
-                                    />
-                                </div>
-                            )}
-                            <div className="relative">
-                                <Users className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
-                                <input
-                                    type="email"
-                                    name="email"
-                                    autoComplete="email"
-                                    placeholder="Email"
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
-                                    className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition"
-                                    required
-                                />
-                            </div>
+                        )}
 
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
-                                <input
-                                    type="password"
-                                    name="password"
-                                    autoComplete={isRegister ? "new-password" : "current-password"}
-                                    placeholder="Senha"
-                                    value={password}
-                                    onChange={e => setPassword(e.target.value)}
-                                    className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition"
-                                    required
-                                />
-                            </div>
-
-                            <div className="relative">
-                                <KeyRound className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
-                                <input
-                                    type="password"
-                                    name="secretPhrase"
-                                    autoComplete="off"
-                                    placeholder={isRegister ? "Crie sua Frase Secreta" : "Frase Secreta"}
-                                    value={secretPhrase}
-                                    onChange={e => setSecretPhrase(e.target.value)}
-                                    className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition"
-                                    required
-                                />
-                            </div>
-
-                            {isRegister && (
+                        <form onSubmit={handleLogin} method="POST" className="space-y-4">
+                            {isForgot ? (
                                 <>
-                                    <div className="relative animate-in fade-in slide-in-from-left-2">
-                                        <ShieldCheck className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
-                                        <input
-                                            type="text"
-                                            name="cpf"
-                                            autoComplete="off"
-                                            placeholder="Seu CPF (11 dígitos)"
-                                            value={cpf}
-                                            onChange={e => setCpf(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                                            className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition"
-                                            required
-                                        />
+                                    <div className="text-center mb-6">
+                                        <h2 className="text-white text-xl font-bold">Recuperar Senha</h2>
+                                        <p className="text-zinc-500 text-xs mt-1">Insira seus dados para redefinir o acesso</p>
                                     </div>
-
-                                    <div className="relative">
-                                        <QrCode className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
-                                        <input
-                                            type="text"
-                                            name="pixKey"
-                                            autoComplete="off"
-                                            placeholder="Sua Chave PIX"
-                                            value={pixKey}
-                                            onChange={e => setPixKey(e.target.value)}
-                                            className="w-full bg-background border border-surfaceHighlight rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="relative">
-                                        <Repeat className="absolute left-3 top-2.5 sm:top-3 text-zinc-500" size={18} />
-                                        <input
-                                            type="text"
-                                            name="referralCode"
-                                            autoComplete="off"
-                                            placeholder="Código de Indicação (Obrigatorio)"
-                                            value={referralCode}
-                                            onChange={e => setReferralCode(e.target.value)}
-                                            className="w-full bg-background border border-primary-500/30 rounded-lg sm:rounded-xl py-2.5 sm:py-3 pl-10 text-sm sm:text-base text-white focus:border-primary-500 outline-none transition"
-                                            required
-                                        />
-                                    </div>
-                                    <p className="text-[10px] text-zinc-400 px-1 italic">O Cred30 é exclusivo. Registros exigem um convite.</p>
-                                </>
-                            )}
-
-                            {requires2FA && (
-                                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
-                                    <div className="bg-primary-500/10 border border-primary-500/20 p-4 rounded-2xl flex items-center gap-4">
-                                        <ShieldCheck className="text-primary-400 shrink-0" size={24} />
-                                        <div>
-                                            <p className="text-white font-bold text-sm">Autenticação 2FA</p>
-                                            <p className="text-zinc-400 text-xs">Insira o código do seu app autenticador.</p>
+                                    <div className="space-y-4">
+                                        <div className="relative group">
+                                            <Users className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={20} />
+                                            <input
+                                                type="email"
+                                                name="email"
+                                                placeholder="Email"
+                                                value={email}
+                                                onChange={e => setEmail(e.target.value)}
+                                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-white focus:border-primary-500 outline-none transition"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="relative group">
+                                            <KeyRound className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={20} />
+                                            <input
+                                                type="text"
+                                                name="secretPhrase"
+                                                placeholder="Frase Secreta"
+                                                value={secretPhrase}
+                                                onChange={e => setSecretPhrase(e.target.value)}
+                                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-white focus:border-primary-500 outline-none transition"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="relative group">
+                                            <Lock className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={20} />
+                                            <input
+                                                type="password"
+                                                name="new-password"
+                                                placeholder="Nova Senha"
+                                                value={newPassword}
+                                                onChange={e => setNewPassword(e.target.value)}
+                                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-white focus:border-primary-500 outline-none transition"
+                                                required
+                                            />
                                         </div>
                                     </div>
-                                    <div className="relative">
-                                        <ShieldCheck className="absolute left-3 top-3 text-zinc-500" size={20} />
+                                    <button type="submit" className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black uppercase tracking-wider py-4 rounded-xl transition-all shadow-lg shadow-primary-500/20 mt-2">
+                                        Redefinir Senha
+                                    </button>
+                                    <button type="button" onClick={() => setIsForgot(false)} className="w-full py-2 text-zinc-500 hover:text-white text-xs font-bold transition-colors">
+                                        Voltar para Login
+                                    </button>
+                                </>
+                            ) : isRecover2FA ? (
+                                <>
+                                    <div className="text-center mb-6">
+                                        <ShieldCheck className="mx-auto text-primary-400 mb-4" size={48} />
+                                        <h2 className="text-white text-xl font-bold">Recuperar Autenticador</h2>
+                                        <p className="text-zinc-500 text-xs mt-2 px-4">
+                                            Use suas credenciais mestre para gerar um novo segredo 2FA.
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="relative group">
+                                            <Users className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={20} />
+                                            <input
+                                                type="email"
+                                                placeholder="Email Cadastrado"
+                                                value={email}
+                                                onChange={e => setEmail(e.target.value)}
+                                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-white focus:border-primary-500 outline-none transition"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="relative group">
+                                            <Lock className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={20} />
+                                            <input
+                                                type="password"
+                                                placeholder="Sua Senha"
+                                                value={password}
+                                                onChange={e => setPassword(e.target.value)}
+                                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-white focus:border-primary-500 outline-none transition"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="relative group">
+                                            <KeyRound className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={20} />
+                                            <input
+                                                type="text"
+                                                placeholder="Frase Secreta"
+                                                value={secretPhrase}
+                                                onChange={e => setSecretPhrase(e.target.value)}
+                                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-white focus:border-primary-500 outline-none transition"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    <button type="button" onClick={handleRecover2FA} className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black uppercase tracking-wider py-4 rounded-xl transition-all shadow-lg shadow-primary-500/20 mt-4">
+                                        Recuperar Acesso
+                                    </button>
+                                    <button type="button" onClick={() => setIsRecover2FA(false)} className="w-full py-2 text-zinc-500 hover:text-white text-xs font-bold transition-colors">
+                                        Cancelar
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="text-center mb-8 hidden lg:block">
+                                        <h2 className="text-2xl font-bold text-white mb-1">
+                                            {isRegister ? 'Criar Conta' : 'Boas vindas'}
+                                        </h2>
+                                        <p className="text-zinc-500 text-sm">
+                                            {isRegister ? 'Preencha os dados abaixo para começar.' : 'Entre para acessar sua carteira.'}
+                                        </p>
+                                    </div>
+
+                                    {isRegister && (
+                                        <div className="relative group animate-in slide-in-from-left-2 duration-300">
+                                            <Users className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={18} />
+                                            <input
+                                                type="text"
+                                                placeholder="Nome Completo"
+                                                value={name}
+                                                onChange={e => setName(e.target.value)}
+                                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition"
+                                                required
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div className="relative group">
+                                        <Mail className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={18} />
                                         <input
-                                            type="text"
-                                            name="twoFactorCode"
-                                            placeholder="Código 6 dígitos"
-                                            inputMode="numeric"
-                                            autoComplete="one-time-code"
-                                            value={twoFactorCode}
-                                            onChange={e => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                            className="w-full bg-background border border-primary-500/50 rounded-xl py-3 pl-10 text-white focus:border-primary-500 outline-none transition text-center tracking-[0.5em] font-mono"
+                                            type="email"
+                                            placeholder="Email"
+                                            value={email}
+                                            onChange={e => setEmail(e.target.value)}
+                                            className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition"
                                             required
-                                            autoFocus
                                         />
                                     </div>
-                                </div>
+
+                                    <div className="relative group">
+                                        <Lock className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={18} />
+                                        <input
+                                            type="password"
+                                            placeholder="Senha"
+                                            value={password}
+                                            onChange={e => setPassword(e.target.value)}
+                                            className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="relative group">
+                                        <KeyRound className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={18} />
+                                        <input
+                                            type="password"
+                                            placeholder={isRegister ? "Crie sua Frase Secreta" : "Frase Secreta"}
+                                            value={secretPhrase}
+                                            onChange={e => setSecretPhrase(e.target.value)}
+                                            className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition"
+                                            required
+                                        />
+                                    </div>
+
+                                    {isRegister && (
+                                        <>
+                                            <div className="relative group animate-in slide-in-from-left-2 duration-300 delay-75">
+                                                <ShieldCheck className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={18} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="CPF (apenas números)"
+                                                    value={cpf}
+                                                    onChange={e => setCpf(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                                                    className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition"
+                                                    required
+                                                />
+                                            </div>
+
+                                            <div className="relative group animate-in slide-in-from-left-2 duration-300 delay-100">
+                                                <QrCode className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={18} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Chave Pix"
+                                                    value={pixKey}
+                                                    onChange={e => setPixKey(e.target.value)}
+                                                    className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition"
+                                                    required
+                                                />
+                                            </div>
+
+                                            <div className="relative group animate-in slide-in-from-left-2 duration-300 delay-150">
+                                                <Repeat className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={18} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Código de Indicação (Obrigatório)"
+                                                    value={referralCode}
+                                                    onChange={e => setReferralCode(e.target.value)}
+                                                    className="w-full bg-background border border-primary-500/30 rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition"
+                                                    required
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {requires2FA && (
+                                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 bg-primary-500/5 p-4 rounded-xl border border-primary-500/20">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <div className="p-2 bg-primary-500/20 rounded-lg text-primary-400">
+                                                    <ShieldCheck size={20} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-white font-bold text-sm">Autenticação 2FA</p>
+                                                    <p className="text-[10px] text-zinc-400">Digite o código do seu app</p>
+                                                </div>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder="000 000"
+                                                inputMode="numeric"
+                                                maxLength={6}
+                                                value={twoFactorCode}
+                                                onChange={e => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+                                                className="w-full bg-background/50 border border-primary-500/40 rounded-xl py-3 text-center text-white text-xl tracking-[0.5em] font-mono focus:border-primary-500 outline-none transition"
+                                                autoFocus
+                                            />
+                                        </div>
+                                    )}
+
+                                    <button
+                                        type="submit"
+                                        className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black uppercase tracking-widest py-4 rounded-xl transition-all shadow-lg shadow-primary-500/20 active:scale-[0.98] mt-6"
+                                    >
+                                        {isRegister ? 'Criar Conta' : (requires2FA ? 'Confirmar' : 'Acessar')}
+                                    </button>
+                                </>
                             )}
+                        </form>
 
-                            <button type="submit" className="w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(6,182,212,0.3)] mt-4">
-                                {isRegister ? 'Criar Conta' : (requires2FA ? 'Verificar e Entrar' : 'Entrar')}
-                            </button>
-                        </>
-                    )}
-                </form>
+                        {!isForgot && !isRecover2FA && (
+                            <div className="mt-6 pt-6 border-t border-white/5 space-y-4">
+                                <p className="text-zinc-400 text-xs text-center">
+                                    {isRegister ? 'Já é membro?' : 'Ainda não é membro?'}
+                                    <button
+                                        onClick={() => setIsRegister(!isRegister)}
+                                        className="ml-2 text-primary-400 hover:text-white font-bold transition-colors underline decoration-primary-500/30"
+                                    >
+                                        {isRegister ? 'Fazer Login' : 'Solicitar Convite'}
+                                    </button>
+                                </p>
 
-                {!isForgot && !isRecover2FA && (
-                    <div className="mt-4 sm:mt-6 text-center space-y-2">
-                        <p className="text-zinc-400 text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-0">
-                            <span>{isRegister ? 'Já tem uma conta?' : 'Não tem uma conta?'}</span>
-                            <button onClick={() => setIsRegister(!isRegister)} className="sm:ml-2 text-primary-400 hover:text-primary-300 font-bold py-1.5 sm:py-0 underline sm:no-underline">
-                                {isRegister ? 'Fazer Login' : 'Criar Agora'}
-                            </button>
-                        </p>
-                        {!isRegister && (
-                            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
-                                <button type="button" onClick={() => setIsForgot(true)} className="text-zinc-500 text-xs sm:text-sm hover:text-zinc-300 py-1">
-                                    Esqueci minha senha
-                                </button>
-                                <button type="button" onClick={() => setIsRecover2FA(true)} className="text-zinc-500 text-xs sm:text-sm hover:text-primary-400 py-1">
-                                    Perdi meu autenticador 2FA
-                                </button>
+                                {!isRegister && (
+                                    <div className="flex justify-center gap-6">
+                                        <button onClick={() => setIsForgot(true)} className="text-[10px] text-zinc-500 hover:text-zinc-300 font-medium">
+                                            Esqueci a senha
+                                        </button>
+                                        <button onClick={() => setIsRecover2FA(true)} className="text-[10px] text-zinc-500 hover:text-zinc-300 font-medium">
+                                            Perdi o 2FA
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
-                )}
 
-                <footer className="mt-8 pt-6 border-t border-white/5 text-center text-[10px] text-zinc-500 space-y-2">
-                    <div className="flex justify-center gap-4">
-                        <a href="/terms" target="_blank" className="hover:text-zinc-300 underline transition-colors">Termos de Uso</a>
-                        <button type="button" onClick={() => setShowTerms(true)} className="hover:text-zinc-300 underline transition-colors">Política de Privacidade</button>
-                    </div>
-                    <p className="font-medium">Cred30 Associativo • © 2025 Comunidade Segura</p>
-                </footer>
+                    <footer className="text-center">
+                        <div className="flex justify-center gap-6 text-[10px] text-zinc-600 mb-2">
+                            <a href="/terms" className="hover:text-zinc-400">Termos</a>
+                            <a href="/privacy" className="hover:text-zinc-400">Privacidade</a>
+                            <a href="/support" className="hover:text-zinc-400">Suporte</a>
+                        </div>
+                        <p className="text-[10px] text-zinc-700">© 2025 Cred30 Social Bank</p>
+                    </footer>
+                </div>
             </div>
 
-            {/* Email Verification Modal */}
+            {/* Email Verification Modal - Mantido Global */}
             {showVerifyModal && (
                 <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300 backdrop-blur-md">
                     <div className="bg-zinc-950 border border-zinc-800 rounded-[2.5rem] p-6 md:p-10 w-full max-w-md relative shadow-[0_0_80px_rgba(6,182,212,0.15)] max-h-[90vh] overflow-y-auto custom-scrollbar">
@@ -578,7 +580,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                         {error && (
                             <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-2xl text-sm flex items-center gap-3">
                                 <XCircle size={18} />
-                                {error}
+                                <p className="leading-tight flex-1">{error}</p>
                             </div>
                         )}
 
@@ -608,14 +610,13 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                         </form>
                     </div>
                 </div>
-            )
-            }
+            )}
 
             <TermsAcceptanceModal
                 isOpen={showTerms}
                 onClose={() => setShowTerms(false)}
                 onAccept={handleConfirmRegistration}
             />
-        </main >
+        </div>
     );
 };

@@ -94,7 +94,7 @@ export const HistoryView = ({ transactions, isPro }: HistoryViewProps) => {
     const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
     return (
-        <div className="space-y-6 pb-32">
+        <div className="space-y-6 max-w-4xl mx-auto pb-32">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
