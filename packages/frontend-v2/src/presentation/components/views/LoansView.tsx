@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, AlertTriangle, X as XIcon, CheckCircle2, ShieldCheck, Clock, TrendingUp, Download, FileText, QrCode, CreditCard } from 'lucide-react';
+import { DollarSign, AlertTriangle, X as XIcon, CheckCircle2, ShieldCheck, Clock, TrendingUp, Download, FileText, QrCode, CreditCard, Wallet } from 'lucide-react';
 import { Loan, User } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 import { downloadLoanContract, createContractData } from '../../../application/services/contract.service';

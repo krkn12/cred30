@@ -5,7 +5,7 @@ import {
     Users, Gamepad2, TrendingUp, DollarSign, ArrowUpFromLine, BookOpen,
     Repeat, Crown, Clock, ArrowDownLeft, ArrowUpRight,
     PieChart, AlertTriangle, LogOut, Star, Zap,
-    ShoppingBag, Tag, PlusCircle, ShieldCheck, ChevronRight, Wallet, Coins, Settings, BarChart3, Gift, Sparkles, Bell
+    ShoppingBag, Tag, PlusCircle, ShieldCheck, ChevronRight, Wallet, Coins, Settings, BarChart3, Gift, Sparkles, Bell, Eye, EyeOff, Grid2x2 as Grid
 } from 'lucide-react';
 import { AppState, User, Transaction } from '../../../domain/types/common.types';
 import { QUOTA_PRICE } from '../../../shared/constants/app.constants';
@@ -69,6 +69,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
     const [chestCountdown, setChestCountdown] = useState(0);
     const [chestsRemaining, setChestsRemaining] = useState(3);
     const [isOpeningChest, setIsOpeningChest] = useState(false);
+    const [showValues, setShowValues] = useState(true);
 
     // Memoizar transações recentes do estado global
     const recentTransactions = useMemo(() => {
@@ -228,7 +229,12 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                                     <Wallet size={48} />
                                 </div>
-                                <p className="text-zinc-400 text-xs font-medium uppercase tracking-wider mb-1">Saldo Disponível</p>
+                                <div className="flex items-center justify-between mb-1 relative z-10">
+                                    <p className="text-zinc-400 text-xs font-medium uppercase tracking-wider">Saldo Disponível</p>
+                                    <button onClick={() => setShowValues(!showValues)} className="text-zinc-500 hover:text-white transition-colors">
+                                        {showValues ? <Eye size={14} /> : <EyeOff size={14} />}
+                                    </button>
+                                </div>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-zinc-400 text-sm">R$</span>
                                     <h3 className="text-2xl font-black text-white tracking-tight">
@@ -291,8 +297,13 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                                 <div className="flex items-center gap-3 mb-3">
                                     <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
                                     <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80">Saldo Corrente Líquido</span>
+                                    <button onClick={() => setShowValues(!showValues)} className="ml-auto text-white/50 hover:text-white transition-colors">
+                                        {showValues ? <Eye size={16} /> : <EyeOff size={16} />}
+                                    </button>
                                 </div>
-                                <h2 className="text-6xl font-black tracking-tighter mb-10 tabular-nums">{formatCurrency(user.balance)}</h2>
+                                <h2 className="text-6xl font-black tracking-tighter mb-10 tabular-nums">
+                                    {showValues ? formatCurrency(user.balance) : '••••••'}
+                                </h2>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <button
@@ -425,6 +436,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                         </div>
                     </div>
 
+
                     {/* 5. Histórico e Transações Recentes */}
                     <div className="bg-[#0A0A0A] border border-white/5 rounded-[3rem] p-10 shadow-2xl">
                         <div className="flex items-center justify-between mb-10">
@@ -459,7 +471,11 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                                         <div className="text-right">
                                             <p className={`text-xl font-black tabular-nums tracking-tighter mb-1 ${isPositive(t.type) ? 'text-emerald-400' : 'text-zinc-500'
                                                 }`}>
-                                                {isPositive(t.type) ? '+' : '-'} {formatCurrency(t.amount)}
+                                                {showValues ? (
+                                                    <>
+                                                        {isPositive(t.type) ? '+' : '-'} {formatCurrency(t.amount)}
+                                                    </>
+                                                ) : '••••••'}
                                             </p>
                                             <div className={`text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-lg inline-block border ${t.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' : 'bg-zinc-900 text-zinc-600 border-white/5'
                                                 }`}>
@@ -478,5 +494,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                         </div>
                     </div>
                 </div>
-                );
+            </div>
+        </div>
+    );
 };
