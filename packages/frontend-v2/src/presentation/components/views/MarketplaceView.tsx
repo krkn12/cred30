@@ -13,6 +13,8 @@ import { apiService } from '../../../application/services/api.service';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { OfflineMarketplaceView } from './OfflineMarketplaceView';
 import { useDebounce } from '../../hooks/use-performance';
+import { LoadingScreen } from '../ui/LoadingScreen';
+import { LoadingButton } from '../ui/LoadingButton';
 
 interface MarketplaceViewProps {
     state: AppState;
@@ -104,6 +106,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
     const categories = ['COTAS', 'ELETRÔNICOS', 'VEÍCULOS', 'IMÓVEIS', 'SERVIÇOS', 'MODA', 'OUTROS'];
     const [aiLoading, setAiLoading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSaveOfflineSale = (sale: any) => {
         const newSales = [...pendingOfflineSales, sale];
@@ -151,11 +154,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         }
     }, [location.state]);
 
-    useEffect(() => {
-        fetchData();
-    }, [view]);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
             if (view === 'browse') {
@@ -181,10 +180,15 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [view]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     const handleCreateListing = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
         try {
             const payload: any = {
                 title: newListing.title,
@@ -208,6 +212,8 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
             }
         } catch (error: any) {
             onError('Erro', error.message || 'Falha ao publicar anúncio');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -297,6 +303,11 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const formatCurrency = (val: number) => {
         return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     };
+
+    // Loading principal
+    if (isLoading && view === 'browse' && listings.length === 0) {
+        return <LoadingScreen fullScreen message="Carregando Mercado..." />;
+    }
 
     return (
         <div className="space-y-6 pb-12">
@@ -679,12 +690,14 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                             >
                                 Cancelar
                             </button>
-                            <button
+                            <LoadingButton
                                 type="submit"
+                                isLoading={isSubmitting}
+                                loadingText="PUBLICANDO..."
                                 className="flex-[2] py-4 bg-primary-500 text-black font-black rounded-2xl transition hover:bg-primary-400 shadow-lg shadow-primary-500/20 uppercase tracking-widest text-[10px]"
                             >
-                                Publicar Anúncio
-                            </button>
+                                PUBLICAR ANÚNCIO AGORA
+                            </LoadingButton>
                         </div>
                     </form>
                 </div>

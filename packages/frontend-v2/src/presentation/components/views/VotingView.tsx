@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, XCircle, Info, Trophy, BarChart3, Clock, AlertTriangle, FileText, Download, Users, ShieldCheck, Zap } from 'lucide-react';
+import { CheckCircle2, XCircle, Info, Trophy, BarChart3, Clock, AlertTriangle, FileText, Download, Users, ShieldCheck, Zap, Gavel } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 import jsPDF from 'jspdf';
 import { AppState } from '../../../domain/types/common.types';
+import { LoadingScreen } from '../ui/LoadingScreen';
+import { LoadingButton } from '../ui/LoadingButton';
 
 interface VotingViewProps {
     appState: AppState;
@@ -24,7 +26,11 @@ export const VotingView: React.FC<VotingViewProps> = ({ appState, onBack, onRefr
 
     // Guard clause: prevent crash if appState or user is not loaded yet
     if (!appState || !user) {
-        return <div className="text-center py-12 text-zinc-500">Carregando...</div>;
+        return <LoadingScreen fullScreen message="Carregando Governança..." />;
+    }
+
+    if (isLoading && proposals.length === 0) {
+        return <LoadingScreen message="Buscando Propostas Ativas..." />;
     }
 
     const fetchProposals = async () => {
@@ -287,20 +293,24 @@ export const VotingView: React.FC<VotingViewProps> = ({ appState, onBack, onRefr
                                     <div className="flex flex-col sm:flex-row gap-4">
                                         {!prop.user_choice && prop.status === 'active' ? (
                                             <>
-                                                <button
+                                                <LoadingButton
                                                     onClick={() => handleVote(prop.id, 'yes')}
-                                                    disabled={votingInProgress === prop.id || userCurrentPower <= 0}
+                                                    isLoading={votingInProgress === prop.id}
+                                                    loadingText="REGISTRANDO..."
+                                                    disabled={userCurrentPower <= 0}
                                                     className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black py-5 rounded-[1.5rem] transition-all active:scale-95 flex items-center justify-center gap-3 shadow-xl shadow-emerald-900/20 uppercase tracking-widest text-xs"
                                                 >
                                                     <CheckCircle2 size={24} /> VOTAR NO SIM
-                                                </button>
-                                                <button
+                                                </LoadingButton>
+                                                <LoadingButton
                                                     onClick={() => handleVote(prop.id, 'no')}
-                                                    disabled={votingInProgress === prop.id || userCurrentPower <= 0}
+                                                    isLoading={votingInProgress === prop.id}
+                                                    loadingText="REGISTRANDO..."
+                                                    disabled={userCurrentPower <= 0}
                                                     className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-black py-5 rounded-[1.5rem] transition-all active:scale-95 flex items-center justify-center gap-3 shadow-xl shadow-red-900/20 uppercase tracking-widest text-xs"
                                                 >
                                                     <XCircle size={24} /> VOTAR NO NÃO
-                                                </button>
+                                                </LoadingButton>
                                             </>
                                         ) : (
                                             <div className="flex-1 flex flex-col sm:flex-row gap-4">
