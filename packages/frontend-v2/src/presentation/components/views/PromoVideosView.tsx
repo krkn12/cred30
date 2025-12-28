@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
 import { Play, Pause, DollarSign, Clock, Eye, ChevronRight, Plus, X as XIcon, CheckCircle2, AlertTriangle, Youtube, Film, ExternalLink, Loader2, Wallet, Smartphone, CreditCard } from 'lucide-react';
+import { QRCodeCanvas } from 'qrcode.react';
 import { apiService } from '../../../application/services/api.service';
 
 interface PromoVideo {
@@ -347,9 +348,35 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                                             </div>
                                             <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">{campaign.platform}</p>
                                         </div>
-                                        <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${campaign.isActive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-zinc-800 text-zinc-400'}`}>
-                                            {campaign.status}
-                                        </span>
+                                        <div className="flex gap-2">
+                                            {campaign.status === 'PENDING' && (
+                                                <button
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        setLoading(true);
+                                                        try {
+                                                            const res = await apiService.get<any>(`/promo-videos/${campaign.id}/payment`);
+                                                            if (res.success) {
+                                                                setPaymentSuccessData(res.data);
+                                                                // Opens the success modal automatically because paymentSuccessData is set
+                                                                setShowCreateModal(true); // Ensure parent modal is technically "open" if needed by structure, but `paymentSuccessData` drives the view
+                                                            } else {
+                                                                onError('Erro', res.message);
+                                                            }
+                                                        } catch (err: any) {
+                                                            onError('Erro', err.message);
+                                                        }
+                                                        setLoading(false);
+                                                    }}
+                                                    className="bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-all"
+                                                >
+                                                    <DollarSign size={10} /> PAGAR
+                                                </button>
+                                            )}
+                                            <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${campaign.isActive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-zinc-800 text-zinc-400'}`}>
+                                                {campaign.status}
+                                            </span>
+                                        </div>
                                     </div>
 
                                     <div className="grid grid-cols-4 gap-2 text-center mb-4">
@@ -528,6 +555,7 @@ const CreateCampaignModal: React.FC<{
     const [loading, setLoading] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<'BALANCE' | 'PIX' | 'CARD'>('BALANCE');
     const [payerCpfCnpj, setPayerCpfCnpj] = useState('');
+    const [paymentSuccessData, setPaymentSuccessData] = useState<any>(null);
     const [form, setForm] = useState({
         title: '',
         description: '',
@@ -584,12 +612,13 @@ const CreateCampaignModal: React.FC<{
             const res = await apiService.post<any>('/promo-videos/create', { ...form, paymentMethod, payerCpfCnpj: payerCpfCnpj.replace(/\D/g, '') });
 
             if (res.success) {
-                // Se for PIX, abrimos o modal de pagamento do Asaas ou mostramos o QR
-                if (paymentMethod === 'PIX' && res.data?.bankSlipUrl) {
-                    window.open(res.data.bankSlipUrl, '_blank');
-                    onSuccess();
+                // Se for PIX, mostrar detalhes da cobrança
+                if (paymentMethod === 'PIX' && res.data) {
+                    setPaymentSuccessData(res.data);
+                    // Não fechar o modal, mostrar a tela de sucesso
                 } else {
                     onSuccess();
+                    onClose();
                 }
             } else {
                 onError('Erro', res.message || 'Erro ao criar campanha');
@@ -599,6 +628,110 @@ const CreateCampaignModal: React.FC<{
         }
         setLoading(false);
     };
+
+    if (paymentSuccessData) {
+        return (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[500] flex items-center justify-center p-4 animate-in fade-in duration-300">
+                <div className="bg-[#0A0A0A] border border-surfaceHighlight rounded-3xl p-6 w-full max-w-sm relative shadow-2xl animate-in zoom-in-95 duration-300">
+                    <div className="flex justify-between items-start mb-6">
+                        <h3 className="text-xl font-bold text-white">Dados da cobrança</h3>
+                        <button onClick={() => { onClose(); onSuccess(); }} className="text-zinc-500 hover:text-white bg-zinc-900/50 p-2 rounded-full">
+                            <XIcon size={20} />
+                        </button>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div className="flex flex-col items-center justify-center p-4 bg-yellow-500/10 rounded-2xl border border-yellow-500/20">
+                            <span className="text-yellow-500 font-bold uppercase tracking-widest text-xs mb-1">Situação</span>
+                            <span className="text-white font-black text-lg">Aguardando pagamento</span>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-baseline border-b border-white/5 pb-2">
+                                <span className="text-zinc-500 text-xs font-bold uppercase">Criada em</span>
+                                <span className="text-zinc-300 text-sm font-mono">{new Date().toLocaleDateString('pt-BR')}</span>
+                            </div>
+
+                            <div className="flex justify-between items-baseline border-b border-white/5 pb-2">
+                                <span className="text-zinc-500 text-xs font-bold uppercase">Cliente</span>
+                                <span className="text-zinc-300 text-sm">Você</span>
+                            </div>
+
+                            <div className="flex justify-between items-baseline border-b border-white/5 pb-2">
+                                <span className="text-zinc-500 text-xs font-bold uppercase">Fatura</span>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-zinc-300 text-sm font-mono">{paymentSuccessData.id?.slice(0, 16)}...</span>
+                                    {paymentSuccessData.invoiceUrl && (
+                                        <a href={paymentSuccessData.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary-400 hover:underline flex items-center gap-1 mt-1">
+                                            Visualizar fatura <ExternalLink size={10} />
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex justify-between items-baseline border-b border-white/5 pb-2">
+                                <span className="text-zinc-500 text-xs font-bold uppercase">Valor</span>
+                                <span className="text-white text-lg font-black">{totalToPay.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                            </div>
+
+                            <div className="flex justify-between items-baseline border-b border-white/5 pb-2">
+                                <span className="text-zinc-500 text-xs font-bold uppercase">Vencimento</span>
+                                <span className="text-zinc-300 text-sm font-mono">
+                                    {new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')}
+                                </span>
+                            </div>
+
+                            <div className="flex justify-between items-baseline">
+                                <span className="text-zinc-500 text-xs font-bold uppercase">Forma de pagamento</span>
+                                <div className="flex items-center gap-2 text-zinc-300 text-sm font-bold">
+                                    <Smartphone size={14} className="text-emerald-500" /> Pix
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* QR Code Section */}
+                        {paymentSuccessData.pixCopiaECola && (
+                            <div className="mt-6 flex flex-col items-center">
+                                <div className="bg-white p-2 rounded-xl">
+                                    <QRCodeCanvas
+                                        value={paymentSuccessData.pixCopiaECola}
+                                        size={180}
+                                        level={"H"}
+                                    />
+                                </div>
+                                <div className="mt-4 w-full">
+                                    <div className="flex gap-2">
+                                        <input
+                                            readOnly
+                                            value={paymentSuccessData.pixCopiaECola}
+                                            className="flex-1 bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] text-zinc-400 font-mono truncate"
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(paymentSuccessData.pixCopiaECola);
+                                                // Could show toast here
+                                            }}
+                                            className="bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded-xl"
+                                        >
+                                            <CheckCircle2 size={16} />
+                                        </button>
+                                    </div>
+                                    <p className="text-center text-[10px] text-zinc-600 mt-2 uppercase font-bold">Copie e cole no seu banco</p>
+                                </div>
+                            </div>
+                        )}
+
+                        <button
+                            onClick={() => { onClose(); onSuccess(); }}
+                            className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black uppercase tracking-[0.2em] py-4 rounded-2xl transition-all shadow-lg active:scale-[0.98] text-xs mt-4"
+                        >
+                            FECHAR
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">

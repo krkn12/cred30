@@ -268,6 +268,37 @@ export const checkPaymentStatus = async (paymentId: string): Promise<string> => 
 };
 
 /**
+ * Busca detalhes completos do pagamento (incluindo QR Code se for PIX)
+ */
+export const getPaymentDetails = async (paymentId: string): Promise<PaymentResponse> => {
+    try {
+        const payment = await asaasRequest(`/payments/${paymentId}`);
+
+        let pixQrCode = null;
+        if (payment.billingType === 'PIX' && payment.status === 'PENDING') {
+            try {
+                pixQrCode = await asaasRequest(`/payments/${paymentId}/pixQrCode`);
+            } catch (ignore) { /* Se não conseguir QR code, segue sem */ }
+        }
+
+        return {
+            id: payment.id,
+            status: payment.status,
+            external_reference: payment.externalReference,
+            payment_method_id: payment.billingType?.toLowerCase(),
+            invoiceUrl: payment.invoiceUrl,
+            pixCopiaECola: pixQrCode?.payload,
+            qr_code: pixQrCode?.payload,
+            qr_code_base64: pixQrCode?.encodedImage,
+            expirationDate: pixQrCode?.expirationDate
+        };
+    } catch (error: any) {
+        console.error('Erro getDetails Asaas:', error);
+        throw new Error(error.message || 'Falha ao buscar detalhes do pagamento');
+    }
+};
+
+/**
  * Cria um payout (transferência PIX para o usuário) - SAQUE AUTOMÁTICO
  * No modo sandbox, simula uma transferência bem-sucedida já que o Asaas sandbox
  * não suporta transferências para chaves PIX que não existem no ambiente de teste.
