@@ -34,6 +34,7 @@ const buyListingSchema = z.object({
     deliveryAddress: z.string().min(10, 'Endereço muito curto').optional(),
     contactPhone: z.string().min(8, 'Telefone inválido').optional(),
     offlineToken: z.string().optional(),
+    payerCpfCnpj: z.string().optional(),
     deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST']).optional().default('SELF_PICKUP'),
     offeredDeliveryFee: z.number().min(0).optional().default(0),
     pickupAddress: z.string().optional(),
@@ -356,7 +357,7 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c) => {
                     email: user.email,
                     external_reference,
                     installments: 1,
-                    cpf: body.creditCard.cpf,
+                    cpf: body.creditCard.cpf || body.payerCpfCnpj || user.cpf || '',
                     name: body.creditCard.holderName,
                     creditCard: body.creditCard
                 });
@@ -367,7 +368,7 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c) => {
                     description: `Compra no Mercado Cred30: ${listing.title}`,
                     email: user.email,
                     external_reference,
-                    cpf: user.cpf || '',
+                    cpf: body.payerCpfCnpj || user.cpf || '',
                     name: user.name
                 });
             }
