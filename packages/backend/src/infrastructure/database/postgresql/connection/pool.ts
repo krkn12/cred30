@@ -783,6 +783,10 @@ export const initializeDatabase = async () => {
         UNIQUE(video_id, viewer_id)
       );
 
+      ALTER TABLE promo_videos ADD COLUMN IF NOT EXISTS budget_gross DECIMAL(10,2) DEFAULT 0;
+      ALTER TABLE promo_videos ADD COLUMN IF NOT EXISTS tag VARCHAR(30) DEFAULT 'OUTROS';
+      ALTER TABLE promo_videos ADD COLUMN IF NOT EXISTS payment_id VARCHAR(255);
+
       CREATE INDEX IF NOT EXISTS idx_promo_videos_user_v2 ON promo_videos(user_id);
       CREATE INDEX IF NOT EXISTS idx_promo_videos_status_v2 ON promo_videos(status, is_active);
     `);

@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/asaas.service';
+import { createPixPayment, createCardPayment, checkPaymentStatus, getPaymentDetails } from '../../../infrastructure/gateways/asaas.service';
 import { executeInTransaction } from '../../../domain/services/transaction.service';
 import {
     ASAAS_PIX_FIXED_FEE,
