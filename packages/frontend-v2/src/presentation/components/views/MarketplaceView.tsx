@@ -894,6 +894,55 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     </div>
                                 </div>
 
+                                {/* Categorias - Scroll Horizontal Mobile, Grid Desktop */}
+                                <div className="flex overflow-x-auto pb-4 gap-2 sm:grid sm:grid-cols-6 lg:grid-cols-8 scrollbar-hide">
+                                    <button
+                                        onClick={() => setSelectedCategory('TODOS')}
+                                        className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${selectedCategory === 'TODOS'
+                                            ? 'bg-primary-500 text-black shadow-lg shadow-primary-500/20'
+                                            : 'bg-surface border border-surfaceHighlight text-zinc-400 hover:text-white'
+                                            }`}
+                                    >
+                                        Todos
+                                    </button>
+                                    {CATEGORIES.map(cat => (
+                                        <button
+                                            key={cat.id}
+                                            onClick={() => setSelectedCategory(cat.id)}
+                                            className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 ${selectedCategory === cat.id
+                                                ? 'bg-primary-500 text-black shadow-lg shadow-primary-500/20'
+                                                : 'bg-surface border border-surfaceHighlight text-zinc-400 hover:text-white'
+                                                }`}
+                                        >
+                                            <span>{cat.icon}</span>
+                                            {cat.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Lista de Produtos */}
+                                {loading ? (
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                                        {[1, 2, 3, 4].map(i => (
+                                            <div key={i} className="aspect-[4/5] bg-surface rounded-2xl animate-pulse" />
+                                        ))}
+                                    </div>
+                                ) : filteredProducts.length === 0 ? (
+                                    <div className="text-center py-20">
+                                        <ShoppingBag size={48} className="mx-auto text-zinc-700 mb-4" />
+                                        <p className="text-zinc-500 font-medium">Nenhum produto encontrado</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                                        {filteredProducts.map(product => (
+                                            <ProductCard
+                                                key={product.id}
+                                                product={product}
+                                                onClick={() => setSelectedProduct(product)}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
                                 <div className="sticky bottom-6 mt-12 bg-black border border-zinc-800 p-4 rounded-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
                                     <div className="flex-1 space-y-4 mb-4">
                                         <div className="space-y-2">
