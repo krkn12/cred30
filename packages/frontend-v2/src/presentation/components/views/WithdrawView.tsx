@@ -114,7 +114,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
     };
 
     return (
-        <div className="max-w-md mx-auto space-y-6">
+        <div className="max-w-xl mx-auto space-y-6">
             {/* Balance Overview Card */}
             <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-black">
                 <div className="text-center">

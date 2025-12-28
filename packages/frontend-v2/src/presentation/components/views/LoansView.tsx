@@ -61,6 +61,60 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
 
     return (
         <div className="space-y-8 pb-32">
+            {/* Active Loan Card - Adaptado para responsividade */}
+            <div className="bg-surface border border-surfaceHighlight rounded-2xl p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-8 opacity-5">
+                    <Wallet size={120} />
+                </div>
+
+                <div className="relative z-10">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                        <div>
+                            <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1 block">Empréstimo Ativo</span>
+                            {/* This activeLoan variable is not defined in the current scope.
+                                Assuming it should be derived from 'loans' or 'activeLoans' if there's only one active loan to display here.
+                                For now, I'll use a placeholder or the first active loan if available.
+                                If there can be multiple active loans, this card structure might need to be iterated or adapted.
+                                For the purpose of this edit, I'll assume a single 'activeLoan' concept for this card.
+                                If no active loan, this card might not render or show a different state.
+                            */}
+                            <h3 className="text-2xl sm:text-3xl font-black text-white">R$ {activeLoans.length > 0 ? activeLoans[0].amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}</h3>
+                        </div>
+                        <div className="bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 rounded-lg flex items-center gap-2 self-start sm:self-auto">
+                            <Clock size={14} className="text-yellow-500" />
+                            <span className="text-yellow-500 text-xs font-bold uppercase">Vence em {activeLoans.length > 0 && activeLoans[0].dueDate ? Math.ceil((new Date(activeLoans[0].dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 'N/A'} dias</span>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="w-full bg-zinc-900 rounded-full h-3 overflow-hidden border border-white/5">
+                            <div
+                                className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400"
+                                style={{ width: `${activeLoans.length > 0 ? ((activeLoans[0].totalPaid || 0) / activeLoans[0].totalRepayment) * 100 : 0}%` }}
+                            />
+                        </div>
+                        <div className="flex justify-between text-xs font-medium text-zinc-500">
+                            <span>Pago: R$ {activeLoans.length > 0 ? (activeLoans[0].totalPaid || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}</span>
+                            <span>Total: R$ {activeLoans.length > 0 ? activeLoans[0].totalRepayment.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}</span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
+                        <button
+                            onClick={() => activeLoans.length > 0 && setInstallmentModalData({ loanId: activeLoans[0].id, installmentAmount: getInstallmentValue(activeLoans[0]) })}
+                            className="bg-emerald-500 hover:bg-emerald-400 text-black py-4 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
+                        >
+                            Pagar Parcela
+                        </button>
+                        <button
+                            onClick={() => activeLoans.length > 0 && setPayModalId(activeLoans[0].id)}
+                            className="bg-zinc-800 hover:bg-zinc-700 text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                        >
+                            Finalizar
+                        </button>
+                    </div>
+                </div>
+            </div>
             {/* Loan Request Card */}
             <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-5">
