@@ -12,6 +12,7 @@ import { QUOTA_PRICE } from '../../../shared/constants/app.constants';
 import { AdBanner } from '../ui/AdBanner';
 import { fastForwardTime, deleteUserAccount } from '../../../application/services/storage.service';
 import { apiService } from '../../../application/services/api.service';
+import { LoadingScreen } from '../ui/LoadingScreen';
 
 interface DashboardProps {
     state: AppState;
@@ -38,7 +39,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
 
     // Guard clause: prevent crash if state or user is not loaded yet
     if (!state || !user) {
-        return <div className="flex justify-center items-center min-h-[60vh] text-zinc-500">Carregando...</div>;
+        return <LoadingScreen fullScreen message="Sincronizando seu Painel..." />;
     }
 
     // Usuários PRO não veem anúncios
