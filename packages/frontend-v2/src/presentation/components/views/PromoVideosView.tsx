@@ -72,8 +72,46 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
     } | null>(null);
     const [tags, setTags] = useState<string[]>([]);
     const [selectedTag, setSelectedTag] = useState<string>('TODOS');
+    const [paymentSuccessData, setPaymentSuccessData] = useState<any>(null);
 
     const watchTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // ... (lines 78-530 remain as is, but I can't match huge block)
+    // I will target the end of the file where Payment Modal should go and CreateCampaignModal usage.
+
+    // ...
+
+    {/* Modal de Criar Campanha */ }
+    {
+        showCreateModal && (
+            <CreateCampaignModal
+                userBalance={userBalance}
+                onClose={() => setShowCreateModal(false)}
+                onSuccess={() => {
+                    setShowCreateModal(false);
+                    loadData();
+                    onRefresh();
+                    onSuccess('Sucesso!', 'Campanha criada com sucesso');
+                }}
+                onError={onError}
+                onPaymentSuccess={setPaymentSuccessData}
+            />
+        )
+    }
+
+    {/* Modal de Sucesso de Pagamento */ }
+    {
+        paymentSuccessData && (
+            <PaymentSuccessModal
+                data={paymentSuccessData}
+                onClose={() => {
+                    setPaymentSuccessData(null);
+                    loadData();
+                    onRefresh();
+                }}
+            />
+        )
+    }
 
     useEffect(() => {
         loadData();
@@ -358,8 +396,6 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                                                             const res = await apiService.get<any>(`/promo-videos/${campaign.id}/payment`);
                                                             if (res.success) {
                                                                 setPaymentSuccessData(res.data);
-                                                                // Opens the success modal automatically because paymentSuccessData is set
-                                                                setShowCreateModal(true); // Ensure parent modal is technically "open" if needed by structure, but `paymentSuccessData` drives the view
                                                             } else {
                                                                 onError('Erro', res.message);
                                                             }
@@ -539,6 +575,19 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                         onSuccess('Sucesso!', 'Campanha criada com sucesso');
                     }}
                     onError={onError}
+                    onPaymentSuccess={setPaymentSuccessData}
+                />
+            )}
+
+            {/* Modal de Sucesso de Pagamento */}
+            {paymentSuccessData && (
+                <PaymentSuccessModal
+                    data={paymentSuccessData}
+                    onClose={() => {
+                        setPaymentSuccessData(null);
+                        loadData();
+                        onRefresh();
+                    }}
                 />
             )}
         </div>
@@ -551,7 +600,8 @@ const CreateCampaignModal: React.FC<{
     onClose: () => void;
     onSuccess: () => void;
     onError: (title: string, message: string) => void;
-}> = ({ userBalance, onClose, onSuccess, onError }) => {
+    onPaymentSuccess: (data: any) => void;
+}> = ({ userBalance, onClose, onSuccess, onError, onPaymentSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<'BALANCE' | 'PIX' | 'CARD'>('BALANCE');
     const [payerCpfCnpj, setPayerCpfCnpj] = useState('');
@@ -614,8 +664,8 @@ const CreateCampaignModal: React.FC<{
             if (res.success) {
                 // Se for PIX, mostrar detalhes da cobrança
                 if (paymentMethod === 'PIX' && res.data) {
-                    setPaymentSuccessData(res.data);
-                    // Não fechar o modal, mostrar a tela de sucesso
+                    onPaymentSuccess(res.data);
+                    onClose(); // Close creation modal, success modal will be opened by parent
                 } else {
                     onSuccess();
                     onClose();
@@ -629,14 +679,27 @@ const CreateCampaignModal: React.FC<{
         setLoading(false);
     };
 
-    if (paymentSuccessData) {
-        return (
+    const PaymentSuccessModal: React.FC<{
+        data: any;
+        onClose: () => void;
+    }> = ({ data, onClose }) => {
+        // Taxas do Asaas
+        const ASAAS_PIX_FIXED_FEE = 0.99;
+        const ASAAS_CARD_FEE_PERCENT = 0.0299;
+        const ASAAS_CARD_FIXED_FEE = 0.49;
+
+        // Recalcular total se necessário ou usar o valor retornado (idealmente o backend retorna 'value' total)
+        // O objeto 'data' do Asaas costuma ter o 'value'. Se não tiver, usamos budget + taxa (mas aqui só temos data do pagamento).
+        // Vou assumir que 'data.value' vem do asaas ou o frontend deve confiar no que tem.
+        // data.value é o valor final da cobrança.
+        const totalToPay = data.value || 0;
+
         return (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
                 <div className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-surfaceHighlight rounded-t-[2.5rem] sm:rounded-3xl p-6 w-full sm:max-w-sm relative shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300">
                     <div className="flex justify-between items-start mb-6">
                         <h3 className="text-xl font-bold text-white">Dados da cobrança</h3>
-                        <button onClick={() => { onClose(); onSuccess(); }} className="text-zinc-500 hover:text-white bg-zinc-900/50 p-2 rounded-full">
+                        <button onClick={onClose} className="text-zinc-500 hover:text-white bg-zinc-900/50 p-2 rounded-full">
                             <XIcon size={20} />
                         </button>
                     </div>
@@ -661,9 +724,9 @@ const CreateCampaignModal: React.FC<{
                             <div className="flex justify-between items-baseline border-b border-white/5 pb-2">
                                 <span className="text-zinc-500 text-xs font-bold uppercase">Fatura</span>
                                 <div className="flex flex-col items-end">
-                                    <span className="text-zinc-300 text-sm font-mono">{paymentSuccessData.id?.slice(0, 16)}...</span>
-                                    {paymentSuccessData.invoiceUrl && (
-                                        <a href={paymentSuccessData.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary-400 hover:underline flex items-center gap-1 mt-1">
+                                    <span className="text-zinc-300 text-sm font-mono">{data.id?.slice(0, 16)}...</span>
+                                    {data.invoiceUrl && (
+                                        <a href={data.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary-400 hover:underline flex items-center gap-1 mt-1">
                                             Visualizar fatura <ExternalLink size={10} />
                                         </a>
                                     )}
@@ -678,7 +741,7 @@ const CreateCampaignModal: React.FC<{
                             <div className="flex justify-between items-baseline border-b border-white/5 pb-2">
                                 <span className="text-zinc-500 text-xs font-bold uppercase">Vencimento</span>
                                 <span className="text-zinc-300 text-sm font-mono">
-                                    {new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')}
+                                    {data.dueDate ? new Date(data.dueDate).toLocaleDateString('pt-BR') : new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')}
                                 </span>
                             </div>
 
@@ -691,11 +754,11 @@ const CreateCampaignModal: React.FC<{
                         </div>
 
                         {/* QR Code Section */}
-                        {paymentSuccessData.pixCopiaECola && (
+                        {data.pixCopiaECola && (
                             <div className="mt-6 flex flex-col items-center">
                                 <div className="bg-white p-2 rounded-xl">
                                     <QRCodeCanvas
-                                        value={paymentSuccessData.pixCopiaECola}
+                                        value={data.pixCopiaECola}
                                         size={180}
                                         level={"H"}
                                     />
@@ -704,13 +767,12 @@ const CreateCampaignModal: React.FC<{
                                     <div className="flex gap-2">
                                         <input
                                             readOnly
-                                            value={paymentSuccessData.pixCopiaECola}
+                                            value={data.pixCopiaECola}
                                             className="flex-1 bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] text-zinc-400 font-mono truncate"
                                         />
                                         <button
                                             onClick={() => {
-                                                navigator.clipboard.writeText(paymentSuccessData.pixCopiaECola);
-                                                // Could show toast here
+                                                navigator.clipboard.writeText(data.pixCopiaECola);
                                             }}
                                             className="bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded-xl"
                                         >
@@ -723,7 +785,7 @@ const CreateCampaignModal: React.FC<{
                         )}
 
                         <button
-                            onClick={() => { onClose(); onSuccess(); }}
+                            onClick={onClose}
                             className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black uppercase tracking-[0.2em] py-4 rounded-2xl transition-all shadow-lg active:scale-[0.98] text-xs mt-4"
                         >
                             FECHAR
@@ -732,7 +794,7 @@ const CreateCampaignModal: React.FC<{
                 </div>
             </div>
         );
-    }
+    };
 
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
