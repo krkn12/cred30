@@ -14,6 +14,8 @@ import {
 const VIEWER_SHARE = 0.60;       // 60% para quem assiste
 const QUOTA_HOLDERS_SHARE = 0.25; // 25% para quem tem cotas (profit_pool)
 const SERVICE_FEE_SHARE = 0.15;  // 15% taxa de serviço (system_balance)
+const POINTS_PER_REAL = 100;      // R$ 1,00 = 100 pontos
+const MIN_CONVERSION_POINTS = 100; // Mínimo para converter
 
 // Funções para calcular valor com taxa (cliente paga a taxa do gateway)
 const calculatePixTotal = (budget: number) => budget + ASAAS_PIX_FIXED_FEE;
@@ -106,7 +108,7 @@ promoVideosRoutes.get('/feed', async (c) => {
                 totalViews: parseInt(v.total_views) || 0,
                 completedViews: parseInt(v.completed_views) || 0,
                 targetViews: v.target_views,
-                viewerEarning: v.is_owner ? 0 : parseFloat(v.price_per_view) * VIEWER_SHARE,
+                viewerEarningPoints: v.is_owner ? 0 : Math.floor(parseFloat(v.price_per_view) * VIEWER_SHARE * POINTS_PER_REAL),
                 isOwner: v.is_owner,
                 ranking: parseInt(v.ranking) || index + 1,
             }))
@@ -170,7 +172,7 @@ promoVideosRoutes.post('/create', async (c) => {
             return c.json({
                 success: true,
                 message: `Campanha ativa! Alcance: ${targetViews} views.`,
-                data: { targetViews, viewerEarning: grossPPV * VIEWER_SHARE }
+                data: { targetViews, viewerEarningPoints: Math.floor(grossPPV * VIEWER_SHARE * POINTS_PER_REAL) }
             });
         }
 
@@ -287,7 +289,7 @@ promoVideosRoutes.post('/:videoId/start-view', async (c) => {
             data: {
                 viewId: viewResult.rows[0].id,
                 minWatchSeconds: video.min_watch_seconds,
-                viewerEarning: parseFloat(video.price_per_view) * VIEWER_SHARE,
+                viewerEarningPoints: Math.floor(parseFloat(video.price_per_view) * VIEWER_SHARE * POINTS_PER_REAL),
                 isOwner: false,
             }
         });
@@ -315,7 +317,8 @@ promoVideosRoutes.post('/:videoId/complete-view', async (c) => {
         if (viewResult.rows.length === 0) return c.json({ success: false, message: 'Não encontrado' }, 404);
 
         const view = viewResult.rows[0];
-        const viewerEarning = parseFloat(view.price_per_view) * VIEWER_SHARE;
+        const viewerEarningAmount = parseFloat(view.price_per_view) * VIEWER_SHARE;
+        const viewerEarningPoints = Math.floor(viewerEarningAmount * POINTS_PER_REAL);
 
         if (watchTime < view.min_watch_seconds) return c.json({ success: false, message: 'Tempo insuficiente' }, 400);
 
@@ -323,16 +326,16 @@ promoVideosRoutes.post('/:videoId/complete-view', async (c) => {
             await client.query(`
                 UPDATE promo_video_views SET completed = TRUE, watch_time_seconds = $1, earned = $2, finished_at = NOW()
                 WHERE video_id = $3 AND viewer_id = $4
-            `, [watchTime, viewerEarning, videoId, userPayload.id]);
+            `, [watchTime, viewerEarningAmount, videoId, userPayload.id]);
 
             await client.query(`
                 UPDATE promo_videos SET total_views = total_views + 1, spent = spent + $1 WHERE id = $2
-            `, [viewerEarning, videoId]);
+            `, [viewerEarningAmount, videoId]);
 
-            await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [viewerEarning, userPayload.id]);
+            await client.query('UPDATE users SET video_points = video_points + $1 WHERE id = $2', [viewerEarningPoints, userPayload.id]);
         });
 
-        return c.json({ success: true, message: `Ganhou R$ ${viewerEarning.toFixed(2)}!` });
+        return c.json({ success: true, message: `Ganhou ${viewerEarningPoints} pontos!` });
     } catch (error) {
         return c.json({ success: false, message: 'Erro ao processar' }, 500);
     }
@@ -395,23 +398,66 @@ promoVideosRoutes.get('/my-earnings', async (c) => {
         const result = await pool.query(`
             SELECT 
                 COALESCE(SUM(earned), 0) as total_earned,
+                (SELECT video_points FROM users WHERE id = $1) as current_points,
                 COUNT(*) FILTER (WHERE completed = TRUE) as videos_watched
             FROM promo_video_views
             WHERE viewer_id = $1
         `, [userPayload.id]);
 
-        const { total_earned, videos_watched } = result.rows[0];
+        const { total_earned, current_points, videos_watched } = result.rows[0];
 
         return c.json({
             success: true,
             data: {
                 totalEarned: parseFloat(total_earned) || 0,
-                videosWatched: parseInt(videos_watched) || 0
+                currentPoints: parseInt(current_points) || 0,
+                videosWatched: parseInt(videos_watched) || 0,
+                conversionRate: POINTS_PER_REAL,
+                minConversionPoints: MIN_CONVERSION_POINTS
             }
         });
     } catch (error) {
         console.error('[PROMO-VIDEOS] Erro ao buscar ganhos:', error);
         return c.json({ success: false, message: 'Erro ao buscar ganhos' }, 500);
+    }
+});
+
+// Converter pontos em dinheiro
+promoVideosRoutes.post('/convert-points', async (c) => {
+    try {
+        const userPayload = c.get('user');
+        const pool = getDbPool(c);
+
+        const userRes = await pool.query('SELECT video_points, balance FROM users WHERE id = $1', [userPayload.id]);
+        const user = userRes.rows[0];
+
+        if (user.video_points < MIN_CONVERSION_POINTS) {
+            return c.json({ success: false, message: `Mínimo de ${MIN_CONVERSION_POINTS} pontos para conversão.` }, 400);
+        }
+
+        const pointsToConvert = Math.floor(user.video_points);
+        const amountToAdd = pointsToConvert / POINTS_PER_REAL;
+
+        await executeInTransaction(pool, async (client) => {
+            // Deduzir pontos
+            await client.query('UPDATE users SET video_points = video_points - $1 WHERE id = $2', [pointsToConvert, userPayload.id]);
+            // Adicionar saldo
+            await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [amountToAdd, userPayload.id]);
+            // Registrar transação
+            await client.query(`
+                INSERT INTO transactions (user_id, type, amount, description, status)
+                VALUES ($1, 'POINTS_CONVERSION', $2, $3, 'COMPLETED')
+            `, [userPayload.id, amountToAdd, `Conversão de ${pointsToConvert} pontos de vídeo`]);
+        });
+
+        return c.json({
+            success: true,
+            message: `Sucesso! R$ ${amountToAdd.toFixed(2)} adicionados ao seu saldo.`,
+            data: { convertedAmount: amountToAdd, remainingPoints: 0 }
+        });
+    } catch (error) {
+        console.error('[PROMO-VIDEOS] Erro ao converter pontos:', error);
+        return c.json({ success: false, message: 'Erro ao converter pontos' }, 500);
     }
 });
 
