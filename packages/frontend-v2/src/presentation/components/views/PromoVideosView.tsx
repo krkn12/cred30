@@ -17,7 +17,7 @@ interface PromoVideo {
     totalViews: number;
     completedViews: number;
     targetViews: number;
-    viewerEarning: number;
+    viewerEarningPoints: number;
     isOwner?: boolean;
     ranking: number;
 }
@@ -62,7 +62,13 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
     const [watchingVideo, setWatchingVideo] = useState<PromoVideo | null>(null);
     const [watchProgress, setWatchProgress] = useState(0);
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [earnings, setEarnings] = useState<{ totalEarned: number; videosWatched: number } | null>(null);
+    const [earnings, setEarnings] = useState<{
+        totalEarned: number;
+        videosWatched: number;
+        currentPoints: number;
+        conversionRate: number;
+        minConversionPoints: number;
+    } | null>(null);
     const [tags, setTags] = useState<string[]>([]);
     const [selectedTag, setSelectedTag] = useState<string>('TODOS');
 
@@ -78,7 +84,13 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
             const [feedRes, campaignsRes, earningsRes, tagsRes] = await Promise.all([
                 apiService.get<PromoVideo[]>(`/promo-videos/feed${selectedTag !== 'TODOS' ? `?tag=${selectedTag}` : ''}`),
                 apiService.get<MyCampaign[]>('/promo-videos/my-campaigns'),
-                apiService.get<{ totalEarned: number; videosWatched: number }>('/promo-videos/my-earnings'),
+                apiService.get<{
+                    totalEarned: number;
+                    videosWatched: number;
+                    currentPoints: number;
+                    conversionRate: number;
+                    minConversionPoints: number;
+                }>('/promo-videos/my-earnings'),
                 apiService.get<string[]>('/promo-videos/tags'),
             ]);
 
@@ -172,6 +184,26 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
         return null;
     };
 
+    const handleConvertPoints = async () => {
+        if (!earnings || earnings.currentPoints < earnings.minConversionPoints) return;
+
+        try {
+            setLoading(true);
+            const res = await apiService.post<any>('/promo-videos/convert-points', {});
+            if (res.success) {
+                onSuccess('Sucesso!', res.message);
+                onRefresh();
+                loadData();
+            } else {
+                onError('Erro', res.message);
+            }
+        } catch (e: any) {
+            onError('Erro', e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
 
 
     return (
@@ -189,17 +221,32 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white/10 rounded-xl p-3">
-                        <p className="text-xs opacity-70">Total Ganho</p>
-                        <p className="text-xl font-bold">
-                            {(earnings?.totalEarned || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </p>
+                    <div className="bg-white/10 rounded-xl p-3 relative group overflow-hidden">
+                        <p className="text-[10px] opacity-70 font-black uppercase tracking-widest">Meus Pontos</p>
+                        <p className="text-2xl font-black">{earnings?.currentPoints || 0} pts</p>
+
+                        {earnings && earnings.currentPoints >= earnings.minConversionPoints && (
+                            <button
+                                onClick={handleConvertPoints}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 bg-white text-purple-600 px-3 py-1 rounded-full text-[10px] font-black hover:scale-105 active:scale-95 transition-all shadow-lg"
+                            >
+                                CONVERTER
+                            </button>
+                        )}
                     </div>
                     <div className="bg-white/10 rounded-xl p-3">
-                        <p className="text-xs opacity-70">Vídeos Assistidos</p>
-                        <p className="text-xl font-bold">{earnings?.videosWatched || 0}</p>
+                        <p className="text-[10px] opacity-70 font-black uppercase tracking-widest">Vídeos Vistos</p>
+                        <p className="text-2xl font-black">{earnings?.videosWatched || 0}</p>
                     </div>
                 </div>
+
+                {earnings && earnings.currentPoints < earnings.minConversionPoints && earnings.currentPoints > 0 && (
+                    <div className="mt-4 bg-black/20 rounded-xl p-2 text-center">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-white/60">
+                            Faltam {earnings.minConversionPoints - earnings.currentPoints} pontos para converter em R$ 1,00
+                        </p>
+                    </div>
+                )}
             </div>
 
             {/* Tabs */}
@@ -428,7 +475,7 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                                                 onClick={completeWatch}
                                                 className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-[0.2em] py-5 rounded-2xl transition-all shadow-xl shadow-emerald-500/20 active:scale-[0.98] text-xs"
                                             >
-                                                RESGATAR {watchingVideo.viewerEarning.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                RESGATAR {watchingVideo.viewerEarningPoints} PONTOS
                                             </button>
                                         </>
                                     )}
@@ -645,8 +692,9 @@ const CreateCampaignModal: React.FC<{
                                 type="number"
                                 value={form.budget}
                                 onChange={e => setForm({ ...form, budget: Number(e.target.value) })}
-                                className="bg-transparent text-primary-400 text-lg outline-none w-full"
+                                className="bg-transparent text-primary-400 text-lg outline-none w-full font-black"
                             />
+                            <p className="text-[8px] text-zinc-500 font-bold mt-1">≈ {estimatedViews} visualizações reais</p>
                         </div>
                     </div>
 
@@ -678,10 +726,13 @@ const CreateCampaignModal: React.FC<{
                     <div className="bg-primary-500/5 border border-primary-500/20 rounded-[2rem] p-6 space-y-4">
                         <div className="flex justify-between items-center group">
                             <div className="flex flex-col">
-                                <span className="text-xs text-zinc-500 font-bold">Alcance Estimado</span>
-                                <span className="text-[10px] text-primary-400 font-black animate-pulse">+2% BÔNUS INCLUSO</span>
+                                <span className="text-xs text-zinc-500 font-bold">Alcance Mínimo</span>
+                                <span className="text-[10px] text-emerald-400 font-black animate-pulse">+2% BÔNUS DE ENTREGA</span>
                             </div>
-                            <span className="text-base font-black text-white bg-white/5 px-3 py-1 rounded-full">{estimatedViews} VIEWS</span>
+                            <div className="text-right">
+                                <span className="text-2xl font-black text-white">{estimatedViews}</span>
+                                <span className="ml-1 text-[10px] font-black text-zinc-500">VIEWS</span>
+                            </div>
                         </div>
 
                         <div className="h-px bg-white/5 w-full" />
@@ -778,8 +829,8 @@ const VideoCard = memo(({ video, onWatch }: { video: PromoVideo; onWatch: (v: Pr
                             </div>
                             {!video.isOwner && (
                                 <div className="flex flex-col">
-                                    <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-wider leading-none mb-1">Ganhos</span>
-                                    <span className="text-emerald-400 font-black text-xs leading-none">+{video.viewerEarning.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                    <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-wider leading-none mb-1">Pontos</span>
+                                    <span className="text-emerald-400 font-black text-xs leading-none">+{video.viewerEarningPoints} pts</span>
                                 </div>
                             )}
                         </div>
