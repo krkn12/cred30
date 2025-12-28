@@ -181,10 +181,15 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
 
                         <div className="flex items-center gap-4">
                             <div className="text-right">
-                                <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-1">Reputação</p>
-                                <div className="flex items-center gap-2 bg-zinc-900 px-4 py-2 rounded-2xl border border-zinc-800 ring-1 ring-white/5 shadow-xl">
-                                    <Star size={16} className="text-primary-400" fill="currentColor" />
-                                    <span className="text-xl font-black text-white">{user.score || 0}</span>
+                                <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-1">Impacto Democrático</p>
+                                <div
+                                    onClick={onVoting}
+                                    className="cursor-pointer flex items-center gap-2 bg-primary-500/10 px-4 py-2 rounded-2xl border border-primary-500/20 ring-1 ring-white/5 shadow-xl hover:bg-primary-500/20 transition-all"
+                                >
+                                    <BarChart3 size={16} className="text-primary-400" />
+                                    <span className="text-xl font-black text-white">
+                                        {((1 + Math.sqrt(userQuotas.length)) * (1 + (user.score || 0) / 1000)).toFixed(1)}
+                                    </span>
                                 </div>
                             </div>
                             <button
@@ -198,11 +203,21 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
 
                     <div className="mt-8 pt-8 border-t border-white/5 flex flex-wrap items-center gap-6">
                         <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-400 border border-primary-500/20 shadow-lg shadow-black">
+                                <Star size={20} fill="currentColor" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Score Social</p>
+                                <p className="text-xs font-black text-white uppercase tracking-wider">{user.score || 0} Pontos</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${vipLevel.color} shadow-lg shadow-black`}>
                                 <ShieldCheck size={20} />
                             </div>
                             <div>
-                                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest">Nível de Membro</p>
+                                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest">Nível VIP</p>
                                 <p className="text-xs font-black text-white uppercase tracking-wider">{vipLevel.name}</p>
                             </div>
                         </div>

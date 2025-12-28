@@ -1,3 +1,0 @@
-[dotenv@17.2.3] injecting env (15) from .env -- tip: ­ƒöÉ encrypt with Dotenvx: https://dotenvx.com
-1. Fazendo login como admin...
-Login falhou: { success: false, message: 'Senha incorreta' }

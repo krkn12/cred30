@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Vote, Send, BarChart3, Gavel } from 'lucide-react';
+import { Vote, Send, BarChart3, Gavel, ShieldCheck, Trophy, Info } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
 interface AdminGovernanceProps {
@@ -11,12 +11,14 @@ export const AdminGovernance: React.FC<AdminGovernanceProps> = ({ onSuccess, onE
     const [proposals, setProposals] = useState<any[]>([]);
     const [newPropTitle, setNewPropTitle] = useState('');
     const [newPropDesc, setNewPropDesc] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         fetchProposals();
     }, []);
 
     const fetchProposals = async () => {
+        setIsLoading(true);
         try {
             const res = await apiService.getProposals();
             if (res.success) {
@@ -24,6 +26,8 @@ export const AdminGovernance: React.FC<AdminGovernanceProps> = ({ onSuccess, onE
             }
         } catch (e) {
             console.error('Erro ao buscar propostas:', e);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -32,7 +36,7 @@ export const AdminGovernance: React.FC<AdminGovernanceProps> = ({ onSuccess, onE
         try {
             const res = await apiService.createProposal(newPropTitle, newPropDesc);
             if (res.success) {
-                onSuccess('Sucesso', 'Proposta criada e enviada para votação!');
+                onSuccess('Democracia Ativa', 'Sua proposta foi lançada para a comunidade com sucesso!');
                 setNewPropTitle('');
                 setNewPropDesc('');
                 fetchProposals();
@@ -45,11 +49,11 @@ export const AdminGovernance: React.FC<AdminGovernanceProps> = ({ onSuccess, onE
     };
 
     const handleCloseProposal = async (id: number) => {
-        if (!window.confirm('Encerrar esta votação definitivamente?')) return;
+        if (!window.confirm('Deseja realmente encerrar esta votação? O resultado será final e imutável.')) return;
         try {
             const res = await apiService.closeProposal(id);
             if (res.success) {
-                onSuccess('Sucesso', 'Votação encerrada!');
+                onSuccess('Votação Encerrada', 'Os votos foram computados e a decisão foi selada.');
                 fetchProposals();
             }
         } catch (e: any) {
@@ -59,35 +63,52 @@ export const AdminGovernance: React.FC<AdminGovernanceProps> = ({ onSuccess, onE
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* Header Informativo */}
+            <div className="bg-primary-500/5 border border-primary-500/20 rounded-3xl p-6 flex items-center gap-6">
+                <div className="w-16 h-16 bg-primary-500 rounded-2xl flex items-center justify-center text-black shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+                    <ShieldCheck size={32} />
+                </div>
+                <div>
+                    <h2 className="text-xl font-black text-white uppercase tracking-tight">Conselho de Governança</h2>
+                    <p className="text-sm text-zinc-500 font-bold uppercase tracking-wider mt-1 italic">Gestão Democrática baseada em Voto Quadrático + Reputação</p>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
-                    <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
-                        <div className="p-2 bg-zinc-800 rounded-lg"><Vote className="text-primary-400" size={20} /></div>
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none group-hover:rotate-12 transition-transform duration-700">
+                        <Vote size={120} className="text-primary-400" />
+                    </div>
+
+                    <h3 className="text-xl font-black text-white mb-8 flex items-center gap-3 relative z-10 uppercase tracking-tight">
+                        <div className="p-2 bg-zinc-800 rounded-xl"><Vote className="text-primary-400" size={20} /></div>
                         Nova Proposta do Clube
                     </h3>
-                    <div className="space-y-6">
+
+                    <div className="space-y-6 relative z-10">
                         <div>
-                            <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1 mb-2 block">Título da Proposta</label>
+                            <label className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em] ml-1 mb-2 block">Título da Proposta</label>
                             <input
-                                placeholder="Ex: Aumento do teto de apoio mútuo"
+                                placeholder="Ex: Ajuste da taxa de cessão de cotas"
                                 value={newPropTitle}
                                 onChange={(e) => setNewPropTitle(e.target.value)}
-                                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
+                                className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-bold tracking-tight transition-all"
                             />
                         </div>
                         <div>
-                            <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1 mb-2 block">Descrição Detalhada</label>
+                            <label className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em] ml-1 mb-2 block">Descrição Detalhada para Membros</label>
                             <textarea
                                 rows={4}
-                                placeholder="Explique os benefícios para a comunidade..."
+                                placeholder="Explique os benefícios sistêmicos para a comunidade Cred30..."
                                 value={newPropDesc}
                                 onChange={(e) => setNewPropDesc(e.target.value)}
-                                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium resize-none"
+                                className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium resize-none transition-all"
                             />
                         </div>
                         <button
                             onClick={handleCreateProposal}
-                            className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition-all shadow-xl flex items-center justify-center gap-2"
+                            disabled={!newPropTitle || !newPropDesc}
+                            className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-30 text-black font-black py-5 rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3 uppercase tracking-widest text-xs active:scale-95 translate-y-[-2px] hover:translate-y-[-4px]"
                         >
                             <Send size={20} /> LANÇAR PARA VOTAÇÃO
                         </button>
@@ -95,51 +116,58 @@ export const AdminGovernance: React.FC<AdminGovernanceProps> = ({ onSuccess, onE
                 </div>
 
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
-                    <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
-                        <div className="p-2 bg-zinc-800 rounded-lg"><BarChart3 className="text-zinc-400" size={20} /></div>
-                        Propostas em Aberto / Histórico
+                    <h3 className="text-xl font-black text-white mb-8 flex items-center gap-3 uppercase tracking-tight">
+                        <div className="p-2 bg-zinc-800 rounded-xl"><BarChart3 className="text-zinc-400" size={20} /></div>
+                        Histórico de Decisões
                     </h3>
-                    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                        {proposals.map((prop) => (
-                            <div key={prop.id} className="bg-black/20 border border-zinc-800 p-6 rounded-2xl space-y-4">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <h4 className="text-white font-bold">{prop.title}</h4>
-                                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-                                            Criada em: {new Date(prop.created_at).toLocaleDateString()}
-                                        </p>
-                                    </div>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase ${prop.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
-                                        {prop.status === 'ACTIVE' ? 'EM VOTAÇÃO' : 'ENCERRADA'}
-                                    </span>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-black/40 p-3 rounded-xl border border-zinc-800">
-                                        <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Poder Sim</p>
-                                        <p className="text-xl font-black text-emerald-400">{prop.yes_votes}</p>
-                                    </div>
-                                    <div className="bg-black/40 p-3 rounded-xl border border-zinc-800">
-                                        <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Poder Não</p>
-                                        <p className="text-xl font-black text-red-400">{prop.no_votes}</p>
-                                    </div>
-                                </div>
-
-                                {prop.status === 'ACTIVE' && (
-                                    <button
-                                        onClick={() => handleCloseProposal(prop.id)}
-                                        className="w-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-black border border-red-500/20 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <Gavel size={14} /> ENCERRAR VOTAÇÃO
-                                    </button>
-                                )}
+                    <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                        {isLoading ? (
+                            <div className="py-20 text-center text-zinc-600 font-black uppercase tracking-[0.2em] animate-pulse">Sincronizando...</div>
+                        ) : proposals.length === 0 ? (
+                            <div className="text-center py-24 opacity-30">
+                                <Info size={60} className="mx-auto mb-6 text-zinc-700" />
+                                <p className="text-xs font-black uppercase tracking-[0.3em]">Nenhuma proposta no registro</p>
                             </div>
-                        ))}
-                        {proposals.length === 0 && (
-                            <div className="text-center py-20 opacity-30">
-                                <Vote size={48} className="mx-auto mb-4" />
-                                <p className="text-xs font-bold uppercase tracking-widest">Nenhuma proposta registrada</p>
-                            </div>
+                        ) : (
+                            proposals.map((prop) => (
+                                <div key={prop.id} className="bg-black/40 border border-zinc-800 hover:border-zinc-700 p-6 rounded-3xl space-y-5 transition-all group">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h4 className="text-white font-black text-lg uppercase tracking-tight leading-none mb-2">{prop.title}</h4>
+                                            <p className="text-[9px] text-zinc-600 font-black uppercase tracking-widest">
+                                                ID: {prop.id} • {new Date(prop.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                                            </p>
+                                        </div>
+                                        <span className={`text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest border ${prop.status === 'active' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
+                                            {prop.status === 'active' ? 'ATIVA' : 'FINALIZADA'}
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-zinc-900/60 p-4 rounded-2xl border border-white/5">
+                                            <p className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-1 flex items-center gap-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> PODER SIM
+                                            </p>
+                                            <p className="text-2xl font-black text-white tabular-nums">{parseFloat(prop.yes_votes_power || 0).toFixed(1)}</p>
+                                        </div>
+                                        <div className="bg-zinc-900/60 p-4 rounded-2xl border border-white/5">
+                                            <p className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-1 flex items-center gap-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-red-500" /> PODER NÃO
+                                            </p>
+                                            <p className="text-2xl font-black text-zinc-500 tabular-nums">{parseFloat(prop.no_votes_power || 0).toFixed(1)}</p>
+                                        </div>
+                                    </div>
+
+                                    {prop.status === 'active' && (
+                                        <button
+                                            onClick={() => handleCloseProposal(prop.id)}
+                                            className="w-full bg-zinc-800 hover:bg-red-600 text-zinc-400 hover:text-white border border-zinc-700 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 shadow-xl"
+                                        >
+                                            <Gavel size={14} /> ENCERRAR E COMPUTAR
+                                        </button>
+                                    )}
+                                </div>
+                            ))
                         )}
                     </div>
                 </div>
