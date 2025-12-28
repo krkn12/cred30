@@ -996,6 +996,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                             deliveryAddress: 'Endereço Principal', // TODO: Pegar do user ou input
                                                             contactPhone: '000000000',
                                                             paymentMethod: paymentMethod,
+                                                            payerCpfCnpj: paymentMethod !== 'BALANCE' ? cardData.cpf : undefined,
                                                             creditCard: paymentMethod === 'CARD' ? cardData : undefined
                                                         });
                                                         if (res.success) {
@@ -1248,16 +1249,38 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 </div>
                             </div>
 
+                            {paymentMethod === 'PIX' && (
+                                <div className="mt-4 animate-in slide-in-from-top-2">
+                                    <label className="text-[9px] text-zinc-500 font-bold uppercase block mb-1">CPF ou CNPJ (Obrigatório)</label>
+                                    <input
+                                        placeholder="CPF ou CNPJ"
+                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-700 focus:border-indigo-500 outline-none transition-colors"
+                                        value={cardData.cpf}
+                                        maxLength={18}
+                                        onChange={e => {
+                                            const v = e.target.value.replace(/[^0-9./-]/g, '');
+                                            setCardData({ ...cardData, cpf: v })
+                                        }}
+                                    />
+                                </div>
+                            )}
+
                             {paymentMethod === 'CARD' && (
-                                <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-2">
+                                <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-2 mt-2">
+                                    <input
+                                        placeholder="CPF/CNPJ do Titular"
+                                        className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-700"
+                                        value={cardData.cpf}
+                                        onChange={e => setCardData({ ...cardData, cpf: e.target.value.replace(/[^0-9./-]/g, '') })}
+                                    />
                                     <input
                                         placeholder="Nº do Cartão"
-                                        className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                        className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-700"
                                         onChange={e => setCardData({ ...cardData, number: e.target.value.replace(/\s/g, '').slice(0, 16) })}
                                     />
                                     <input
                                         placeholder="MM/AA"
-                                        className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                        className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-700"
                                         onChange={e => {
                                             const [m, a] = e.target.value.split('/');
                                             setCardData({ ...cardData, expiryMonth: m || '', expiryYear: a ? '20' + a : '' });
@@ -1265,12 +1288,12 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     />
                                     <input
                                         placeholder="CVV"
-                                        className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                        className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-700"
                                         onChange={e => setCardData({ ...cardData, ccv: e.target.value.replace(/\D/g, '').slice(0, 4) })}
                                     />
                                     <input
-                                        placeholder="Nome"
-                                        className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                        placeholder="Nome no Cartão"
+                                        className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-700"
                                         onChange={e => setCardData({ ...cardData, holderName: e.target.value })}
                                     />
                                 </div>
