@@ -379,7 +379,7 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-4 gap-2 text-center mb-4">
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center mb-4">
                                         <div className="bg-background rounded-xl p-2 border border-surfaceHighlight">
                                             <p className="text-[8px] text-zinc-500 font-bold uppercase tracking-tighter">Views Totais</p>
                                             <p className="font-black text-white text-xs">{campaign.totalViews.toLocaleString()}</p>
@@ -631,8 +631,9 @@ const CreateCampaignModal: React.FC<{
 
     if (paymentSuccessData) {
         return (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[500] flex items-center justify-center p-4 animate-in fade-in duration-300">
-                <div className="bg-[#0A0A0A] border border-surfaceHighlight rounded-3xl p-6 w-full max-w-sm relative shadow-2xl animate-in zoom-in-95 duration-300">
+        return (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+                <div className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-surfaceHighlight rounded-t-[2.5rem] sm:rounded-3xl p-6 w-full sm:max-w-sm relative shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300">
                     <div className="flex justify-between items-start mb-6">
                         <h3 className="text-xl font-bold text-white">Dados da cobrança</h3>
                         <button onClick={() => { onClose(); onSuccess(); }} className="text-zinc-500 hover:text-white bg-zinc-900/50 p-2 rounded-full">
