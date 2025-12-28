@@ -43,15 +43,22 @@ async function main() {
         execSync('npm run bump', { stdio: 'inherit' });
 
         // 3. Git add, commit e push
-        console.log('\n📤 Enviando para o repositório...');
-        const currentBranch = execSync('git rev-parse --abbrev-ref HEAD').toString().trim();
+        // 3. Git add, commit e push
+        console.log('\n📤 Enviando para o repositório (MASTER)...');
         execSync('git add .', { stdio: 'inherit' });
         execSync(`git commit -m "${message}"`, { stdio: 'inherit' });
 
-        console.log('🔄 Sincronizando com o remoto...');
-        execSync(`git pull origin ${currentBranch} --rebase`, { stdio: 'inherit' });
+        console.log('🔄 Sincronizando com o remoto (master)...');
+        // Tenta puxar do master para garantir que não há conflitos
+        try {
+            execSync('git pull origin master --rebase', { stdio: 'inherit' });
+        } catch (e) {
+            console.log('⚠️ Rebase falhou, tentando pull normal...');
+            execSync('git pull origin master', { stdio: 'inherit' });
+        }
 
-        execSync(`git push origin ${currentBranch}`, { stdio: 'inherit' });
+        // Push explícito para o master
+        execSync('git push origin HEAD:master', { stdio: 'inherit' });
 
         // 4. Build do frontend
         console.log('\n🔨 Buildando frontend...');
