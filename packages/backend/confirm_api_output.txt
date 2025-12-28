@@ -1,3 +1,0 @@
-[dotenv@17.2.3] injecting env (15) from .env -- tip: ­ƒæÑ sync secrets across teammates & machines: https://dotenvx.com/ops
-1. Fazendo login como admin...
-Login falhou: { success: false, message: 'Usu├írio n├úo encontrado' }

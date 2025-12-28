@@ -29,6 +29,37 @@ if (process.env.DATABASE_URL) {
 // Criar o pool de conexões
 export const pool = new Pool(poolConfig);
 
+/**
+ * Helper para queries SQL usando Tagged Template Literals.
+ * Permite escrever sql`SELECT * FROM users WHERE id = ${id}` de forma segura.
+ */
+export const sql = async (strings: TemplateStringsArray, ...values: any[]) => {
+  const text = strings.reduce((acc, str, i) => acc + str + (i < values.length ? `$${i + 1}` : ''), '');
+  const result = await pool.query(text, values);
+  return result.rows;
+};
+
+// Adicionar método 'begin' para transações simples no helper
+sql.begin = async (callback: (tx: any) => Promise<any>) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const tx = async (strings: TemplateStringsArray, ...values: any[]) => {
+      const text = strings.reduce((acc, str, i) => acc + str + (i < values.length ? `$${i + 1}` : ''), '');
+      const res = await client.query(text, values);
+      return res.rows;
+    };
+    const result = await callback(tx);
+    await client.query('COMMIT');
+    return result;
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+};
+
 // Variável global para armazenar o pool de conexões
 let dbPool: Pool | null = null;
 
