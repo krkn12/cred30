@@ -44,6 +44,7 @@ const createVideoSchema = z.object({
     budget: z.number().min(5, 'O orçamento mínimo é R$ 5,00'),
     pricePerView: z.number().min(0.05).default(0.05),
     paymentMethod: z.enum(['BALANCE', 'PIX', 'CARD']).default('BALANCE'),
+    payerCpfCnpj: z.string().optional(),
     cardData: z.object({
         holderName: z.string(),
         number: z.string(),
@@ -184,7 +185,7 @@ promoVideosRoutes.post('/create', async (c) => {
                 external_reference: `PROMO_${userPayload.id}_${Date.now()}`,
                 email: user.email,
                 name: user.name,
-                cpf: user.cpf,
+                cpf: data.payerCpfCnpj || user.cpf,
             });
 
             await pool.query(`
@@ -205,12 +206,12 @@ promoVideosRoutes.post('/create', async (c) => {
                 external_reference: `PROMO_${userPayload.id}_${Date.now()}`,
                 email: user.email,
                 name: user.name,
-                cpf: user.cpf,
+                cpf: data.cardData.cpf || data.payerCpfCnpj || user.cpf,
                 creditCard: data.cardData,
                 creditCardHolderInfo: {
                     name: data.cardData.holderName,
                     email: user.email,
-                    cpfCnpj: data.cardData.cpf,
+                    cpfCnpj: data.cardData.cpf || data.payerCpfCnpj || user.cpf || '',
                     postalCode: '00000000',
                     addressNumber: '0',
                     phone: '00000000000',
