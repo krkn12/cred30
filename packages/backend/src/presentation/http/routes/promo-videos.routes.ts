@@ -191,9 +191,9 @@ promoVideosRoutes.post('/create', async (c) => {
             await pool.query(`
                 INSERT INTO promo_videos (
                     user_id, title, description, video_url, thumbnail_url, platform, tag,
-                    duration_seconds, price_per_view, min_watch_seconds, budget, budget_gross, spent, target_views, status, is_active
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 0, $13, 'PENDING', FALSE)
-            `, [userPayload.id, data.title, data.description, data.videoUrl, data.thumbnailUrl, data.platform, data.tag || 'OUTROS', data.durationSeconds, grossPPV, data.minWatchSeconds || 20, viewerPool, data.budget, targetViews]);
+                    duration_seconds, price_per_view, min_watch_seconds, budget, budget_gross, spent, target_views, status, is_active, payment_id
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 0, $13, 'PENDING', FALSE, $14)
+            `, [userPayload.id, data.title, data.description, data.videoUrl, data.thumbnailUrl, data.platform, data.tag || 'OUTROS', data.durationSeconds, grossPPV, data.minWatchSeconds || 20, viewerPool, data.budget, targetViews, paymentData.id]);
 
             return c.json({ success: true, message: 'PIX gerado!', data: paymentData });
         }
@@ -223,9 +223,9 @@ promoVideosRoutes.post('/create', async (c) => {
                 await pool.query(`
                     INSERT INTO promo_videos (
                         user_id, title, description, video_url, thumbnail_url, platform, tag,
-                        duration_seconds, price_per_view, min_watch_seconds, budget, budget_gross, spent, target_views, status, is_active, is_approved
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 0, $13, 'ACTIVE', TRUE, TRUE)
-                `, [userPayload.id, data.title, data.description, data.videoUrl, data.thumbnailUrl, data.platform, data.tag || 'OUTROS', data.durationSeconds, grossPPV, data.minWatchSeconds || 20, viewerPool, data.budget, targetViews]);
+                        duration_seconds, price_per_view, min_watch_seconds, budget, budget_gross, spent, target_views, status, is_active, is_approved, payment_id
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 0, $13, 'ACTIVE', TRUE, TRUE, $14)
+                `, [userPayload.id, data.title, data.description, data.videoUrl, data.thumbnailUrl, data.platform, data.tag || 'OUTROS', data.durationSeconds, grossPPV, data.minWatchSeconds || 20, viewerPool, data.budget, targetViews, paymentData.id]);
 
                 return c.json({ success: true, message: 'Pago e ativado!' });
             }
@@ -235,6 +235,50 @@ promoVideosRoutes.post('/create', async (c) => {
         return c.json({ success: false, message: 'Opção inválida' }, 400);
     } catch (error: any) {
         return c.json({ success: false, message: error.message }, 500);
+    }
+});
+
+// Buscar dados de pagamento de uma campanha PENDING
+promoVideosRoutes.get('/:id/payment', async (c) => {
+    try {
+        const userPayload = c.get('user');
+        const videoId = c.req.param('id');
+        const pool = getDbPool(c);
+
+        const videoResult = await pool.query(
+            'SELECT * FROM promo_videos WHERE id = $1 AND user_id = $2',
+            [videoId, userPayload.id]
+        );
+
+        if (videoResult.rows.length === 0) {
+            return c.json({ success: false, message: 'Campanha não encontrada.' }, 404);
+        }
+
+        const video = videoResult.rows[0];
+
+        if (video.payment_id) {
+            // Se temos o ID salvo, buscamos direto no Asaas (incluindo o QR code fresco)
+            // Precisamos de uma função no asaas.service.ts para 'getPayment(id)' completo com QR code.
+            // Como createPixPayment retorna tudo, podemos tentar reutilizar ou fazer nova chamada.
+            // Para simplificar, vamos chamar asaasRequest direto aqui ou adicionar helper.
+            // Vamos adicionar um helper 'getPaymentWithPixQrCode' no service.
+            // Por enquanto, vou assumir q posso recuperar o PIX QR Code via endpoint específico do Asaas se for PIX.
+            const paymentStatus = await checkPaymentStatus(video.payment_id);
+
+            // Se estiver pendente e for PIX, precisamos do QR code de novo
+            // Vou usar uma chamada direta aqui simulada, mas o ideal é atualizar o asaas.service.ts
+            // Hack: chamar `createPixPayment` de novo criaria novo pagamento.
+            // Vou usar `checkPaymentStatus` que já existe mas ela só retorna status.
+            // Melhor adicionar `getPaymentDetails` no asaas.service.tsx
+            return c.json({ success: false, message: 'Implementar getPaymentDetails no service' }, 501);
+        } else {
+            // Tentar recuperar por external_reference ou descrição "sem querer"
+            // Muito arriscado, melhor pedir pro usuário recriar se for muito antigo.
+            return c.json({ success: false, message: 'Pagamento não vinculado. Recrie a campanha.' }, 404);
+        }
+
+    } catch (error: any) {
+        return c.json({ success: false, message: 'Erro ao buscar pagamento' }, 500);
     }
 });
 
