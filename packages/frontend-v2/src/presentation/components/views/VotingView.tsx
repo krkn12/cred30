@@ -17,9 +17,14 @@ export const VotingView: React.FC<VotingViewProps> = ({ appState, onBack, onRefr
     const [isLoading, setIsLoading] = useState(true);
     const [votingInProgress, setVotingInProgress] = useState<number | null>(null);
 
-    const user = appState.currentUser!;
-    const userQuotasCount = appState.quotas.filter(q => q.userId === user.id && q.status === 'ACTIVE').length;
-    const totalCommunityMembers = appState.users.length;
+    const user = appState?.currentUser;
+    const userQuotasCount = appState?.quotas?.filter(q => q.userId === user?.id && q.status === 'ACTIVE').length ?? 0;
+    const totalCommunityMembers = appState?.users?.length ?? 0;
+
+    // Guard clause: prevent crash if appState or user is not loaded yet
+    if (!appState || !user) {
+        return <div className="text-center py-12 text-zinc-500">Carregando...</div>;
+    }
 
     const fetchProposals = async () => {
         try {
