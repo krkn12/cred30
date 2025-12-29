@@ -10,7 +10,11 @@ import {
     ASAAS_CARD_FIXED_FEE,
     VIDEO_VIEWER_SHARE as VIEWER_SHARE,
     VIDEO_QUOTA_HOLDERS_SHARE as QUOTA_HOLDERS_SHARE,
-    VIDEO_SERVICE_FEE_SHARE as SERVICE_FEE_SHARE
+    VIDEO_SERVICE_FEE_SHARE as SERVICE_FEE_SHARE,
+    PLATFORM_FEE_TAX_SHARE,
+    PLATFORM_FEE_OPERATIONAL_SHARE,
+    PLATFORM_FEE_OWNER_SHARE,
+    PLATFORM_FEE_INVESTMENT_SHARE
 } from '../../../shared/constants/business.constants';
 
 // Constantes de conversão
@@ -69,17 +73,11 @@ promoVideosRoutes.get('/feed', async (c) => {
 
         const result = await pool.query(`
             SELECT pv.*, u.name as promoter_name,
-                   COALESCE(stats.completed_count, 0) as completed_views,
+                   (SELECT COUNT(*) FROM promo_video_views pvv WHERE pvv.video_id = pv.id AND pvv.completed = TRUE) as completed_views,
                    (pv.user_id = $1) as is_owner,
                    ROW_NUMBER() OVER (ORDER BY pv.total_views DESC, pv.price_per_view DESC) as ranking
             FROM promo_videos pv
             JOIN users u ON pv.user_id = u.id
-            LEFT JOIN (
-                SELECT video_id, COUNT(*) as completed_count 
-                FROM promo_video_views 
-                WHERE completed = TRUE 
-                GROUP BY video_id
-            ) stats ON stats.video_id = pv.id
             WHERE pv.is_active = TRUE 
               AND pv.status = 'ACTIVE'
               AND pv.budget > pv.spent
@@ -94,24 +92,19 @@ promoVideosRoutes.get('/feed', async (c) => {
 
         return c.json({
             success: true,
-            data: result.rows.map((v, index) => ({
+            data: result.rows.map(v => ({
                 id: v.id,
                 title: v.title,
-                description: v.description,
                 videoUrl: v.video_url,
                 thumbnailUrl: v.thumbnail_url,
                 platform: v.platform,
                 tag: v.tag || 'OUTROS',
-                durationSeconds: v.duration_seconds,
                 pricePerView: parseFloat(v.price_per_view),
                 minWatchSeconds: v.min_watch_seconds || 20,
+                viewerEarningPoints: Math.floor(parseFloat(v.price_per_view) * VIEWER_SHARE * POINTS_PER_REAL),
                 promoterName: v.promoter_name,
-                totalViews: parseInt(v.total_views) || 0,
-                completedViews: parseInt(v.completed_views) || 0,
-                targetViews: v.target_views,
-                viewerEarningPoints: v.is_owner ? 0 : Math.floor(parseFloat(v.price_per_view) * VIEWER_SHARE * POINTS_PER_REAL),
                 isOwner: v.is_owner,
-                ranking: parseInt(v.ranking) || index + 1,
+                ranking: parseInt(v.ranking)
             }))
         });
     } catch (error) {
@@ -119,8 +112,59 @@ promoVideosRoutes.get('/feed', async (c) => {
         return c.json({ success: false, message: 'Erro ao buscar vídeos' }, 500);
     }
 });
+// Farm de Views: Buscar o próximo vídeo disponível
+promoVideosRoutes.get('/farm/next', async (c) => {
+    try {
+        const userPayload = c.get('user');
+        const pool = getDbPool(c);
 
-// Criar campanha de vídeo promocional
+        // Busca o vídeo com maior valor de recompensa que o usuário ainda não viu profissionalmente
+        // Exclui vídeos do próprio usuário
+        const result = await pool.query(`
+            SELECT pv.*, u.name as promoter_name
+            FROM promo_videos pv
+            JOIN users u ON pv.user_id = u.id
+            WHERE pv.is_active = TRUE 
+              AND pv.status = 'ACTIVE'
+              AND pv.budget > pv.spent
+              AND pv.user_id != $1
+              AND NOT EXISTS (
+                  SELECT 1 FROM promo_video_views pvv 
+                  WHERE pvv.video_id = pv.id AND pvv.viewer_id = $1
+              )
+            ORDER BY pv.price_per_view DESC, pv.created_at ASC
+            LIMIT 1
+        `, [userPayload.id]);
+
+        if (result.rows.length === 0) {
+            return c.json({
+                success: false,
+                message: 'Você já assistiu todos os vídeos disponíveis! Volte mais tarde.',
+                code: 'NO_VIDEOS_AVAILABLE'
+            });
+        }
+
+        const v = result.rows[0];
+        return c.json({
+            success: true,
+            data: {
+                id: v.id,
+                title: v.title,
+                videoUrl: v.video_url,
+                thumbnailUrl: v.thumbnail_url,
+                platform: v.platform,
+                tag: v.tag || 'OUTROS',
+                pricePerView: parseFloat(v.price_per_view),
+                minWatchSeconds: v.min_watch_seconds || 20,
+                viewerEarningPoints: Math.floor(parseFloat(v.price_per_view) * VIEWER_SHARE * POINTS_PER_REAL),
+                promoterName: v.promoter_name
+            }
+        });
+    } catch (error) {
+        console.error('[FARM] Erro ao buscar próximo vídeo:', error);
+        return c.json({ success: false, message: 'Erro ao processar farm' }, 500);
+    }
+});
 promoVideosRoutes.post('/create', async (c) => {
     try {
         const userPayload = c.get('user');
@@ -143,10 +187,24 @@ promoVideosRoutes.post('/create', async (c) => {
                 await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [data.budget, userPayload.id]);
 
                 const quotaShare = data.budget * QUOTA_HOLDERS_SHARE;
-                const systemAndViewerShare = data.budget * (SERVICE_FEE_SHARE + VIEWER_SHARE);
+                const platformShare = data.budget * SERVICE_FEE_SHARE;
+
                 await client.query(
-                    'UPDATE system_config SET profit_pool = profit_pool + $1, system_balance = system_balance + $2',
-                    [quotaShare, systemAndViewerShare]
+                    `UPDATE system_config SET 
+                        profit_pool = profit_pool + $1, 
+                        total_tax_reserve = total_tax_reserve + $2,
+                        total_operational_reserve = total_operational_reserve + $3,
+                        total_owner_profit = total_owner_profit + $4,
+                        investment_reserve = investment_reserve + $5,
+                        system_balance = system_balance + $6`,
+                    [
+                        quotaShare,
+                        platformShare * PLATFORM_FEE_TAX_SHARE,
+                        platformShare * PLATFORM_FEE_OPERATIONAL_SHARE,
+                        platformShare * PLATFORM_FEE_OWNER_SHARE,
+                        platformShare * PLATFORM_FEE_INVESTMENT_SHARE,
+                        data.budget - quotaShare // Everything except profit_pool goes to system_balance
+                    ]
                 );
 
                 const videoResult = await client.query(`
@@ -359,13 +417,26 @@ promoVideosRoutes.post('/:videoId/complete-view', async (c) => {
             WHERE pvv.video_id = $1 AND pvv.viewer_id = $2 AND pvv.completed = FALSE
         `, [videoId, userPayload.id]);
 
-        if (viewResult.rows.length === 0) return c.json({ success: false, message: 'Não encontrado' }, 404);
+        if (viewResult.rows.length === 0) return c.json({ success: false, message: 'Não encontrado ou já concluído' }, 404);
 
         const view = viewResult.rows[0];
         const viewerEarningAmount = parseFloat(view.price_per_view) * VIEWER_SHARE;
         const viewerEarningPoints = Math.floor(viewerEarningAmount * POINTS_PER_REAL);
 
-        if (watchTime < view.min_watch_seconds) return c.json({ success: false, message: 'Tempo insuficiente' }, 400);
+        // Anti-Cheat: Verificar se o tempo mínimo passou desde a criação do registro de view
+        // CORREÇÃO: O banco usa started_at, não created_at
+        const startTime = new Date(view.started_at).getTime();
+        const now = Date.now();
+        const elapsedSeconds = (now - startTime) / 1000;
+
+        // Se o tempo passado no servidor for menor que o tempo mínimo exigido, bloqueia
+        // Damos uma margem de 2 segundos para latência de rede
+        if (elapsedSeconds < (view.min_watch_seconds - 2)) {
+            console.warn(`[ANTI-CHEAT] Usuário ${userPayload.id} tentou pular vídeo ${videoId}. Decorrido: ${elapsedSeconds}s, Mínimo: ${view.min_watch_seconds}s`);
+            return c.json({ success: false, message: 'Segurança: Você está assistindo rápido demais.' }, 400);
+        }
+
+        if (watchTime < view.min_watch_seconds) return c.json({ success: false, message: 'Tempo insuficiente capturado pelo player.' }, 400);
 
         await executeInTransaction(pool, async (client) => {
             await client.query(`
@@ -464,6 +535,47 @@ promoVideosRoutes.get('/my-earnings', async (c) => {
     } catch (error) {
         console.error('[PROMO-VIDEOS] Erro ao buscar ganhos:', error);
         return c.json({ success: false, message: 'Erro ao buscar ganhos' }, 500);
+    }
+});
+
+// Remover/Cancelar uma campanha
+promoVideosRoutes.delete('/:id', async (c) => {
+    try {
+        const userPayload = c.get('user');
+        const id = c.req.param('id');
+        const pool = getDbPool(c);
+
+        // Verificar se a campanha pertence ao usuário
+        const checkResult = await pool.query(
+            'SELECT * FROM promo_videos WHERE id = $1 AND user_id = $2',
+            [id, userPayload.id]
+        );
+
+        if (checkResult.rows.length === 0) {
+            return c.json({ success: false, message: 'Campanha não encontrada.' }, 404);
+        }
+
+        const campaign = checkResult.rows[0];
+
+        // Se for PENDING, podemos deletar permanentemente se ainda não foi paga
+        // Se for ACTIVE, apenas desativamos/cancelamos (o usuário aceita a perda do saldo restante)
+        if (campaign.status === 'PENDING') {
+            await pool.query('DELETE FROM promo_videos WHERE id = $1', [id]);
+        } else {
+            await pool.query(
+                'UPDATE promo_videos SET is_active = FALSE, status = $1 WHERE id = $2',
+                ['CANCELED', id]
+            );
+        }
+
+        return c.json({
+            success: true,
+            message: 'Campanha removida com sucesso.'
+        });
+
+    } catch (error: any) {
+        console.error('[PROMO-VIDEOS] Erro ao remover campanha:', error);
+        return c.json({ success: false, message: error.message || 'Erro ao remover campanha' }, 500);
     }
 });
 

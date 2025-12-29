@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AppState } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 import { ConfirmModal } from '../ui/ConfirmModal';
@@ -66,6 +66,7 @@ const NativeAdCard = ({ title, price, category, img }: any) => (
 );
 
 export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: MarketplaceViewProps) => {
+    const navigate = useNavigate();
     const [view, setView] = useState<'browse' | 'create' | 'my-orders' | 'details' | 'missions' | 'offline'>('browse');
     const [pendingOfflineSales, setPendingOfflineSales] = useState<any[]>(() => {
         const saved = localStorage.getItem('cred30_offline_sales');
@@ -369,16 +370,38 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
             {/* Protective Escrow Banner */}
             {view === 'browse' && (
-                <div className="bg-emerald-900/20 border border-emerald-500/20 rounded-2xl p-4 flex items-start gap-4">
-                    <div className="bg-emerald-500/20 p-2 rounded-xl text-emerald-400">
-                        <ShieldCheck size={24} />
+                <div className="space-y-3">
+                    <div className="bg-emerald-900/20 border border-emerald-500/20 rounded-2xl p-4 flex items-start gap-4">
+                        <div className="bg-emerald-500/20 p-2 rounded-xl text-emerald-400">
+                            <ShieldCheck size={24} />
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-emerald-400">Compra Garantida Cred30</h4>
+                            <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">
+                                Seu dinheiro fica protegido conosco. Só liberamos o valor ao vendedor quando você confirmar que recebeu tudo ok.
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h4 className="text-sm font-bold text-emerald-400">Compra Garantida Cred30</h4>
-                        <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">
-                            Seu dinheiro fica protegido conosco. Só liberamos o valor ao vendedor quando você confirmar que recebeu tudo ok.
-                        </p>
-                    </div>
+
+                    {!state.currentUser?.asaas_wallet_id && (
+                        <div className="bg-primary-500/5 border border-primary-500/20 rounded-2xl p-4 flex items-center justify-between gap-4">
+                            <div className="flex items-start gap-3">
+                                <div className="bg-primary-500/10 p-2 rounded-xl text-primary-400">
+                                    <Sparkles size={20} />
+                                </div>
+                                <div>
+                                    <h4 className="text-xs font-bold text-white">Seja um Vendedor Verificado</h4>
+                                    <p className="text-[10px] text-zinc-500 mt-0.5">Receba via PIX/Cartão e passe mais confiança.</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => navigate('/app/seller')}
+                                className="bg-primary-500 hover:bg-primary-400 text-black px-3 py-1.5 rounded-lg text-[10px] font-black transition active:scale-95"
+                            >
+                                COMEÇAR
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -499,9 +522,13 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                         <div className="bg-amber-500/20 text-amber-400 text-[8px] px-1.5 py-0.5 rounded border border-amber-500/20 flex items-center gap-1 font-black">
                                                             <Sparkles size={8} /> PARCEIRO
                                                         </div>
-                                                    ) : item.is_boosted && (
+                                                    ) : item.is_boosted ? (
                                                         <div className="bg-primary-500/10 text-primary-400 text-[8px] px-1.5 py-0.5 rounded border border-primary-500/20 flex items-center gap-1 font-black">
                                                             <Zap size={8} /> DESTAQUE
+                                                        </div>
+                                                    ) : item.asaas_wallet_id && (
+                                                        <div className="bg-emerald-500/20 text-emerald-400 text-[8px] px-1.5 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1 font-black">
+                                                            <ShieldCheck size={8} /> VERIFICADO
                                                         </div>
                                                     )}
                                                 </div>
@@ -867,7 +894,20 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                         {selectedItem.is_boosted && <span className="text-[10px] font-black bg-primary-400 text-black px-2 py-0.5 rounded animate-pulse">DESTAQUE</span>}
                                     </div>
                                     <h1 className="text-3xl font-black text-white tracking-tight leading-none mb-1">{selectedItem.title}</h1>
-                                    <p className="text-2xl font-black text-primary-400">{formatCurrency(parseFloat(selectedItem.price))}</p>
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-2xl font-black text-primary-400">{formatCurrency(parseFloat(selectedItem.price))}</p>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-zinc-500 font-bold uppercase">Vendedor:</span>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-xs font-bold text-white">{selectedItem.seller_name}</span>
+                                                {selectedItem.asaas_wallet_id && (
+                                                    <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
+                                                        <ShieldCheck size={10} /> Verificado
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6 space-y-4">
@@ -894,55 +934,6 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     </div>
                                 </div>
 
-                                {/* Categorias - Scroll Horizontal Mobile, Grid Desktop */}
-                                <div className="flex overflow-x-auto pb-4 gap-2 sm:grid sm:grid-cols-6 lg:grid-cols-8 scrollbar-hide">
-                                    <button
-                                        onClick={() => setSelectedCategory('TODOS')}
-                                        className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${selectedCategory === 'TODOS'
-                                            ? 'bg-primary-500 text-black shadow-lg shadow-primary-500/20'
-                                            : 'bg-surface border border-surfaceHighlight text-zinc-400 hover:text-white'
-                                            }`}
-                                    >
-                                        Todos
-                                    </button>
-                                    {CATEGORIES.map(cat => (
-                                        <button
-                                            key={cat.id}
-                                            onClick={() => setSelectedCategory(cat.id)}
-                                            className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 ${selectedCategory === cat.id
-                                                ? 'bg-primary-500 text-black shadow-lg shadow-primary-500/20'
-                                                : 'bg-surface border border-surfaceHighlight text-zinc-400 hover:text-white'
-                                                }`}
-                                        >
-                                            <span>{cat.icon}</span>
-                                            {cat.label}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {/* Lista de Produtos */}
-                                {loading ? (
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                                        {[1, 2, 3, 4].map(i => (
-                                            <div key={i} className="aspect-[4/5] bg-surface rounded-2xl animate-pulse" />
-                                        ))}
-                                    </div>
-                                ) : filteredProducts.length === 0 ? (
-                                    <div className="text-center py-20">
-                                        <ShoppingBag size={48} className="mx-auto text-zinc-700 mb-4" />
-                                        <p className="text-zinc-500 font-medium">Nenhum produto encontrado</p>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                                        {filteredProducts.map(product => (
-                                            <ProductCard
-                                                key={product.id}
-                                                product={product}
-                                                onClick={() => setSelectedProduct(product)}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
                                 <div className="sticky bottom-6 mt-12 bg-black border border-zinc-800 p-4 rounded-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
                                     <div className="flex-1 space-y-4 mb-4">
                                         <div className="space-y-2">

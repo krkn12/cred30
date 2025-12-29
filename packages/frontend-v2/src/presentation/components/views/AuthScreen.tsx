@@ -215,6 +215,17 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                     <div className="bg-surface border border-surfaceHighlight p-6 sm:p-8 rounded-3xl shadow-2xl relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary-400 to-primary-600"></div>
 
+                        {/* Botão Voltar para Boas-Vindas */}
+                        {!isForgot && !isRecover2FA && !requires2FA && (
+                            <button
+                                onClick={() => navigate('/')}
+                                className="mb-6 flex items-center gap-2 text-zinc-500 hover:text-white text-xs font-medium transition-colors"
+                            >
+                                <ArrowLeft size={14} />
+                                Voltar para início
+                            </button>
+                        )}
+
                         {/* Custom Error Alert */}
                         {error && (
                             <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">

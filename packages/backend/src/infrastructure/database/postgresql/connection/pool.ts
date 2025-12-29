@@ -783,6 +783,20 @@ export const initializeDatabase = async () => {
         UNIQUE(video_id, viewer_id)
       );
 
+      -- SISTEMA DE SESSÕES DE ESTUDO (ACADEMY)
+      CREATE TABLE IF NOT EXISTS education_sessions (
+        id SERIAL PRIMARY KEY,
+        user_id ${userIdType} NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        video_id VARCHAR(50) NOT NULL,
+        started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        last_ping_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        total_seconds INTEGER DEFAULT 0,
+        is_active BOOLEAN DEFAULT TRUE,
+        ip_address VARCHAR(45),
+        user_agent TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_edu_sessions_user ON education_sessions(user_id);
+
       ALTER TABLE promo_videos ADD COLUMN IF NOT EXISTS budget_gross DECIMAL(10,2) DEFAULT 0;
       ALTER TABLE promo_videos ADD COLUMN IF NOT EXISTS tag VARCHAR(30) DEFAULT 'OUTROS';
       ALTER TABLE promo_videos ADD COLUMN IF NOT EXISTS payment_id VARCHAR(255);

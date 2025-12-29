@@ -65,11 +65,27 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
     // Benefício de boas-vindas vem do estado global (sincronizado)
     const welcomeBenefit = state.welcomeBenefit;
 
-    // Estados para o Baú de Recompensas (Faturamento Seguro)
+    // Estados para o Baú de Recompensas (sincronizado com backend)
     const [chestCountdown, setChestCountdown] = useState(0);
     const [chestsRemaining, setChestsRemaining] = useState(3);
     const [isOpeningChest, setIsOpeningChest] = useState(false);
     const [showValues, setShowValues] = useState(true);
+
+    // Buscar status do baú do backend ao carregar
+    useEffect(() => {
+        const fetchChestStatus = async () => {
+            try {
+                const response = await apiService.get('/earn/chest-status') as any;
+                if (response.success) {
+                    setChestsRemaining(response.chestsRemaining ?? 3);
+                    setChestCountdown(response.countdown ?? 0);
+                }
+            } catch (error) {
+                console.error('Erro ao buscar status do baú:', error);
+            }
+        };
+        fetchChestStatus();
+    }, []);
 
     // Memoizar transações recentes do estado global
     const recentTransactions = useMemo(() => {
@@ -85,35 +101,41 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
     const isLoadingTransactions = state.isLoading;
 
     const handleOpenChest = async () => {
-        if (chestsRemaining <= 0 || chestCountdown > 0) return;
+        if (chestsRemaining <= 0 || chestCountdown > 0 || isOpeningChest) return;
 
         // Abrir link do anúncio (Faturamento para o dono)
         window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
 
         setIsOpeningChest(true);
 
-        // Simulando tempo do anúncio (5 segundos)
+        // Aguardar 5 segundos (tempo do anúncio) e depois chamar API
         setTimeout(async () => {
             try {
                 // R$ 0,01 a R$ 0,03 (Lucro garantido: CPM de R$ 0,04 - R$ 0,06)
                 const reward = (Math.random() * (0.03 - 0.01) + 0.01).toFixed(2);
-                await apiService.post('/earn/chest-reward', { amount: parseFloat(reward) });
+                const response = await apiService.post('/earn/chest-reward', { amount: parseFloat(reward) }) as any;
 
-                onSuccess("Baú Aberto!", `Você recebeu um bônus de R$ ${reward} por sua fidelidade!`);
-                setChestsRemaining(prev => prev - 1);
-                setChestCountdown(3600); // 1 hora de intervalo entre baús
-                setIsOpeningChest(false);
-            } catch (error) {
+                if (response.success) {
+                    onSuccess("Baú Aberto!", response.message || `Você recebeu R$ ${reward}!`);
+                    setChestsRemaining(response.chestsRemaining ?? chestsRemaining - 1);
+                    setChestCountdown(3600); // 1 hora de intervalo
+                } else {
+                    onError("Erro", response.message || "Não foi possível abrir o baú");
+                }
+            } catch (error: any) {
                 console.error(error);
+                onError("Erro", error.message || "Erro ao abrir o baú");
+            } finally {
                 setIsOpeningChest(false);
             }
         }, 5000);
     };
 
+    // Timer para countdown
     useEffect(() => {
         let timer: any;
         if (chestCountdown > 0) {
-            timer = setInterval(() => setChestCountdown(prev => prev - 1), 1000);
+            timer = setInterval(() => setChestCountdown(prev => Math.max(0, prev - 1)), 1000);
         }
         return () => clearInterval(timer);
     }, [chestCountdown]);
@@ -150,11 +172,11 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
     const lockTimeRemaining = user.securityLockUntil ? Math.ceil((new Date(user.securityLockUntil).getTime() - Date.now()) / (1000 * 60 * 60)) : 0;
 
     return (
-        <div className="space-y-8 pb-24">
-            {/* 1. Header com Boas-Vindas Premium (WOW Factor) */}
-            <div className="relative overflow-hidden rounded-[2.5rem] bg-[#0A0A0A] border border-white/5 p-8 shadow-2xl">
-                <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none select-none">
-                    <Sparkles size={160} className="text-primary-400 animate-pulse" />
+        <div className="space-y-6 pb-24">
+            {/* 1. Header com Boas-Vindas */}
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 to-black border border-white/5 p-5 sm:p-8">
+                <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none select-none">
+                    <Sparkles size={100} className="text-primary-400" />
                 </div>
 
                 <div className="relative z-10">
@@ -202,297 +224,286 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                             </button>
                         </div>
                     </div>
-
-                    <div className="mt-8 pt-8 border-t border-white/5 flex flex-wrap items-center gap-6">
+                    {/* Stats Grid - Score e Nível */}
+                    <div className="mt-6 pt-6 border-t border-white/5 grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-400 border border-primary-500/20 shadow-lg shadow-black">
-                                <Star size={20} fill="currentColor" />
+                            <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-400 border border-primary-500/20">
+                                <Star size={18} fill="currentColor" />
                             </div>
                             <div>
-                                <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Score Social</p>
-                                <p className="text-xs font-black text-white uppercase tracking-wider">{user.score || 0} Pontos</p>
+                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Score</p>
+                                <p className="text-sm font-black text-white">{user.score || 0} pts</p>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${vipLevel.color} shadow-lg shadow-black`}>
-                                <ShieldCheck size={20} />
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${vipLevel.color}`}>
+                                <ShieldCheck size={18} />
                             </div>
                             <div>
-                                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest">Nível VIP</p>
-                                <p className="text-xs font-black text-white uppercase tracking-wider">{vipLevel.name}</p>
+                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Nível</p>
+                                <p className="text-sm font-black text-white">{vipLevel.name}</p>
                             </div>
                         </div>
-                        {/* Cards de Saldo e Crédito */}
+
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
+                                <PieChart size={18} />
+                            </div>
+                            <div>
+                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Licenças</p>
+                                <p className="text-sm font-black text-white">{userQuotas.length} ativas</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 border border-emerald-500/20">
+                                <TrendingUp size={18} />
+                            </div>
+                            <div>
+                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Excedente</p>
+                                <p className="text-sm font-black text-emerald-400">+{earningsPercentage.toFixed(1)}%</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 border border-yellow-500/20">
+                                <Zap size={18} fill="currentColor" />
+                            </div>
+                            <div>
+                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Pontos Farm</p>
+                                <p className="text-sm font-black text-white">{user.video_points || 0} pts</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Alerta de Segurança */}
+            {isLocked && (
+                <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-5 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center text-red-500 shrink-0">
+                        <ShieldCheck size={24} />
+                    </div>
+                    <div>
+                        <h3 className="text-red-500 font-bold text-sm mb-1">Trava de Segurança Ativa</h3>
+                        <p className="text-zinc-400 text-xs">
+                            Operações bloqueadas. Liberação em <strong className="text-white">{lockTimeRemaining}h</strong>.
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {/* 2. Card de Saldo Principal */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                <div className="lg:col-span-2 bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12 group-hover:scale-110 transition-transform duration-700 pointer-events-none select-none">
+                        <Wallet size={200} />
+                    </div>
+
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80">Saldo Corrente Líquido</span>
+                            <button onClick={() => setShowValues(!showValues)} className="ml-auto text-white/50 hover:text-white transition-colors">
+                                {showValues ? <Eye size={16} /> : <EyeOff size={16} />}
+                            </button>
+                        </div>
+                        <h2 className="text-4xl sm:text-5xl font-black tracking-tighter mb-6 tabular-nums">
+                            {showValues ? formatCurrency(user.balance) : '••••••'}
+                        </h2>
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="bg-surface border border-surfaceHighlight rounded-2xl p-5 relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                                    <Wallet size={48} />
-                                </div>
-                                <div className="flex items-center justify-between mb-1 relative z-10">
-                                    <p className="text-zinc-400 text-xs font-medium uppercase tracking-wider">Saldo Disponível</p>
-                                    <button onClick={() => setShowValues(!showValues)} className="text-zinc-500 hover:text-white transition-colors">
-                                        {showValues ? <Eye size={14} /> : <EyeOff size={14} />}
-                                    </button>
-                                </div>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-zinc-400 text-sm">R$</span>
-                                    <h3 className="text-2xl font-black text-white tracking-tight">
-                                        {showValues ? user.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '••••'}
-                                    </h3>
-                                </div>
-                                {/* ... (rest of the card logic if any) */}
-                            </div>
-
-                            <div className="bg-surface border border-surfaceHighlight rounded-2xl p-5 relative overflow-hidden group">
-                                {/* ... (Credit Card logic) */}
-                                {/* Since I can't overwrite logic I don't see fully, I'll stick to grid changes in the outer containers if possible, or be careful with internal content. 
-                        Actually, lines 188 start the grid.
-                        Wait, lines 188 is `grid-cols-1`. It should be `grid-cols-1 sm:grid-cols-2` for the two main cards.
-                     */}
-                            </div>
+                            <button
+                                onClick={onWithdraw}
+                                className="bg-black/20 hover:bg-black/40 text-white text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-2xl backdrop-blur-md transition-all flex items-center justify-center gap-3 border border-white/10 active:scale-95 shadow-xl"
+                            >
+                                <ArrowUpFromLine size={20} /> SACAR AGORA
+                            </button>
+                            <button
+                                onClick={onBuyQuota}
+                                className="bg-white text-primary-900 hover:bg-zinc-100 text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-2xl shadow-2xl transition-all flex items-center justify-center gap-3 active:scale-95 translate-y-[-2px] hover:translate-y-[-4px]"
+                            >
+                                <TrendingUp size={20} /> NOVA LICENÇA
+                            </button>
                         </div>
+                    </div>
+                </div>
 
-                        {/* Ações Principais */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            {/* ... Main buttons ... */}
+                <div className="bg-zinc-900 border border-white/5 rounded-3xl p-5 sm:p-8 flex flex-col justify-between hover:border-primary-500/30 transition-all">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="w-16 h-16 bg-primary-500/10 rounded-3xl flex items-center justify-center text-primary-400 group-hover:scale-110 transition-transform shadow-2xl">
+                            <PieChart size={32} />
                         </div>
+                        <span className="bg-primary-500/10 text-primary-400 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest">{userQuotas.length} ATIVAS</span>
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2">Capital Alocado</p>
+                        <h3 className="text-3xl font-black text-white whitespace-nowrap tracking-tight">{formatCurrency(totalInvested)}</h3>
+                    </div>
+                </div>
 
-                        {/* ... */}
+                <div className="bg-zinc-900 border border-white/5 rounded-3xl p-5 sm:p-8 flex flex-col justify-between hover:border-emerald-500/30 transition-all">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="w-16 h-16 bg-emerald-500/10 rounded-3xl flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform shadow-2xl">
+                            <ArrowUpRight size={32} />
+                        </div>
+                        <span className="bg-emerald-500/10 text-emerald-400 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest">+{earningsPercentage.toFixed(1)}%</span>
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2">Excedentes Totais</p>
+                        <h3 className="text-3xl font-black text-emerald-400 whitespace-nowrap tracking-tight">{formatCurrency(totalEarnings)}</h3>
+                    </div>
+                </div>
+            </div>
 
-                        {/* Serviços */}
+            {/* 3. Central de Prêmios */}
+            <div className="bg-zinc-900 border border-white/5 rounded-3xl p-5 sm:p-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-16 opacity-5 pointer-events-none select-none">
+                    <Zap size={180} className="text-yellow-500" />
+                </div>
+
+                <div className="relative z-10">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
                         <div>
-                            <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
-                                <Grid size={18} className="text-primary-500" />
-                                Serviços
+                            <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-3">
+                                <span className="p-3 bg-yellow-500/10 rounded-2xl shadow-inner">
+                                    <Zap size={28} className="text-yellow-500 fill-yellow-500" />
+                                </span>
+                                Central de Prêmios
                             </h3>
-                            {/* Changed from overflow-auto flex to grid on desktop */}
-                            <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-                                {/* ... mapped items ... */}
+                            <p className="text-sm text-zinc-500 font-bold uppercase tracking-wider mt-2">Maximize sua reputação para desbloquear benefícios</p>
+                        </div>
+                        <div className="bg-zinc-900/80 px-5 py-3 rounded-2xl border border-white/5 flex items-center gap-4 shadow-2xl">
+                            <div className="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse shadow-[0_0_10px_rgba(234,179,8,0.5)]" />
+                            <span className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Missões Disponíveis</span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-10">
+                        {[
+                            { icon: Zap, color: 'yellow', label: 'Farm', sub: 'Views', act: () => navigate('/app/promo-videos/farm'), bg: 'bg-yellow-500/10', text: 'text-yellow-400', subText: 'text-yellow-500/60', shadow: 'hover:shadow-yellow-900/20' },
+                            { icon: Gamepad2, color: 'purple', label: 'Jogar', sub: 'Fun', act: onGames, bg: 'bg-purple-500/10', text: 'text-purple-400', subText: 'text-purple-500/60', shadow: 'hover:shadow-purple-900/20' },
+                            { icon: BookOpen, color: 'blue', label: 'Estudar', sub: 'Learn', act: onEducation, bg: 'bg-blue-500/10', text: 'text-blue-400', subText: 'text-blue-500/60', shadow: 'hover:shadow-blue-900/20' },
+                            { icon: Users, color: 'primary', label: 'Indicar', sub: 'Invite', act: onRefer, bg: 'bg-primary-500/10', text: 'text-primary-400', subText: 'text-primary-500/60', shadow: 'hover:shadow-primary-900/20' },
+                            { icon: BarChart3, color: 'emerald', label: 'Votar', sub: 'Club', act: onVoting, bg: 'bg-emerald-500/10', text: 'text-emerald-400', subText: 'text-emerald-500/60', shadow: 'hover:shadow-emerald-900/20' }
+                        ].map((item, idx) => (
+                            <button
+                                key={idx}
+                                onClick={item.act}
+                                className={`aspect-square bg-zinc-900 border border-white/5 rounded-[2rem] flex flex-col items-center justify-center gap-3 hover:bg-zinc-800 transition-all group active:scale-95 shadow-xl hover:translate-y-[-4px] ${item.shadow}`}
+                            >
+                                <div className={`w-14 h-14 ${item.bg} rounded-2xl flex items-center justify-center ${item.text} group-hover:scale-110 transition-transform shadow-inner`}>
+                                    <item.icon size={28} />
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-[11px] font-black text-white uppercase tracking-widest">{item.label}</p>
+                                    <p className={`text-[8px] font-black ${item.subText} uppercase tracking-[0.3em] mt-1`}>{item.sub}</p>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                    {/* Baú de Excedentes */}
+                    <div
+                        onClick={handleOpenChest}
+                        className={`group relative rounded-2xl p-5 sm:p-6 transition-all cursor-pointer ${chestCountdown > 0 || chestsRemaining === 0
+                            ? 'bg-zinc-800/50 opacity-60'
+                            : 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 hover:border-amber-500/40'
+                            }`}
+                    >
+                        <div className="flex items-center gap-4 sm:gap-6">
+                            {/* Ícone do Baú */}
+                            <div className="relative shrink-0">
+                                <Gift size={48} className={chestCountdown > 0 ? 'text-zinc-600' : 'text-amber-500'} strokeWidth={1.5} />
+                                {chestCountdown === 0 && chestsRemaining > 0 && (
+                                    <div className="absolute inset-0 bg-amber-500 blur-xl opacity-30 animate-pulse" />
+                                )}
                             </div>
-                        </div>    {isLocked && (
-                            <div className="bg-red-500/5 border border-red-500/20 rounded-[2.5rem] p-8 flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
-                                <div className="w-16 h-16 rounded-3xl bg-red-500/20 flex items-center justify-center text-red-500 shrink-0 border border-red-500/20">
-                                    <ShieldCheck size={36} />
+
+                            {/* Conteúdo */}
+                            <div className="flex-1 min-w-0">
+                                <h4 className="text-base sm:text-lg font-bold text-white mb-1">Baú de Excedentes Diários</h4>
+                                <p className="text-xs text-zinc-400 mb-3">Assista conteúdo e receba saldo imediato</p>
+
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="px-3 py-1.5 bg-black/50 rounded-lg border border-white/5 text-[10px] font-bold text-zinc-400 uppercase">
+                                        {chestCountdown > 0 ? `Aguarde: ${formatCountdown(chestCountdown)}` : `${chestsRemaining}/3 Baús`}
+                                    </span>
+                                    {chestCountdown === 0 && chestsRemaining > 0 && (
+                                        <span className="px-3 py-1.5 bg-amber-500 text-black rounded-lg text-[10px] font-bold uppercase flex items-center gap-1">
+                                            Abrir <ChevronRight size={14} />
+                                        </span>
+                                    )}
                                 </div>
-                                <div>
-                                    <h3 className="text-red-500 font-black text-sm uppercase tracking-[0.2em] mb-2">Trava de Segurança Ativa</h3>
-                                    <p className="text-zinc-400 text-xs leading-relaxed font-bold uppercase tracking-wider">
-                                        Operações de saída bloqueadas por proteção de nova conta/senha. <br className="hidden sm:block" />
-                                        Liberação antecipada em <strong className="text-white bg-red-500/20 px-2 py-0.5 rounded-lg">{lockTimeRemaining} horas</strong>.
-                                    </p>
-                                </div>
+                            </div>
+                        </div>
+
+                        {/* Loading Overlay */}
+                        {isOpeningChest && (
+                            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center z-20 rounded-2xl">
+                                <div className="w-10 h-10 border-3 border-amber-500 border-t-transparent rounded-full animate-spin mb-3" />
+                                <p className="text-xs font-bold text-amber-500 uppercase tracking-wider">Carregando...</p>
                             </div>
                         )}
                     </div>
+                </div>
+            </div>
 
-                    {/* 3. Balanço e Ações Rápidas */}
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                        <div className="lg:col-span-2 bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 rounded-[3rem] p-10 text-white shadow-2xl shadow-primary-900/30 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12 group-hover:scale-110 transition-transform duration-700 pointer-events-none select-none">
-                                <Wallet size={200} />
-                            </div>
 
-                            <div className="relative z-10">
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80">Saldo Corrente Líquido</span>
-                                    <button onClick={() => setShowValues(!showValues)} className="ml-auto text-white/50 hover:text-white transition-colors">
-                                        {showValues ? <Eye size={16} /> : <EyeOff size={16} />}
-                                    </button>
-                                </div>
-                                <h2 className="text-6xl font-black tracking-tighter mb-10 tabular-nums">
-                                    {showValues ? formatCurrency(user.balance) : '••••••'}
-                                </h2>
+            {/* 4. Histórico de Transações */}
+            <div className="bg-zinc-900 border border-white/5 rounded-3xl p-5 sm:p-8">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-3">
+                        <Clock size={24} className="text-zinc-600" />
+                        Fluxo de Caixa
+                    </h3>
+                    <button
+                        onClick={() => navigate('/app/history')}
+                        className="text-[11px] font-black text-primary-400 uppercase tracking-[0.2em] hover:text-white transition-all ring-1 ring-primary-500/20 px-4 py-2 rounded-xl"
+                    >
+                        EXTRATO COMPLETO
+                    </button>
+                </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <button
-                                        onClick={onWithdraw}
-                                        className="bg-black/20 hover:bg-black/40 text-white text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-2xl backdrop-blur-md transition-all flex items-center justify-center gap-3 border border-white/10 active:scale-95 shadow-xl"
-                                    >
-                                        <ArrowUpFromLine size={20} /> SACAR AGORA
-                                    </button>
-                                    <button
-                                        onClick={onBuyQuota}
-                                        className="bg-white text-primary-900 hover:bg-zinc-100 text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-2xl shadow-2xl transition-all flex items-center justify-center gap-3 active:scale-95 translate-y-[-2px] hover:translate-y-[-4px]"
-                                    >
-                                        <TrendingUp size={20} /> NOVA LICENÇA
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-[#0D0D0D] border border-white/5 rounded-[3rem] p-10 flex flex-col justify-between group hover:border-primary-500/30 transition-all shadow-xl">
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="w-16 h-16 bg-primary-500/10 rounded-3xl flex items-center justify-center text-primary-400 group-hover:scale-110 transition-transform shadow-2xl">
-                                    <PieChart size={32} />
-                                </div>
-                                <span className="bg-primary-500/10 text-primary-400 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest">{userQuotas.length} ATIVAS</span>
-                            </div>
-                            <div>
-                                <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2">Capital Alocado</p>
-                                <h3 className="text-3xl font-black text-white whitespace-nowrap tracking-tight">{formatCurrency(totalInvested)}</h3>
-                            </div>
-                        </div>
-
-                        <div className="bg-[#0D0D0D] border border-white/5 rounded-[3rem] p-10 flex flex-col justify-between group hover:border-emerald-500/30 transition-all shadow-xl">
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="w-16 h-16 bg-emerald-500/10 rounded-3xl flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform shadow-2xl">
-                                    <ArrowUpRight size={32} />
-                                </div>
-                                <span className="bg-emerald-500/10 text-emerald-400 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest">+{earningsPercentage.toFixed(1)}%</span>
-                            </div>
-                            <div>
-                                <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2">Excedentes Totais</p>
-                                <h3 className="text-3xl font-black text-emerald-400 whitespace-nowrap tracking-tight">{formatCurrency(totalEarnings)}</h3>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 4. Central de Prêmios e Gamificação */}
-                    <div className="bg-[#080808] border border-white/5 rounded-[3rem] p-10 relative overflow-hidden shadow-[inset_0_0_100px_rgba(0,0,0,0.5)]">
-                        <div className="absolute top-0 right-0 p-16 opacity-5 pointer-events-none select-none">
-                            <Zap size={180} className="text-yellow-500" />
-                        </div>
-
-                        <div className="relative z-10">
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
-                                <div>
-                                    <h3 className="text-3xl font-black text-white tracking-tight flex items-center gap-4">
-                                        <span className="p-3 bg-yellow-500/10 rounded-2xl shadow-inner">
-                                            <Zap size={28} className="text-yellow-500 fill-yellow-500" />
-                                        </span>
-                                        Central de Prêmios
-                                    </h3>
-                                    <p className="text-sm text-zinc-500 font-bold uppercase tracking-wider mt-2">Maximize sua reputação para desbloquear benefícios</p>
-                                </div>
-                                <div className="bg-zinc-900/80 px-5 py-3 rounded-2xl border border-white/5 flex items-center gap-4 shadow-2xl">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse shadow-[0_0_10px_rgba(234,179,8,0.5)]" />
-                                    <span className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Missões Disponíveis</span>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-10">
-                                {[
-                                    { icon: Gamepad2, color: 'purple', label: 'Jogar', sub: 'Fun', act: onGames, bg: 'bg-purple-500/10', text: 'text-purple-400', subText: 'text-purple-500/60', shadow: 'hover:shadow-purple-900/20' },
-                                    { icon: BookOpen, color: 'blue', label: 'Estudar', sub: 'Learn', act: onEducation, bg: 'bg-blue-500/10', text: 'text-blue-400', subText: 'text-blue-500/60', shadow: 'hover:shadow-blue-900/20' },
-                                    { icon: Coins, color: 'yellow', label: 'Missões', sub: 'Earn', act: onEarn, bg: 'bg-yellow-500/10', text: 'text-yellow-400', subText: 'text-yellow-500/60', shadow: 'hover:shadow-yellow-900/20' },
-                                    { icon: Users, color: 'primary', label: 'Indicar', sub: 'Invite', act: onRefer, bg: 'bg-primary-500/10', text: 'text-primary-400', subText: 'text-primary-500/60', shadow: 'hover:shadow-primary-900/20' },
-                                    { icon: BarChart3, color: 'emerald', label: 'Votar', sub: 'Club', act: onVoting, bg: 'bg-emerald-500/10', text: 'text-emerald-400', subText: 'text-emerald-500/60', shadow: 'hover:shadow-emerald-900/20' }
-                                ].map((item, idx) => (
-                                    <button
-                                        key={idx}
-                                        onClick={item.act}
-                                        className={`aspect-square bg-zinc-900 border border-white/5 rounded-[2rem] flex flex-col items-center justify-center gap-3 hover:bg-zinc-800 transition-all group active:scale-95 shadow-xl hover:translate-y-[-4px] ${item.shadow}`}
-                                    >
-                                        <div className={`w-14 h-14 ${item.bg} rounded-2xl flex items-center justify-center ${item.text} group-hover:scale-110 transition-transform shadow-inner`}>
-                                            <item.icon size={28} />
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-[11px] font-black text-white uppercase tracking-widest">{item.label}</p>
-                                            <p className={`text-[8px] font-black ${item.subText} uppercase tracking-[0.3em] mt-1`}>{item.sub}</p>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-
-                            <div className={`group relative overflow-hidden rounded-[2.5rem] p-10 transition-all duration-700 shadow-2xl border border-white/5 hover:border-amber-500/50 ${chestCountdown > 0 || chestsRemaining === 0
-                                ? 'bg-zinc-900/40 grayscale'
-                                : 'bg-[#0F0F0F] cursor-pointer'
-                                }`}>
-                                <div
-                                    onClick={handleOpenChest}
-                                    className="flex flex-col sm:flex-row items-center gap-10 relative z-10 text-center sm:text-left"
-                                >
-                                    <div className="relative group-hover:scale-110 transition-transform duration-700">
-                                        <Gift size={80} className={chestCountdown > 0 ? 'text-zinc-700' : 'text-amber-500'} strokeWidth={1} />
-                                        {chestCountdown === 0 && chestsRemaining > 0 && (
-                                            <div className="absolute inset-0 bg-amber-500 blur-[40px] opacity-20 animate-pulse" />
-                                        )}
+                <div className="space-y-4">
+                    {recentTransactions.length > 0 ? (
+                        recentTransactions.map((t: any) => (
+                            <div key={t.id} className="group bg-[#111111] border border-white/5 hover:border-zinc-700 p-6 rounded-[2rem] transition-all flex items-center justify-between shadow-lg">
+                                <div className="flex items-center gap-6">
+                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-2xl shadow-black ${isPositive(t.type) ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                        }`}>
+                                        {isPositive(t.type) ? <ArrowDownLeft size={32} /> : <ArrowUpRight size={32} />}
                                     </div>
-                                    <div className="flex-1">
-                                        <h4 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Baú de Excedentes Diários</h4>
-                                        <p className="text-sm font-medium text-zinc-500 mb-6 uppercase tracking-wider italic">Contribua com a rede assistindo conteúdo e receba saldo imediato</p>
-
-                                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4">
-                                            <div className="px-5 py-3 bg-black rounded-2xl border border-white/5 text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em] shadow-inner">
-                                                {chestCountdown > 0 ? `INTERVALO: ${formatCountdown(chestCountdown)}` : `DISPONÍVEL: ${chestsRemaining} UNIDADES`}
-                                            </div>
-                                            {chestCountdown === 0 && chestsRemaining > 0 && (
-                                                <div className="px-6 py-3 bg-amber-500 text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] flex items-center gap-3 shadow-2xl hover:bg-amber-400 transition-colors">
-                                                    ABRIR RECOMPENSA <ChevronRight size={18} strokeWidth={3} />
-                                                </div>
-                                            )}
-                                        </div>
+                                    <div>
+                                        <h4 className="text-base font-black text-white uppercase tracking-tight mb-1 group-hover:text-primary-400 transition-colors">{t.description}</h4>
+                                        <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">
+                                            {new Date(t.created_at || t.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace(' de ', ' ')}
+                                        </p>
                                     </div>
                                 </div>
-                                {isOpeningChest && (
-                                    <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-20 animate-in fade-in duration-500">
-                                        <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4" />
-                                        <p className="text-xs font-black text-amber-500 uppercase tracking-[0.3em] animate-pulse">Sincronizando Recompensa...</p>
+                                <div className="text-right">
+                                    <p className={`text-xl font-black tabular-nums tracking-tighter mb-1 ${isPositive(t.type) ? 'text-emerald-400' : 'text-zinc-500'
+                                        }`}>
+                                        {showValues ? (
+                                            <>
+                                                {isPositive(t.type) ? '+' : '-'} {formatCurrency(t.amount)}
+                                            </>
+                                        ) : '••••••'}
+                                    </p>
+                                    <div className={`text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-lg inline-block border ${t.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' : 'bg-zinc-900 text-zinc-600 border-white/5'
+                                        }`}>
+                                        {t.status === 'PENDING' ? 'Em Validação' : 'Processado'}
                                     </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-
-                    {/* 5. Histórico e Transações Recentes */}
-                    <div className="bg-[#0A0A0A] border border-white/5 rounded-[3rem] p-10 shadow-2xl">
-                        <div className="flex items-center justify-between mb-10">
-                            <h3 className="text-3xl font-black text-white tracking-tight flex items-center gap-4">
-                                <Clock size={32} className="text-zinc-600" />
-                                Fluxo de Caixa
-                            </h3>
-                            <button
-                                onClick={() => navigate('/app/history')}
-                                className="text-[11px] font-black text-primary-400 uppercase tracking-[0.2em] hover:text-white transition-all ring-1 ring-primary-500/20 px-4 py-2 rounded-xl"
-                            >
-                                EXTRATO COMPLETO
-                            </button>
-                        </div>
-
-                        <div className="space-y-4">
-                            {recentTransactions.length > 0 ? (
-                                recentTransactions.map((t: any) => (
-                                    <div key={t.id} className="group bg-[#111111] border border-white/5 hover:border-zinc-700 p-6 rounded-[2rem] transition-all flex items-center justify-between shadow-lg">
-                                        <div className="flex items-center gap-6">
-                                            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-2xl shadow-black ${isPositive(t.type) ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                                                }`}>
-                                                {isPositive(t.type) ? <ArrowDownLeft size={32} /> : <ArrowUpRight size={32} />}
-                                            </div>
-                                            <div>
-                                                <h4 className="text-base font-black text-white uppercase tracking-tight mb-1 group-hover:text-primary-400 transition-colors">{t.description}</h4>
-                                                <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">
-                                                    {new Date(t.created_at || t.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace(' de ', ' ')}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className={`text-xl font-black tabular-nums tracking-tighter mb-1 ${isPositive(t.type) ? 'text-emerald-400' : 'text-zinc-500'
-                                                }`}>
-                                                {showValues ? (
-                                                    <>
-                                                        {isPositive(t.type) ? '+' : '-'} {formatCurrency(t.amount)}
-                                                    </>
-                                                ) : '••••••'}
-                                            </p>
-                                            <div className={`text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-lg inline-block border ${t.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' : 'bg-zinc-900 text-zinc-600 border-white/5'
-                                                }`}>
-                                                {t.status === 'PENDING' ? 'Em Validação' : 'Processado'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="flex flex-col items-center justify-center py-20 text-center bg-zinc-900/10 rounded-[3rem] border border-dashed border-zinc-800">
-                                    <Clock size={60} className="text-zinc-800 mb-6" />
-                                    <p className="text-zinc-500 text-sm font-black uppercase tracking-[0.2em]">Fluxo de caixa vazio</p>
-                                    <p className="text-[10px] text-zinc-700 mt-3 font-bold uppercase tracking-widest italic">Inicie sua jornada para ver movimentações aqui</p>
                                 </div>
-                            )}
+                            </div>
+                        ))
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-20 text-center bg-zinc-900/10 rounded-[3rem] border border-dashed border-zinc-800">
+                            <Clock size={60} className="text-zinc-800 mb-6" />
+                            <p className="text-zinc-500 text-sm font-black uppercase tracking-[0.2em]">Fluxo de caixa vazio</p>
+                            <p className="text-[10px] text-zinc-700 mt-3 font-bold uppercase tracking-widest italic">Inicie sua jornada para ver movimentações aqui</p>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>

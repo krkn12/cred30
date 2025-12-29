@@ -2,6 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BookOpen, PlayCircle, Clock, Trophy, AlertTriangle, CheckCircle2, X as XIcon, BrainCircuit, MousePointerClick, ArrowLeft } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 
+declare global {
+    interface Window {
+        onYouTubeIframeAPIReady: () => void;
+        YT: any;
+    }
+}
+
 interface EducationViewProps {
     onBack: () => void;
     onSuccess: (title: string, msg: string) => void;
@@ -19,6 +26,9 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
     const [sessionPoints, setSessionPoints] = useState(0);
     const [totalPoints, setTotalPoints] = useState(0); // Acumulado persistente (mock por enquanto)
     const [sessionTime, setSessionTime] = useState(0);
+    const [playerState, setPlayerState] = useState<number>(-1);
+    const [sessionId, setSessionId] = useState<number | null>(null);
+    const playerRef = useRef<any>(null);
 
     // Anti-Cheat States
     const [isTabFocused, setIsTabFocused] = useState(true);
@@ -32,31 +42,31 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
     const interactionTimeout = 120000; // 2 minutos sem mexer pede check
     const presenceTimeout = 15000; // 15 segundos para responder o check
 
-    // Aulas Mock
+    // Aulas Ativas (Sebrae & B3)
     const lessons = [
         {
             id: 1,
-            title: "Live: Como Negociar Compromissos (Sebrae)",
-            duration: "55:00",
+            title: "Solução: Gestão Financeira para Pequenos Negócios",
+            duration: "02:36",
             category: "Gestão Financeira",
-            videoUrl: "https://www.youtube.com/embed/yYyP1tX4c2o",
-            thumbnail: "/images/education/managing-debts.png"
+            videoUrl: "https://www.youtube.com/embed/N-0_r7VaP5s",
+            thumbnail: "https://img.youtube.com/vi/N-0_r7VaP5s/mqdefault.jpg"
         },
         {
             id: 2,
-            title: "B3 Explica: Como Iniciar seu Aporte Social",
-            duration: "04:30",
-            category: "Participação Social",
-            videoUrl: "https://www.youtube.com/embed/kYjY1tQ_j9o",
-            thumbnail: "/images/education/investing-small.png"
+            title: "B3 Explica: Quem é quem no Mercado Financeiro?",
+            duration: "01:51",
+            category: "Mercado de Capitais",
+            videoUrl: "https://www.youtube.com/embed/sXuzPU-cyBI",
+            thumbnail: "https://img.youtube.com/vi/sXuzPU-cyBI/mqdefault.jpg"
         },
         {
             id: 3,
-            title: "Score 2.0: Aumente sua Reputação",
-            duration: "05:15",
-            category: "Score & Compromisso",
-            videoUrl: "https://www.youtube.com/embed/kYc24d1a-O0",
-            thumbnail: "/images/education/credit-score.png"
+            title: "Entenda seu Score de Crédito (Sebrae)",
+            duration: "03:07",
+            category: "Crédito & Reputação",
+            videoUrl: "https://www.youtube.com/embed/Swl3eyTLpCk",
+            thumbnail: "https://img.youtube.com/vi/Swl3eyTLpCk/mqdefault.jpg"
         }
     ];
 
@@ -66,10 +76,12 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
             if (document.hidden) {
                 setIsTabFocused(false);
                 setIsPlaying(false); // Pausa se sair
+                if (playerRef.current) playerRef.current.pauseVideo();
             } else {
                 setIsTabFocused(true);
                 if (!isBlocked && !showPresenceCheck) {
                     setIsPlaying(true); // Retoma se voltar e não estiver bloqueado
+                    if (playerRef.current) playerRef.current.playVideo();
                 }
             }
         };
@@ -77,6 +89,14 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
         const handleInteraction = () => {
             setLastInteraction(Date.now());
         };
+
+        // Load YouTube API
+        if (!window.YT) {
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+        }
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
         window.addEventListener('mousemove', handleInteraction);
@@ -89,7 +109,7 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
             window.removeEventListener('keydown', handleInteraction);
             window.removeEventListener('click', handleInteraction);
         };
-    }, []);
+    }, [isBlocked, showPresenceCheck]);
 
     // Loop Principal de Pontos e Checagem
     useEffect(() => {
@@ -127,7 +147,8 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
                 }
 
                 // *** GANHO DE PONTOS ***
-                if (isPlaying && !showPresenceCheck) {
+                // Agora depende de playerState === 1 (PLAYING)
+                if (isPlaying && !showPresenceCheck && playerState === 1) {
                     setSessionPoints(prev => prev + POINTS_PER_SECOND);
                     setSessionTime(prev => prev + 1);
                 }
@@ -136,18 +157,32 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
         }
 
         return () => clearInterval(interval);
-    }, [selectedLesson, isPlaying, isTabFocused, lastInteraction, showPresenceCheck, isBlocked]);
+    }, [selectedLesson, isPlaying, isTabFocused, lastInteraction, showPresenceCheck, isBlocked, playerState]);
 
     // Calcular Ganhos
     const currentEarnings = sessionPoints * POINTS_TO_CURRENCY_RATE;
 
-    const handleLessonSelect = (lesson: any) => {
-        setSelectedLesson(lesson);
-        setIsPlaying(true);
-        setSessionPoints(0);
-        setSessionTime(0);
-        setIsBlocked(false);
-        setLastInteraction(Date.now());
+    const handleLessonSelect = async (lesson: any) => {
+        try {
+            const res = await apiService.post<any>('/education/start-session', { lessonId: lesson.id });
+            if (res.success && res.data) {
+                setSessionId(res.data.sessionId);
+                setSelectedLesson(lesson);
+                setIsPlaying(true);
+                setPlayerState(-1);
+                setSessionPoints(0);
+                setSessionTime(0);
+                setIsBlocked(false);
+                setLastInteraction(Date.now());
+            }
+        } catch (e: any) {
+            onSuccess("Erro", "Não foi possível iniciar a sessão de estudo.");
+        }
+    };
+
+    const getVideoId = (url: string) => {
+        const ytMatch = url.match(/(?:youtube\.com\/embed\/|youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
+        return ytMatch ? ytMatch[1] : null;
     };
 
     const handlePresenceConfirm = () => {
@@ -159,9 +194,13 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
     const handleExitLesson = async () => {
         setIsPlaying(false);
         // Salvar pontos acumulados se houver ganhos
-        if (sessionPoints > 50) { // Mínimo de 50 pontos para requisitar (evita spam)
+        if (sessionPoints > 50 && sessionId) { // Mínimo de 50 pontos para requisitar (evita spam)
             try {
-                await apiService.post('/education/reward', { points: Math.floor(sessionPoints), lessonId: selectedLesson.id });
+                await apiService.post('/education/reward', {
+                    points: Math.floor(sessionPoints),
+                    lessonId: selectedLesson.id,
+                    sessionId: sessionId
+                });
                 onSuccess("Sessão Finalizada", `Parabéns! Você ganhou R$ ${currentEarnings.toFixed(4)} e ${sessionPoints.toFixed(0)} pontos!`);
             } catch (error: any) {
                 // Erro 429 = Limite momentâneo
@@ -179,6 +218,7 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
         }
 
         setSelectedLesson(null);
+        setSessionId(null);
         setSessionPoints(0);
         setSessionTime(0);
     };
@@ -273,16 +313,18 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
                     {/* Área do Vídeo */}
                     <div className={`aspect-video bg-black rounded-3xl overflow-hidden border border-zinc-800 shadow-2xl relative ${isBlocked ? 'grayscale opacity-50' : ''}`}>
                         {!isBlocked ? (
-                            <iframe
-                                width="100%"
-                                height="100%"
-                                src={`${selectedLesson.videoUrl}?autoplay=0&controls=1&rel=0`}
-                                title={selectedLesson.title}
-                                frameBorder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; compute-pressure"
-                                allowFullScreen
-                                className="z-10 relative" // Permitir interação
-                            ></iframe>
+                            <div className="w-full h-full relative">
+                                <div id="edu-player" className="w-full h-full"></div>
+                                <YouTubeInit
+                                    videoId={getVideoId(selectedLesson.videoUrl)!}
+                                    onStateChange={(state: number) => setPlayerState(state)}
+                                    onReady={(player: any) => {
+                                        playerRef.current = player;
+                                        player.playVideo();
+                                    }}
+                                    playerId="edu-player"
+                                />
+                            </div>
                         ) : (
                             <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-zinc-900">
                                 <AlertTriangle size={48} className="text-red-500 mb-4 animate-bounce" />
@@ -359,4 +401,43 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
             )}
         </div>
     );
+};
+
+// Helper component to initialize individual YouTube players
+const YouTubeInit: React.FC<{
+    videoId: string;
+    onStateChange: (state: number) => void;
+    onReady: (player: any) => void;
+    playerId?: string;
+}> = ({ videoId, onStateChange, onReady, playerId = 'edu-player' }) => {
+    useEffect(() => {
+        const initPlayer = () => {
+            new window.YT.Player(playerId, {
+                videoId: videoId,
+                playerVars: {
+                    autoplay: 1,
+                    controls: 1,
+                    modestbranding: 1,
+                    rel: 0,
+                    iv_load_policy: 3
+                },
+                events: {
+                    onReady: (event: any) => onReady(event.target),
+                    onStateChange: (event: any) => onStateChange(event.data)
+                }
+            });
+        };
+
+        if (window.YT && window.YT.Player) {
+            initPlayer();
+        } else {
+            const originalOnReady = window.onYouTubeIframeAPIReady;
+            window.onYouTubeIframeAPIReady = () => {
+                if (originalOnReady) originalOnReady();
+                initPlayer();
+            };
+        }
+    }, [videoId, playerId]);
+
+    return null;
 };

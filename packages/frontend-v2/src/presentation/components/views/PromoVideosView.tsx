@@ -1,7 +1,14 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
-import { Play, Pause, DollarSign, Clock, Eye, ChevronRight, Plus, X as XIcon, CheckCircle2, AlertTriangle, Youtube, Film, ExternalLink, Loader2, Wallet, Smartphone, CreditCard } from 'lucide-react';
+import { Play, Pause, DollarSign, Clock, Eye, ChevronRight, Plus, X as XIcon, CheckCircle2, AlertTriangle, Youtube, Film, ExternalLink, Loader2, Wallet, Smartphone, CreditCard, Zap, Trash2 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { apiService } from '../../../application/services/api.service';
+
+declare global {
+    interface Window {
+        onYouTubeIframeAPIReady: () => void;
+        YT: any;
+    }
+}
 
 interface PromoVideo {
     id: string;
@@ -48,13 +55,170 @@ interface PromoVideosViewProps {
     onRefresh: () => void;
     onSuccess: (title: string, message: string) => void;
     onError: (title: string, message: string) => void;
+    onFarm: () => void;
 }
+
+// Componente de modal de sucesso de pagamento (movido para fora para ser acessível)
+const PaymentSuccessModal: React.FC<{
+    data: any;
+    onClose: () => void;
+}> = ({ data, onClose }) => {
+    const totalToPay = data.value || 0;
+    const [copied, setCopied] = React.useState(false);
+
+    const handleCopy = () => {
+        if (data.pixCopiaECola) {
+            navigator.clipboard.writeText(data.pixCopiaECola);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    return (
+        <div
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300"
+            onClick={onClose}
+        >
+            <div
+                className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-zinc-800 rounded-t-[2rem] sm:rounded-3xl w-full sm:max-w-md max-h-[90vh] sm:max-h-[85vh] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300"
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Handle indicator for mobile */}
+                <div className="w-12 h-1.5 bg-zinc-700 rounded-full mx-auto mt-3 sm:hidden" />
+
+                {/* Scrollable Content */}
+                <div className="overflow-y-auto max-h-[calc(90vh-1rem)] sm:max-h-[calc(85vh-1rem)] p-5 sm:p-6">
+                    {/* Header */}
+                    <div className="flex justify-between items-center mb-5">
+                        <h3 className="text-lg sm:text-xl font-bold text-white">Dados da Cobrança</h3>
+                        <button
+                            onClick={onClose}
+                            className="text-zinc-400 hover:text-white bg-zinc-800/80 hover:bg-zinc-700 p-2 rounded-xl transition-colors"
+                        >
+                            <XIcon size={18} />
+                        </button>
+                    </div>
+
+                    <div className="space-y-5">
+                        {/* Status Badge */}
+                        <div className="flex flex-col items-center justify-center p-4 bg-amber-500/10 rounded-2xl border border-amber-500/20">
+                            <span className="text-amber-500 font-bold uppercase tracking-widest text-[10px] mb-1">Situação</span>
+                            <span className="text-white font-black text-base sm:text-lg">⏳ Aguardando pagamento</span>
+                        </div>
+
+                        {/* Info Grid */}
+                        <div className="bg-zinc-900/50 rounded-2xl p-4 space-y-3">
+                            <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                <span className="text-zinc-500 text-[11px] sm:text-xs font-bold uppercase">Criada em</span>
+                                <span className="text-zinc-300 text-sm font-mono">{new Date().toLocaleDateString('pt-BR')}</span>
+                            </div>
+
+                            <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                <span className="text-zinc-500 text-[11px] sm:text-xs font-bold uppercase">Cliente</span>
+                                <span className="text-zinc-300 text-sm">Você</span>
+                            </div>
+
+                            {data.id && (
+                                <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                    <span className="text-zinc-500 text-[11px] sm:text-xs font-bold uppercase">Fatura</span>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-zinc-300 text-xs sm:text-sm font-mono">{data.id?.slice(0, 12)}...</span>
+                                        {data.invoiceUrl && (
+                                            <a href={data.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary-400 hover:underline flex items-center gap-1 mt-1">
+                                                Ver fatura <ExternalLink size={10} />
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                <span className="text-zinc-500 text-[11px] sm:text-xs font-bold uppercase">Valor</span>
+                                <span className="text-emerald-400 text-lg sm:text-xl font-black">
+                                    {totalToPay.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </span>
+                            </div>
+
+                            <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                <span className="text-zinc-500 text-[11px] sm:text-xs font-bold uppercase">Vencimento</span>
+                                <span className="text-zinc-300 text-sm font-mono">
+                                    {data.dueDate ? new Date(data.dueDate).toLocaleDateString('pt-BR') : new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')}
+                                </span>
+                            </div>
+
+                            <div className="flex justify-between items-center py-2">
+                                <span className="text-zinc-500 text-[11px] sm:text-xs font-bold uppercase">Pagamento</span>
+                                <div className="flex items-center gap-2 text-emerald-400 text-sm font-bold">
+                                    <Smartphone size={14} /> Pix
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* QR Code Section */}
+                        {data.pixCopiaECola && (
+                            <div className="flex flex-col items-center space-y-4">
+                                <div className="bg-white p-3 rounded-2xl shadow-lg">
+                                    <QRCodeCanvas
+                                        value={data.pixCopiaECola}
+                                        size={160}
+                                        level={"H"}
+                                    />
+                                </div>
+
+                                <p className="text-center text-xs text-zinc-400 font-medium">
+                                    Escaneie o QR Code ou copie o código abaixo
+                                </p>
+
+                                {/* Copy Button */}
+                                <button
+                                    onClick={handleCopy}
+                                    className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-all ${copied
+                                        ? 'bg-emerald-500 text-black'
+                                        : 'bg-zinc-800 hover:bg-zinc-700 text-white'
+                                        }`}
+                                >
+                                    {copied ? (
+                                        <>
+                                            <CheckCircle2 size={18} />
+                                            Código copiado!
+                                        </>
+                                    ) : (
+                                        <>
+                                            📋 Copiar código Pix
+                                        </>
+                                    )}
+                                </button>
+
+                                {/* Pix Code Preview */}
+                                <div className="w-full bg-zinc-900 border border-white/5 rounded-xl p-3">
+                                    <p className="text-[9px] sm:text-[10px] text-zinc-500 font-mono break-all leading-relaxed">
+                                        {data.pixCopiaECola.slice(0, 80)}...
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Close Button */}
+                        <button
+                            onClick={onClose}
+                            className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-4 rounded-2xl transition-all active:scale-[0.98] text-sm mt-2"
+                        >
+                            Fechar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
     userBalance,
     onRefresh,
     onSuccess,
-    onError
+    onError,
+    onFarm
 }) => {
     const [activeTab, setActiveTab] = useState<'watch' | 'campaigns'>('watch');
     const [videos, setVideos] = useState<PromoVideo[]>([]);
@@ -73,8 +237,10 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
     const [tags, setTags] = useState<string[]>([]);
     const [selectedTag, setSelectedTag] = useState<string>('TODOS');
     const [paymentSuccessData, setPaymentSuccessData] = useState<any>(null);
+    const [playerState, setPlayerState] = useState<number>(-1);
 
     const watchTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const playerRef = useRef<any>(null);
 
     // ... (lines 78-530 remain as is, but I can't match huge block)
     // I will target the end of the file where Payment Modal should go and CreateCampaignModal usage.
@@ -115,6 +281,14 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
 
     useEffect(() => {
         loadData();
+
+        // Load YouTube API
+        if (!window.YT) {
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+        }
     }, []);
 
     const loadData = async () => {
@@ -168,21 +342,35 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
 
             setWatchingVideo(video);
             setWatchProgress(0);
-
-            // Timer para contar tempo assistido
-            watchTimerRef.current = setInterval(() => {
-                setWatchProgress(prev => {
-                    if (prev >= video.minWatchSeconds) {
-                        return prev;
-                    }
-                    return prev + 1;
-                });
-            }, 1000);
+            setPlayerState(-1);
 
         } catch (e: any) {
             onError('Erro', e.message);
         }
     };
+
+    // Timer Logic sync with playerState
+    useEffect(() => {
+        if (watchingVideo && playerState === 1 && watchProgress < watchingVideo.minWatchSeconds) {
+            if (watchTimerRef.current) clearInterval(watchTimerRef.current);
+
+            watchTimerRef.current = setInterval(() => {
+                setWatchProgress(prev => {
+                    if (prev >= watchingVideo.minWatchSeconds) {
+                        if (watchTimerRef.current) clearInterval(watchTimerRef.current);
+                        return watchingVideo.minWatchSeconds;
+                    }
+                    return prev + 1;
+                });
+            }, 1000);
+        } else {
+            if (watchTimerRef.current) clearInterval(watchTimerRef.current);
+        }
+
+        return () => {
+            if (watchTimerRef.current) clearInterval(watchTimerRef.current);
+        };
+    }, [watchingVideo, playerState, watchProgress]);
 
     const completeWatch = async () => {
         if (!watchingVideo) return;
@@ -244,30 +432,80 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
     };
 
 
+    const handleRemoveCampaign = async (campaign: MyCampaign) => {
+        const isPending = campaign.status === 'PENDING';
+        const msg = isPending
+            ? 'Deseja remover esta campanha pendente?'
+            : 'ATENÇÃO: Deseja cancelar esta campanha ativa? O saldo restante NÃO será reembolsado.';
+
+        if (!window.confirm(msg)) return;
+
+        try {
+            setLoading(true);
+            const res = await apiService.delete<{ success: boolean; message: string }>(`/promo-videos/${campaign.id}`);
+            if (res.success) {
+                onSuccess('Sucesso', res.message);
+                loadData();
+            } else {
+                onError('Erro', res.message);
+            }
+        } catch (e: any) {
+            onError('Erro', e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="space-y-6 pb-32">
             {/* Header com estatísticas */}
             <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 text-white">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                        <Play size={24} />
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                            <Play size={24} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold">Cred Views</h2>
+                            <p className="text-sm opacity-80">Assista vídeos e ganhe dinheiro</p>
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="text-xl font-bold">Cred Views</h2>
-                        <p className="text-sm opacity-80">Assista vídeos e ganhe dinheiro</p>
-                    </div>
+
+                    <button
+                        onClick={onFarm}
+                        className="bg-white text-purple-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl flex items-center gap-2"
+                    >
+                        <Zap size={14} className="fill-current" />
+                        FARM DE VIEWS
+                    </button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white/10 rounded-xl p-3 relative group overflow-hidden">
-                        <p className="text-[10px] opacity-70 font-black uppercase tracking-widest">Meus Pontos</p>
-                        <p className="text-2xl font-black">{earnings?.currentPoints || 0} pts</p>
+                    <div className="bg-white/10 rounded-xl p-3 relative group overflow-hidden flex flex-col justify-between">
+                        <div>
+                            <p className="text-[10px] opacity-70 font-black uppercase tracking-widest">Meus Pontos</p>
+                            <p className="text-2xl font-black">{earnings?.currentPoints || 0} pts</p>
+                        </div>
+
+                        {earnings && (
+                            <div className="mt-2 text-[9px] opacity-80">
+                                <div className="flex justify-between mb-1">
+                                    <span>Progresso para Conversão</span>
+                                    <span>{Math.min(100, Math.floor((earnings.currentPoints / earnings.minConversionPoints) * 100))}%</span>
+                                </div>
+                                <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-white transition-all duration-500"
+                                        style={{ width: `${Math.min(100, (earnings.currentPoints / earnings.minConversionPoints) * 100)}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )}
 
                         {earnings && earnings.currentPoints >= earnings.minConversionPoints && (
                             <button
                                 onClick={handleConvertPoints}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 bg-white text-purple-600 px-3 py-1 rounded-full text-[10px] font-black hover:scale-105 active:scale-95 transition-all shadow-lg"
+                                className="absolute right-2 top-3 bg-white text-purple-600 px-3 py-1 rounded-full text-[10px] font-black hover:scale-105 active:scale-95 transition-all shadow-lg animate-bounce"
                             >
                                 CONVERTER
                             </button>
@@ -409,6 +647,16 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                                                     <DollarSign size={10} /> PAGAR
                                                 </button>
                                             )}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleRemoveCampaign(campaign);
+                                                }}
+                                                className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/50 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-all"
+                                                title="Remover Campanha"
+                                            >
+                                                <Trash2 size={10} /> REMOVER
+                                            </button>
                                             <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${campaign.isActive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-zinc-800 text-zinc-400'}`}>
                                                 {campaign.status}
                                             </span>
@@ -473,12 +721,18 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                         {/* Video Content */}
                         <div className="aspect-video bg-black rounded-2xl overflow-hidden mb-8 shadow-2xl ring-1 ring-white/10 relative group">
                             {watchingVideo.platform === 'YOUTUBE' && getVideoId(watchingVideo.videoUrl) ? (
-                                <iframe
-                                    src={`https://www.youtube.com/embed/${getVideoId(watchingVideo.videoUrl)}?autoplay=1`}
-                                    className="w-full h-full"
-                                    allow="autoplay; encrypted-media"
-                                    allowFullScreen
-                                />
+                                <div className="w-full h-full">
+                                    <div id="promo-player" className="w-full h-full"></div>
+                                    <YouTubeInit
+                                        videoId={getVideoId(watchingVideo.videoUrl)!}
+                                        onStateChange={(state: number) => setPlayerState(state)}
+                                        onReady={(player: any) => {
+                                            playerRef.current = player;
+                                            player.playVideo();
+                                        }}
+                                        playerId="promo-player"
+                                    />
+                                </div>
                             ) : (
                                 <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-zinc-900 to-black">
                                     <Play size={48} className="text-primary-500 opacity-20" />
@@ -677,123 +931,6 @@ const CreateCampaignModal: React.FC<{
             onError('Erro', e.message);
         }
         setLoading(false);
-    };
-
-    const PaymentSuccessModal: React.FC<{
-        data: any;
-        onClose: () => void;
-    }> = ({ data, onClose }) => {
-        // Taxas do Asaas
-        const ASAAS_PIX_FIXED_FEE = 0.99;
-        const ASAAS_CARD_FEE_PERCENT = 0.0299;
-        const ASAAS_CARD_FIXED_FEE = 0.49;
-
-        // Recalcular total se necessário ou usar o valor retornado (idealmente o backend retorna 'value' total)
-        // O objeto 'data' do Asaas costuma ter o 'value'. Se não tiver, usamos budget + taxa (mas aqui só temos data do pagamento).
-        // Vou assumir que 'data.value' vem do asaas ou o frontend deve confiar no que tem.
-        // data.value é o valor final da cobrança.
-        const totalToPay = data.value || 0;
-
-        return (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-                <div className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-surfaceHighlight rounded-t-[2.5rem] sm:rounded-3xl p-6 w-full sm:max-w-sm relative shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300">
-                    <div className="flex justify-between items-start mb-6">
-                        <h3 className="text-xl font-bold text-white">Dados da cobrança</h3>
-                        <button onClick={onClose} className="text-zinc-500 hover:text-white bg-zinc-900/50 p-2 rounded-full">
-                            <XIcon size={20} />
-                        </button>
-                    </div>
-
-                    <div className="space-y-6">
-                        <div className="flex flex-col items-center justify-center p-4 bg-yellow-500/10 rounded-2xl border border-yellow-500/20">
-                            <span className="text-yellow-500 font-bold uppercase tracking-widest text-xs mb-1">Situação</span>
-                            <span className="text-white font-black text-lg">Aguardando pagamento</span>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-baseline border-b border-white/5 pb-2">
-                                <span className="text-zinc-500 text-xs font-bold uppercase">Criada em</span>
-                                <span className="text-zinc-300 text-sm font-mono">{new Date().toLocaleDateString('pt-BR')}</span>
-                            </div>
-
-                            <div className="flex justify-between items-baseline border-b border-white/5 pb-2">
-                                <span className="text-zinc-500 text-xs font-bold uppercase">Cliente</span>
-                                <span className="text-zinc-300 text-sm">Você</span>
-                            </div>
-
-                            <div className="flex justify-between items-baseline border-b border-white/5 pb-2">
-                                <span className="text-zinc-500 text-xs font-bold uppercase">Fatura</span>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-zinc-300 text-sm font-mono">{data.id?.slice(0, 16)}...</span>
-                                    {data.invoiceUrl && (
-                                        <a href={data.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary-400 hover:underline flex items-center gap-1 mt-1">
-                                            Visualizar fatura <ExternalLink size={10} />
-                                        </a>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="flex justify-between items-baseline border-b border-white/5 pb-2">
-                                <span className="text-zinc-500 text-xs font-bold uppercase">Valor</span>
-                                <span className="text-white text-lg font-black">{totalToPay.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                            </div>
-
-                            <div className="flex justify-between items-baseline border-b border-white/5 pb-2">
-                                <span className="text-zinc-500 text-xs font-bold uppercase">Vencimento</span>
-                                <span className="text-zinc-300 text-sm font-mono">
-                                    {data.dueDate ? new Date(data.dueDate).toLocaleDateString('pt-BR') : new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')}
-                                </span>
-                            </div>
-
-                            <div className="flex justify-between items-baseline">
-                                <span className="text-zinc-500 text-xs font-bold uppercase">Forma de pagamento</span>
-                                <div className="flex items-center gap-2 text-zinc-300 text-sm font-bold">
-                                    <Smartphone size={14} className="text-emerald-500" /> Pix
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* QR Code Section */}
-                        {data.pixCopiaECola && (
-                            <div className="mt-6 flex flex-col items-center">
-                                <div className="bg-white p-2 rounded-xl">
-                                    <QRCodeCanvas
-                                        value={data.pixCopiaECola}
-                                        size={180}
-                                        level={"H"}
-                                    />
-                                </div>
-                                <div className="mt-4 w-full">
-                                    <div className="flex gap-2">
-                                        <input
-                                            readOnly
-                                            value={data.pixCopiaECola}
-                                            className="flex-1 bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] text-zinc-400 font-mono truncate"
-                                        />
-                                        <button
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(data.pixCopiaECola);
-                                            }}
-                                            className="bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded-xl"
-                                        >
-                                            <CheckCircle2 size={16} />
-                                        </button>
-                                    </div>
-                                    <p className="text-center text-[10px] text-zinc-600 mt-2 uppercase font-bold">Copie e cole no seu banco</p>
-                                </div>
-                            </div>
-                        )}
-
-                        <button
-                            onClick={onClose}
-                            className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black uppercase tracking-[0.2em] py-4 rounded-2xl transition-all shadow-lg active:scale-[0.98] text-xs mt-4"
-                        >
-                            FECHAR
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
     };
 
     return (
@@ -1076,3 +1213,42 @@ const VideoCardSkeleton = () => (
         </div>
     </div>
 );
+
+// Helper component to initialize individual YouTube players
+const YouTubeInit: React.FC<{
+    videoId: string;
+    onStateChange: (state: number) => void;
+    onReady: (player: any) => void;
+    playerId?: string;
+}> = ({ videoId, onStateChange, onReady, playerId = 'farm-player' }) => {
+    useEffect(() => {
+        const initPlayer = () => {
+            new window.YT.Player(playerId, {
+                videoId: videoId,
+                playerVars: {
+                    autoplay: 1,
+                    controls: 1,
+                    modestbranding: 1,
+                    rel: 0,
+                    iv_load_policy: 3
+                },
+                events: {
+                    onReady: (event: any) => onReady(event.target),
+                    onStateChange: (event: any) => onStateChange(event.data)
+                }
+            });
+        };
+
+        if (window.YT && window.YT.Player) {
+            initPlayer();
+        } else {
+            const originalOnReady = window.onYouTubeIframeAPIReady;
+            window.onYouTubeIframeAPIReady = () => {
+                if (originalOnReady) originalOnReady();
+                initPlayer();
+            };
+        }
+    }, [videoId, playerId]);
+
+    return null;
+};

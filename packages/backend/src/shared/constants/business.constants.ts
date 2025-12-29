@@ -3,6 +3,19 @@ export const QUOTA_PRICE = 50.00; // Preço de aquisição total
 export const QUOTA_SHARE_VALUE = 42.00; // Valor que vai para o Capital Social (Resgatável)
 export const QUOTA_ADM_FEE = 8.00;   // Taxa de Manutenção Administrativa (Não resgatável)
 
+// Distribuição da Taxa Administrativa (Soma = 100%)
+export const QUOTA_FEE_TAX_SHARE = 0.25;         // 25% = R$ 2,00 → Impostos
+export const QUOTA_FEE_OPERATIONAL_SHARE = 0.25; // 25% = R$ 2,00 → Servidores/APIs
+export const QUOTA_FEE_OWNER_SHARE = 0.25;       // 25% = R$ 2,00 → Pró-labore
+export const QUOTA_FEE_INVESTMENT_SHARE = 0.25;  // 25% = R$ 2,00 → Fundo de Investimento
+
+// Constantes globais para distribuição de taxas da plataforma (Regra 25/25/25/25)
+// Usado em: Empréstimos, Marketplace, Upgrades, Boosts, etc.
+export const PLATFORM_FEE_TAX_SHARE = 0.25;
+export const PLATFORM_FEE_OPERATIONAL_SHARE = 0.25;
+export const PLATFORM_FEE_OWNER_SHARE = 0.25;
+export const PLATFORM_FEE_INVESTMENT_SHARE = 0.25;
+
 // Taxa de sustentabilidade do apoio mútuo (20%)
 export const LOAN_INTEREST_RATE = Number(process.env.LOAN_INTEREST_RATE) || 0.2;
 
@@ -34,6 +47,7 @@ export const LOAN_ORIGINATION_FEE_RATE = 0.03; // 3% de taxa de originação (se
 export const WITHDRAWAL_FIXED_FEE = 2.00; // Taxa fixa de R$ 2,00 por saque
 export const MIN_WITHDRAWAL_AMOUNT = 50.00; // Valor mínimo para saque
 export const MARKETPLACE_ESCROW_FEE_RATE = 0.05; // 5% de taxa de garantia (Escrow) no Mercado Cred30
+export const MARKETPLACE_NON_VERIFIED_FEE_RATE = 0.26; // 26% de taxa para vendedores não verificados (Incentivo ao cadastro Asaas)
 export const MARKET_CREDIT_INTEREST_RATE = 0.015; // 1.5% ao mês (Mais barato que o apoio mútuo padrão)
 export const MARKET_CREDIT_MAX_INSTALLMENTS = 24; // Até 24x para facilitar compras grandes
 export const MARKET_CREDIT_MIN_SCORE = 450; // Score mínimo para comprar parcelado

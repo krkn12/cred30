@@ -205,31 +205,37 @@ export const AdminSystem: React.FC<AdminSystemProps> = ({ state, onRefresh, onSu
                     </div>
                 </div>
 
-                {/* Fundo de Recompensas */}
+                {/* Distribuição de Reservas Internas */}
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
                     <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
-                        <div className="p-2 bg-emerald-500/10 rounded-lg"><Coins className="text-emerald-400" size={20} /></div>
-                        Fundo de Recompensas
+                        <div className="p-2 bg-primary-500/10 rounded-lg"><Activity className="text-primary-400" size={20} /></div>
+                        Reservas de Crescimento (25/25/25/25)
                     </h3>
-                    <div className="space-y-6">
-                        <div className="bg-black/20 p-6 rounded-2xl border border-zinc-800">
-                            <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Acumulado p/ Distribuição</p>
-                            <p className="text-4xl font-black text-white tracking-tighter">{formatCurrency(state.profitPool)}</p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-black/40 border border-zinc-800/50 p-4 rounded-2xl">
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Impostos (Receita)</p>
+                            <p className="text-lg font-black text-white">{formatCurrency(state.stats?.systemConfig?.total_tax_reserve || 0)}</p>
                         </div>
-                        <div className="space-y-4">
-                            <input
-                                type="text"
-                                placeholder="Valor a adicionar (R$)"
-                                value={newProfit}
-                                onChange={(e) => setNewProfit(e.target.value)}
-                                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-emerald-500/50 font-bold"
-                            />
-                            <button
-                                onClick={handleUpdateProfit}
-                                className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-4 rounded-2xl transition-all shadow-xl"
-                            >
-                                Lançar Excedente
-                            </button>
+                        <div className="bg-black/40 border border-zinc-800/50 p-4 rounded-2xl">
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Operacional (Infra)</p>
+                            <p className="text-lg font-black text-white">{formatCurrency(state.stats?.systemConfig?.total_operational_reserve || 0)}</p>
+                        </div>
+                        <div className="bg-black/40 border border-zinc-800/50 p-4 rounded-2xl">
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Owner Profit (Salário)</p>
+                            <p className="text-lg font-black text-white">{formatCurrency(state.stats?.systemConfig?.total_owner_profit || 0)}</p>
+                        </div>
+                        <div className="bg-black/40 border border-zinc-800/50 p-4 rounded-2xl">
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Reserva Investimento</p>
+                            <p className="text-lg font-black text-primary-400">{formatCurrency(state.stats?.systemConfig?.investment_reserve || 0)}</p>
+                        </div>
+                    </div>
+                    <div className="mt-6 pt-6 border-t border-zinc-800">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-xs text-zinc-500 font-bold uppercase">Reward Pool (Cotistas)</span>
+                            <span className="text-xs text-emerald-400 font-black tracking-tight">{formatCurrency(state.profitPool)}</span>
+                        </div>
+                        <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-emerald-500 h-full" style={{ width: '100%' }}></div>
                         </div>
                     </div>
                 </div>

@@ -2,7 +2,16 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { LOAN_INTEREST_RATE, ONE_MONTH_MS, PENALTY_RATE, LOAN_ORIGINATION_FEE_RATE } from '../../../shared/constants/business.constants';
+import {
+  LOAN_INTEREST_RATE,
+  ONE_MONTH_MS,
+  PENALTY_RATE,
+  LOAN_ORIGINATION_FEE_RATE,
+  PLATFORM_FEE_TAX_SHARE,
+  PLATFORM_FEE_OPERATIONAL_SHARE,
+  PLATFORM_FEE_OWNER_SHARE,
+  PLATFORM_FEE_INVESTMENT_SHARE
+} from '../../../shared/constants/business.constants';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
 import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/asaas.service';
 import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
@@ -254,8 +263,19 @@ loanRoutes.post('/request', authMiddleware, async (c) => {
       const feeForProfit = originationFee * 0.15;
 
       await client.query(
-        'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
-        [feeForOperational, feeForProfit]
+        `UPDATE system_config SET 
+          total_tax_reserve = total_tax_reserve + $1,
+          total_operational_reserve = total_operational_reserve + $2,
+          total_owner_profit = total_owner_profit + $3,
+          investment_reserve = investment_reserve + $4,
+          system_balance = system_balance + $5`,
+        [
+          originationFee * PLATFORM_FEE_TAX_SHARE,
+          originationFee * PLATFORM_FEE_OPERATIONAL_SHARE,
+          originationFee * PLATFORM_FEE_OWNER_SHARE,
+          originationFee * PLATFORM_FEE_INVESTMENT_SHARE,
+          originationFee
+        ]
       );
 
       // Se usou benefício, consumir um uso
