@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { QUOTA_PRICE, VESTING_PERIOD_MS, PENALTY_RATE, QUOTA_SHARE_VALUE, QUOTA_ADM_FEE } from '../../../shared/constants/business.constants';
+import { QUOTA_PRICE, VESTING_PERIOD_MS, PENALTY_RATE, QUOTA_SHARE_VALUE, QUOTA_ADM_FEE, QUOTA_FEE_TAX_SHARE, QUOTA_FEE_OPERATIONAL_SHARE, QUOTA_FEE_OWNER_SHARE, QUOTA_FEE_INVESTMENT_SHARE } from '../../../shared/constants/business.constants';
 import { Quota } from '../../../domain/entities/quota.entity';
 import { UserContext } from '../../../shared/types/hono.types';
 import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction } from '../../../domain/services/transaction.service';
@@ -216,6 +216,24 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
 
         // 6. Atualizar Score por participação
         await updateScore(client, user.id, SCORE_REWARDS.QUOTA_PURCHASE * quantity, `Aquisição de ${quantity} participações`);
+
+        // 7. Distribuir Taxa Administrativa (R$ 8,00 por cota)
+        // 25% Impostos | 25% Operacional | 25% Pró-labore | 25% Investimentos
+        const taxAmount = totalAdmFee * QUOTA_FEE_TAX_SHARE;
+        const operationalAmount = totalAdmFee * QUOTA_FEE_OPERATIONAL_SHARE;
+        const ownerAmount = totalAdmFee * QUOTA_FEE_OWNER_SHARE;
+        const investmentAmount = totalAdmFee * QUOTA_FEE_INVESTMENT_SHARE;
+
+        await client.query(`
+          UPDATE system_config SET 
+            total_tax_reserve = total_tax_reserve + $1,
+            total_operational_reserve = total_operational_reserve + $2,
+            total_owner_profit = total_owner_profit + $3,
+            investment_reserve = COALESCE(investment_reserve, 0) + $4,
+            system_balance = system_balance + $5
+        `, [taxAmount, operationalAmount, ownerAmount, investmentAmount, totalAdmFee]);
+
+        console.log(`[QUOTAS] Fee distribution: Tax R$${taxAmount.toFixed(2)}, Operational R$${operationalAmount.toFixed(2)}, Owner R$${ownerAmount.toFixed(2)}, Investment R$${investmentAmount.toFixed(2)}`);
 
         return {
           transactionId: transactionResult.transactionId,

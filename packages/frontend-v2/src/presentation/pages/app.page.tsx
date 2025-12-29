@@ -58,6 +58,8 @@ const EducationView = lazyWithRetry(() => import('../components/views/EducationV
 const FaqView = lazyWithRetry(() => import('../components/views/FaqView').then(m => ({ default: m.FaqView })));
 const VotingView = lazyWithRetry(() => import('../components/views/VotingView').then(m => ({ default: m.VotingView })));
 const PromoVideosView = lazyWithRetry(() => import('../components/views/PromoVideosView').then(m => ({ default: m.PromoVideosView })));
+const ViewFarmView = lazyWithRetry(() => import('../components/views/ViewFarmView').then(m => ({ default: m.ViewFarmView })));
+const SellerRegistrationView = lazyWithRetry(() => import('../components/views/SellerRegistrationView'));
 
 export default function App() {
   const [state, setState] = useState<AppState>({
@@ -106,6 +108,21 @@ export default function App() {
   const [showError, setShowError] = useState<{ isOpen: boolean, title: string, message: string }>({
     isOpen: false, title: '', message: ''
   });
+
+  // Auto-dismiss notifications after 4 seconds
+  useEffect(() => {
+    if (showSuccess.isOpen) {
+      const timer = setTimeout(() => setShowSuccess(prev => ({ ...prev, isOpen: false })), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccess.isOpen, showSuccess.title]);
+
+  useEffect(() => {
+    if (showError.isOpen) {
+      const timer = setTimeout(() => setShowError(prev => ({ ...prev, isOpen: false })), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showError.isOpen, showError.title]);
 
   const [confirmState, setConfirmState] = useState<{ id?: string, type: 'SELL' | 'SELL_ALL' } | null>(null);
 
@@ -545,8 +562,10 @@ export default function App() {
                 <Route path="education" element={<Suspense fallback={null}><EducationView onBack={() => navigate('/app/dashboard')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} /></Suspense>} />
                 <Route path="faq" element={<Suspense fallback={null}><FaqView /></Suspense>} />
                 <Route path="voting" element={<Suspense fallback={null}><VotingView appState={state} onBack={() => navigate('/app/dashboard')} onRefresh={refreshState} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} /></Suspense>} />
-                <Route path="promo-videos" element={<Suspense fallback={null}><PromoVideosView userBalance={state.currentUser.balance} onRefresh={refreshState} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} /></Suspense>} />
+                <Route path="promo-videos" element={<Suspense fallback={null}><PromoVideosView userBalance={state.currentUser.balance} onRefresh={refreshState} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} onFarm={() => navigate('/app/promo-videos/farm')} /></Suspense>} />
+                <Route path="promo-videos/farm" element={<Suspense fallback={null}><ViewFarmView onBack={() => navigate('/app/promo-videos')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} onRefresh={refreshState} /></Suspense>} />
                 <Route path="history" element={<Suspense fallback={null}><HistoryView transactions={state.transactions.filter(t => t.userId === state.currentUser!.id)} isPro={state.currentUser?.membership_type === 'PRO'} /></Suspense>} />
+                <Route path="seller" element={<Suspense fallback={null}><SellerRegistrationView /></Suspense>} />
                 <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
               </Routes>
 
