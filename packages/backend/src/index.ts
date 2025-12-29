@@ -3,7 +3,7 @@ import 'dotenv/config';
 import dns from 'node:dns';
 dns.setDefaultResultOrder('ipv4first');
 import { serve } from '@hono/node-server';
-import { Hono } from 'hono';
+import { Hono, Context } from 'hono';
 import { cors } from 'hono/cors';
 import { compress } from 'hono/compress';
 import { authRoutes } from './presentation/http/routes/auth.routes';
@@ -74,14 +74,14 @@ async function startServer() {
     app.route('/api/seller', sellerRoutes);
 
     // Rota raiz para evitar 404 em monitoramentos e pings de wakeup
-    app.get('/', (c) => c.json({
+    app.get('/', (c: Context) => c.json({
       message: 'Cred30 API Online',
       version: packageJson.version,
       docs: '/api/health'
     }));
 
     // Rota de health check
-    app.get('/api/health', (c) => {
+    app.get('/api/health', (c: Context) => {
       return c.json({
         status: 'ok',
         version: packageJson.version,
