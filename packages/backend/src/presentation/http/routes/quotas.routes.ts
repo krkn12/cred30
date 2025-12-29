@@ -653,14 +653,13 @@ quotaRoutes.post('/sell-all', authMiddleware, async (c) => {
 
       // NOTA: No resgate total, o capital fica no saldo do usuário. Só sai do banco via saque PIX.
 
-      // CORREÇÃO: Não adicionamos multas ao lucro de juros, pois isso criaria dinheiro do nada
-      // As multas são penalidades reais que reduzem o dinheiro em circulação
-      // if (totalProfit > 0) {
-      //   await client.query(
-      //     'UPDATE system_config SET profit_pool = profit_pool + $1',
-      //     [totalProfit]
-      //   );
-      // }
+      // Adicionar juros ao pool de lucros a cada parcela
+      if (totalPenalty > 0) {
+        await client.query(
+          'UPDATE system_config SET profit_pool = profit_pool + $1',
+          [totalPenalty]
+        );
+      }
 
       // Criar transação de venda
       await client.query(

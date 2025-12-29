@@ -12,8 +12,9 @@ export default {
             },
             colors: {
                 background: "#09090b", // Zinc 950
-                surface: "#18181b", // Zinc 900
-                surfaceHighlight: "#27272a", // Zinc 800
+                surface: "#0e0e11", // Deep Black
+                surfaceHighlight: "#18181b", // Zinc 900
+                surfaceElevated: "#27272a", // Zinc 800
                 primary: {
                     50: "#ecfeff",
                     100: "#cffafe",
@@ -25,6 +26,14 @@ export default {
                     700: "#0e7490",
                     800: "#155e75",
                     900: "#164e63",
+                },
+                accent: {
+                    DEFAULT: "#f0fff4", // Honeydew
+                    hover: "#dcfce7",
+                },
+                success: {
+                    DEFAULT: "#10b981", // Emerald 500
+                    glow: "rgba(16, 185, 129, 0.2)",
                 },
             },
             animation: {

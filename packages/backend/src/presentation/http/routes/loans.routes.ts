@@ -662,6 +662,12 @@ loanRoutes.post('/repay-installment', authMiddleware, async (c) => {
       [interestPortion]
     );
 
+    // Amortização Real: Diminuir o saldo devedor total e o principal no banco
+    await pool.query(
+      'UPDATE loans SET total_repayment = total_repayment - $1, amount = amount - $2 WHERE id = $3',
+      [installmentAmount, principalPortion, loanId]
+    );
+
     // Verificar se todas as parcelas foram pagas
     if (newPaidAmount >= parseFloat(loan.total_repayment)) {
       // Marcar apoio como PAGO
