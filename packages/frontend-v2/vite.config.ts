@@ -18,43 +18,53 @@ export default defineConfig({
                 theme_color: '#09090b',
                 background_color: '#09090b',
                 display: 'standalone',
+                display_override: ['standalone', 'window-controls-overlay'],
                 orientation: 'portrait',
                 start_url: '/',
                 scope: '/',
-                categories: ['finance', 'productivity', 'utilities'],
+                lang: 'pt-BR',
+                dir: 'ltr',
+                categories: ['finance', 'productivity', 'social'],
                 id: 'com.cred30.app',
                 icons: [
                     {
                         src: 'pwa-192x192.png',
-                        sizes: '192x192',
+                        sizes: '1024x1024',
                         type: 'image/png',
                         purpose: 'any'
                     },
                     {
                         src: 'pwa-512x512.png',
-                        sizes: '512x512',
+                        sizes: '1024x1024',
                         type: 'image/png',
                         purpose: 'any'
                     },
                     {
                         src: 'pwa-512x512.png',
-                        sizes: '512x512',
+                        sizes: '1024x1024',
                         type: 'image/png',
                         purpose: 'maskable'
                     }
                 ],
                 screenshots: [
                     {
-                        src: 'screenshot-mobile.png',
-                        sizes: '1080x1920',
+                        src: 'ad-banner.png',
+                        sizes: '1280x720',
                         type: 'image/png',
-                        form_factor: 'narrow'
+                        form_factor: 'wide',
+                        label: 'Homescreen do App'
+                    }
+                ],
+                shortcuts: [
+                    {
+                        name: 'Investir',
+                        url: '/?view=invest',
+                        icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }]
                     },
                     {
-                        src: 'screenshot-desktop.png',
-                        sizes: '1920x1080',
-                        type: 'image/png',
-                        form_factor: 'wide'
+                        name: 'Academy',
+                        url: '/?view=education',
+                        icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }]
                     }
                 ]
             },
