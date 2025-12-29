@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, Context } from 'hono';
 import { z } from 'zod';
 import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
@@ -60,12 +60,12 @@ const createVideoSchema = z.object({
 });
 
 // Listar tags disponíveis
-promoVideosRoutes.get('/tags', async (c) => {
+promoVideosRoutes.get('/tags', async (c: Context) => {
     return c.json({ success: true, data: VIDEO_TAGS });
 });
 
 // Listar vídeos disponíveis para assistir (Feed)
-promoVideosRoutes.get('/feed', async (c) => {
+promoVideosRoutes.get('/feed', async (c: Context) => {
     try {
         const userPayload = c.get('user');
         const pool = getDbPool(c);
@@ -113,7 +113,7 @@ promoVideosRoutes.get('/feed', async (c) => {
     }
 });
 // Farm de Views: Buscar o próximo vídeo disponível
-promoVideosRoutes.get('/farm/next', async (c) => {
+promoVideosRoutes.get('/farm/next', async (c: Context) => {
     try {
         const userPayload = c.get('user');
         const pool = getDbPool(c);
@@ -165,7 +165,7 @@ promoVideosRoutes.get('/farm/next', async (c) => {
         return c.json({ success: false, message: 'Erro ao processar farm' }, 500);
     }
 });
-promoVideosRoutes.post('/create', async (c) => {
+promoVideosRoutes.post('/create', async (c: Context) => {
     try {
         const userPayload = c.get('user');
         const body = await c.req.json();
@@ -297,7 +297,7 @@ promoVideosRoutes.post('/create', async (c) => {
 });
 
 // Buscar dados de pagamento de uma campanha PENDING
-promoVideosRoutes.get('/:id/payment', async (c) => {
+promoVideosRoutes.get('/:id/payment', async (c: Context) => {
     try {
         const userPayload = c.get('user');
         const videoId = c.req.param('id');
@@ -341,7 +341,7 @@ promoVideosRoutes.get('/:id/payment', async (c) => {
 });
 
 // Registrar início de view
-promoVideosRoutes.post('/:videoId/start-view', async (c) => {
+promoVideosRoutes.post('/:videoId/start-view', async (c: Context) => {
     try {
         const userPayload = c.get('user');
         const videoId = c.req.param('videoId');
@@ -402,7 +402,7 @@ promoVideosRoutes.post('/:videoId/start-view', async (c) => {
 });
 
 // Completar view e receber pagamento
-promoVideosRoutes.post('/:videoId/complete-view', async (c) => {
+promoVideosRoutes.post('/:videoId/complete-view', async (c: Context) => {
     try {
         const userPayload = c.get('user');
         const videoId = c.req.param('videoId');
@@ -458,7 +458,7 @@ promoVideosRoutes.post('/:videoId/complete-view', async (c) => {
 });
 
 // Minhas campanhas (com ranking global)
-promoVideosRoutes.get('/my-campaigns', async (c) => {
+promoVideosRoutes.get('/my-campaigns', async (c: Context) => {
     try {
         const userPayload = c.get('user');
         const pool = getDbPool(c);
@@ -506,7 +506,7 @@ promoVideosRoutes.get('/my-campaigns', async (c) => {
 });
 
 // Meus ganhos assistindo vídeos
-promoVideosRoutes.get('/my-earnings', async (c) => {
+promoVideosRoutes.get('/my-earnings', async (c: Context) => {
     try {
         const userPayload = c.get('user');
         const pool = getDbPool(c);
@@ -539,7 +539,7 @@ promoVideosRoutes.get('/my-earnings', async (c) => {
 });
 
 // Remover/Cancelar uma campanha
-promoVideosRoutes.delete('/:id', async (c) => {
+promoVideosRoutes.delete('/:id', async (c: Context) => {
     try {
         const userPayload = c.get('user');
         const id = c.req.param('id');
@@ -580,7 +580,7 @@ promoVideosRoutes.delete('/:id', async (c) => {
 });
 
 // Converter pontos em dinheiro
-promoVideosRoutes.post('/convert-points', async (c) => {
+promoVideosRoutes.post('/convert-points', async (c: Context) => {
     try {
         const userPayload = c.get('user');
         const pool = getDbPool(c);
