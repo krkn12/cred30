@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, Context } from 'hono';
 import { z } from 'zod';
 import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
@@ -94,7 +94,7 @@ const syncOfflineSchema = z.object({
 /**
  * Assistente de IA para gerar descrição e categoria de anúncios
  */
-marketplaceRoutes.post('/ai-assist', authMiddleware, async (c) => {
+marketplaceRoutes.post('/ai-assist', authMiddleware, async (c: Context) => {
     try {
         const body = await c.req.json();
         const { title } = body;
@@ -170,7 +170,7 @@ Responda APENAS em JSON no formato:
 /**
  * Listar todos os anúncios ativos no Mercado Cred30
  */
-marketplaceRoutes.get('/listings', authMiddleware, async (c) => {
+marketplaceRoutes.get('/listings', authMiddleware, async (c: Context) => {
     try {
         const pool = getDbPool(c);
         const limit = parseInt(c.req.query('limit') || '50');
@@ -209,7 +209,7 @@ marketplaceRoutes.get('/listings', authMiddleware, async (c) => {
     }
 });
 
-marketplaceRoutes.post('/create', authMiddleware, async (c) => {
+marketplaceRoutes.post('/create', authMiddleware, async (c: Context) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
@@ -251,7 +251,7 @@ marketplaceRoutes.post('/create', authMiddleware, async (c) => {
     }
 });
 
-marketplaceRoutes.post('/buy-on-credit', authMiddleware, async (c) => {
+marketplaceRoutes.post('/buy-on-credit', authMiddleware, async (c: Context) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
@@ -374,7 +374,7 @@ marketplaceRoutes.post('/buy-on-credit', authMiddleware, async (c) => {
     }
 });
 
-marketplaceRoutes.post('/buy', authMiddleware, async (c) => {
+marketplaceRoutes.post('/buy', authMiddleware, async (c: Context) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
@@ -600,7 +600,7 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c) => {
 /**
  * Abrir Disputa (Problemas com o produto ou entrega)
  */
-marketplaceRoutes.post('/order/:id/dispute', authMiddleware, async (c) => {
+marketplaceRoutes.post('/order/:id/dispute', authMiddleware, async (c: Context) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
@@ -638,7 +638,7 @@ marketplaceRoutes.post('/order/:id/dispute', authMiddleware, async (c) => {
  * Cancelar Pedido (Pelo Comprador ou Vendedor)
  * Só pode cancelar se não tiver sido finalizado/completo
  */
-marketplaceRoutes.post('/order/:id/cancel', authMiddleware, async (c) => {
+marketplaceRoutes.post('/order/:id/cancel', authMiddleware, async (c: Context) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
@@ -692,7 +692,7 @@ marketplaceRoutes.post('/order/:id/cancel', authMiddleware, async (c) => {
  * Avaliar Parceiro (Comprador avalia Vendedor e vice-versa)
  * Notas de -5 a 5, impactando Score
  */
-marketplaceRoutes.post('/order/:id/rate', authMiddleware, async (c) => {
+marketplaceRoutes.post('/order/:id/rate', authMiddleware, async (c: Context) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
@@ -743,7 +743,7 @@ marketplaceRoutes.post('/order/:id/rate', authMiddleware, async (c) => {
     }
 });
 
-marketplaceRoutes.post('/order/:id/receive', authMiddleware, async (c) => {
+marketplaceRoutes.post('/order/:id/receive', authMiddleware, async (c: Context) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
@@ -908,7 +908,7 @@ marketplaceRoutes.post('/order/:id/receive', authMiddleware, async (c) => {
 /**
  * Listar minhas compras e vendas
  */
-marketplaceRoutes.get('/my-orders', authMiddleware, async (c) => {
+marketplaceRoutes.get('/my-orders', authMiddleware, async (c: Context) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
@@ -952,7 +952,7 @@ marketplaceRoutes.get('/my-orders', authMiddleware, async (c) => {
 /**
  * Impulsionar um anúncio (Monetização)
  */
-marketplaceRoutes.post('/boost', authMiddleware, async (c) => {
+marketplaceRoutes.post('/boost', authMiddleware, async (c: Context) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
@@ -1072,7 +1072,7 @@ marketplaceRoutes.post('/boost', authMiddleware, async (c) => {
 /**
  * Logística Colaborativa ("Missões")
  */
-marketplaceRoutes.get('/logistic/missions', authMiddleware, async (c) => {
+marketplaceRoutes.get('/logistic/missions', authMiddleware, async (c: Context) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
@@ -1099,7 +1099,7 @@ marketplaceRoutes.get('/logistic/missions', authMiddleware, async (c) => {
     }
 });
 
-marketplaceRoutes.post('/logistic/mission/:id/accept', authMiddleware, async (c) => {
+marketplaceRoutes.post('/logistic/mission/:id/accept', authMiddleware, async (c: Context) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
@@ -1125,7 +1125,7 @@ marketplaceRoutes.post('/logistic/mission/:id/accept', authMiddleware, async (c)
     }
 });
 
-marketplaceRoutes.post('/logistic/mission/:id/pickup', authMiddleware, async (c) => {
+marketplaceRoutes.post('/logistic/mission/:id/pickup', authMiddleware, async (c: Context) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
@@ -1151,7 +1151,7 @@ marketplaceRoutes.post('/logistic/mission/:id/pickup', authMiddleware, async (c)
  * Sincronização de Vendas Offline
  * Recebe uma lista de transações realizadas sem internet e processa.
  */
-marketplaceRoutes.post('/offline/sync', authMiddleware, async (c) => {
+marketplaceRoutes.post('/offline/sync', authMiddleware, async (c: Context) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);

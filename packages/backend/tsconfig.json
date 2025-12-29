@@ -13,14 +13,29 @@
     "strict": true,
     "baseUrl": "./src",
     "paths": {
-      "@/*": ["./*"],
-      "@presentation/*": ["./presentation/*"],
-      "@application/*": ["./application/*"],
-      "@domain/*": ["./domain/*"],
-      "@infrastructure/*": ["./infrastructure/*"],
-      "@shared/*": ["./shared/*"]
+      "@/*": [
+        "./*"
+      ],
+      "@presentation/*": [
+        "./presentation/*"
+      ],
+      "@application/*": [
+        "./application/*"
+      ],
+      "@domain/*": [
+        "./domain/*"
+      ],
+      "@infrastructure/*": [
+        "./infrastructure/*"
+      ],
+      "@shared/*": [
+        "./shared/*"
+      ]
     },
-    "types": ["bun-types"]
+    "types": [
+      "bun-types",
+      "node"
+    ]
   },
   "include": [
     "src/**/*",
