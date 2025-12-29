@@ -1,5 +1,14 @@
 import { Pool, PoolClient } from 'pg';
-import { QUOTA_PRICE, QUOTA_SHARE_VALUE, QUOTA_ADM_FEE, ASAAS_PIX_OUT_FEE } from '../../shared/constants/business.constants';
+import {
+  QUOTA_PRICE,
+  QUOTA_SHARE_VALUE,
+  QUOTA_ADM_FEE,
+  ASAAS_PIX_OUT_FEE,
+  PLATFORM_FEE_TAX_SHARE,
+  PLATFORM_FEE_OPERATIONAL_SHARE,
+  PLATFORM_FEE_OWNER_SHARE,
+  PLATFORM_FEE_INVESTMENT_SHARE
+} from '../../shared/constants/business.constants';
 import { calculateGatewayCost } from '../../shared/utils/financial.utils';
 import { updateScore, SCORE_REWARDS } from '../../application/services/score.service';
 import { logAudit } from '../../application/services/audit.service';
@@ -349,11 +358,20 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
 
       // Distribuir a Taxa de Serviço se existir (externa)
       if (serviceFee > 0) {
-        const feeForOperational = serviceFee * 0.85;
-        const feeForProfit = serviceFee * 0.15;
         await client.query(
-          'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
-          [feeForOperational, feeForProfit]
+          `UPDATE system_config SET 
+            total_tax_reserve = total_tax_reserve + $1,
+            total_operational_reserve = total_operational_reserve + $2,
+            total_owner_profit = total_owner_profit + $3,
+            investment_reserve = investment_reserve + $4,
+            system_balance = system_balance + $5`,
+          [
+            serviceFee * PLATFORM_FEE_TAX_SHARE,
+            serviceFee * PLATFORM_FEE_OPERATIONAL_SHARE,
+            serviceFee * PLATFORM_FEE_OWNER_SHARE,
+            serviceFee * PLATFORM_FEE_INVESTMENT_SHARE,
+            serviceFee
+          ]
         );
       }
     }
@@ -425,8 +443,19 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
     const feeForOperational = upgradeFee * 0.15;
 
     await client.query(
-      'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
-      [feeForOperational, feeForProfit]
+      `UPDATE system_config SET 
+        total_tax_reserve = total_tax_reserve + $1,
+        total_operational_reserve = total_operational_reserve + $2,
+        total_owner_profit = total_owner_profit + $3,
+        investment_reserve = investment_reserve + $4,
+        system_balance = system_balance + $5`,
+      [
+        upgradeFee * PLATFORM_FEE_TAX_SHARE,
+        upgradeFee * PLATFORM_FEE_OPERATIONAL_SHARE,
+        upgradeFee * PLATFORM_FEE_OWNER_SHARE,
+        upgradeFee * PLATFORM_FEE_INVESTMENT_SHARE,
+        upgradeFee
+      ]
     );
 
     // 3. Bônus de Score por se tornar PRO
@@ -509,12 +538,21 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
 
       // Valor líquido para distribuição (depois do gateway cost)
       const netBoostFee = boostFee - gatewayCost;
-      const feeForProfit = netBoostFee * 0.85;
-      const feeForOperational = netBoostFee * 0.15;
 
       await client.query(
-        'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
-        [feeForOperational, feeForProfit]
+        `UPDATE system_config SET 
+          total_tax_reserve = total_tax_reserve + $1,
+          total_operational_reserve = total_operational_reserve + $2,
+          total_owner_profit = total_owner_profit + $3,
+          investment_reserve = investment_reserve + $4,
+          system_balance = system_balance + $5`,
+        [
+          netBoostFee * PLATFORM_FEE_TAX_SHARE,
+          netBoostFee * PLATFORM_FEE_OPERATIONAL_SHARE,
+          netBoostFee * PLATFORM_FEE_OWNER_SHARE,
+          netBoostFee * PLATFORM_FEE_INVESTMENT_SHARE,
+          netBoostFee
+        ]
       );
 
       console.log(`[MARKET_BOOST] Anúncio ${metadata.listingId} impulsionado via transação ${id}`);
@@ -562,19 +600,22 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
       [totalDeduction, ASAAS_PIX_OUT_FEE]
     );
 
-    // 2. Se houver taxa cobrada do usuário (ex: R$ 2,00), aplicar a regra de divisão: 15% Volta pro Caixa / 85% vai pros Lucros
+    // 2. Se houver taxa cobrada do usuário (ex: R$ 2,00), aplicar a regra de divisão: 25/25/25/25
     if (feeAmount > 0) {
-      feeForProfit = feeAmount * 0.85;
-      feeForOperational = feeAmount * 0.15;
-
       await client.query(
-        'UPDATE system_config SET system_balance = system_balance + $1',
-        [feeForOperational]
-      );
-
-      await client.query(
-        'UPDATE system_config SET profit_pool = profit_pool + $1',
-        [feeForProfit]
+        `UPDATE system_config SET 
+          total_tax_reserve = total_tax_reserve + $1,
+          total_operational_reserve = total_operational_reserve + $2,
+          total_owner_profit = total_owner_profit + $3,
+          investment_reserve = investment_reserve + $4,
+          system_balance = system_balance + $5`,
+        [
+          feeAmount * PLATFORM_FEE_TAX_SHARE,
+          feeAmount * PLATFORM_FEE_OPERATIONAL_SHARE,
+          feeAmount * PLATFORM_FEE_OWNER_SHARE,
+          feeAmount * PLATFORM_FEE_INVESTMENT_SHARE,
+          feeAmount
+        ]
       );
     }
 
@@ -677,12 +718,21 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
 
   await updateUserBalance(client, loan.user_id, netAmount, 'credit');
 
-  // Distribuir a Taxa de Originação (85% para cotistas / 15% Operacional)
-  const feeForProfit = originationFee * 0.85;
-  const feeForOperational = originationFee * 0.15;
+  // Distribuir a Taxa de Originação (25/25/25/25)
   await client.query(
-    'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
-    [feeForOperational, feeForProfit]
+    `UPDATE system_config SET 
+      total_tax_reserve = total_tax_reserve + $1,
+      total_operational_reserve = total_operational_reserve + $2,
+      total_owner_profit = total_owner_profit + $3,
+      investment_reserve = investment_reserve + $4,
+      system_balance = system_balance + $5`,
+    [
+      originationFee * PLATFORM_FEE_TAX_SHARE,
+      originationFee * PLATFORM_FEE_OPERATIONAL_SHARE,
+      originationFee * PLATFORM_FEE_OWNER_SHARE,
+      originationFee * PLATFORM_FEE_INVESTMENT_SHARE,
+      originationFee
+    ]
   );
 
   // NOTA: Não deduzimos do system_balance aqui. A liquidez real só sai do banco quando o usuário sacar.

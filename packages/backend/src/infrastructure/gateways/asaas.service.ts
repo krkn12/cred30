@@ -416,3 +416,213 @@ export const simulatePaymentApproval = async (paymentId: string): Promise<string
     }
     throw new Error('Simulação só disponível em ambiente sandbox');
 };
+
+// ============================================
+// SUBCONTA E SPLIT PAYMENTS (MARKETPLACE)
+// ============================================
+
+export interface SubAccountRequest {
+    name: string;
+    email: string;
+    cpfCnpj: string;
+    companyType?: 'MEI' | 'LIMITED' | 'INDIVIDUAL' | 'ASSOCIATION';
+    mobilePhone: string;
+    address: string;
+    addressNumber: string;
+    province: string;  // Bairro
+    city: string;
+    state: string;     // UF (2 letras)
+    postalCode: string;
+}
+
+export interface SubAccountResponse {
+    id: string;
+    walletId: string;
+    name: string;
+    email: string;
+    status: string;
+}
+
+export interface SplitPaymentRequest extends PaymentRequest {
+    split: Array<{
+        walletId: string;
+        fixedValue?: number;      // Valor fixo para o vendedor
+        percentualValue?: number; // OU percentual para o vendedor (0-100)
+    }>;
+}
+
+/**
+ * Cria uma subconta (conta digital) para vendedor no Asaas
+ * Isso permite que o vendedor receba pagamentos via split
+ */
+export const createSubAccount = async (data: SubAccountRequest): Promise<SubAccountResponse> => {
+    try {
+        console.log('[ASAAS] Criando subconta para:', data.email);
+
+        const result = await asaasRequest('/accounts', {
+            method: 'POST',
+            body: JSON.stringify({
+                name: data.name,
+                email: data.email,
+                cpfCnpj: data.cpfCnpj.replace(/\D/g, ''), // Apenas números
+                companyType: data.companyType || 'INDIVIDUAL',
+                mobilePhone: data.mobilePhone.replace(/\D/g, ''),
+                address: data.address,
+                addressNumber: data.addressNumber,
+                province: data.province,
+                city: data.city,
+                state: data.state.toUpperCase(),
+                postalCode: data.postalCode.replace(/\D/g, ''),
+            }),
+        });
+
+        console.log('[ASAAS] Subconta criada:', result.id, 'Wallet:', result.walletId);
+
+        return {
+            id: result.id,
+            walletId: result.walletId,
+            name: result.name,
+            email: result.email,
+            status: result.accountNumber ? 'active' : 'pending',
+        };
+    } catch (error: any) {
+        console.error('[ASAAS] Erro ao criar subconta:', error);
+        throw new Error(error.message || 'Falha ao criar conta de vendedor no Asaas');
+    }
+};
+
+/**
+ * Busca dados de uma subconta existente
+ */
+export const getSubAccount = async (accountId: string): Promise<SubAccountResponse | null> => {
+    try {
+        const result = await asaasRequest(`/accounts/${accountId}`);
+        return {
+            id: result.id,
+            walletId: result.walletId,
+            name: result.name,
+            email: result.email,
+            status: result.accountNumber ? 'active' : 'pending',
+        };
+    } catch (error) {
+        console.error('[ASAAS] Erro ao buscar subconta:', error);
+        return null;
+    }
+};
+
+/**
+ * Cria pagamento PIX com Split (divisão de valores)
+ * O split divide automaticamente o pagamento entre vendedor e plataforma
+ */
+export const createSplitPixPayment = async (data: SplitPaymentRequest): Promise<PaymentResponse> => {
+    try {
+        const external_reference = data.external_reference || uuidv4();
+
+        // Buscar ou criar cliente (comprador)
+        const customerId = await getOrCreateCustomer(data.email, data.name || '', data.cpf);
+
+        // Montar array de split
+        const splitArray = data.split.map(s => ({
+            walletId: s.walletId,
+            ...(s.fixedValue !== undefined ? { fixedValue: s.fixedValue } : {}),
+            ...(s.percentualValue !== undefined ? { percentualValue: s.percentualValue } : {}),
+        }));
+
+        console.log('[ASAAS] Criando pagamento com split:', { value: data.amount, split: splitArray });
+
+        // Criar cobrança PIX com split
+        const payment = await asaasRequest('/payments', {
+            method: 'POST',
+            body: JSON.stringify({
+                customer: customerId,
+                billingType: 'PIX',
+                value: data.amount,
+                description: data.description,
+                externalReference: external_reference,
+                dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                split: splitArray,
+            }),
+        });
+
+        // Buscar QR Code do PIX
+        const pixQrCode = await asaasRequest(`/payments/${payment.id}/pixQrCode`);
+
+        return {
+            id: payment.id,
+            qr_code: pixQrCode.payload,
+            qr_code_base64: pixQrCode.encodedImage,
+            status: payment.status,
+            external_reference: external_reference,
+            payment_method_id: 'pix',
+            invoiceUrl: payment.invoiceUrl,
+            pixCopiaECola: pixQrCode.payload,
+            expirationDate: pixQrCode.expirationDate,
+        };
+    } catch (error: any) {
+        console.error('[ASAAS] Erro ao criar pagamento com split:', error);
+        throw new Error(error.message || 'Falha ao processar pagamento com split');
+    }
+};
+
+/**
+ * Cria pagamento com Cartão de Crédito com Split
+ */
+export const createSplitCardPayment = async (data: SplitPaymentRequest): Promise<PaymentResponse> => {
+    try {
+        const external_reference = data.external_reference || uuidv4();
+
+        // Buscar ou criar cliente
+        const customerId = await getOrCreateCustomer(data.email, data.name || '', data.cpf);
+
+        // Montar array de split
+        const splitArray = data.split.map(s => ({
+            walletId: s.walletId,
+            ...(s.fixedValue !== undefined ? { fixedValue: s.fixedValue } : {}),
+            ...(s.percentualValue !== undefined ? { percentualValue: s.percentualValue } : {}),
+        }));
+
+        const paymentBody: any = {
+            customer: customerId,
+            billingType: 'CREDIT_CARD',
+            value: data.amount,
+            description: data.description,
+            externalReference: external_reference,
+            installmentCount: data.installments || 1,
+            split: splitArray,
+        };
+
+        // Adicionar dados do cartão se fornecidos
+        if (data.creditCard) {
+            paymentBody.creditCard = data.creditCard;
+        }
+        if (data.creditCardHolderInfo) {
+            paymentBody.creditCardHolderInfo = data.creditCardHolderInfo;
+        }
+
+        const payment = await asaasRequest('/payments', {
+            method: 'POST',
+            body: JSON.stringify(paymentBody),
+        });
+
+        return {
+            id: payment.id,
+            status: payment.status,
+            external_reference: external_reference,
+            payment_method_id: 'credit_card',
+            invoiceUrl: payment.invoiceUrl,
+        };
+    } catch (error: any) {
+        console.error('[ASAAS] Erro ao criar pagamento cartão com split:', error);
+        throw new Error(error.message || 'Falha ao processar pagamento com cartão');
+    }
+};
+
+/**
+ * Calcula o valor que vai para o vendedor baseado na taxa da plataforma
+ * @param totalValue Valor total da venda
+ * @param platformFeePercent Taxa da plataforma em decimal (ex: 0.05 = 5%)
+ * @returns Valor que o vendedor recebe
+ */
+export const calculateSellerAmount = (totalValue: number, platformFeePercent: number): number => {
+    return parseFloat((totalValue * (1 - platformFeePercent)).toFixed(2));
+};

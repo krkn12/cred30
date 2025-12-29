@@ -131,7 +131,7 @@ userRoutes.put('/profile', authMiddleware, async (c) => {
       UPDATE users
       SET ${updateFields.join(', ')}
       WHERE id = $${paramIndex}
-      RETURNING id, name, email, pix_key, balance, score, created_at, referral_code, is_admin
+      RETURNING id, name, email, pix_key, balance, score, created_at, referral_code, is_admin, video_points
     `;
 
     const result = await pool.query(updateQuery, updateValues);
@@ -155,6 +155,7 @@ userRoutes.put('/profile', authMiddleware, async (c) => {
           joinedAt: updatedUser.created_at,
           referralCode: updatedUser.referral_code,
           isAdmin: updatedUser.is_admin,
+          video_points: updatedUser.video_points
         },
       },
     });
@@ -203,6 +204,7 @@ userRoutes.get('/sync', authMiddleware, async (c) => {
           u.membership_type,
           u.is_verified,
           u.security_lock_until,
+          u.video_points,
           (SELECT COUNT(*) FROM quotas WHERE user_id = u.id AND status = 'ACTIVE') as quota_count,
           (SELECT COALESCE(SUM(total_repayment), 0) FROM loans WHERE user_id = u.id AND status IN ('APPROVED', 'PAYMENT_PENDING')) as debt_total
         FROM users u WHERE u.id = $1
@@ -252,7 +254,8 @@ userRoutes.get('/sync', authMiddleware, async (c) => {
           score: stats.score || 0,
           membership_type: stats.membership_type || 'MEMBER',
           is_verified: stats.is_verified || false,
-          security_lock_until: stats.security_lock_until
+          security_lock_until: stats.security_lock_until,
+          video_points: stats.video_points || 0
         },
         stats: {
           activeQuotas: parseInt(stats.quota_count || '0'),

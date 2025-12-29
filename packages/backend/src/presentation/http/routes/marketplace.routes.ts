@@ -2,13 +2,31 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { MARKETPLACE_ESCROW_FEE_RATE, MARKET_CREDIT_INTEREST_RATE, MARKET_CREDIT_MAX_INSTALLMENTS, MARKET_CREDIT_MIN_SCORE, MARKET_CREDIT_MIN_QUOTAS, LOGISTICS_SUSTAINABILITY_FEE_RATE } from '../../../shared/constants/business.constants';
+import {
+    MARKETPLACE_ESCROW_FEE_RATE,
+    MARKETPLACE_NON_VERIFIED_FEE_RATE,
+    MARKET_CREDIT_INTEREST_RATE,
+    MARKET_CREDIT_MAX_INSTALLMENTS,
+    MARKET_CREDIT_MIN_SCORE,
+    MARKET_CREDIT_MIN_QUOTAS,
+    LOGISTICS_SUSTAINABILITY_FEE_RATE,
+    QUOTA_FEE_TAX_SHARE,
+    QUOTA_FEE_OPERATIONAL_SHARE,
+    QUOTA_FEE_OWNER_SHARE,
+    QUOTA_FEE_INVESTMENT_SHARE
+} from '../../../shared/constants/business.constants';
 import { UserContext } from '../../../shared/types/hono.types';
 import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction, lockSystemConfig } from '../../../domain/services/transaction.service';
 import { calculateUserLoanLimit } from '../../../application/services/credit-analysis.service';
 import { updateScore } from '../../../application/services/score.service';
 import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
-import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/asaas.service';
+import {
+    createPixPayment,
+    createCardPayment,
+    createSplitPixPayment,
+    createSplitCardPayment,
+    calculateSellerAmount
+} from '../../../infrastructure/gateways/asaas.service';
 import { getWelcomeBenefit, consumeWelcomeBenefitUse } from '../../../application/services/welcome-benefit.service';
 
 const marketplaceRoutes = new Hono();
@@ -74,6 +92,82 @@ const syncOfflineSchema = z.object({
 });
 
 /**
+ * Assistente de IA para gerar descrição e categoria de anúncios
+ */
+marketplaceRoutes.post('/ai-assist', authMiddleware, async (c) => {
+    try {
+        const body = await c.req.json();
+        const { title } = body;
+
+        if (!title || title.length < 3) {
+            return c.json({ success: false, message: 'Título muito curto' }, 400);
+        }
+
+        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+        if (!GEMINI_API_KEY) {
+            // Fallback se não tiver API key
+            return c.json({
+                success: true,
+                data: {
+                    description: `${title} em ótimo estado. Produto de qualidade, pronto para uso. Entre em contato para mais informações.`,
+                    category: 'OUTROS'
+                }
+            });
+        }
+
+        const prompt = `Você é um assistente de marketplace. Dado o título de um anúncio, gere:
+1. Uma descrição atraente e profissional em português (máximo 200 caracteres)
+2. A categoria mais apropriada dentre: SERVICOS, ELETRONICOS, MODA, CASA, VEICULOS, COTAS, OUTROS
+
+Título: "${title}"
+
+Responda APENAS em JSON no formato:
+{"description": "...", "category": "..."}`;
+
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { temperature: 0.7, maxOutputTokens: 256 }
+                })
+            }
+        );
+
+        const data = await response.json();
+        const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+        // Extrair JSON da resposta
+        const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            return c.json({
+                success: true,
+                data: {
+                    description: parsed.description || `${title} - Produto de qualidade.`,
+                    category: parsed.category || 'OUTROS'
+                }
+            });
+        }
+
+        // Fallback
+        return c.json({
+            success: true,
+            data: {
+                description: `${title} em ótimo estado. Oportunidade imperdível!`,
+                category: 'OUTROS'
+            }
+        });
+
+    } catch (error: any) {
+        console.error('[MARKETPLACE AI] Erro:', error);
+        return c.json({ success: false, message: 'Erro ao gerar sugestão' }, 500);
+    }
+});
+
+/**
  * Listar todos os anúncios ativos no Mercado Cred30
  */
 marketplaceRoutes.get('/listings', authMiddleware, async (c) => {
@@ -87,14 +181,14 @@ marketplaceRoutes.get('/listings', authMiddleware, async (c) => {
             SELECT * FROM (
                 (SELECT l.id::text, l.title, l.description, l.price::float, l.image_url, l.category, 
                         u.name as seller_name, l.seller_id::text, l.is_boosted, l.created_at, l.status, 'P2P' as type,
-                        NULL as affiliate_url, l.quota_id
+                        NULL as affiliate_url, l.quota_id, u.asaas_wallet_id
                  FROM marketplace_listings l 
                  JOIN users u ON l.seller_id = u.id 
                  WHERE l.status = 'ACTIVE')
                 UNION ALL
                 (SELECT p.id::text, p.title, p.description, p.price::float, p.image_url, p.category, 
                         'Cred30 Parceiros' as seller_name, '0' as seller_id, true as is_boosted, p.created_at, 'ACTIVE' as status, 'AFFILIATE' as type,
-                        p.affiliate_url, NULL as quota_id
+                        p.affiliate_url, NULL as quota_id, NULL as asaas_wallet_id
                  FROM products p
                  WHERE p.active = true)
             ) as combined
@@ -207,11 +301,16 @@ marketplaceRoutes.post('/buy-on-credit', authMiddleware, async (c) => {
         const sellerRes = await pool.query('SELECT address FROM users WHERE id = $1', [listing.seller_id]);
         const finalPickupAddress = body.pickupAddress || sellerRes.rows[0]?.address || 'A combinar com o vendedor';
 
+        // Determinar taxa base (Verificado vs Não Verificado)
+        const sellerCheck = await pool.query('SELECT asaas_wallet_id FROM users WHERE id = $1', [listing.seller_id]);
+        const isVerified = !!sellerCheck.rows[0]?.asaas_wallet_id;
+        const baseFeeRate = isVerified ? MARKETPLACE_ESCROW_FEE_RATE : MARKETPLACE_NON_VERIFIED_FEE_RATE;
+
         // ===== SISTEMA DE BENEFÍCIO DE BOAS-VINDAS =====
         const welcomeBenefit = await getWelcomeBenefit(pool, user.id);
-        const effectiveEscrowRate = welcomeBenefit.marketplaceEscrowFeeRate;
+        const effectiveEscrowRate = welcomeBenefit.hasDiscount ? baseFeeRate * 0.5 : baseFeeRate;
 
-        console.log(`[MARKETPLACE CREDIT] Usuário ${user.id} - Benefício: ${welcomeBenefit.hasDiscount ? 'ATIVO' : 'INATIVO'}, Taxa Escrow: ${(effectiveEscrowRate * 100).toFixed(1)}%`);
+        console.log(`[MARKETPLACE CREDIT] Vendedor ${isVerified ? 'VERIFICADO' : 'NÃO VERIFICADO'}. Comprador ${user.id} - Benefício: ${welcomeBenefit.hasDiscount ? 'ATIVO' : 'INATIVO'}, Taxa Escrow Final: ${(effectiveEscrowRate * 100).toFixed(1)}%`);
 
         const totalInterestRate = MARKET_CREDIT_INTEREST_RATE * installments;
         const totalAmountWithInterest = price * (1 + totalInterestRate);
@@ -297,11 +396,17 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c) => {
 
         // Se o pagamento for via saldo
         if (paymentMethod === 'BALANCE') {
+            // Determinar taxa base (Verificado vs Não Verificado)
+            const sellerCheck = await pool.query('SELECT asaas_wallet_id FROM users WHERE id = $1', [listing.seller_id]);
+            const isVerified = !!sellerCheck.rows[0]?.asaas_wallet_id;
+            const baseFeeRate = isVerified ? MARKETPLACE_ESCROW_FEE_RATE : MARKETPLACE_NON_VERIFIED_FEE_RATE;
+
             // ===== SISTEMA DE BENEFÍCIO DE BOAS-VINDAS =====
             const welcomeBenefit = await getWelcomeBenefit(pool, user.id);
-            const effectiveEscrowRate = welcomeBenefit.marketplaceEscrowFeeRate;
+            // Se o comprador tem benefício, aplica 50% de desconto sobre a taxa base
+            const effectiveEscrowRate = welcomeBenefit.hasDiscount ? baseFeeRate * 0.5 : baseFeeRate;
 
-            console.log(`[MARKETPLACE] Usuário ${user.id} - Benefício: ${welcomeBenefit.hasDiscount ? 'ATIVO' : 'INATIVO'}, Taxa Escrow: ${(effectiveEscrowRate * 100).toFixed(1)}%`);
+            console.log(`[MARKETPLACE] Vendedor ${isVerified ? 'VERIFICADO' : 'NÃO VERIFICADO'}. Comprador ${user.id} - Benefício: ${welcomeBenefit.hasDiscount ? 'ATIVO' : 'INATIVO'}, Taxa Escrow Final: ${(effectiveEscrowRate * 100).toFixed(1)}%`);
 
             const fee = price * effectiveEscrowRate;
             const sellerAmount = price - fee;
@@ -348,29 +453,86 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c) => {
         const finalCost = paymentCalc.total;
         const external_reference = `MARKET_BUY_${user.id}_${listingId}_${Date.now()}`;
 
+        // Verificar se o vendedor tem subconta Asaas para usar split payment
+        const sellerWalletResult = await pool.query(
+            'SELECT asaas_wallet_id, seller_company_name FROM users WHERE id = $1 AND is_seller = TRUE',
+            [listing.seller_id]
+        );
+        const sellerWalletId = sellerWalletResult.rows[0]?.asaas_wallet_id;
+        const useSplitPayment = !!sellerWalletId;
+
+        // Determinar taxa base (Verificado 5% vs Não Verificado 26%)
+        const baseFeeRate = useSplitPayment ? MARKETPLACE_ESCROW_FEE_RATE : MARKETPLACE_NON_VERIFIED_FEE_RATE;
+
+        // Aplicar benefício de boas-vindas do COMPRADOR (se houver)
+        const welcomeBenefit = await getWelcomeBenefit(pool, user.id);
+        const effectiveEscrowRate = welcomeBenefit.hasDiscount ? baseFeeRate * 0.5 : baseFeeRate;
+
         let mpData = null;
         try {
-            if (paymentMethod === 'CARD' && body.creditCard) {
-                mpData = await createCardPayment({
-                    amount: finalCost,
-                    description: `Compra no Mercado Cred30: ${listing.title}`,
-                    email: user.email,
-                    external_reference,
-                    installments: 1,
-                    cpf: body.creditCard.cpf || body.payerCpfCnpj || user.cpf || '',
-                    name: body.creditCard.holderName,
-                    creditCard: body.creditCard
-                });
+            // Calcular valor para o vendedor (valor líquido após taxa da plataforma)
+            const sellerAmountForSplit = calculateSellerAmount(price, effectiveEscrowRate);
+
+            if (useSplitPayment) {
+                console.log(`[MARKETPLACE SPLIT] Pagamento com split para vendedor wallet: ${sellerWalletId}, valor vendedor: R$ ${sellerAmountForSplit}`);
+
+                // Usar funções de split payment
+                if (paymentMethod === 'CARD' && body.creditCard) {
+                    mpData = await createSplitCardPayment({
+                        amount: finalCost,
+                        description: `Compra no Mercado Cred30: ${listing.title}`,
+                        email: user.email,
+                        external_reference,
+                        installments: 1,
+                        cpf: body.creditCard.cpf || body.payerCpfCnpj || user.cpf || '',
+                        name: body.creditCard.holderName,
+                        creditCard: body.creditCard,
+                        split: [{
+                            walletId: sellerWalletId,
+                            fixedValue: sellerAmountForSplit
+                        }]
+                    });
+                } else {
+                    // PIX com split
+                    mpData = await createSplitPixPayment({
+                        amount: finalCost,
+                        description: `Compra no Mercado Cred30: ${listing.title}`,
+                        email: user.email,
+                        external_reference,
+                        cpf: body.payerCpfCnpj || user.cpf || '',
+                        name: user.name,
+                        split: [{
+                            walletId: sellerWalletId,
+                            fixedValue: sellerAmountForSplit
+                        }]
+                    });
+                }
             } else {
-                // Default to PIX
-                mpData = await createPixPayment({
-                    amount: finalCost,
-                    description: `Compra no Mercado Cred30: ${listing.title}`,
-                    email: user.email,
-                    external_reference,
-                    cpf: body.payerCpfCnpj || user.cpf || '',
-                    name: user.name
-                });
+                // Vendedor não tem subconta - usar fluxo tradicional (sem split)
+                console.log(`[MARKETPLACE] Pagamento tradicional (vendedor sem subconta Asaas)`);
+
+                if (paymentMethod === 'CARD' && body.creditCard) {
+                    mpData = await createCardPayment({
+                        amount: finalCost,
+                        description: `Compra no Mercado Cred30: ${listing.title}`,
+                        email: user.email,
+                        external_reference,
+                        installments: 1,
+                        cpf: body.creditCard.cpf || body.payerCpfCnpj || user.cpf || '',
+                        name: body.creditCard.holderName,
+                        creditCard: body.creditCard
+                    });
+                } else {
+                    // Default to PIX
+                    mpData = await createPixPayment({
+                        amount: finalCost,
+                        description: `Compra no Mercado Cred30: ${listing.title}`,
+                        email: user.email,
+                        external_reference,
+                        cpf: body.payerCpfCnpj || user.cpf || '',
+                        name: user.name
+                    });
+                }
             }
         } catch (mpError: any) {
             console.error('Erro ao gerar cobrança Asaas no Marketplace:', mpError);
@@ -387,8 +549,15 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c) => {
             const deliveryStatus = deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE';
             const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-            // Taxas do Marketplace (Escrow)
-            const escrowFee = price * MARKETPLACE_ESCROW_FEE_RATE;
+            // Taxas do Marketplace (Baseado na situação do vendedor e benefício do comprador)
+            const sellerCheck = await client.query('SELECT asaas_wallet_id FROM users WHERE id = $1', [listing.seller_id]);
+            const isVerified = !!sellerCheck.rows[0]?.asaas_wallet_id;
+            const baseFeeRate = isVerified ? MARKETPLACE_ESCROW_FEE_RATE : MARKETPLACE_NON_VERIFIED_FEE_RATE;
+
+            const welcomeBenefit = await getWelcomeBenefit(client, user.id);
+            const effectiveEscrowRate = welcomeBenefit.hasDiscount ? baseFeeRate * 0.5 : baseFeeRate;
+
+            const escrowFee = price * effectiveEscrowRate;
             const sellerAmount = price - escrowFee;
 
             const orderResult = await client.query(
@@ -624,6 +793,25 @@ marketplaceRoutes.post('/order/:id/receive', authMiddleware, async (c) => {
 
             // 2. Liberar saldo para o vendedor (valor líquido)
             const sellerAmount = parseFloat(order.seller_amount);
+            const totalFee = parseFloat(order.fee_amount || '0');
+
+            // 2.1 Distribuir Taxa da Plataforma (25/25/25/25) para as reservas do sistema
+            if (totalFee > 0) {
+                const taxPart = totalFee * QUOTA_FEE_TAX_SHARE;
+                const operPart = totalFee * QUOTA_FEE_OPERATIONAL_SHARE;
+                const ownerPart = totalFee * QUOTA_FEE_OWNER_SHARE;
+                const investPart = totalFee * QUOTA_FEE_INVESTMENT_SHARE;
+
+                await client.query(`
+                    UPDATE system_config SET 
+                        total_tax_reserve = total_tax_reserve + $1,
+                        total_operational_reserve = total_operational_reserve + $2,
+                        total_owner_profit = total_owner_profit + $3,
+                        investment_reserve = COALESCE(investment_reserve, 0) + $4
+                    `, [taxPart, operPart, ownerPart, investPart]
+                );
+                console.log(`[MARKETPLACE_FEE] Distribuição de taxa (R$ ${totalFee.toFixed(2)}): Imposto ${taxPart}, Operações ${operPart}, Lucro ${ownerPart}, Investimento ${investPart}`);
+            }
 
             // Verifica se tem taxa de entrega para pagar ao courier
             const courierFee = parseFloat(order.delivery_fee || '0');
@@ -987,15 +1175,21 @@ marketplaceRoutes.post('/offline/sync', authMiddleware, async (c) => {
             try {
                 await executeInTransaction(pool, async (client) => {
                     // 1. Tentar debitar do comprador (Prioridade da Sincronização)
-                    // Se não tiver saldo, o sistema pode optar por deixar negativo ou falhar.
-                    // Para o modelo Trust Protocol, vamos tentar o débito padrão. 
-                    // Se falhar (exceção), o catch pega e retorna FAILED.
                     const balanceCheck = await lockUserBalance(client, tx.buyerId, tx.amount);
                     if (!balanceCheck.success) {
                         throw new Error(`Saldo insuficiente no comprador ${tx.buyerId}`);
                     }
 
-                    const fee = tx.amount * MARKETPLACE_ESCROW_FEE_RATE;
+                    // Determinar taxa base (Verificado 5% vs Não Verificado 26%)
+                    const sellerResult = await client.query('SELECT asaas_wallet_id FROM users WHERE id = $1', [tx.sellerId]);
+                    const isVerified = !!sellerResult.rows[0]?.asaas_wallet_id;
+                    const baseFeeRate = isVerified ? MARKETPLACE_ESCROW_FEE_RATE : MARKETPLACE_NON_VERIFIED_FEE_RATE;
+
+                    // Aplicar benefício de boas-vindas do COMPRADOR (se houver)
+                    const welcomeBenefit = await getWelcomeBenefit(client, tx.buyerId);
+                    const effectiveEscrowRate = welcomeBenefit.hasDiscount ? baseFeeRate * 0.5 : baseFeeRate;
+
+                    const fee = tx.amount * effectiveEscrowRate;
                     const sellerAmount = tx.amount - fee;
 
                     await updateUserBalance(client, tx.buyerId, tx.amount, 'debit');

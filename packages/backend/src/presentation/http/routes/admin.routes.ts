@@ -243,6 +243,7 @@ adminRoutes.get('/dashboard', adminMiddleware, async (c) => {
     config.total_tax_reserve = parseFloat(String(config.total_tax_reserve || 0));
     config.total_operational_reserve = parseFloat(String(config.total_operational_reserve || 0));
     config.total_owner_profit = parseFloat(String(config.total_owner_profit || 0));
+    config.investment_reserve = parseFloat(String(config.investment_reserve || 0));
 
     // Buscar totais e métricas financeiras de forma otimizada (query única)
     const statsResult = await pool.query(`
@@ -1996,6 +1997,272 @@ adminRoutes.post('/reviews/:id/reject', adminMiddleware, async (c) => {
     );
 
     return c.json({ success: true, message: 'Avaliação rejeitada.' });
+  } catch (error: any) {
+    return c.json({ success: false, message: error.message }, 500);
+  }
+});
+
+// =====================================================
+// GESTÃO DE INVESTIMENTOS (Fundo de Patrimônio Sólido)
+// =====================================================
+
+const investmentSchema = z.object({
+  assetName: z.string().min(2).max(100),
+  assetType: z.enum(['STOCK', 'FII', 'BOND', 'ETF', 'OTHER']),
+  quantity: z.number().positive().optional(),
+  unitPrice: z.number().positive(),
+  totalInvested: z.number().positive(),
+  broker: z.string().optional(),
+  notes: z.string().optional(),
+  investedAt: z.string().optional() // ISO date string
+});
+
+// Listar todos os investimentos
+adminRoutes.get('/investments', adminMiddleware, async (c) => {
+  try {
+    const pool = getDbPool(c);
+
+    const result = await pool.query(`
+      SELECT * FROM investments ORDER BY invested_at DESC
+    `);
+
+    // Buscar saldo disponível para investir
+    const reserveResult = await pool.query(`
+      SELECT COALESCE(investment_reserve, 0) as reserve FROM system_config LIMIT 1
+    `);
+
+    const availableReserve = parseFloat(reserveResult.rows[0]?.reserve || 0);
+    const totalInvested = result.rows.reduce((acc, inv) => acc + parseFloat(inv.total_invested), 0);
+    const totalCurrentValue = result.rows.reduce((acc, inv) => acc + parseFloat(inv.current_value || inv.total_invested), 0);
+    const totalDividends = result.rows.reduce((acc, inv) => acc + parseFloat(inv.dividends_received || 0), 0);
+
+    return c.json({
+      success: true,
+      data: {
+        investments: result.rows.map(inv => ({
+          id: inv.id,
+          assetName: inv.asset_name,
+          assetType: inv.asset_type,
+          quantity: parseFloat(inv.quantity) || 0,
+          unitPrice: parseFloat(inv.unit_price),
+          totalInvested: parseFloat(inv.total_invested),
+          currentValue: parseFloat(inv.current_value || inv.total_invested),
+          dividendsReceived: parseFloat(inv.dividends_received || 0),
+          broker: inv.broker,
+          notes: inv.notes,
+          investedAt: inv.invested_at,
+          profitLoss: parseFloat(inv.current_value || inv.total_invested) - parseFloat(inv.total_invested),
+          profitLossPercent: ((parseFloat(inv.current_value || inv.total_invested) / parseFloat(inv.total_invested)) - 1) * 100
+        })),
+        summary: {
+          availableReserve,
+          totalInvested,
+          totalCurrentValue,
+          totalDividends,
+          totalProfitLoss: totalCurrentValue - totalInvested,
+          totalProfitLossPercent: totalInvested > 0 ? ((totalCurrentValue / totalInvested) - 1) * 100 : 0
+        }
+      }
+    });
+  } catch (error: any) {
+    console.error('[INVESTMENTS] Erro ao listar:', error);
+    return c.json({ success: false, message: error.message }, 500);
+  }
+});
+
+// Registrar novo investimento
+adminRoutes.post('/investments', adminMiddleware, auditMiddleware('CREATE_INVESTMENT', 'INVESTMENT'), async (c) => {
+  try {
+    const body = await c.req.json();
+    const data = investmentSchema.parse(body);
+    const pool = getDbPool(c);
+
+    const result = await executeInTransaction(pool, async (client) => {
+      // Verificar se há saldo suficiente na reserva
+      const reserveResult = await client.query(
+        'SELECT COALESCE(investment_reserve, 0) as reserve FROM system_config LIMIT 1 FOR UPDATE'
+      );
+      const availableReserve = parseFloat(reserveResult.rows[0]?.reserve || 0);
+
+      if (data.totalInvested > availableReserve) {
+        throw new Error(`Saldo insuficiente na reserva de investimentos. Disponível: R$ ${availableReserve.toFixed(2)}`);
+      }
+
+      // Deduzir do investment_reserve
+      await client.query(
+        'UPDATE system_config SET investment_reserve = investment_reserve - $1',
+        [data.totalInvested]
+      );
+
+      // Inserir investimento
+      const invResult = await client.query(`
+        INSERT INTO investments (asset_name, asset_type, quantity, unit_price, total_invested, current_value, broker, notes, invested_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id
+      `, [
+        data.assetName,
+        data.assetType,
+        data.quantity || 0,
+        data.unitPrice,
+        data.totalInvested,
+        data.totalInvested, // currentValue starts equal to invested
+        data.broker || null,
+        data.notes || null,
+        data.investedAt ? new Date(data.investedAt) : new Date()
+      ]);
+
+      return { investmentId: invResult.rows[0].id };
+    });
+
+    if (!result.success) {
+      return c.json({ success: false, message: result.error }, 400);
+    }
+
+    return c.json({
+      success: true,
+      message: `Investimento em ${data.assetName} registrado com sucesso!`,
+      data: { id: result.data?.investmentId }
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
+    }
+    console.error('[INVESTMENTS] Erro ao criar:', error);
+    return c.json({ success: false, message: error.message }, 500);
+  }
+});
+
+// Atualizar valor atual do investimento
+adminRoutes.patch('/investments/:id', adminMiddleware, async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    const { currentValue, dividendsReceived } = body;
+    const pool = getDbPool(c);
+
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (currentValue !== undefined) {
+      updates.push(`current_value = $${paramIndex++}`);
+      values.push(currentValue);
+    }
+
+    if (dividendsReceived !== undefined) {
+      updates.push(`dividends_received = $${paramIndex++}`);
+      values.push(dividendsReceived);
+    }
+
+    if (updates.length === 0) {
+      return c.json({ success: false, message: 'Nenhum campo para atualizar' }, 400);
+    }
+
+    updates.push(`updated_at = NOW()`);
+    values.push(id);
+
+    await pool.query(
+      `UPDATE investments SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+      values
+    );
+
+    return c.json({ success: true, message: 'Investimento atualizado!' });
+  } catch (error: any) {
+    return c.json({ success: false, message: error.message }, 500);
+  }
+});
+
+// Registrar dividendos recebidos (adiciona ao saldo do sistema)
+adminRoutes.post('/investments/:id/dividends', adminMiddleware, auditMiddleware('RECEIVE_DIVIDEND', 'INVESTMENT'), async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    const { amount, reinvest } = body;
+
+    if (!amount || amount <= 0) {
+      return c.json({ success: false, message: 'Valor do dividendo inválido' }, 400);
+    }
+
+    const pool = getDbPool(c);
+
+    await executeInTransaction(pool, async (client) => {
+      // Atualizar dividendos recebidos no investimento
+      await client.query(
+        'UPDATE investments SET dividends_received = dividends_received + $1, updated_at = NOW() WHERE id = $2',
+        [amount, id]
+      );
+
+      if (reinvest) {
+        // Reinvestir: adiciona de volta ao investment_reserve
+        await client.query(
+          'UPDATE system_config SET investment_reserve = COALESCE(investment_reserve, 0) + $1',
+          [amount]
+        );
+      } else {
+        // Depositar no caixa do sistema (vira receita operacional)
+        await client.query(
+          'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
+          [amount, amount * 0.5] // 50% vai pro profit_pool para distribuir aos membros
+        );
+      }
+    });
+
+    return c.json({
+      success: true,
+      message: reinvest
+        ? `Dividendos de R$ ${amount.toFixed(2)} reinvestidos!`
+        : `Dividendos de R$ ${amount.toFixed(2)} creditados no sistema!`
+    });
+  } catch (error: any) {
+    return c.json({ success: false, message: error.message }, 500);
+  }
+});
+
+// Liquidar investimento (vender)
+adminRoutes.post('/investments/:id/sell', adminMiddleware, auditMiddleware('SELL_INVESTMENT', 'INVESTMENT'), async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    const { saleValue } = body;
+
+    if (!saleValue || saleValue <= 0) {
+      return c.json({ success: false, message: 'Valor de venda inválido' }, 400);
+    }
+
+    const pool = getDbPool(c);
+
+    const result = await executeInTransaction(pool, async (client) => {
+      // Buscar investimento
+      const invResult = await client.query('SELECT * FROM investments WHERE id = $1 FOR UPDATE', [id]);
+      if (invResult.rows.length === 0) {
+        throw new Error('Investimento não encontrado');
+      }
+
+      const investment = invResult.rows[0];
+      const totalInvested = parseFloat(investment.total_invested);
+      const profitLoss = saleValue - totalInvested;
+
+      // Creditar valor de volta ao investment_reserve
+      await client.query(
+        'UPDATE system_config SET investment_reserve = COALESCE(investment_reserve, 0) + $1',
+        [saleValue]
+      );
+
+      // Remover investimento
+      await client.query('DELETE FROM investments WHERE id = $1', [id]);
+
+      return { assetName: investment.asset_name, profitLoss };
+    });
+
+    if (!result.success) {
+      return c.json({ success: false, message: result.error }, 400);
+    }
+
+    const msg = result.data!.profitLoss >= 0
+      ? `${result.data!.assetName} vendido com lucro de R$ ${result.data!.profitLoss.toFixed(2)}!`
+      : `${result.data!.assetName} vendido com prejuízo de R$ ${Math.abs(result.data!.profitLoss).toFixed(2)}.`;
+
+    return c.json({ success: true, message: msg });
   } catch (error: any) {
     return c.json({ success: false, message: error.message }, 500);
   }
