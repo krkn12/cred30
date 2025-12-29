@@ -425,6 +425,12 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
             'INSERT INTO loan_installments (loan_id, amount, use_balance, created_at) VALUES ($1, $2, $3, $4)',
             [metadata.loanId, actualPaymentAmount, metadata.useBalance || false, new Date()]
           );
+
+          // Amortização Real: Diminuir o saldo devedor total e o principal
+          await client.query(
+            'UPDATE loans SET total_repayment = total_repayment - $1, amount = amount - $2 WHERE id = $3',
+            [actualPaymentAmount, principalPortion, metadata.loanId]
+          );
         }
 
         await updateScore(client, transaction.user_id, SCORE_REWARDS.LOAN_PAYMENT_ON_TIME, 'Pagamento de empréstimo');

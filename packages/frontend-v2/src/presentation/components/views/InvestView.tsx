@@ -29,7 +29,7 @@ export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
     };
 
     return (
-        <div className="min-h-screen bg-[#09090b] text-zinc-400 font-medium pb-24 lg:pb-12">
+        <div className="min-h-screen bg-gradient-premium text-zinc-400 font-medium pb-24 lg:pb-12">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12">
 
                 {/* Hero Section */}
@@ -72,7 +72,7 @@ export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
 
                     {/* Left: Input Selection */}
                     <div className="lg:col-span-3 space-y-6">
-                        <div className="bg-zinc-900/50 border border-white/5 rounded-[2rem] p-8 backdrop-blur-sm relative overflow-hidden group">
+                        <div className="glass p-8 relative overflow-hidden group">
                             <div className="absolute -right-8 -bottom-8 text-primary-500/5 rotate-12 group-hover:scale-110 transition-transform duration-700">
                                 <Building2 size={200} />
                             </div>
@@ -200,8 +200,8 @@ export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
                                     }}
                                     disabled={!acceptedTerms}
                                     className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl ${acceptedTerms
-                                            ? 'bg-primary-500 text-black hover:bg-primary-400 shadow-primary-500/20 active:scale-[0.98]'
-                                            : 'bg-zinc-800 text-zinc-600 opacity-50 cursor-not-allowed shadow-none'
+                                        ? 'bg-primary-500 text-black hover:bg-primary-400 shadow-primary-500/20 active:scale-[0.98]'
+                                        : 'bg-zinc-800 text-zinc-600 opacity-50 cursor-not-allowed shadow-none'
                                         }`}
                                 >
                                     {method === 'CARD' ? 'Ir para Pagamento' : 'Confirmar Ingresso'}
@@ -329,10 +329,10 @@ export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
 
 // Sub-components for cleaner structure
 const BenefitCard = ({ icon, title, description, color }: { icon: any, title: string, description: string, color: string }) => (
-    <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6 hover:border-white/10 transition-all hover:translate-y-[-4px] group">
+    <div className="glass glass-hover p-6 group">
         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 shrink-0 border transition-all ${color === 'primary' ? 'bg-primary-500/10 border-primary-500/20 text-primary-400 group-hover:bg-primary-500 group-hover:text-black' :
-                color === 'blue' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400 group-hover:bg-blue-500 group-hover:text-black' :
-                    'bg-purple-500/10 border-purple-500/20 text-purple-400 group-hover:bg-purple-500 group-hover:text-black'
+            color === 'blue' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400 group-hover:bg-blue-500 group-hover:text-black' :
+                'bg-purple-500/10 border-purple-500/20 text-purple-400 group-hover:bg-purple-500 group-hover:text-black'
             }`}>
             {icon}
         </div>
@@ -345,8 +345,8 @@ const MethodButton = ({ active, onClick, label }: any) => (
     <button
         onClick={onClick}
         className={`flex-1 py-3.5 rounded-xl text-[10px] font-black tracking-widest transition-all ${active
-                ? 'bg-primary-500 text-black shadow-lg shadow-primary-500/20'
-                : 'text-zinc-600 hover:text-white hover:bg-white/5'
+            ? 'bg-primary-500 text-black shadow-lg shadow-primary-500/20'
+            : 'text-zinc-600 hover:text-white hover:bg-white/5'
             }`}
     >
         {label}

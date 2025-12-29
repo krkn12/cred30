@@ -173,16 +173,16 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
     };
 
     return (
-        <div className="min-h-screen w-full flex bg-background">
+        <div className="min-h-screen w-full flex bg-gradient-premium overflow-hidden">
             {/* Desktop Side Image */}
             <div className="hidden lg:flex w-1/2 bg-zinc-900 relative overflow-hidden items-center justify-center">
                 <div className="absolute inset-0 z-0">
                     <img
                         src="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?q=80&w=2832&auto=format&fit=crop"
                         alt="Background"
-                        className="w-full h-full object-cover opacity-20"
+                        className="w-full h-full object-cover opacity-30"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-background via-transpose to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
                     <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-transparent" />
                 </div>
 
@@ -212,8 +212,8 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                         <h2 className="text-2xl font-black text-white">Cred<span className="text-primary-400">30</span></h2>
                     </div>
 
-                    <div className="bg-surface border border-surfaceHighlight p-6 sm:p-8 rounded-3xl shadow-2xl relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary-400 to-primary-600"></div>
+                    <div className="glass p-6 sm:p-10 rounded-[2.5rem] relative overflow-hidden animate-fade-in shadow-2xl shadow-primary-500/5">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-400 via-emerald-400 to-primary-600"></div>
 
                         {/* Botão Voltar para Boas-Vindas */}
                         {!isForgot && !isRecover2FA && !requires2FA && (
@@ -259,7 +259,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                                 placeholder="Email"
                                                 value={email}
                                                 onChange={e => setEmail(e.target.value)}
-                                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-white focus:border-primary-500 outline-none transition"
+                                                className="w-full glass border-white/5 rounded-xl py-3.5 pl-10 text-white focus:border-primary-500 outline-none transition-all group-focus-within:bg-white/10"
                                                 required
                                             />
                                         </div>
@@ -271,7 +271,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                                 placeholder="Frase Secreta"
                                                 value={secretPhrase}
                                                 onChange={e => setSecretPhrase(e.target.value)}
-                                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-white focus:border-primary-500 outline-none transition"
+                                                className="w-full glass border-white/5 rounded-xl py-3.5 pl-10 text-white focus:border-primary-500 outline-none transition-all group-focus-within:bg-white/10"
                                                 required
                                             />
                                         </div>
@@ -283,7 +283,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                                 placeholder="Nova Senha"
                                                 value={newPassword}
                                                 onChange={e => setNewPassword(e.target.value)}
-                                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-white focus:border-primary-500 outline-none transition"
+                                                className="w-full glass border-white/5 rounded-xl py-3.5 pl-10 text-white focus:border-primary-500 outline-none transition-all group-focus-within:bg-white/10"
                                                 required
                                             />
                                         </div>
@@ -366,7 +366,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                                 placeholder="Nome Completo"
                                                 value={name}
                                                 onChange={e => setName(e.target.value)}
-                                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition"
+                                                className="w-full glass border-white/5 rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition-all group-focus-within:bg-white/10"
                                                 required
                                             />
                                         </div>
@@ -379,7 +379,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                             placeholder="Email"
                                             value={email}
                                             onChange={e => setEmail(e.target.value)}
-                                            className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition"
+                                            className="w-full glass border-white/5 rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition-all group-focus-within:bg-white/10"
                                             required
                                         />
                                     </div>
@@ -391,7 +391,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                             placeholder="Senha"
                                             value={password}
                                             onChange={e => setPassword(e.target.value)}
-                                            className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition"
+                                            className="w-full glass border-white/5 rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition-all group-focus-within:bg-white/10"
                                             required
                                         />
                                     </div>
@@ -403,7 +403,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                             placeholder={isRegister ? "Crie sua Frase Secreta" : "Frase Secreta"}
                                             value={secretPhrase}
                                             onChange={e => setSecretPhrase(e.target.value)}
-                                            className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition"
+                                            className="w-full glass border-white/5 rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition-all group-focus-within:bg-white/10"
                                             required
                                         />
                                     </div>
@@ -417,7 +417,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                                     placeholder="CPF (apenas números)"
                                                     value={cpf}
                                                     onChange={e => setCpf(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                                                    className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition"
+                                                    className="w-full glass border-white/5 rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition-all group-focus-within:bg-white/10"
                                                     required
                                                 />
                                             </div>
@@ -429,7 +429,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                                     placeholder="Chave Pix"
                                                     value={pixKey}
                                                     onChange={e => setPixKey(e.target.value)}
-                                                    className="w-full bg-background border border-surfaceHighlight rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition"
+                                                    className="w-full glass border-white/5 rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition-all group-focus-within:bg-white/10"
                                                     required
                                                 />
                                             </div>
@@ -438,11 +438,10 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                                 <Repeat className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={18} />
                                                 <input
                                                     type="text"
-                                                    placeholder="Código de Indicação (Obrigatório)"
+                                                    placeholder="Código de Indicação (Recomendado)"
                                                     value={referralCode}
-                                                    onChange={e => setReferralCode(e.target.value)}
-                                                    className="w-full bg-background border border-primary-500/30 rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition"
-                                                    required
+                                                    onChange={e => setReferralCode(e.target.value.toUpperCase())}
+                                                    className="w-full glass border-primary-500/30 rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition-all bg-primary-500/5 group-focus-within:bg-primary-500/10 placeholder:text-primary-500/30"
                                                 />
                                             </div>
                                         </>
@@ -474,9 +473,9 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
 
                                     <button
                                         type="submit"
-                                        className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black uppercase tracking-widest py-4 rounded-xl transition-all shadow-lg shadow-primary-500/20 active:scale-[0.98] mt-6"
+                                        className="w-full bg-white hover:bg-zinc-100 text-black font-black uppercase tracking-[0.2em] py-5 rounded-xl transition-all shadow-xl active:scale-95 mt-6"
                                     >
-                                        {isRegister ? 'Criar Conta' : (requires2FA ? 'Confirmar' : 'Acessar')}
+                                        {isRegister ? 'Solicitar Adesão' : (requires2FA ? 'Confirmar' : 'Acessar Painel')}
                                     </button>
                                 </>
                             )}
@@ -522,7 +521,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
             {/* Email Verification Modal - Mantido Global */}
             {showVerifyModal && (
                 <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300 backdrop-blur-md">
-                    <div className="bg-zinc-950 border border-zinc-800 rounded-[2.5rem] p-6 md:p-10 w-full max-w-md relative shadow-[0_0_80px_rgba(6,182,212,0.15)] max-h-[90vh] overflow-y-auto custom-scrollbar">
+                    <div className="glass-strong p-6 md:p-10 w-full max-w-md relative animate-fade-in shadow-[0_0_80px_rgba(6,182,212,0.15)] max-h-[90vh] overflow-y-auto custom-scrollbar rounded-[2.5rem]">
                         <button onClick={() => setShowVerifyModal(false)} className="absolute top-4 right-4 md:top-6 md:right-6 text-zinc-500 hover:text-white transition-colors z-10" aria-label="Fechar modal">
                             <XCircle size={24} />
                         </button>

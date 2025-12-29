@@ -3,7 +3,7 @@ import {
     Gamepad2, Star, Coins, Crown, PlayCircle,
     ArrowLeft, TrendingUp, ShieldCheck, Zap,
     ChevronRight, Sparkles, Wand2, Lightbulb, RefreshCw, Users, Play, X as XIcon, Clock,
-    Gift, Calendar, Search, ShieldAlert
+    Gift, Calendar, Search, ShieldAlert, BadgeCheck, Rocket
 } from 'lucide-react';
 import { PromoVideoPlayer } from '../ui/PromoVideoPlayer';
 import { AppState } from '../../../domain/types/common.types';
@@ -116,6 +116,8 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
 
     const [proMethod, setProMethod] = useState<'balance' | 'pix' | 'card'>('balance');
     const [loadingLocal, setLoadingLocal] = useState(false);
+    const [buyingBadge, setBuyingBadge] = useState(false);
+    const [buyingBoost, setBuyingBoost] = useState(false);
 
     const handleUpgradePro = async () => {
         setLoadingLocal(true);
@@ -125,6 +127,44 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
             // Erros são tratados no app.page por prop
         } finally {
             setLoadingLocal(false);
+        }
+    };
+
+    const handleBuyVerifiedBadge = async () => {
+        if (user.is_verified) {
+            onError('Aviso', 'Você já possui o Selo de Verificado!');
+            return;
+        }
+        setBuyingBadge(true);
+        try {
+            const response = await apiService.buyVerifiedBadge();
+            if (response.success) {
+                onSuccess('Selo Adquirido!', response.message || 'Você agora é um membro verificado!');
+                await onRefresh();
+            } else {
+                onError('Erro', response.message);
+            }
+        } catch (e: any) {
+            onError('Erro', e.message || 'Não foi possível adquirir o selo.');
+        } finally {
+            setBuyingBadge(false);
+        }
+    };
+
+    const handleBuyScoreBoost = async () => {
+        setBuyingBoost(true);
+        try {
+            const response = await apiService.buyScoreBoost();
+            if (response.success) {
+                onSuccess('Boost Ativado!', response.message || '+100 pontos de Score!');
+                await onRefresh();
+            } else {
+                onError('Erro', response.message);
+            }
+        } catch (e: any) {
+            onError('Erro', e.message || 'Não foi possível ativar o boost.');
+        } finally {
+            setBuyingBoost(false);
         }
     };
 
@@ -269,6 +309,76 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                             +10 Score
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* Premium Benefits Section */}
+            <div className="space-y-4">
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest ml-1">Benefícios Premium</h3>
+
+                {/* Verified Badge Card */}
+                <div className="bg-surface border border-surfaceHighlight rounded-2xl p-5 relative overflow-hidden group">
+                    <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition">
+                        <BadgeCheck size={80} />
+                    </div>
+                    <div className="flex items-start gap-4 relative z-10">
+                        <div className={`p-3 rounded-2xl ${user.is_verified ? 'bg-blue-500/20 text-blue-400' : 'bg-zinc-800 text-zinc-400'}`}>
+                            <BadgeCheck size={24} />
+                        </div>
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                                <h4 className="text-lg font-bold text-white">Selo de Verificado</h4>
+                                {user.is_verified && (
+                                    <span className="bg-blue-500/20 text-blue-400 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">Ativo</span>
+                                )}
+                            </div>
+                            <p className="text-sm text-zinc-500 mb-3">Aumente sua confiança no marketplace e ganhe +100 pontos de Score.</p>
+                            <div className="flex items-center gap-2">
+                                <span className="text-primary-400 font-bold">R$ 9,90</span>
+                                <span className="text-zinc-600">•</span>
+                                <span className="text-emerald-400 text-xs font-bold">+100 Score</span>
+                            </div>
+                        </div>
+                    </div>
+                    {!user.is_verified && (
+                        <button
+                            onClick={handleBuyVerifiedBadge}
+                            disabled={buyingBadge}
+                            className="w-full mt-4 bg-blue-500 hover:bg-blue-400 disabled:bg-zinc-800 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+                        >
+                            {buyingBadge ? <RefreshCw className="animate-spin" size={18} /> : <BadgeCheck size={18} />}
+                            {buyingBadge ? 'Processando...' : 'Adquirir Selo'}
+                        </button>
+                    )}
+                </div>
+
+                {/* Score Boost Card */}
+                <div className="bg-surface border border-surfaceHighlight rounded-2xl p-5 relative overflow-hidden group">
+                    <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition">
+                        <Rocket size={80} />
+                    </div>
+                    <div className="flex items-start gap-4 relative z-10">
+                        <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 text-purple-400">
+                            <Rocket size={24} />
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="text-lg font-bold text-white mb-1">Score Boost</h4>
+                            <p className="text-sm text-zinc-500 mb-3">Aumente seu limite de crédito instantaneamente com +100 pontos de Score.</p>
+                            <div className="flex items-center gap-2">
+                                <span className="text-primary-400 font-bold">R$ 15,00</span>
+                                <span className="text-zinc-600">•</span>
+                                <span className="text-emerald-400 text-xs font-bold">+100 Score</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleBuyScoreBoost}
+                        disabled={buyingBoost}
+                        className="w-full mt-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 disabled:from-zinc-700 disabled:to-zinc-800 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20"
+                    >
+                        {buyingBoost ? <RefreshCw className="animate-spin" size={18} /> : <Rocket size={18} />}
+                        {buyingBoost ? 'Processando...' : 'Ativar Boost'}
+                    </button>
                 </div>
             </div>
 

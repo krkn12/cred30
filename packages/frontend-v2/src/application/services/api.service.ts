@@ -725,6 +725,145 @@ class ApiService {
     });
     return response;
   }
+
+  // ==================== BUG REPORTS ====================
+
+  // Criar um bug report
+  async createBugReport(data: {
+    title: string;
+    description: string;
+    category?: 'general' | 'payment' | 'ui' | 'performance' | 'other';
+    severity?: 'low' | 'medium' | 'high' | 'critical';
+    deviceInfo?: string;
+  }): Promise<any> {
+    const response = await this.request<any>('/bugs', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return response;
+  }
+
+  // Listar meus bug reports
+  async getMyBugReports(): Promise<any> {
+    const response = await this.request<any>('/bugs/my');
+    return response.data;
+  }
+
+  // Admin: listar todos os bugs
+  async getAdminBugReports(status?: string): Promise<any> {
+    const query = status ? `?status=${status}` : '';
+    const response = await this.request<any>(`/bugs/admin${query}`);
+    return response;
+  }
+
+  // Admin: atualizar status de um bug
+  async updateBugStatus(bugId: number, status: string, adminNotes?: string): Promise<any> {
+    const response = await this.request<any>(`/bugs/admin/${bugId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, adminNotes })
+    });
+    return response;
+  }
+
+  // Admin: deletar um bug
+  async deleteBugReport(bugId: number): Promise<any> {
+    const response = await this.request<any>(`/bugs/admin/${bugId}`, {
+      method: 'DELETE'
+    });
+    return response;
+  }
+
+  // ==================== MONETIZAÇÃO PREMIUM ====================
+
+  // Comprar selo de verificado
+  async buyVerifiedBadge(): Promise<any> {
+    const response = await this.request<any>('/monetization/buy-verified-badge', {
+      method: 'POST'
+    });
+    return response;
+  }
+
+  // Comprar pacote de score boost
+  async buyScoreBoost(): Promise<any> {
+    const response = await this.request<any>('/monetization/buy-score-boost', {
+      method: 'POST'
+    });
+    return response;
+  }
+
+  // Check-in diário
+  async dailyCheckin(): Promise<any> {
+    const response = await this.request<any>('/monetization/daily-checkin', {
+      method: 'POST'
+    });
+    return response;
+  }
+
+  // Consulta de reputação
+  async checkReputation(email: string): Promise<any> {
+    const response = await this.request<any>(`/monetization/reputation-check/${encodeURIComponent(email)}`);
+    return response;
+  }
+
+  // ==================== EARN - Baú Diário ====================
+
+  // Abrir baú de fidelidade
+  async openChestReward(amount: number): Promise<any> {
+    const response = await this.request<any>('/earn/chest-reward', {
+      method: 'POST',
+      body: JSON.stringify({ amount })
+    });
+    return response;
+  }
+
+  // Status do baú
+  async getChestStatus(): Promise<{ chestsRemaining: number; countdown: number; canOpen: boolean }> {
+    const response = await this.request<any>('/earn/chest-status');
+    return response.data;
+  }
+
+  // Recompensa por vídeo (rota earn)
+  async earnVideoReward(videoId: string): Promise<any> {
+    const response = await this.request<any>('/earn/video-reward', {
+      method: 'POST',
+      body: JSON.stringify({ videoId })
+    });
+    return response;
+  }
+
+  // ==================== SELLER (Vendedor) ====================
+
+  // Verificar status de vendedor
+  async getSellerStatus(): Promise<any> {
+    const response = await this.request<any>('/seller/status');
+    return response.data || response;
+  }
+
+  // Registrar como vendedor
+  async registerSeller(data: {
+    companyName: string;
+    cpfCnpj: string;
+    mobilePhone: string;
+    address: string;
+    addressNumber?: string;
+    neighborhood?: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    companyType?: string;
+  }): Promise<any> {
+    const response = await this.request<any>('/seller/register', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return response;
+  }
+
+  // Obter wallet do vendedor
+  async getSellerWallet(): Promise<any> {
+    const response = await this.request<any>('/seller/wallet');
+    return response.data || response;
+  }
 }
 
 // Exportar instância única do serviço

@@ -7,7 +7,7 @@ import {
     PieChart, AlertTriangle, LogOut, Star, Zap,
     ShoppingBag, Tag, PlusCircle, ShieldCheck, ChevronRight, Wallet, Coins, Settings, BarChart3, Gift, Sparkles, Bell, Eye, EyeOff, Grid2x2 as Grid
 } from 'lucide-react';
-import { AppState, User, Transaction } from '../../../domain/types/common.types';
+import { AppState, User, Transaction, Quota, Loan } from '../../../domain/types/common.types';
 import { QUOTA_PRICE } from '../../../shared/constants/app.constants';
 import { AdBanner } from '../ui/AdBanner';
 import { fastForwardTime, deleteUserAccount } from '../../../application/services/storage.service';
@@ -46,17 +46,17 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
     const isPro = user?.membership_type === 'PRO';
 
     const { userQuotas, totalInvested, totalCurrentValue, totalEarnings, earningsPercentage } = useMemo(() => {
-        const quotas = state.quotas?.filter((q: any) => q.userId === user.id) ?? [];
-        const invested = quotas.reduce((acc: number, q: any) => acc + q.purchasePrice, 0);
-        const current = quotas.reduce((acc: number, q: any) => acc + (q.currentValue || q.purchasePrice), 0);
+        const quotas = state.quotas?.filter((q: Quota) => q.userId === user.id) ?? [];
+        const invested = quotas.reduce((acc: number, q: Quota) => acc + q.purchasePrice, 0);
+        const current = quotas.reduce((acc: number, q: Quota) => acc + (q.currentValue || q.purchasePrice), 0);
         const earnings = current - invested;
         const percentage = invested > 0 ? (earnings / invested) * 100 : 0;
         return { userQuotas: quotas, totalInvested: invested, totalCurrentValue: current, totalEarnings: earnings, earningsPercentage: percentage };
     }, [state.quotas, user.id]);
 
     const { userLoans, totalDebt } = useMemo(() => {
-        const loans = state.loans?.filter((l: any) => l.userId === user.id && l.status === 'APPROVED') ?? [];
-        const debt = loans.reduce((acc: number, l: any) => acc + l.totalRepayment, 0);
+        const loans = state.loans?.filter((l: Loan) => l.userId === user.id && l.status === 'APPROVED') ?? [];
+        const debt = loans.reduce((acc: number, l: Loan) => acc + l.totalRepayment, 0);
         return { userLoans: loans, totalDebt: debt };
     }, [state.loans, user.id]);
 
@@ -92,8 +92,8 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
         if (!state.transactions) return [];
         return [...state.transactions]
             .filter(t => t.userId === user.id)
-            .sort((a: any, b: any) =>
-                new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime()
+            .sort((a: Transaction, b: Transaction) =>
+                new Date((b.created_at || b.date)!).getTime() - new Date((a.created_at || a.date)!).getTime()
             )
             .slice(0, 5);
     }, [state.transactions, user.id]);
@@ -174,9 +174,9 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
     return (
         <div className="space-y-6 pb-24">
             {/* 1. Header com Boas-Vindas */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 to-black border border-white/5 p-5 sm:p-8">
-                <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none select-none">
-                    <Sparkles size={100} className="text-primary-400" />
+            <div className="relative overflow-hidden rounded-3xl glass p-5 sm:p-8 animate-fade-in animate-float">
+                <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none select-none">
+                    <Sparkles size={120} className="text-primary-400" />
                 </div>
 
                 <div className="relative z-10">
@@ -198,8 +198,8 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                                 <span className="w-1 h-1 rounded-full bg-zinc-700" />
                                 {new Date().toLocaleDateString('pt-BR', { weekday: 'long' })}
                             </p>
-                            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-none">
-                                {user.name.split(' ')[0]}<span className="text-primary-500">.</span>
+                            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-none text-gradient">
+                                {user.name.split(' ')[0]}<span className="text-white">.</span>
                             </h1>
                         </div>
 
@@ -208,7 +208,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                                 <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-1">Impacto Democrático</p>
                                 <div
                                     onClick={onVoting}
-                                    className="cursor-pointer flex items-center gap-2 bg-primary-500/10 px-4 py-2 rounded-2xl border border-primary-500/20 ring-1 ring-white/5 shadow-xl hover:bg-primary-500/20 transition-all"
+                                    className="cursor-pointer flex items-center gap-2 glass px-4 py-2 rounded-2xl hover:bg-white/10 transition-all active:scale-95"
                                 >
                                     <BarChart3 size={16} className="text-primary-400" />
                                     <span className="text-xl font-black text-white">
@@ -218,7 +218,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                             </div>
                             <button
                                 onClick={() => navigate('/app/settings')}
-                                className="w-14 h-14 bg-white/5 hover:bg-zinc-800 rounded-2xl flex items-center justify-center border border-white/5 transition-all active:scale-95 group shadow-xl"
+                                className="w-14 h-14 glass glass-hover rounded-2xl flex items-center justify-center group"
                             >
                                 <Settings size={24} className="text-zinc-400 group-hover:text-white transition-colors" />
                             </button>
@@ -296,9 +296,9 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
 
             {/* 2. Card de Saldo Principal */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                <div className="lg:col-span-2 bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12 group-hover:scale-110 transition-transform duration-700 pointer-events-none select-none">
-                        <Wallet size={200} />
+                <div className="lg:col-span-2 bg-gradient-to-br from-primary-600 via-primary-700 to-[#10b981] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-2xl shadow-primary-900/40">
+                    <div className="absolute top-0 right-0 p-8 opacity-20 rotate-12 group-hover:scale-110 transition-transform duration-700 pointer-events-none select-none">
+                        <Wallet size={180} />
                     </div>
 
                     <div className="relative z-10">
@@ -316,13 +316,13 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <button
                                 onClick={onWithdraw}
-                                className="bg-black/20 hover:bg-black/40 text-white text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-2xl backdrop-blur-md transition-all flex items-center justify-center gap-3 border border-white/10 active:scale-95 shadow-xl"
+                                className="bg-black/20 hover:bg-black/40 text-white text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-2xl backdrop-blur-md transition-all flex items-center justify-center gap-3 border border-white/10 active:scale-95"
                             >
                                 <ArrowUpFromLine size={20} /> SACAR AGORA
                             </button>
                             <button
                                 onClick={onBuyQuota}
-                                className="bg-white text-primary-900 hover:bg-zinc-100 text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-2xl shadow-2xl transition-all flex items-center justify-center gap-3 active:scale-95 translate-y-[-2px] hover:translate-y-[-4px]"
+                                className="bg-white text-emerald-900 hover:scale-[1.02] transition-all text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-2xl shadow-2xl flex items-center justify-center gap-3 active:scale-95"
                             >
                                 <TrendingUp size={20} /> NOVA LICENÇA
                             </button>
@@ -330,29 +330,29 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                     </div>
                 </div>
 
-                <div className="bg-zinc-900 border border-white/5 rounded-3xl p-5 sm:p-8 flex flex-col justify-between hover:border-primary-500/30 transition-all">
+                <div className="glass glass-hover p-5 sm:p-8 flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-2">
-                        <div className="w-16 h-16 bg-primary-500/10 rounded-3xl flex items-center justify-center text-primary-400 group-hover:scale-110 transition-transform shadow-2xl">
-                            <PieChart size={32} />
+                        <div className="w-14 h-14 bg-primary-500/10 rounded-2xl flex items-center justify-center text-primary-400">
+                            <PieChart size={28} />
                         </div>
-                        <span className="bg-primary-500/10 text-primary-400 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest">{userQuotas.length} ATIVAS</span>
+                        <span className="glass px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest text-primary-400">{userQuotas.length} ATIVAS</span>
                     </div>
                     <div>
                         <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2">Capital Alocado</p>
-                        <h3 className="text-3xl font-black text-white whitespace-nowrap tracking-tight">{formatCurrency(totalInvested)}</h3>
+                        <h3 className="text-3xl font-black text-white tracking-tight">{formatCurrency(totalInvested)}</h3>
                     </div>
                 </div>
 
-                <div className="bg-zinc-900 border border-white/5 rounded-3xl p-5 sm:p-8 flex flex-col justify-between hover:border-emerald-500/30 transition-all">
+                <div className="glass glass-hover p-5 sm:p-8 flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-2">
-                        <div className="w-16 h-16 bg-emerald-500/10 rounded-3xl flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform shadow-2xl">
-                            <ArrowUpRight size={32} />
+                        <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400">
+                            <ArrowUpRight size={28} />
                         </div>
-                        <span className="bg-emerald-500/10 text-emerald-400 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest">+{earningsPercentage.toFixed(1)}%</span>
+                        <span className="glass px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest text-emerald-400">+{earningsPercentage.toFixed(1)}%</span>
                     </div>
                     <div>
                         <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2">Excedentes Totais</p>
-                        <h3 className="text-3xl font-black text-emerald-400 whitespace-nowrap tracking-tight">{formatCurrency(totalEarnings)}</h3>
+                        <h3 className="text-3xl font-black text-emerald-400 tracking-tight">{formatCurrency(totalEarnings)}</h3>
                     </div>
                 </div>
             </div>
@@ -382,23 +382,23 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
 
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-10">
                         {[
-                            { icon: Zap, color: 'yellow', label: 'Farm', sub: 'Views', act: () => navigate('/app/promo-videos/farm'), bg: 'bg-yellow-500/10', text: 'text-yellow-400', subText: 'text-yellow-500/60', shadow: 'hover:shadow-yellow-900/20' },
-                            { icon: Gamepad2, color: 'purple', label: 'Jogar', sub: 'Fun', act: onGames, bg: 'bg-purple-500/10', text: 'text-purple-400', subText: 'text-purple-500/60', shadow: 'hover:shadow-purple-900/20' },
-                            { icon: BookOpen, color: 'blue', label: 'Estudar', sub: 'Learn', act: onEducation, bg: 'bg-blue-500/10', text: 'text-blue-400', subText: 'text-blue-500/60', shadow: 'hover:shadow-blue-900/20' },
-                            { icon: Users, color: 'primary', label: 'Indicar', sub: 'Invite', act: onRefer, bg: 'bg-primary-500/10', text: 'text-primary-400', subText: 'text-primary-500/60', shadow: 'hover:shadow-primary-900/20' },
-                            { icon: BarChart3, color: 'emerald', label: 'Votar', sub: 'Club', act: onVoting, bg: 'bg-emerald-500/10', text: 'text-emerald-400', subText: 'text-emerald-500/60', shadow: 'hover:shadow-emerald-900/20' }
+                            { icon: Zap, label: 'Farm', sub: 'Views', act: () => navigate('/app/promo-videos/farm'), color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
+                            { icon: Gamepad2, label: 'Jogar', sub: 'Fun', act: onGames, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+                            { icon: BookOpen, label: 'Estudar', sub: 'Learn', act: onEducation, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+                            { icon: Users, label: 'Indicar', sub: 'Invite', act: onRefer, color: 'text-primary-400', bg: 'bg-primary-500/10' },
+                            { icon: BarChart3, label: 'Votar', sub: 'Club', act: onVoting, color: 'text-emerald-400', bg: 'bg-emerald-500/10' }
                         ].map((item, idx) => (
                             <button
                                 key={idx}
                                 onClick={item.act}
-                                className={`aspect-square bg-zinc-900 border border-white/5 rounded-[2rem] flex flex-col items-center justify-center gap-3 hover:bg-zinc-800 transition-all group active:scale-95 shadow-xl hover:translate-y-[-4px] ${item.shadow}`}
+                                className="aspect-square glass glass-hover rounded-[2rem] flex flex-col items-center justify-center gap-3 group"
                             >
-                                <div className={`w-14 h-14 ${item.bg} rounded-2xl flex items-center justify-center ${item.text} group-hover:scale-110 transition-transform shadow-inner`}>
+                                <div className={`w-14 h-14 ${item.bg} rounded-2xl flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform`}>
                                     <item.icon size={28} />
                                 </div>
                                 <div className="text-center">
                                     <p className="text-[11px] font-black text-white uppercase tracking-widest">{item.label}</p>
-                                    <p className={`text-[8px] font-black ${item.subText} uppercase tracking-[0.3em] mt-1`}>{item.sub}</p>
+                                    <p className="text-[8px] font-black opacity-40 uppercase tracking-[0.3em] mt-1">{item.sub}</p>
                                 </div>
                             </button>
                         ))}
@@ -467,8 +467,8 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
 
                 <div className="space-y-4">
                     {recentTransactions.length > 0 ? (
-                        recentTransactions.map((t: any) => (
-                            <div key={t.id} className="group bg-[#111111] border border-white/5 hover:border-zinc-700 p-6 rounded-[2rem] transition-all flex items-center justify-between shadow-lg">
+                        recentTransactions.map((t: Transaction) => (
+                            <div key={t.id} className="group glass glass-hover p-6 rounded-[2rem] flex items-center justify-between">
                                 <div className="flex items-center gap-6">
                                     <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-2xl shadow-black ${isPositive(t.type) ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
                                         }`}>

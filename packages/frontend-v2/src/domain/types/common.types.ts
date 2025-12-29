@@ -19,6 +19,8 @@ export interface User {
   total_dividends_earned?: number;
   last_login_at?: string;
   video_points?: number;
+  is_verified?: boolean; // Selo de verificado
+  is_seller?: boolean; // É vendedor no marketplace
 }
 
 export interface Quota {

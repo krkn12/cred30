@@ -32,7 +32,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
                 url: window.location.href
             });
 
-            const res = await apiService.post<any>('/bugs', {
+            const res = await apiService.createBugReport({
                 title,
                 description,
                 category,
