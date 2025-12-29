@@ -106,24 +106,24 @@ export const HistoryView = ({ transactions, isPro }: HistoryViewProps) => {
 
             {/* Cards de resumo */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                <div className="bg-surface border border-surfaceHighlight rounded-xl sm:rounded-2xl p-4">
+                <div className="glass p-4">
                     <div className="flex items-center gap-2 mb-2">
                         <TrendingUp size={16} className="text-emerald-400" />
-                        <span className="text-xs text-zinc-400">Entradas</span>
+                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Entradas</span>
                     </div>
-                    <p className="text-lg sm:text-xl font-bold text-emerald-400">{formatCurrency(totals.incoming)}</p>
+                    <p className="text-lg sm:text-xl font-black text-emerald-400">{formatCurrency(totals.incoming)}</p>
                 </div>
-                <div className="bg-surface border border-surfaceHighlight rounded-xl sm:rounded-2xl p-4">
+                <div className="glass p-4">
                     <div className="flex items-center gap-2 mb-2">
                         <TrendingDown size={16} className="text-red-400" />
-                        <span className="text-xs text-zinc-400">Saídas</span>
+                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Saídas</span>
                     </div>
                     <p className="text-lg sm:text-xl font-bold text-red-400">{formatCurrency(totals.outgoing)}</p>
                 </div>
-                <div className="col-span-2 sm:col-span-1 bg-surface border border-surfaceHighlight rounded-xl sm:rounded-2xl p-4">
+                <div className="col-span-2 sm:col-span-1 glass p-4">
                     <div className="flex items-center gap-2 mb-2">
                         <DollarSign size={16} className="text-primary-400" />
-                        <span className="text-xs text-zinc-400">Saldo do Período</span>
+                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Período</span>
                     </div>
                     <p className={`text-lg sm:text-xl font-bold ${totals.net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                         {formatCurrency(totals.net)}
@@ -141,7 +141,7 @@ export const HistoryView = ({ transactions, isPro }: HistoryViewProps) => {
                             placeholder="Buscar transação..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-surface border border-surfaceHighlight rounded-xl py-3 pl-10 pr-4 text-sm text-white placeholder:text-zinc-500 focus:border-primary-500 outline-none transition"
+                            className="w-full glass rounded-xl py-3 pl-10 pr-4 text-sm text-white placeholder:text-zinc-600 focus:border-primary-500 outline-none transition"
                         />
                     </div>
                     <button
@@ -227,7 +227,7 @@ export const HistoryView = ({ transactions, isPro }: HistoryViewProps) => {
                                 </div>
 
                                 {/* Transações do dia */}
-                                <div className="bg-surface border border-surfaceHighlight rounded-xl sm:rounded-2xl divide-y divide-surfaceHighlight overflow-hidden">
+                                <div className="space-y-3">
                                     {dayTransactions.map((t) => {
                                         const incoming = isIncoming(t.type);
                                         const statusColor = t.status === 'APPROVED' || t.status === 'COMPLETED'
@@ -242,14 +242,10 @@ export const HistoryView = ({ transactions, isPro }: HistoryViewProps) => {
                                                 : XCircle;
 
                                         return (
-                                            <div key={t.id} className="flex items-center sm:gap-4 p-3 sm:p-4 hover:bg-surfaceHighlight/30 transition">
+                                            <div key={t.id} className="group glass glass-hover flex items-center gap-4 p-4">
                                                 {/* Ícone */}
-                                                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0 ${incoming ? 'bg-emerald-500/10' : 'bg-red-500/10'}`}>
-                                                    {incoming ? (
-                                                        <ArrowDownLeft className="text-emerald-400" size={20} />
-                                                    ) : (
-                                                        <ArrowUpRight className="text-red-400" size={20} />
-                                                    )}
+                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${incoming ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                                                    {incoming ? <ArrowDownLeft size={24} /> : <ArrowUpRight size={24} />}
                                                 </div>
 
                                                 {/* Info */}

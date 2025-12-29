@@ -1,5 +1,6 @@
 import React from 'react';
-import { Star, Copy, Lock, ChevronRight, LogOut, Trash2, X as XIcon, ShieldCheck, QrCode, Repeat, AlertCircle, Check, Bug } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Star, Copy, Lock, ChevronRight, LogOut, Trash2, X as XIcon, ShieldCheck, QrCode, Repeat, AlertCircle, Check, Bug, FileText } from 'lucide-react';
 import { User } from '../../../domain/types/common.types';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { get2FASetup, verify2FA } from '../../../application/services/storage.service';
@@ -128,6 +129,7 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
         }
     };
 
+    const navigate = useNavigate();
     const isLocked = user.securityLockUntil ? user.securityLockUntil > Date.now() : false;
     const lockTimeRemaining = user.securityLockUntil ? Math.ceil((user.securityLockUntil - Date.now()) / (1000 * 60 * 60)) : 0;
 
@@ -255,6 +257,14 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                         <span className="flex items-center gap-3">
                             <Bug size={18} className="text-zinc-400 group-hover:text-red-400 transition-colors" />
                             Reportar Problema
+                        </span>
+                        <ChevronRight size={16} className="text-zinc-600 group-hover:text-white transition-colors" />
+                    </button>
+
+                    <button onClick={() => navigate('/app/bug-reports')} className="w-full bg-surfaceHighlight hover:bg-zinc-800 text-white border border-white/5 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group">
+                        <span className="flex items-center gap-3">
+                            <FileText size={18} className="text-zinc-400 group-hover:text-primary-400 transition-colors" />
+                            Meus Relatórios
                         </span>
                         <ChevronRight size={16} className="text-zinc-600 group-hover:text-white transition-colors" />
                     </button>

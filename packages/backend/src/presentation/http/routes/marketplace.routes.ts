@@ -867,17 +867,7 @@ marketplaceRoutes.post('/order/:id/receive', authMiddleware, async (c: Context) 
                 // Simplificação: Apenas garantimos que o Profit Pool aumenta. O System Balance já contém os fundos se não foram pagos a ninguém.
             }
 
-            // 3. Contabilizar a taxa de serviço (85% para cotistas / 15% Operacional)
-            const feeAmount = parseFloat(order.fee_amount);
-            const feeForProfit = feeAmount * 0.85;
-            const feeForOperational = feeAmount * 0.15;
-
-            await client.query(
-                'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
-                [feeForOperational, feeForProfit]
-            );
-
-            // 4. Registrar transação no extrato do vendedor
+            // 3. Registrar transação no extrato do vendedor
             await createTransaction(
                 client,
                 order.seller_id,
