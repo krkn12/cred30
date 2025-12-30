@@ -2266,107 +2266,109 @@ adminRoutes.post('/investments/:id/sell', adminMiddleware, auditMiddleware('SELL
   } catch (error: any) {
     return c.json({ success: false, message: error.message }, 500);
   }
-  // =====================================================
-  // LIMPEZA DE ANÚNCIOS ANTIGOS SEM IMPULSO (ECONOMIZAR BD)
-  // =====================================================
+});
 
-  // Limpar anúncios gratuitos (sem boost) com mais de X dias
-  adminRoutes.post('/marketplace/cleanup-old-listings', adminMiddleware, auditMiddleware('CLEANUP_OLD_LISTINGS', 'MARKETPLACE'), async (c) => {
-    try {
-      const body = await c.req.json().catch(() => ({}));
-      const daysOld = body.daysOld || 7; // Padrão: 7 dias
-      const pool = getDbPool(c);
+// =====================================================
+// LIMPEZA DE ANÚNCIOS ANTIGOS SEM IMPULSO (ECONOMIZAR BD)
+// =====================================================
 
-      const result = await executeInTransaction(pool, async (client) => {
-        // Contar anúncios que serão deletados (para relatório)
-        const countResult = await client.query(`
+// Limpar anúncios gratuitos (sem boost) com mais de X dias
+adminRoutes.post('/marketplace/cleanup-old-listings', adminMiddleware, auditMiddleware('CLEANUP_OLD_LISTINGS', 'MARKETPLACE'), async (c: any) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const daysOld = body.daysOld || 7; // Padrão: 7 dias
+    const pool = getDbPool(c);
+
+    const result = await executeInTransaction(pool, async (client) => {
+      // Contar anúncios que serão deletados (para relatório)
+      const countResult = await client.query(`
         SELECT COUNT(*) as total
         FROM marketplace_listings 
         WHERE status = 'ACTIVE' 
           AND (is_boosted = FALSE OR is_boosted IS NULL)
           AND created_at < NOW() - INTERVAL '${daysOld} days'
       `);
-        const countToDelete = parseInt(countResult.rows[0].total);
+      const countToDelete = parseInt(countResult.rows[0].total);
 
-        if (countToDelete === 0) {
-          return { deletedCount: 0 };
-        }
+      if (countToDelete === 0) {
+        return { deletedCount: 0 };
+      }
 
-        // Primeiro, obter os IDs dos anúncios que serão excluídos
-        const listingsToDelete = await client.query(`
+      // Primeiro, obter os IDs dos anúncios que serão excluídos
+      const listingsToDelete = await client.query(`
         SELECT id FROM marketplace_listings 
         WHERE status = 'ACTIVE' 
           AND (is_boosted = FALSE OR is_boosted IS NULL)
           AND created_at < NOW() - INTERVAL '${daysOld} days'
       `);
-        const idsToDelete = listingsToDelete.rows.map(r => r.id);
+      const idsToDelete = listingsToDelete.rows.map(r => r.id);
 
-        // Verificar se há pedidos pendentes vinculados a esses anúncios
-        const ordersCheck = await client.query(`
+      // Verificar se há pedidos pendentes vinculados a esses anúncios
+      const ordersCheck = await client.query(`
         SELECT listing_id FROM marketplace_orders 
         WHERE listing_id = ANY($1) 
           AND status NOT IN ('COMPLETED', 'CANCELLED')
       `, [idsToDelete]);
 
-        if (ordersCheck.rows.length > 0) {
-          // Remover IDs que têm pedidos pendentes
-          const idsWithOrders = ordersCheck.rows.map(r => r.listing_id);
-          const safeIdsToDelete = idsToDelete.filter(id => !idsWithOrders.includes(id));
+      if (ordersCheck.rows.length > 0) {
+        // Remover IDs que têm pedidos pendentes
+        const idsWithOrders = ordersCheck.rows.map(r => r.listing_id);
+        const safeIdsToDelete = idsToDelete.filter(id => !idsWithOrders.includes(id));
 
-          if (safeIdsToDelete.length === 0) {
-            return { deletedCount: 0, skipped: idsWithOrders.length };
-          }
+        if (safeIdsToDelete.length === 0) {
+          return { deletedCount: 0, skipped: idsWithOrders.length };
+        }
 
-          // Deletar apenas os seguros
-          const deleteResult = await client.query(`
+        // Deletar apenas os seguros
+        const deleteResult = await client.query(`
           DELETE FROM marketplace_listings 
           WHERE id = ANY($1)
           RETURNING id
         `, [safeIdsToDelete]);
 
-          return {
-            deletedCount: deleteResult.rowCount || 0,
-            skipped: idsWithOrders.length
-          };
-        }
+        return {
+          deletedCount: deleteResult.rowCount || 0,
+          skipped: idsWithOrders.length
+        };
+      }
 
-        // Deletar todos os anúncios identificados
-        const deleteResult = await client.query(`
+      // Deletar todos os anúncios identificados
+      const deleteResult = await client.query(`
         DELETE FROM marketplace_listings 
         WHERE id = ANY($1)
         RETURNING id
       `, [idsToDelete]);
 
-        return { deletedCount: deleteResult.rowCount || 0 };
-      });
+      return { deletedCount: deleteResult.rowCount || 0 };
+    });
 
-      if (!result.success) {
-        return c.json({ success: false, message: result.error }, 400);
-      }
-
-      const { deletedCount, skipped } = result.data!;
-      let message = `Limpeza concluída: ${deletedCount} anúncio(s) removido(s).`;
-      if (skipped) {
-        message += ` ${skipped} anúncio(s) com pedidos pendentes foram mantidos.`;
-      }
-
-      return c.json({
-        success: true,
-        message,
-        data: { deletedCount, skipped: skipped || 0, daysOld }
-      });
-    } catch (error: any) {
-      console.error('[CLEANUP] Erro ao limpar anúncios:', error);
-      return c.json({ success: false, message: error.message }, 500);
+    if (!result.success) {
+      return c.json({ success: false, message: result.error }, 400);
     }
-  });
 
-  // Obter estatísticas de anúncios para limpeza
-  adminRoutes.get('/marketplace/cleanup-stats', adminMiddleware, async (c) => {
-    try {
-      const pool = getDbPool(c);
+    const { deletedCount, skipped } = result.data!;
+    let message = `Limpeza concluída: ${deletedCount} anúncio(s) removido(s).`;
+    if (skipped) {
+      message += ` ${skipped} anúncio(s) com pedidos pendentes foram mantidos.`;
+    }
 
-      const result = await pool.query(`
+    return c.json({
+      success: true,
+      message,
+      data: { deletedCount, skipped: skipped || 0, daysOld }
+    });
+  } catch (error: any) {
+    console.error('[CLEANUP] Erro ao limpar anúncios:', error);
+    return c.json({ success: false, message: error.message }, 500);
+  }
+});
+
+// Obter estatísticas de anúncios para limpeza
+adminRoutes.get('/marketplace/cleanup-stats', adminMiddleware, async (c: any) => {
+  try {
+    const pool = getDbPool(c);
+
+    const result = await pool.query(`
       SELECT 
         COUNT(*) FILTER (WHERE status = 'ACTIVE' AND (is_boosted = FALSE OR is_boosted IS NULL) AND created_at < NOW() - INTERVAL '7 days') as stale_7_days,
         COUNT(*) FILTER (WHERE status = 'ACTIVE' AND (is_boosted = FALSE OR is_boosted IS NULL) AND created_at < NOW() - INTERVAL '14 days') as stale_14_days,
@@ -2377,23 +2379,23 @@ adminRoutes.post('/investments/:id/sell', adminMiddleware, auditMiddleware('SELL
       FROM marketplace_listings
     `);
 
-      const stats = result.rows[0];
+    const stats = result.rows[0];
 
-      return c.json({
-        success: true,
-        data: {
-          stale7Days: parseInt(stats.stale_7_days),
-          stale14Days: parseInt(stats.stale_14_days),
-          stale30Days: parseInt(stats.stale_30_days),
-          boostedActive: parseInt(stats.boosted_active),
-          totalActive: parseInt(stats.total_active),
-          totalAll: parseInt(stats.total_all)
-        }
-      });
-    } catch (error: any) {
-      return c.json({ success: false, message: error.message }, 500);
-    }
-  });
+    return c.json({
+      success: true,
+      data: {
+        stale7Days: parseInt(stats.stale_7_days),
+        stale14Days: parseInt(stats.stale_14_days),
+        stale30Days: parseInt(stats.stale_30_days),
+        boostedActive: parseInt(stats.boosted_active),
+        totalActive: parseInt(stats.total_active),
+        totalAll: parseInt(stats.total_all)
+      }
+    });
+  } catch (error: any) {
+    return c.json({ success: false, message: error.message }, 500);
+  }
+});
 
-  export { adminRoutes };
+export { adminRoutes };
 

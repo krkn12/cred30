@@ -38,22 +38,78 @@ const upgradeProSchema = z.object({
     ...cardDataSchema
 });
 
+// Constantes do sistema de pontos
+const POINTS_RATE = 1000; // 1000 pontos
+const MONEY_VALUE = 0.03; // = R$ 0,03
+
+/**
+ * Função auxiliar para verificar e converter pontos automaticamente
+ * O dinheiro sai do system_balance (caixa operacional alimentado por ads)
+ */
+async function autoConvertPoints(client: PoolClient, userId: string | number): Promise<{ converted: boolean; pointsConverted: number; moneyCredited: number; remainingPoints: number }> {
+    const userRes = await client.query('SELECT ad_points, balance FROM users WHERE id = $1 FOR UPDATE', [userId]);
+    const currentPoints = userRes.rows[0].ad_points || 0;
+
+    if (currentPoints < POINTS_RATE) {
+        return { converted: false, pointsConverted: 0, moneyCredited: 0, remainingPoints: currentPoints };
+    }
+
+    const lots = Math.floor(currentPoints / POINTS_RATE);
+    const pointsToConvert = lots * POINTS_RATE;
+    const moneyToCredit = lots * MONEY_VALUE;
+    const remainingPoints = currentPoints - pointsToConvert;
+
+    // Verificar se há saldo suficiente no caixa operacional
+    const systemRes = await client.query('SELECT system_balance FROM system_config LIMIT 1 FOR UPDATE');
+    const systemBalance = parseFloat(systemRes.rows[0]?.system_balance || '0');
+
+    if (systemBalance < moneyToCredit) {
+        // Não há saldo no caixa - não converte
+        console.warn(`[POINTS] Caixa insuficiente para conversão. Caixa: ${systemBalance}, Necessário: ${moneyToCredit}`);
+        return { converted: false, pointsConverted: 0, moneyCredited: 0, remainingPoints: currentPoints };
+    }
+
+    // 1. Descontar do caixa operacional
+    await client.query(
+        `UPDATE system_config SET system_balance = system_balance - $1`,
+        [moneyToCredit]
+    );
+
+    // 2. Creditar no usuário
+    await client.query(
+        `UPDATE users SET ad_points = $1, balance = balance + $2 WHERE id = $3`,
+        [remainingPoints, moneyToCredit, userId]
+    );
+
+    // 3. Registrar transação
+    await createTransaction(
+        client,
+        String(userId),
+        'BONUS',
+        moneyToCredit,
+        `🎉 Conversão: ${pointsToConvert} pontos farm`,
+        'APPROVED'
+    );
+
+    return { converted: true, pointsConverted: pointsToConvert, moneyCredited: moneyToCredit, remainingPoints };
+}
+
 /**
  * Recompensa por Video (Rewarded Ads)
+ * Sistema de Pontos: 1000 pts = R$ 0,03 (conversão automática!)
  */
 monetizationRoutes.post('/reward-video', authMiddleware, async (c) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
 
-        // Configurações de recompensa (Sustentabilidade: Adsterra/CPM real)
-        const REWARD_AMOUNT = 0.002; // R$ 0,002 por vídeo (Sustentável para CPM de R$ 2,00)
-        const REWARD_SCORE = 5; // Aumentado para +5 pontos de Score (Incentiva o limite de crédito)
-        const COOLDOWN_MINUTES = 10; // Reduzido para 10 min para permitir mais engajamento
+        const REWARD_POINTS = 50; // 50 pontos por vídeo
+        const REWARD_SCORE = 5; // +5 pontos de Score
+        const COOLDOWN_MINUTES = 10;
 
         const result = await executeInTransaction(pool, async (client: PoolClient) => {
             // 1. Verificar cooldown
-            const userRes = await client.query('SELECT last_reward_at, score, balance FROM users WHERE id = $1', [user.id]);
+            const userRes = await client.query('SELECT last_reward_at, score, ad_points FROM users WHERE id = $1', [user.id]);
             const lastReward = userRes.rows[0].last_reward_at;
 
             if (lastReward) {
@@ -63,27 +119,40 @@ monetizationRoutes.post('/reward-video', authMiddleware, async (c) => {
                 }
             }
 
-            // 2. Dar a recompensa
+            // 2. Dar pontos
             await client.query(
-                'UPDATE users SET balance = balance + $1, score = score + $2, last_reward_at = NOW() WHERE id = $3',
-                [REWARD_AMOUNT, REWARD_SCORE, user.id]
+                'UPDATE users SET ad_points = COALESCE(ad_points, 0) + $1, score = score + $2, last_reward_at = NOW() WHERE id = $3',
+                [REWARD_POINTS, REWARD_SCORE, user.id]
             );
 
-            // 3. Registrar transação
-            await createTransaction(
-                client,
-                user.id,
-                'AD_REWARD',
-                REWARD_AMOUNT,
-                'Recompensa: Vídeo Premiado Assistido',
-                'APPROVED'
-            );
+            // 3. Conversão automática
+            const conversion = await autoConvertPoints(client, user.id);
 
-            return { success: true };
+            // 4. Buscar pontos atualizados
+            const updatedRes = await client.query('SELECT ad_points FROM users WHERE id = $1', [user.id]);
+            const newPoints = updatedRes.rows[0].ad_points || 0;
+
+            return { success: true, newPoints, conversion };
         });
 
         if (!result.success) return c.json({ success: false, message: result.error }, 400);
-        return c.json({ success: true, message: `Bônus recebido! + R$ ${REWARD_AMOUNT.toFixed(2)} e +${REWARD_SCORE} Score.` });
+
+        const conversion = result.data?.conversion;
+        let message = `+${REWARD_POINTS} pontos farm e +${REWARD_SCORE} Score!`;
+
+        if (conversion?.converted) {
+            message += ` 🎉 +R$ ${conversion.moneyCredited.toFixed(2)} convertidos!`;
+        }
+
+        return c.json({
+            success: true,
+            message,
+            points: result.data?.newPoints || 0,
+            conversion: conversion?.converted ? {
+                moneyCredited: conversion.moneyCredited,
+                pointsConverted: conversion.pointsConverted
+            } : null
+        });
     } catch (error: any) {
         return c.json({ success: false, message: error.message }, 500);
     }
@@ -327,18 +396,19 @@ monetizationRoutes.post('/buy-score-boost', authMiddleware, async (c) => {
 
 /**
  * Check-in Diário (Recompensa por retenção + Ad)
+ * Sistema de Pontos: 1000 pts = R$ 0,03 (conversão automática!)
  */
 monetizationRoutes.post('/daily-checkin', authMiddleware, async (c) => {
     try {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
 
-        const CHECKIN_REWARD = 0.01; // R$ 0,01 por dia
+        const CHECKIN_POINTS = 100; // 100 pontos por check-in diário
         const CHECKIN_SCORE = 10;
 
         const result = await executeInTransaction(pool, async (client: PoolClient) => {
             // Verificar se já fez hoje
-            const userRes = await client.query('SELECT last_checkin_at FROM users WHERE id = $1', [user.id]);
+            const userRes = await client.query('SELECT last_checkin_at, ad_points FROM users WHERE id = $1', [user.id]);
             const lastCheckin = userRes.rows[0].last_checkin_at;
 
             if (lastCheckin) {
@@ -349,26 +419,40 @@ monetizationRoutes.post('/daily-checkin', authMiddleware, async (c) => {
                 }
             }
 
-            // Dar recompensa
+            // Dar pontos
             await client.query(
-                'UPDATE users SET balance = balance + $1, score = score + $2, last_checkin_at = NOW() WHERE id = $3',
-                [CHECKIN_REWARD, CHECKIN_SCORE, user.id]
+                'UPDATE users SET ad_points = COALESCE(ad_points, 0) + $1, score = score + $2, last_checkin_at = NOW() WHERE id = $3',
+                [CHECKIN_POINTS, CHECKIN_SCORE, user.id]
             );
 
-            await createTransaction(
-                client,
-                user.id,
-                'DAILY_CHECKIN',
-                CHECKIN_REWARD,
-                'Bônus: Check-in Diário Realizado',
-                'APPROVED'
-            );
+            // Conversão automática
+            const conversion = await autoConvertPoints(client, user.id);
 
-            return { success: true };
+            // Buscar pontos atualizados
+            const updatedRes = await client.query('SELECT ad_points FROM users WHERE id = $1', [user.id]);
+            const newPoints = updatedRes.rows[0].ad_points || 0;
+
+            return { success: true, newPoints, conversion };
         });
 
         if (!result.success) return c.json({ success: false, message: result.error }, 400);
-        return c.json({ success: true, message: `Check-in realizado! +R$ ${CHECKIN_REWARD.toFixed(2)} e +${CHECKIN_SCORE} Score.` });
+
+        const conversion = result.data?.conversion;
+        let message = `Check-in realizado! +${CHECKIN_POINTS} pontos farm e +${CHECKIN_SCORE} Score.`;
+
+        if (conversion?.converted) {
+            message += ` 🎉 +R$ ${conversion.moneyCredited.toFixed(2)} convertidos!`;
+        }
+
+        return c.json({
+            success: true,
+            message,
+            points: result.data?.newPoints || 0,
+            conversion: conversion?.converted ? {
+                moneyCredited: conversion.moneyCredited,
+                pointsConverted: conversion.pointsConverted
+            } : null
+        });
     } catch (error: any) {
         return c.json({ success: false, message: error.message }, 500);
     }

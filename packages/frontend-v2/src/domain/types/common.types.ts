@@ -19,6 +19,7 @@ export interface User {
   total_dividends_earned?: number;
   last_login_at?: string;
   video_points?: number;
+  ad_points?: number; // Pontos farm (1000 pts = R$ 0,03)
   is_verified?: boolean; // Selo de verificado
   is_seller?: boolean; // É vendedor no marketplace
 }

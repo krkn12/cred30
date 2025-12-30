@@ -243,11 +243,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                             </div>
 
                             <button
-                                onClick={() => {
-                                    // Adsterra SmartLink Trigger (Pop-Under effect)
-                                    window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
-                                    onRequest(amount, months)
-                                }}
+                                onClick={() => onRequest(amount, months)}
                                 disabled={!amount || amount <= 0 || creditLimit?.totalLimit === 0}
                                 className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-xl mt-6 transition shadow-lg shadow-emerald-500/20"
                             >

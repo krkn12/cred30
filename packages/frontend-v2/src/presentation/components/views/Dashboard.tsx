@@ -272,7 +272,8 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                             </div>
                             <div>
                                 <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Pontos Farm</p>
-                                <p className="text-sm font-black text-white">{user.video_points || 0} pts</p>
+                                <p className="text-sm font-black text-white">{user.ad_points || 0} pts</p>
+                                <p className="text-[8px] text-zinc-600">1000 pts = R$ 0,03</p>
                             </div>
                         </div>
                     </div>

@@ -890,6 +890,32 @@ class ApiService {
     const response = await this.request<any>('/seller/wallet');
     return response.data || response;
   }
+
+  // ========== PONTOS FARM ==========
+
+  // Obter informações de pontos do usuário
+  async getPointsInfo(): Promise<{
+    currentPoints: number;
+    canConvert: boolean;
+    possibleConversion: number;
+    pointsToNextConversion: number;
+    rate: string;
+  }> {
+    const response = await this.request<any>('/earn/points-info');
+    return response.data;
+  }
+
+  // Converter pontos para saldo
+  async convertPoints(): Promise<{
+    pointsConverted: number;
+    moneyCredited: number;
+    remainingPoints: number;
+  }> {
+    const response = await this.request<any>('/earn/convert-points', {
+      method: 'POST'
+    });
+    return response.data;
+  }
 }
 
 // Exportar instância única do serviço

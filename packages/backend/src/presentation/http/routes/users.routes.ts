@@ -205,6 +205,7 @@ userRoutes.get('/sync', authMiddleware, async (c) => {
           u.is_verified,
           u.security_lock_until,
           u.video_points,
+          COALESCE(u.ad_points, 0) as ad_points,
           (SELECT COUNT(*) FROM quotas WHERE user_id = u.id AND status = 'ACTIVE') as quota_count,
           (SELECT COALESCE(SUM(total_repayment), 0) FROM loans WHERE user_id = u.id AND status IN ('APPROVED', 'PAYMENT_PENDING')) as debt_total
         FROM users u WHERE u.id = $1
@@ -255,7 +256,8 @@ userRoutes.get('/sync', authMiddleware, async (c) => {
           membership_type: stats.membership_type || 'MEMBER',
           is_verified: stats.is_verified || false,
           security_lock_until: stats.security_lock_until,
-          video_points: stats.video_points || 0
+          video_points: stats.video_points || 0,
+          ad_points: parseInt(stats.ad_points || '0')
         },
         stats: {
           activeQuotas: parseInt(stats.quota_count || '0'),
