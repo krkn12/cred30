@@ -1215,4 +1215,69 @@ marketplaceRoutes.post('/offline/sync', authMiddleware, async (c: Context) => {
     }
 });
 
+/**
+ * Atualizar localização GPS do Entregador (Rastreio em Tempo Real)
+ */
+marketplaceRoutes.post('/logistic/mission/:id/location', authMiddleware, async (c: Context) => {
+    try {
+        const user = c.get('user') as UserContext;
+        const pool = getDbPool(c);
+        const orderId = c.req.param('id');
+        const { lat, lng } = await c.req.json();
+
+        if (typeof lat !== 'number' || typeof lng !== 'number') {
+            return c.json({ success: false, message: 'Coordenadas inválidas' }, 400);
+        }
+
+        // Garantir que apenas o entregador do pedido possa atualizar
+        const result = await pool.query(
+            `UPDATE marketplace_orders 
+             SET courier_lat = $1, courier_lng = $2, updated_at = NOW()
+             WHERE id = $3 AND courier_id = $4 AND status IN ('WAITING_SHIPPING', 'IN_TRANSIT')
+             RETURNING id`,
+            [lat, lng, orderId, user.id]
+        );
+
+        if (result.rowCount === 0) {
+            return c.json({ success: false, message: 'Pedido não encontrado ou você não é o entregador deste pedido.' }, 403);
+        }
+
+        return c.json({ success: true });
+    } catch (error) {
+        return c.json({ success: false, message: 'Erro ao atualizar localização' }, 500);
+    }
+});
+
+/**
+ * Obter localização GPS para o Cliente (Modal estilo iFood)
+ */
+marketplaceRoutes.get('/order/:id/tracking', authMiddleware, async (c: Context) => {
+    try {
+        const user = c.get('user') as UserContext;
+        const pool = getDbPool(c);
+        const orderId = c.req.param('id');
+
+        const result = await pool.query(
+            `SELECT o.id, o.status, o.courier_id, o.courier_lat, o.courier_lng, 
+                    o.delivery_address, o.pickup_address,
+                    u.name as courier_name, u.phone as courier_phone
+             FROM marketplace_orders o
+             LEFT JOIN users u ON o.courier_id = u.id
+             WHERE o.id = $1 AND (o.buyer_id = $2 OR o.courier_id = $2 OR o.seller_id = $2)`,
+            [orderId, user.id]
+        );
+
+        if (result.rows.length === 0) {
+            return c.json({ success: false, message: 'Rastreio não disponível.' }, 404);
+        }
+
+        return c.json({
+            success: true,
+            data: result.rows[0]
+        });
+    } catch (error) {
+        return c.json({ success: false, message: 'Erro ao buscar rastreio' }, 500);
+    }
+});
+
 export { marketplaceRoutes };
