@@ -596,11 +596,24 @@ promoVideosRoutes.post('/convert-points', async (c: Context) => {
         const amountToAdd = pointsToConvert / POINTS_PER_REAL;
 
         await executeInTransaction(pool, async (client) => {
-            // Deduzir pontos
+            // 1. Verificar se há saldo suficiente no profit_pool
+            const systemRes = await client.query('SELECT profit_pool FROM system_config LIMIT 1 FOR UPDATE');
+            const profitPool = parseFloat(systemRes.rows[0]?.profit_pool || '0');
+
+            if (profitPool < amountToAdd) {
+                throw new Error('Fundo de pagamentos insuficiente. Tente mais tarde.');
+            }
+
+            // 2. Descontar do profit_pool (o dinheiro vem de algum lugar!)
+            await client.query('UPDATE system_config SET profit_pool = profit_pool - $1', [amountToAdd]);
+
+            // 3. Deduzir pontos
             await client.query('UPDATE users SET video_points = video_points - $1 WHERE id = $2', [pointsToConvert, userPayload.id]);
-            // Adicionar saldo
+
+            // 4. Adicionar saldo
             await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [amountToAdd, userPayload.id]);
-            // Registrar transação
+
+            // 5. Registrar transação
             await client.query(`
                 INSERT INTO transactions (user_id, type, amount, description, status)
                 VALUES ($1, 'POINTS_CONVERSION', $2, $3, 'COMPLETED')
@@ -612,9 +625,9 @@ promoVideosRoutes.post('/convert-points', async (c: Context) => {
             message: `Sucesso! R$ ${amountToAdd.toFixed(2)} adicionados ao seu saldo.`,
             data: { convertedAmount: amountToAdd, remainingPoints: 0 }
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('[PROMO-VIDEOS] Erro ao converter pontos:', error);
-        return c.json({ success: false, message: 'Erro ao converter pontos' }, 500);
+        return c.json({ success: false, message: error.message || 'Erro ao converter pontos' }, 500);
     }
 });
 

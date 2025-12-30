@@ -20,10 +20,6 @@ export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
 
     const handlePurchase = () => {
         if (!acceptedTerms) return;
-
-        // Adsterra SmartLink Trigger
-        window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
-
         onBuy(qty, method);
         setShowConfirm(false);
     };
