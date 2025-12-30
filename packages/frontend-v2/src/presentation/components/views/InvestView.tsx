@@ -192,11 +192,7 @@ export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
                                             alert('Por favor, aceite os termos de adesão para continuar.');
                                             return;
                                         }
-                                        if (method === 'CARD') {
-                                            handlePurchase();
-                                        } else {
-                                            setShowConfirm(true);
-                                        }
+                                        setShowConfirm(true);
                                     }}
                                     disabled={!acceptedTerms}
                                     className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl ${acceptedTerms
@@ -204,7 +200,7 @@ export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
                                         : 'bg-zinc-800 text-zinc-600 opacity-50 cursor-not-allowed shadow-none'
                                         }`}
                                 >
-                                    {method === 'CARD' ? 'Ir para Pagamento' : 'Confirmar Ingresso'}
+                                    Confirmar Ingresso
                                     <ArrowRight size={18} />
                                 </button>
                             </div>
@@ -310,7 +306,7 @@ export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
                                 onClick={handlePurchase}
                                 className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black uppercase tracking-[0.2em] py-5 rounded-2xl transition-all shadow-xl shadow-primary-500/20 active:scale-[0.98] text-xs flex items-center justify-center gap-3"
                             >
-                                {method === 'BALANCE' ? 'PAGAR COM MEU SALDO' : 'GERAR PAGAMENTO PIX'}
+                                {method === 'BALANCE' ? 'PAGAR COM MEU SALDO' : method === 'PIX' ? 'GERAR PAGAMENTO PIX' : 'PAGAR COM CARTÃO'}
                                 <ArrowRight size={18} />
                             </button>
                             <button
