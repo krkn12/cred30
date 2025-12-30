@@ -121,8 +121,8 @@ withdrawalRoutes.post('/request', authMiddleware, async (c) => {
     if ((amount + ASAAS_PIX_OUT_FEE) > realLiquidity) {
       return c.json({
         success: false,
-        message: 'O sistema atingiu o limite de saques diários por falta de liquidez momentânea. Tente novamente em 24h ou entre em contato com o suporte.',
-        errorCode: 'LOW_LIQUIDITY'
+        message: 'Não há saldo disponível no momento para este saque. O sistema opera com lastro real.',
+        errorCode: 'INSUFFICIENT_SYSTEM_BALANCE'
       }, 400);
     }
 

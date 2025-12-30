@@ -1,110 +1,262 @@
 
 import { Pool, PoolClient } from 'pg';
-import { QUOTA_PRICE, VIP_LEVELS } from '../../shared/constants/business.constants';
 
 /**
- * Serviço de Análise de Crédito (Estilo Nubank)
- * Calcula limites dinâmicos baseados no comportamento do usuário E na disponibilidade do caixa
+ * Sistema de Empréstimo por Mérito com Garantia Flexível
+ * 
+ * REGRAS:
+ * 1. LIMITE MÁXIMO = 80% do Total Gasto (sem cotas)
+ * 2. Usuário escolhe % de garantia (mínimo 50% das cotas)
+ * 3. Quanto MENOR a garantia, MAIOR os juros (proteção contra calote)
+ * 
+ * TABELA DE JUROS (baseado na garantia):
+ * - 50% garantia → 35% juros
+ * - 60% garantia → 28% juros
+ * - 70% garantia → 22% juros
+ * - 80% garantia → 18% juros
+ * - 90% garantia → 14% juros
+ * - 100% garantia → 10% juros
  */
-export const calculateUserLoanLimit = async (pool: Pool | PoolClient, userId: string): Promise<number> => {
+
+// Constantes
+const MIN_SCORE_FOR_LOAN = 850;
+const MIN_MARKETPLACE_TRANSACTIONS = 3;
+const MIN_ACCOUNT_AGE_DAYS = 30;
+const SYSTEM_LIQUIDITY_RESERVE = 0.30;
+const LIMIT_PERCENTAGE = 0.80; // 80% do total gasto
+
+// Tabela de juros baseada na garantia
+const INTEREST_RATES: { [key: number]: number } = {
+    50: 0.35,   // 50% garantia = 35% juros
+    60: 0.28,   // 60% garantia = 28% juros
+    70: 0.22,   // 70% garantia = 22% juros
+    80: 0.18,   // 80% garantia = 18% juros
+    90: 0.14,   // 90% garantia = 14% juros
+    100: 0.10,  // 100% garantia = 10% juros
+};
+
+const VALID_GUARANTEE_PERCENTAGES = [50, 60, 70, 80, 90, 100];
+
+/**
+ * Calcula a taxa de juros baseada na garantia oferecida
+ */
+export const calculateInterestRate = (guaranteePercentage: number): number => {
+    if (guaranteePercentage <= 50) return INTEREST_RATES[50];
+    if (guaranteePercentage <= 60) return INTEREST_RATES[60];
+    if (guaranteePercentage <= 70) return INTEREST_RATES[70];
+    if (guaranteePercentage <= 80) return INTEREST_RATES[80];
+    if (guaranteePercentage <= 90) return INTEREST_RATES[90];
+    return INTEREST_RATES[100];
+};
+
+/**
+ * Verifica elegibilidade para empréstimo
+ */
+export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: string): Promise<{
+    eligible: boolean;
+    reason?: string;
+    details: {
+        score: number;
+        quotasCount: number;
+        quotasValue: number;
+        marketplaceTransactions: number;
+        accountAgeDays: number;
+        hasOverdue: boolean;
+        totalSpent: number;
+        maxLoanAmount: number;
+    }
+}> => {
     try {
-        // 1, 2 e 3. Dados consolidados do usuário (Score, Cotas e Histórico)
-        // Redução de 3 queries para 1
+        // Dados do usuário e gastos
         const userDataRes = await pool.query(`
             SELECT 
-                u.score, u.created_at,
+                u.score, 
+                u.created_at,
+                (SELECT COUNT(*) FROM quotas WHERE user_id = $1 AND status = 'ACTIVE') as quotas_count,
                 (SELECT COALESCE(SUM(current_value), 0) FROM quotas WHERE user_id = $1 AND status = 'ACTIVE') as total_quotas_value,
-                (SELECT COUNT(*) FROM loans WHERE user_id = $1) as total_requests,
-                (SELECT COUNT(*) FROM loans WHERE user_id = $1 AND status = 'PAID') as paid_loans,
-                (SELECT COUNT(*) FROM loans WHERE user_id = $1 AND status = 'APPROVED' AND due_date < NOW()) as overdue_loans
+                (SELECT COUNT(*) FROM marketplace_orders WHERE buyer_id = $1 AND status = 'COMPLETED') as purchases,
+                (SELECT COUNT(*) FROM marketplace_orders mo JOIN marketplace_listings ml ON mo.listing_id = ml.id WHERE ml.user_id = $1 AND mo.status = 'COMPLETED') as sales,
+                (SELECT COUNT(*) FROM loans WHERE user_id = $1 AND status = 'APPROVED' AND due_date < NOW()) as overdue_loans,
+                -- Total gasto (sem cotas)
+                COALESCE((SELECT SUM(total_price) FROM marketplace_orders WHERE buyer_id = $1 AND status = 'COMPLETED'), 0) as marketplace_spent,
+                COALESCE((SELECT SUM(budget_gross) FROM promo_videos WHERE user_id = $1), 0) as campaign_spent,
+                COALESCE((SELECT SUM(ABS(amount)) FROM transactions 
+                    WHERE user_id = $1 AND status = 'APPROVED' 
+                    AND type IN ('MEMBERSHIP_UPGRADE', 'BUY_VERIFIED_BADGE', 'BUY_SCORE_PACKAGE', 'MARKET_BOOST')
+                ), 0) as platform_spent
             FROM users u
             WHERE u.id = $1
         `, [userId]);
 
-        if (userDataRes.rows.length === 0) return 0;
+        if (userDataRes.rows.length === 0) {
+            return { eligible: false, reason: 'Usuário não encontrado', details: { score: 0, quotasCount: 0, quotasValue: 0, marketplaceTransactions: 0, accountAgeDays: 0, hasOverdue: false, totalSpent: 0, maxLoanAmount: 0 } };
+        }
+
         const userData = userDataRes.rows[0];
-
-        const user = { score: userData.score, created_at: userData.created_at };
-        const totalQuotasValue = parseFloat(userData.total_quotas_value);
+        const score = parseInt(userData.score) || 0;
+        const quotasCount = parseInt(userData.quotas_count) || 0;
+        const quotasValue = parseFloat(userData.total_quotas_value) || 0;
+        const marketplaceTransactions = parseInt(userData.purchases || 0) + parseInt(userData.sales || 0);
+        const accountAgeDays = Math.floor((Date.now() - new Date(userData.created_at).getTime()) / (1000 * 60 * 60 * 24));
         const hasOverdue = parseInt(userData.overdue_loans) > 0;
-        const paidCount = parseInt(userData.paid_loans);
 
-        // 4. CAIXA OPERACIONAL DISPONÍVEL (Consolidado)
-        // Redução de 2 queries para 1
-        const systemStatsRes = await pool.query(`
+        // Total gasto (sem cotas)
+        const totalSpent = parseFloat(userData.marketplace_spent || 0) +
+            parseFloat(userData.campaign_spent || 0) +
+            parseFloat(userData.platform_spent || 0);
+
+        // Limite máximo = 80% do total gasto
+        const maxLoanAmount = Math.floor(totalSpent * LIMIT_PERCENTAGE);
+
+        const details = { score, quotasCount, quotasValue, marketplaceTransactions, accountAgeDays, hasOverdue, totalSpent, maxLoanAmount };
+
+        // Verificações
+        if (hasOverdue) {
+            return { eligible: false, reason: 'Você possui empréstimos em atraso.', details };
+        }
+        if (score < MIN_SCORE_FOR_LOAN) {
+            return { eligible: false, reason: `Score mínimo de ${MIN_SCORE_FOR_LOAN} necessário. Seu: ${score}`, details };
+        }
+        if (quotasCount < 1) {
+            return { eligible: false, reason: 'Você precisa ter pelo menos 1 cota ativa.', details };
+        }
+        if (marketplaceTransactions < MIN_MARKETPLACE_TRANSACTIONS) {
+            return { eligible: false, reason: `Mínimo ${MIN_MARKETPLACE_TRANSACTIONS} transações no Marketplace.`, details };
+        }
+        if (accountAgeDays < MIN_ACCOUNT_AGE_DAYS) {
+            return { eligible: false, reason: `Conta precisa ter ${MIN_ACCOUNT_AGE_DAYS}+ dias.`, details };
+        }
+        if (totalSpent <= 0) {
+            return { eligible: false, reason: 'Você precisa ter gastos na plataforma (marketplace, campanhas, assinatura).', details };
+        }
+
+        return { eligible: true, details };
+    } catch (error) {
+        console.error('Erro ao verificar elegibilidade:', error);
+        return { eligible: false, reason: 'Erro ao verificar', details: { score: 0, quotasCount: 0, quotasValue: 0, marketplaceTransactions: 0, accountAgeDays: 0, hasOverdue: false, totalSpent: 0, maxLoanAmount: 0 } };
+    }
+};
+
+/**
+ * Calcula o empréstimo com base na garantia escolhida
+ */
+export const calculateLoanOffer = async (
+    pool: Pool | PoolClient,
+    userId: string,
+    requestedAmount: number,
+    guaranteePercentage: number // 50, 60, 70, 80, 90 ou 100
+): Promise<{
+    approved: boolean;
+    reason?: string;
+    offer?: {
+        amount: number;
+        guaranteePercentage: number;
+        guaranteeValue: number; // Valor em R$ das cotas bloqueadas
+        interestRate: number;   // Taxa de juros (ex: 0.35 = 35%)
+        totalRepayment: number; // Valor total a pagar
+        availableInterestRates: { percentage: number; rate: number }[];
+    }
+}> => {
+    try {
+        // Validar % de garantia
+        if (!VALID_GUARANTEE_PERCENTAGES.includes(guaranteePercentage)) {
+            return { approved: false, reason: 'Percentual de garantia inválido. Use: 50, 60, 70, 80, 90 ou 100%' };
+        }
+
+        // Verificar elegibilidade
+        const eligibility = await checkLoanEligibility(pool, userId);
+        if (!eligibility.eligible) {
+            return { approved: false, reason: eligibility.reason };
+        }
+
+        const { quotasValue, maxLoanAmount } = eligibility.details;
+
+        // Verificar se o valor solicitado está dentro do limite
+        if (requestedAmount > maxLoanAmount) {
+            return { approved: false, reason: `Valor máximo disponível: R$ ${maxLoanAmount.toFixed(2)} (80% do seu gasto na plataforma)` };
+        }
+
+        // Calcular garantia em R$
+        const guaranteeValue = quotasValue * (guaranteePercentage / 100);
+
+        // Verificar se a garantia é suficiente
+        // A garantia mínima deve cobrir pelo menos 50% do valor emprestado
+        const minGuaranteeRequired = requestedAmount * 0.50;
+        if (guaranteeValue < minGuaranteeRequired) {
+            return { approved: false, reason: `Garantia insuficiente. Suas cotas (${guaranteePercentage}%) = R$ ${guaranteeValue.toFixed(2)}. Mínimo necessário: R$ ${minGuaranteeRequired.toFixed(2)}` };
+        }
+
+        // Verificar liquidez do sistema
+        const systemRes = await pool.query(`
             SELECT 
-                (SELECT COUNT(*)::int FROM quotas WHERE status = 'ACTIVE') as quotas_count,
-                (SELECT COALESCE(SUM(amount), 0)::float FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING')) as total_loaned
+                (SELECT COALESCE(system_balance, 0) FROM system_config LIMIT 1) as system_balance,
+                (SELECT COALESCE(SUM(amount), 0) FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING')) as total_loaned
         `);
+        const systemBalance = parseFloat(systemRes.rows[0].system_balance) || 0;
+        const totalLoaned = parseFloat(systemRes.rows[0].total_loaned) || 0;
+        const disponivel = Math.max(0, (systemBalance * (1 - SYSTEM_LIQUIDITY_RESERVE)) - totalLoaned);
 
-        const systemQuotasCount = systemStatsRes.rows[0].quotas_count;
-        const systemTotalLoaned = systemStatsRes.rows[0].total_loaned;
-
-
-        const grossCash = systemQuotasCount * QUOTA_PRICE;
-        const liquidityReserve = grossCash * 0.30; // 30% de reserva para saques
-        const operationalCash = grossCash - systemTotalLoaned - liquidityReserve;
-
-        // --- LÓGICA DE CÁLCULO (ESTILO NUBANK) ---
-
-        // Se tiver dívida atrasada, limite é ZERO
-        if (hasOverdue) return 0;
-
-        // TRAVA: Só empresta para quem tem cotas ATIVAS no sistema
-        if (totalQuotasValue <= 0) {
-            console.log(`DEBUG - Limite zero para usuário ${userId}: Sem cotas ativas.`);
-            return 0;
+        if (requestedAmount > disponivel) {
+            return { approved: false, reason: 'Liquidez do sistema insuficiente no momento.' };
         }
 
-        // A. Limite Base por Score (Multiplicador Dinâmico por Confiança)
-        let scoreMultiplier = 2; // Base conservadora
-        if (user.score >= 700) scoreMultiplier = 5;
-        else if (user.score >= 500) scoreMultiplier = 3.5;
+        // Calcular taxa de juros baseada na garantia
+        const interestRate = calculateInterestRate(guaranteePercentage);
+        const totalRepayment = requestedAmount * (1 + interestRate);
 
-        const scoreLimit = (user.score || 0) * scoreMultiplier;
+        // Montar lista de taxas disponíveis
+        const availableInterestRates = VALID_GUARANTEE_PERCENTAGES.map(pct => ({
+            percentage: pct,
+            rate: INTEREST_RATES[pct] * 100 // converter para %
+        }));
 
-        // B. Alavancagem por Cotas Dinâmica (VIP)
-        let quotaMultiplier = VIP_LEVELS.BRONZE.multiplier;
-        const qCount = totalQuotasValue / QUOTA_PRICE;
-
-        if (qCount >= 100) quotaMultiplier = VIP_LEVELS.FOUNDER.multiplier;
-        else if (qCount >= 50) quotaMultiplier = VIP_LEVELS.OURO.multiplier;
-        else if (qCount >= 10) quotaMultiplier = VIP_LEVELS.PRATA.multiplier;
-
-        const assetsLimit = totalQuotasValue * quotaMultiplier;
-
-        // C. Bônus por Fidelidade
-        const fidelityBonus = 1 + (paidCount * 0.20);
-
-        // D. Cálculo do Limite Pessoal
-        let personalLimit = (50 + scoreLimit + assetsLimit) * fidelityBonus;
-
-        // E. Travas de Segurança (Anti-Fraude)
-        if (user.score < 100 && personalLimit > 300) {
-            personalLimit = 300;
-        }
-
-        const ABSOLUTE_MAX = 50000;
-        if (personalLimit > ABSOLUTE_MAX) personalLimit = ABSOLUTE_MAX;
-
-        // F. TRAVA CRÍTICA: O limite final é o MENOR entre:
-        //    - O limite pessoal do usuário
-        //    - O dinheiro disponível no caixa operacional do sistema (respeitando a reserva de 30%)
-        const finalLimit = Math.min(Math.floor(personalLimit), Math.max(0, operationalCash));
-
-        console.log('DEBUG - Análise de Crédito:', {
-            userId,
-            scoreLimit,
-            assetsLimit,
-            fidelityBonus,
-            personalLimit,
-            operationalCash,
-            finalLimit
+        console.log('DEBUG - Oferta de Empréstimo:', {
+            userId, requestedAmount, guaranteePercentage, guaranteeValue,
+            interestRate, totalRepayment, maxLoanAmount
         });
 
-        return finalLimit;
+        return {
+            approved: true,
+            offer: {
+                amount: requestedAmount,
+                guaranteePercentage,
+                guaranteeValue,
+                interestRate,
+                totalRepayment: Math.ceil(totalRepayment * 100) / 100,
+                availableInterestRates
+            }
+        };
     } catch (error) {
-        console.error('Erro na análise de crédito:', error);
-        return 0; // Retorna zero em caso de erro (segurança)
+        console.error('Erro ao calcular oferta:', error);
+        return { approved: false, reason: 'Erro ao processar' };
     }
+};
+
+/**
+ * Retorna informações para o frontend
+ */
+export const getCreditAnalysis = async (pool: Pool | PoolClient, userId: string) => {
+    const eligibility = await checkLoanEligibility(pool, userId);
+
+    return {
+        eligible: eligibility.eligible,
+        reason: eligibility.reason,
+        limit: eligibility.details.maxLoanAmount,
+        details: {
+            ...eligibility.details,
+            minScore: MIN_SCORE_FOR_LOAN,
+            minMarketplaceTransactions: MIN_MARKETPLACE_TRANSACTIONS,
+            minAccountAgeDays: MIN_ACCOUNT_AGE_DAYS,
+            interestRates: VALID_GUARANTEE_PERCENTAGES.map(pct => ({
+                guaranteePercentage: pct,
+                interestRate: INTEREST_RATES[pct] * 100 // em %
+            }))
+        }
+    };
+};
+
+// Manter compatibilidade com código existente
+export const calculateUserLoanLimit = async (pool: Pool | PoolClient, userId: string): Promise<number> => {
+    const eligibility = await checkLoanEligibility(pool, userId);
+    return eligibility.details.maxLoanAmount;
 };

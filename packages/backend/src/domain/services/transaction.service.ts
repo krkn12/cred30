@@ -722,9 +722,32 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
   const originationFee = grossAmount * originationFeeRate;
   const netAmount = grossAmount - originationFee;
 
+  // === CORREÇÃO: VERIFICAR LIQUIDEZ REAL DO SISTEMA ===
+  // O empréstimo DEVE sair do caixa no momento da aprovação (não é pirâmide!)
+  const configRes = await client.query('SELECT system_balance, total_tax_reserve, total_operational_reserve, total_owner_profit FROM system_config LIMIT 1 FOR UPDATE');
+  const config = configRes.rows[0];
+
+  const totalReserves = parseFloat(config.total_tax_reserve || '0') +
+    parseFloat(config.total_operational_reserve || '0') +
+    parseFloat(config.total_owner_profit || '0');
+
+  const systemBalance = parseFloat(config.system_balance || '0');
+  const availableLiquidity = systemBalance - totalReserves;
+
+  if (netAmount > availableLiquidity) {
+    throw new Error(`Liquidez insuficiente no sistema. Disponível: R$ ${availableLiquidity.toFixed(2)}, Solicitado: R$ ${netAmount.toFixed(2)}`);
+  }
+
+  // === DÉBITO REAL DO CAIXA (O dinheiro SAI agora, não quando sacar) ===
+  await client.query(
+    'UPDATE system_config SET system_balance = system_balance - $1',
+    [netAmount]
+  );
+
+  // Creditar no saldo do usuário
   await updateUserBalance(client, loan.user_id, netAmount, 'credit');
 
-  // Distribuir a Taxa de Originação (25/25/25/25)
+  // Distribuir a Taxa de Originação (25/25/25/25) - essa taxa ENTRA no sistema
   await client.query(
     `UPDATE system_config SET 
       total_tax_reserve = total_tax_reserve + $1,
@@ -737,11 +760,11 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
       originationFee * PLATFORM_FEE_OPERATIONAL_SHARE,
       originationFee * PLATFORM_FEE_OWNER_SHARE,
       originationFee * PLATFORM_FEE_INVESTMENT_SHARE,
-      originationFee
+      originationFee  // A taxa de originação entra como receita
     ]
   );
 
-  // NOTA: Não deduzimos do system_balance aqui. A liquidez real só sai do banco quando o usuário sacar.
+  // O dinheiro já foi reservado/debitado do caixa acima
 
   await createTransaction(
     client,

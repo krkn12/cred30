@@ -140,10 +140,10 @@ export const CardModal: React.FC<CardModalProps> = ({
                         {/* Payment Flags & Badges */}
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-2 px-1">
                             <div className="flex items-center gap-2">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png" alt="Visa" className="h-4 object-contain" />
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-4 object-contain" />
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/f/f1/Elo_logo.png" alt="Elo" className="h-4 object-contain bg-white rounded-sm px-0.5" />
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg" alt="Amex" className="h-4 object-contain" />
+                                <img src="https://cdn.jsdelivr.net/gh/nicepay-dev/nicepay-node@master/public/assets/img/payment/visa.svg" alt="Visa" className="h-5 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
+                                <img src="https://cdn.jsdelivr.net/gh/nicepay-dev/nicepay-node@master/public/assets/img/payment/mastercard.svg" alt="Mastercard" className="h-5 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
+                                <div className="h-5 w-8 bg-yellow-500 rounded flex items-center justify-center text-[8px] font-black text-black">ELO</div>
+                                <div className="h-5 w-8 bg-blue-600 rounded flex items-center justify-center text-[6px] font-black text-white">AMEX</div>
                             </div>
                             <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1">
                                 <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest">Processado por</span>
