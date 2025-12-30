@@ -726,6 +726,32 @@ class ApiService {
     return response;
   }
 
+  // Limpeza de anúncios antigos do marketplace
+  async getMarketplaceCleanupStats(): Promise<{
+    stale7Days: number;
+    stale14Days: number;
+    stale30Days: number;
+    boostedActive: number;
+    totalActive: number;
+    totalAll: number;
+  }> {
+    const response = await this.request<any>('/admin/marketplace/cleanup-stats');
+    return response.data;
+  }
+
+  async cleanupOldListings(daysOld: number = 7): Promise<{
+    deletedCount: number;
+    skipped: number;
+    daysOld: number;
+    message: string;
+  }> {
+    const response = await this.request<any>('/admin/marketplace/cleanup-old-listings', {
+      method: 'POST',
+      body: JSON.stringify({ daysOld })
+    });
+    return { ...response.data, message: response.message };
+  }
+
   // ==================== BUG REPORTS ====================
 
   // Criar um bug report
