@@ -3,7 +3,7 @@ import {
     Search, Tag, ShoppingBag, PlusCircle, ImageIcon, Zap, Sparkles,
     ChevronRight, ArrowLeft, ShieldCheck, Heart, Share2, MessageCircle,
     Truck, Clock, CheckCircle2, History, Package, RefreshCw, Wand2, X as XIcon,
-    QrCode, WifiOff, ScanLine, MapPin, Phone
+    QrCode, WifiOff, ScanLine, MapPin, Phone, Navigation2
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
@@ -15,6 +15,7 @@ import { OfflineMarketplaceView } from './OfflineMarketplaceView';
 import { useDebounce } from '../../hooks/use-performance';
 import { LoadingScreen } from '../ui/LoadingScreen';
 import { LoadingButton } from '../ui/LoadingButton';
+import { OrderTrackingMap } from '../features/marketplace/OrderTrackingMap';
 
 interface MarketplaceViewProps {
     state: AppState;
@@ -95,6 +96,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         cpf: ''
     });
     const [externalPayment, setExternalPayment] = useState<any>(null);
+    const [trackingOrder, setTrackingOrder] = useState<any>(null);
 
     const [newListing, setNewListing] = useState({
         title: '',
@@ -753,8 +755,19 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                         </span>
                                     </div>
                                     <p className="text-lg font-black text-white mt-1">{formatCurrency(parseFloat(order.amount))}</p>
-                                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                                    <div className="flex flex-wrap items-center gap-3 mt-4">
                                         <p className="text-[10px] text-zinc-500 uppercase font-bold">Pedido: #{order.id.toString().slice(-6)}</p>
+
+                                        {/* Botão de Rastreio (se houver entregador e não estiver concluído) */}
+                                        {order.courier_id && (order.status === 'WAITING_SHIPPING' || order.status === 'IN_TRANSIT') && (
+                                            <button
+                                                onClick={() => setTrackingOrder(order)}
+                                                className="flex items-center gap-1.5 bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-lg text-[10px] font-black border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all"
+                                            >
+                                                <Navigation2 size={12} className="animate-pulse" /> RASTREAR
+                                            </button>
+                                        )}
+
                                         <span className="text-[9px] font-black px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 capitalize">
                                             {order.buyer_id === state.currentUser?.id ? 'Compra' : order.seller_id === state.currentUser?.id ? 'Venda' : 'Entrega'}
                                         </span>
@@ -854,7 +867,6 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                     )}
                 </div>
             )}
-
             {view === 'offline' && (
                 <OfflineMarketplaceView
                     user={state.currentUser}
@@ -865,396 +877,317 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
             )}
 
 
-            {
-                view === 'details' && selectedItem && (
-                    <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl animate-in fade-in duration-300 overflow-y-auto">
-                        <div className="max-w-xl mx-auto min-h-screen bg-zinc-950 flex flex-col">
-                            <div className="sticky top-0 z-10 p-4 flex items-center justify-between bg-zinc-950/80 backdrop-blur-md">
-                                <button onClick={() => setView('browse')} className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition">
-                                    <ArrowLeft size={24} />
-                                </button>
-                                <div className="flex gap-2">
-                                    <button className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition"><Share2 size={20} /></button>
-                                    <button className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition"><Heart size={20} /></button>
-                                </div>
-                            </div>
-
-                            <div className="aspect-[4/3] bg-zinc-900 relative">
-                                {selectedItem.image_url ? (
-                                    <img src={selectedItem.image_url} alt={selectedItem.title} className="w-full h-full object-cover" />
-                                ) : (
-                                    <ImageIcon size={64} className="text-zinc-800 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                                )}
-                            </div>
-
-                            <div className="p-6 space-y-8">
-                                <div>
-                                    <div className="flex justify-between items-start mb-2">
-                                        <span className="text-[10px] font-black bg-primary-500/10 text-primary-400 px-2 py-0.5 rounded uppercase tracking-widest">{selectedItem.category}</span>
-                                        {selectedItem.is_boosted && <span className="text-[10px] font-black bg-primary-400 text-black px-2 py-0.5 rounded animate-pulse">DESTAQUE</span>}
-                                    </div>
-                                    <h1 className="text-3xl font-black text-white tracking-tight leading-none mb-1">{selectedItem.title}</h1>
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-2xl font-black text-primary-400">{formatCurrency(parseFloat(selectedItem.price))}</p>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] text-zinc-500 font-bold uppercase">Vendedor:</span>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="text-xs font-bold text-white">{selectedItem.seller_name}</span>
-                                                {selectedItem.asaas_wallet_id && (
-                                                    <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
-                                                        <ShieldCheck size={10} /> Verificado
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6 space-y-4">
-                                    <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                                        <Package size={14} className="text-primary-400" /> Descrição do Item
-                                    </h4>
-                                    <p className="text-sm text-zinc-400 leading-relaxed whitespace-pre-wrap">{selectedItem.description}</p>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-400"><ShieldCheck size={16} /></div>
-                                            <span className="text-[10px] font-black text-zinc-300 uppercase">Segurança</span>
-                                        </div>
-                                        <p className="text-[10px] text-zinc-500 leading-tight">Pagamento protegido por Escrow Cred30.</p>
-                                    </div>
-                                    <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <div className="p-1.5 bg-primary-500/10 rounded-lg text-primary-400"><Truck size={16} /></div>
-                                            <span className="text-[10px] font-black text-zinc-300 uppercase">Logística</span>
-                                        </div>
-                                        <p className="text-[10px] text-zinc-500 leading-tight">Retirada ou Apoio Colaborativo (Sem Vínculo Empregatício).</p>
-                                    </div>
-                                </div>
-
-                                <div className="sticky bottom-6 mt-12 bg-black border border-zinc-800 p-4 rounded-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
-                                    <div className="flex-1 space-y-4 mb-4">
-                                        <div className="space-y-2">
-                                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Método de Pagamento</p>
-                                            <div className="grid grid-cols-3 gap-2">
-                                                {['BALANCE', 'PIX', 'CARD'].map(m => (
-                                                    <button
-                                                        key={m}
-                                                        onClick={() => setPaymentMethod(m as any)}
-                                                        className={`py-2 text-[9px] font-black rounded-lg border transition-all ${paymentMethod === m ? 'bg-primary-500 text-black border-primary-500' : 'bg-zinc-900 text-zinc-500 border-zinc-800'}`}
-                                                    >
-                                                        {m === 'BALANCE' ? 'SALDO' : m}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {paymentMethod === 'CARD' && (
-                                            <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-2">
-                                                <input
-                                                    placeholder="Nº do Cartão"
-                                                    className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
-                                                    value={cardData.number}
-                                                    onChange={e => setCardData({ ...cardData, number: e.target.value.replace(/\s/g, '').slice(0, 16) })}
-                                                />
-                                                <input
-                                                    placeholder="MM/AA"
-                                                    className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
-                                                    onChange={e => {
-                                                        const [m, a] = e.target.value.split('/');
-                                                        setCardData({ ...cardData, expiryMonth: m || '', expiryYear: a ? '20' + a : '' });
-                                                    }}
-                                                />
-                                                <input
-                                                    placeholder="CVV"
-                                                    className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
-                                                    value={cardData.ccv}
-                                                    onChange={e => setCardData({ ...cardData, ccv: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-                                                />
-                                                <input
-                                                    placeholder="Nome"
-                                                    className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
-                                                    value={cardData.holderName}
-                                                    onChange={e => setCardData({ ...cardData, holderName: e.target.value })}
-                                                />
-                                                <input
-                                                    placeholder="CPF Titular"
-                                                    className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
-                                                    value={cardData.cpf}
-                                                    onChange={e => setCardData({ ...cardData, cpf: e.target.value.replace(/\D/g, '').slice(0, 11) })}
-                                                />
-                                            </div>
-                                        )}
-
-                                        <div className="flex justify-between items-end">
-                                            <div>
-                                                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Preço Final</p>
-                                                <p className="text-xl font-black text-white">
-                                                    {(() => {
-                                                        const base = parseFloat(selectedItem.price) + (deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee || '0') : 0);
-                                                        if (paymentMethod === 'PIX') return formatCurrency(base + 0.99);
-                                                        if (paymentMethod === 'CARD') return formatCurrency((base + 0.49) / (1 - 0.0299));
-                                                        return formatCurrency(base);
-                                                    })()}
-                                                </p>
-                                                {paymentMethod !== 'BALANCE' && (
-                                                    <p className="text-[8px] text-zinc-600 font-bold uppercase italic">* Taxas inclusas</p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button
-                                        className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition shadow-lg shadow-primary-500/20 flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
-                                        onClick={() => {
-                                            if (!navigator.onLine) {
-                                                generateOfflineVoucher(selectedItem);
-                                                return;
-                                            }
-
-                                            // Se for afiliado, abre link
-                                            if (selectedItem.type === 'AFFILIATE') {
-                                                window.open(selectedItem.affiliate_url, '_blank');
-                                                onSuccess('Redirecionando', 'Aproveite a oferta do parceiro!');
-                                                return;
-                                            }
-
-                                            // Confirmação de Compra com Delivery
-                                            setConfirmData({
-                                                isOpen: true,
-                                                title: deliveryOption === 'COURIER_REQUEST' ? 'Confirmar Compra + Entrega' : 'Confirmar Compra',
-                                                message: `Deseja comprar "${selectedItem.title}" via ${paymentMethod}?`,
-                                                confirmText: 'CONFIRMAR AGORA',
-                                                type: 'success',
-                                                onConfirm: async () => {
-                                                    try {
-                                                        const res = await apiService.post<any>('/marketplace/buy', {
-                                                            listingId: selectedItem.id,
-                                                            deliveryType: deliveryOption,
-                                                            offeredDeliveryFee: parseFloat(offeredFee),
-                                                            deliveryAddress: 'Endereço Principal', // TODO: Pegar do user ou input
-                                                            contactPhone: '000000000',
-                                                            paymentMethod: paymentMethod,
-                                                            payerCpfCnpj: paymentMethod !== 'BALANCE' ? cardData.cpf : undefined,
-                                                            creditCard: paymentMethod === 'CARD' ? cardData : undefined
-                                                        });
-                                                        if (res.success) {
-                                                            if (paymentMethod !== 'BALANCE') {
-                                                                setExternalPayment(res.data);
-                                                            } else {
-                                                                onSuccess('Sucesso!', 'Compra realizada. Veja detalhes em Seus Pedidos.');
-                                                                setView('my-orders');
-                                                            }
-                                                            setConfirmData(null);
-                                                        }
-                                                    } catch (err: any) {
-                                                        onError('Erro', err.message);
-                                                    }
-                                                }
-                                            });
-                                        }}
-                                    >
-                                        {!navigator.onLine ? 'GERAR VOUCHER OFFLINE' : (selectedItem.type === 'AFFILIATE' ? 'Ver Oferta Parceira' : 'Comprar Agora')}
-                                        <ChevronRight size={18} />
-                                    </button>
-                                </div>
-
-                                {selectedItem.type !== 'AFFILIATE' && (
-                                    <div className="mt-4 pt-4 border-t border-zinc-800 space-y-3">
-                                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Opções de Logística</p>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => setDeliveryOption('SELF_PICKUP')}
-                                                className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition ${deliveryOption === 'SELF_PICKUP' ? 'bg-zinc-800 border-zinc-600 text-white' : 'bg-transparent border-zinc-800 text-zinc-500'}`}
-                                            >
-                                                Vou Retirar
-                                            </button>
-                                            <button
-                                                onClick={() => setDeliveryOption('COURIER_REQUEST')}
-                                                className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition ${deliveryOption === 'COURIER_REQUEST' ? 'bg-indigo-900/40 border-indigo-500/50 text-indigo-300' : 'bg-transparent border-zinc-800 text-zinc-500'}`}
-                                            >
-                                                Solicitar Colaborador
-                                            </button>
-                                        </div>
-
-                                        {deliveryOption === 'COURIER_REQUEST' && (
-                                            <div className="animate-in slide-in-from-top duration-300">
-                                                <label className="text-[9px] text-zinc-500 font-bold uppercase block mb-1">Oferta de Ajuda de Custo (R$)</label>
-                                                <input
-                                                    type="number"
-                                                    value={offeredFee}
-                                                    onChange={(e) => setOfferedFee(e.target.value)}
-                                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-white text-sm focus:border-indigo-500 outline-none"
-                                                    placeholder="Valor para o entregador (Ex: 10.00)"
-                                                />
-                                                <p className="text-[9px] text-zinc-600 mt-1 italic">Este valor será pago integralmente ao membro que realizar a entrega.</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {offlineVoucher && (
-                                    <div className="mt-6 bg-primary-500/10 border border-primary-500/30 p-6 rounded-3xl animate-in zoom-in duration-300">
-                                        <div className="text-center space-y-2">
-                                            <p className="text-[10px] text-primary-400 font-black uppercase tracking-widest">Código de Pagamento Offline</p>
-                                            <p className="text-4xl font-black text-white font-mono tracking-tighter">{offlineVoucher.code}</p>
-                                            <p className="text-[11px] text-zinc-400 leading-tight">O vendedor deve digitar este código no "Modo Interior" do App dele para validar sua compra.</p>
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="flex items-center justify-center gap-4 mt-4 text-[10px] text-zinc-500 font-bold uppercase tracking-widest border-t border-zinc-800 pt-4">
-                                    <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-500" /> Transação Segura</span>
-                                    <span className="flex items-center gap-1"><Truck size={12} /> Entrega Combinada</span>
-                                </div>
+            {view === 'details' && selectedItem && (
+                <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl animate-in fade-in duration-300 overflow-y-auto">
+                    <div className="max-w-xl mx-auto min-h-screen bg-zinc-950 flex flex-col">
+                        <div className="sticky top-0 z-10 p-4 flex items-center justify-between bg-zinc-950/80 backdrop-blur-md">
+                            <button onClick={() => setView('browse')} className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition">
+                                <ArrowLeft size={24} />
+                            </button>
+                            <div className="flex gap-2">
+                                <button className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition"><Share2 size={20} /></button>
+                                <button className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition"><Heart size={20} /></button>
                             </div>
                         </div>
 
-                        {/* Modal de Pagamento Externo (PIX/Cartão) */}
-                        {externalPayment && (
-                            <div className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-                                <div className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-zinc-800 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 w-full sm:max-w-sm text-center relative shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300">
-                                    <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-6 sm:hidden opacity-50" />
+                        <div className="aspect-[4/3] bg-zinc-900 relative">
+                            {selectedItem.image_url ? (
+                                <img src={selectedItem.image_url} alt={selectedItem.title} className="w-full h-full object-cover" />
+                            ) : (
+                                <ImageIcon size={64} className="text-zinc-800 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                            )}
+                        </div>
 
-                                    <button
-                                        onClick={() => { setExternalPayment(null); setView('my-orders'); }}
-                                        className="absolute top-4 right-4 text-zinc-500 hover:text-white bg-zinc-900/50 p-2 rounded-full hidden sm:block"
-                                    >
-                                        <XIcon size={20} />
-                                    </button>
-
-                                    {externalPayment.payment.encodedImage ? (
-                                        <div className="space-y-6">
-                                            <div className="w-20 h-20 bg-primary-500/10 rounded-3xl flex items-center justify-center mx-auto mb-2 shadow-xl shadow-primary-900/20 ring-1 ring-primary-500/20">
-                                                <QrCode size={40} className="text-primary-500" strokeWidth={2.5} />
-                                            </div>
-                                            <div>
-                                                <h3 className="text-2xl font-black text-white tracking-tight">Pagamento PIX</h3>
-                                                <p className="text-sm text-zinc-500 mt-1 font-medium">Escaneie ou copie o código abaixo</p>
-                                            </div>
-
-                                            <div className="bg-white p-6 rounded-3xl mx-auto w-fit shadow-2xl ring-4 ring-primary-500/10">
-                                                <img src={`data:image/png;base64,${externalPayment.payment.encodedImage}`} alt="PIX QR Code" className="w-44 h-44" />
-                                            </div>
-
-                                            <div className="bg-zinc-900/50 border border-white/5 p-5 rounded-2xl group cursor-copy active:bg-zinc-800 transition-all"
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(externalPayment.payment.payload);
-                                                    onSuccess('Copiado!', 'Código PIX copiado com sucesso.');
-                                                }}>
-                                                <p className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-2">Pix Copia e Cola</p>
-                                                <p className="text-[10px] text-primary-400 font-mono break-all line-clamp-2 font-bold group-hover:text-white transition-colors">
-                                                    {externalPayment.payment.payload}
-                                                </p>
-                                            </div>
-
-                                            <button
-                                                onClick={() => { setExternalPayment(null); setView('my-orders'); }}
-                                                className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-5 rounded-2xl transition-all uppercase tracking-[0.2em] text-[11px] shadow-lg shadow-primary-500/20 active:scale-95"
-                                            >
-                                                JÁ REALIZEI O PAGAMENTO
-                                            </button>
+                        <div className="p-6 space-y-8">
+                            <div>
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className="text-[10px] font-black bg-primary-500/10 text-primary-400 px-2 py-0.5 rounded uppercase tracking-widest">{selectedItem.category}</span>
+                                    {selectedItem.is_boosted && <span className="text-[10px] font-black bg-primary-400 text-black px-2 py-0.5 rounded animate-pulse">DESTAQUE</span>}
+                                </div>
+                                <h1 className="text-3xl font-black text-white tracking-tight leading-none mb-1">{selectedItem.title}</h1>
+                                <div className="flex items-center justify-between">
+                                    <p className="text-2xl font-black text-primary-400">{formatCurrency(parseFloat(selectedItem.price))}</p>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] text-zinc-500 font-bold uppercase">Vendedor:</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-xs font-bold text-white">{selectedItem.seller_name}</span>
+                                            {selectedItem.asaas_wallet_id && (
+                                                <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
+                                                    <ShieldCheck size={10} /> Verificado
+                                                </span>
+                                            )}
                                         </div>
-                                    ) : (
-                                        <div className="space-y-6 py-4">
-                                            <div className="w-20 h-20 bg-emerald-500/10 rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-emerald-900/20 ring-1 ring-emerald-500/20">
-                                                <CheckCircle2 size={40} className="text-emerald-500" strokeWidth={2.5} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <h3 className="text-2xl font-black text-white tracking-tight">Pedido Recebido!</h3>
-                                                <p className="text-sm text-zinc-400 leading-relaxed">Seu pagamento está sendo processado. Em breve seu item estará disponível.</p>
-                                            </div>
-                                            <button
-                                                onClick={() => { setExternalPayment(null); setView('my-orders'); }}
-                                                className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-5 rounded-2xl transition-all uppercase tracking-widest text-[11px] shadow-lg shadow-emerald-500/20 active:scale-95"
-                                            >
-                                                VER MEUS PEDIDOS
-                                            </button>
-                                        </div>
-                                    )}
+                                    </div>
                                 </div>
                             </div>
-                        )}
 
-                        {confirmData && (
-                            <ConfirmModal
-                                isOpen={confirmData.isOpen}
-                                onClose={() => setConfirmData(null)}
-                                onConfirm={() => {
-                                    if (confirmData.showPaymentMethods) {
-                                        confirmData.onConfirm(paymentMethod, paymentMethod === 'CARD' ? cardData : undefined);
-                                    } else {
-                                        confirmData.onConfirm();
-                                    }
-                                }}
-                                title={confirmData.title}
-                                message={confirmData.message}
-                                confirmText={confirmData.confirmText}
-                                type={confirmData.type}
-                            >
-                                {confirmData.showPaymentMethods && (
-                                    <div className="space-y-4 mb-6">
-                                        <div className="space-y-2">
-                                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Método de Pagamento</p>
-                                            <div className="grid grid-cols-3 gap-2">
-                                                {['BALANCE', 'PIX', 'CARD'].map(m => (
-                                                    <button
-                                                        key={m}
-                                                        onClick={() => setPaymentMethod(m as any)}
-                                                        className={`py-2 text-[9px] font-black rounded-lg border transition-all ${paymentMethod === m ? 'bg-primary-500 text-black border-primary-500' : 'bg-zinc-900 text-zinc-500 border-zinc-800'}`}
-                                                    >
-                                                        {m === 'BALANCE' ? 'SALDO' : m}
-                                                    </button>
-                                                ))}
-                                            </div>
+                            <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6 space-y-4">
+                                <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Package size={14} className="text-primary-400" /> Descrição do Item
+                                </h4>
+                                <p className="text-sm text-zinc-400 leading-relaxed whitespace-pre-wrap">{selectedItem.description}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-400"><ShieldCheck size={16} /></div>
+                                        <span className="text-[10px] font-black text-zinc-300 uppercase">Segurança</span>
+                                    </div>
+                                    <p className="text-[10px] text-zinc-500 leading-tight">Pagamento protegido por Escrow Cred30.</p>
+                                </div>
+                                <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className="p-1.5 bg-primary-500/10 rounded-lg text-primary-400"><Truck size={16} /></div>
+                                        <span className="text-[10px] font-black text-zinc-300 uppercase">Logística</span>
+                                    </div>
+                                    <p className="text-[10px] text-zinc-500 leading-tight">Retirada ou Apoio Colaborativo (Sem Vínculo Empregatício).</p>
+                                </div>
+                            </div>
+
+                            <div className="sticky bottom-6 mt-12 bg-black border border-zinc-800 p-4 rounded-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
+                                <div className="flex-1 space-y-4 mb-4">
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Método de Pagamento</p>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {['BALANCE', 'PIX', 'CARD'].map(m => (
+                                                <button
+                                                    key={m}
+                                                    onClick={() => setPaymentMethod(m as any)}
+                                                    className={`py-2 text-[9px] font-black rounded-lg border transition-all ${paymentMethod === m ? 'bg-primary-500 text-black border-primary-500' : 'bg-zinc-900 text-zinc-500 border-zinc-800'}`}
+                                                >
+                                                    {m === 'BALANCE' ? 'SALDO' : m}
+                                                </button>
+                                            ))}
                                         </div>
+                                    </div>
 
-                                        {paymentMethod === 'CARD' && (
-                                            <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-2">
-                                                <input
-                                                    placeholder="Nº do Cartão"
-                                                    className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
-                                                    onChange={e => setCardData({ ...cardData, number: e.target.value.replace(/\s/g, '').slice(0, 16) })}
-                                                />
-                                                <input
-                                                    placeholder="MM/AA"
-                                                    className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
-                                                    onChange={e => {
-                                                        const [m, a] = e.target.value.split('/');
-                                                        setCardData({ ...cardData, expiryMonth: m || '', expiryYear: a ? '20' + a : '' });
-                                                    }}
-                                                />
-                                                <input
-                                                    placeholder="CVV"
-                                                    className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
-                                                    onChange={e => setCardData({ ...cardData, ccv: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-                                                />
-                                                <input
-                                                    placeholder="Nome"
-                                                    className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
-                                                    onChange={e => setCardData({ ...cardData, holderName: e.target.value })}
-                                                />
-                                            </div>
-                                        )}
+                                    {paymentMethod === 'CARD' && (
+                                        <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-2">
+                                            <input
+                                                placeholder="Nº do Cartão"
+                                                className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                                value={cardData.number}
+                                                onChange={e => setCardData({ ...cardData, number: e.target.value.replace(/\s/g, '').slice(0, 16) })}
+                                            />
+                                            <input
+                                                placeholder="MM/AA"
+                                                className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                                onChange={e => {
+                                                    const [m, a] = e.target.value.split('/');
+                                                    setCardData({ ...cardData, expiryMonth: m || '', expiryYear: a ? '20' + a : '' });
+                                                }}
+                                            />
+                                            <input
+                                                placeholder="CVV"
+                                                className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                                value={cardData.ccv}
+                                                onChange={e => setCardData({ ...cardData, ccv: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                                            />
+                                            <input
+                                                placeholder="Nome"
+                                                className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                                value={cardData.holderName}
+                                                onChange={e => setCardData({ ...cardData, holderName: e.target.value })}
+                                            />
+                                            <input
+                                                placeholder="CPF Titular"
+                                                className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                                value={cardData.cpf}
+                                                onChange={e => setCardData({ ...cardData, cpf: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+                                            />
+                                        </div>
+                                    )}
 
-                                        <div className="pt-2 border-t border-zinc-800">
-                                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Total a Pagar</p>
+                                    <div className="flex justify-between items-end">
+                                        <div>
+                                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Preço Final</p>
                                             <p className="text-xl font-black text-white">
                                                 {(() => {
-                                                    const base = 5.00; // Boost Fee
+                                                    const base = parseFloat(selectedItem.price) + (deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee || '0') : 0);
                                                     if (paymentMethod === 'PIX') return formatCurrency(base + 0.99);
                                                     if (paymentMethod === 'CARD') return formatCurrency((base + 0.49) / (1 - 0.0299));
                                                     return formatCurrency(base);
                                                 })()}
                                             </p>
+                                            {paymentMethod !== 'BALANCE' && (
+                                                <p className="text-[8px] text-zinc-600 font-bold uppercase italic">* Taxas inclusas</p>
+                                            )}
                                         </div>
                                     </div>
-                                )}
-                            </ConfirmModal>
+                                </div>
+                                <button
+                                    className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition shadow-lg shadow-primary-500/20 flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
+                                    onClick={() => {
+                                        if (!navigator.onLine) {
+                                            generateOfflineVoucher(selectedItem);
+                                            return;
+                                        }
+
+                                        // Se for afiliado, abre link
+                                        if (selectedItem.type === 'AFFILIATE') {
+                                            window.open(selectedItem.affiliate_url, '_blank');
+                                            onSuccess('Redirecionando', 'Aproveite a oferta do parceiro!');
+                                            return;
+                                        }
+
+                                        // Confirmação de Compra com Delivery
+                                        setConfirmData({
+                                            isOpen: true,
+                                            title: deliveryOption === 'COURIER_REQUEST' ? 'Confirmar Compra + Entrega' : 'Confirmar Compra',
+                                            message: `Deseja comprar "${selectedItem.title}" via ${paymentMethod}?`,
+                                            confirmText: 'CONFIRMAR AGORA',
+                                            type: 'success',
+                                            onConfirm: async () => {
+                                                try {
+                                                    const res = await apiService.post<any>('/marketplace/buy', {
+                                                        listingId: selectedItem.id,
+                                                        deliveryType: deliveryOption,
+                                                        offeredDeliveryFee: parseFloat(offeredFee),
+                                                        deliveryAddress: 'Endereço Principal', // TODO: Pegar do user ou input
+                                                        contactPhone: '000000000',
+                                                        paymentMethod: paymentMethod,
+                                                        payerCpfCnpj: paymentMethod !== 'BALANCE' ? cardData.cpf : undefined,
+                                                        creditCard: paymentMethod === 'CARD' ? cardData : undefined
+                                                    });
+                                                    if (res.success) {
+                                                        if (paymentMethod !== 'BALANCE') {
+                                                            setExternalPayment(res.data);
+                                                        } else {
+                                                            onSuccess('Sucesso!', 'Compra realizada. Veja detalhes em Seus Pedidos.');
+                                                            setView('my-orders');
+                                                        }
+                                                        setConfirmData(null);
+                                                    }
+                                                } catch (err: any) {
+                                                    onError('Erro', err.message);
+                                                }
+                                            }
+                                        });
+                                    }}
+                                >
+                                    {!navigator.onLine ? 'GERAR VOUCHER OFFLINE' : (selectedItem.type === 'AFFILIATE' ? 'Ver Oferta Parceira' : 'Comprar Agora')}
+                                    <ChevronRight size={18} />
+                                </button>
+                            </div>
+
+                            {selectedItem.type !== 'AFFILIATE' && (
+                                <div className="mt-4 pt-4 border-t border-zinc-800 space-y-3">
+                                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Opções de Logística</p>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setDeliveryOption('SELF_PICKUP')}
+                                            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition ${deliveryOption === 'SELF_PICKUP' ? 'bg-zinc-800 border-zinc-600 text-white' : 'bg-transparent border-zinc-800 text-zinc-500'}`}
+                                        >
+                                            Vou Retirar
+                                        </button>
+                                        <button
+                                            onClick={() => setDeliveryOption('COURIER_REQUEST')}
+                                            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition ${deliveryOption === 'COURIER_REQUEST' ? 'bg-indigo-900/40 border-indigo-500/50 text-indigo-300' : 'bg-transparent border-zinc-800 text-zinc-500'}`}
+                                        >
+                                            Solicitar Colaborador
+                                        </button>
+                                    </div>
+
+                                    {deliveryOption === 'COURIER_REQUEST' && (
+                                        <div className="animate-in slide-in-from-top duration-300">
+                                            <label className="text-[9px] text-zinc-500 font-bold uppercase block mb-1">Oferta de Ajuda de Custo (R$)</label>
+                                            <input
+                                                type="number"
+                                                value={offeredFee}
+                                                onChange={(e) => setOfferedFee(e.target.value)}
+                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-white text-sm focus:border-indigo-500 outline-none"
+                                                placeholder="Valor para o entregador (Ex: 10.00)"
+                                            />
+                                            <p className="text-[9px] text-zinc-600 mt-1 italic">Este valor será pago integralmente ao membro que realizar a entrega.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {offlineVoucher && (
+                                <div className="mt-6 bg-primary-500/10 border border-primary-500/30 p-6 rounded-3xl animate-in zoom-in duration-300">
+                                    <div className="text-center space-y-2">
+                                        <p className="text-[10px] text-primary-400 font-black uppercase tracking-widest">Código de Pagamento Offline</p>
+                                        <p className="text-4xl font-black text-white font-mono tracking-tighter">{offlineVoucher.code}</p>
+                                        <p className="text-[11px] text-zinc-400 leading-tight">O vendedor deve digitar este código no "Modo Interior" do App dele para validar sua compra.</p>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="flex items-center justify-center gap-4 mt-4 text-[10px] text-zinc-500 font-bold uppercase tracking-widest border-t border-zinc-800 pt-4">
+                                <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-500" /> Transação Segura</span>
+                                <span className="flex items-center gap-1"><Truck size={12} /> Entrega Combinada</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Pagamento Externo (PIX/Cartão) */}
+            {externalPayment && (
+                <div className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+                    <div className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-zinc-800 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 w-full sm:max-w-sm text-center relative shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300">
+                        <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-6 sm:hidden opacity-50" />
+
+                        <button
+                            onClick={() => { setExternalPayment(null); setView('my-orders'); }}
+                            className="absolute top-4 right-4 text-zinc-500 hover:text-white bg-zinc-900/50 p-2 rounded-full hidden sm:block"
+                        >
+                            <XIcon size={20} />
+                        </button>
+
+                        {externalPayment.payment?.encodedImage ? (
+                            <div className="space-y-6">
+                                <div className="w-20 h-20 bg-primary-500/10 rounded-3xl flex items-center justify-center mx-auto mb-2 shadow-xl shadow-primary-900/20 ring-1 ring-primary-500/20">
+                                    <QrCode size={40} className="text-primary-500" strokeWidth={2.5} />
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl font-black text-white tracking-tight">Pagamento PIX</h3>
+                                    <p className="text-sm text-zinc-500 mt-1 font-medium">Escaneie ou copie o código abaixo</p>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-3xl mx-auto w-fit shadow-2xl ring-4 ring-primary-500/10">
+                                    <img src={`data:image/png;base64,${externalPayment.payment.encodedImage}`} alt="PIX QR Code" className="w-44 h-44" />
+                                </div>
+
+                                <div className="bg-zinc-900/50 border border-white/5 p-5 rounded-2xl group cursor-copy active:bg-zinc-800 transition-all"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(externalPayment.payment.payload);
+                                        onSuccess('Copiado!', 'Código PIX copiado com sucesso.');
+                                    }}>
+                                    <p className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-2">Pix Copia e Cola</p>
+                                    <p className="text-[10px] text-primary-400 font-mono break-all line-clamp-2 font-bold group-hover:text-white transition-colors">
+                                        {externalPayment.payment.payload}
+                                    </p>
+                                </div>
+
+                                <button
+                                    onClick={() => { setExternalPayment(null); setView('my-orders'); }}
+                                    className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-5 rounded-2xl transition-all uppercase tracking-[0.2em] text-[11px] shadow-lg shadow-primary-500/20 active:scale-95"
+                                >
+                                    JÁ REALIZEI O PAGAMENTO
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-6 py-4">
+                                <div className="w-20 h-20 bg-emerald-500/10 rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-emerald-900/20 ring-1 ring-emerald-500/20">
+                                    <CheckCircle2 size={40} className="text-emerald-500" strokeWidth={2.5} />
+                                </div>
+                                <div className="space-y-2">
+                                    <h3 className="text-2xl font-black text-white tracking-tight">Pedido Recebido!</h3>
+                                    <p className="text-sm text-zinc-400 leading-relaxed">Seu pagamento está sendo processado. Em breve seu item estará disponível.</p>
+                                </div>
+                                <button
+                                    onClick={() => { setExternalPayment(null); setView('my-orders'); }}
+                                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-5 rounded-2xl transition-all uppercase tracking-widest text-[11px] shadow-lg shadow-emerald-500/20 active:scale-95"
+                                >
+                                    VER MEUS PEDIDOS
+                                </button>
+                            </div>
                         )}
                     </div>
-                )
-            }
+                </div>
+            )}
 
             {confirmData && (
                 <ConfirmModal
@@ -1316,6 +1249,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     <input
                                         placeholder="Nº do Cartão"
                                         className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-700"
+                                        value={cardData.number}
                                         onChange={e => setCardData({ ...cardData, number: e.target.value.replace(/\s/g, '').slice(0, 16) })}
                                     />
                                     <input
@@ -1329,11 +1263,13 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     <input
                                         placeholder="CVV"
                                         className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-700"
+                                        value={cardData.ccv}
                                         onChange={e => setCardData({ ...cardData, ccv: e.target.value.replace(/\D/g, '').slice(0, 4) })}
                                     />
                                     <input
                                         placeholder="Nome no Cartão"
                                         className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-700"
+                                        value={cardData.holderName}
                                         onChange={e => setCardData({ ...cardData, holderName: e.target.value })}
                                     />
                                 </div>
@@ -1343,7 +1279,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Total a Pagar</p>
                                 <p className="text-xl font-black text-white">
                                     {(() => {
-                                        const base = 5.00;
+                                        const base = confirmData.title.includes('Impulsionar') ? 5.00 : parseFloat(selectedItem?.price || '0');
                                         if (paymentMethod === 'PIX') return formatCurrency(base + 0.99);
                                         if (paymentMethod === 'CARD') return formatCurrency((base + 0.49) / (1 - 0.0299));
                                         return formatCurrency(base);
@@ -1353,6 +1289,15 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                         </div>
                     )}
                 </ConfirmModal>
+            )}
+
+            {/* Modal de Rastreio GPS */}
+            {trackingOrder && (
+                <OrderTrackingMap
+                    orderId={trackingOrder.id}
+                    onClose={() => setTrackingOrder(null)}
+                    userRole={trackingOrder.courier_id === state.currentUser?.id ? 'courier' : 'buyer'}
+                />
             )}
         </div>
     );
