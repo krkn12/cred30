@@ -154,7 +154,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
 
     const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-    const isPositive = (type: string) => ['DEPOSIT', 'DIVIDEND', 'REFERRAL_BONUS', 'LOAN_RECEIVED', 'QUOTA_SELL', 'EDUCATION_REWARD', 'GAME_WIN', 'ADMIN_GIFT'].includes(type);
+    const isPositive = (type: string) => ['DEPOSIT', 'DIVIDEND', 'REFERRAL_BONUS', 'LOAN_RECEIVED', 'QUOTA_SELL', 'EDUCATION_REWARD', 'ADMIN_GIFT'].includes(type);
 
     const isLocked = user.securityLockUntil ? new Date(user.securityLockUntil).getTime() > Date.now() : false;
     const lockTimeRemaining = user.securityLockUntil ? Math.ceil((new Date(user.securityLockUntil).getTime() - Date.now()) / (1000 * 60 * 60)) : 0;

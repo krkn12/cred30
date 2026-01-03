@@ -157,6 +157,9 @@ export const loadState = async (): Promise<AppState> => {
             stats.theoreticalCash = dashboard.data?.systemConfig?.theoretical_cash || dashboard.systemConfig?.theoretical_cash || 0;
             stats.monthlyFixedCosts = dashboard.data?.systemConfig?.monthly_fixed_costs || dashboard.systemConfig?.monthly_fixed_costs || 0;
             stats.systemConfig = dashboard.data?.systemConfig || dashboard.systemConfig || null;
+            if (dashboard.data?.stats?.users_count !== undefined) {
+              stats.usersCount = parseInt(dashboard.data.stats.users_count);
+            }
           }
 
           // DEBUG: Verificar valores extraídos
@@ -182,23 +185,9 @@ export const loadState = async (): Promise<AppState> => {
       }
     }
 
-    // Carregar todos os usuários se for Admin (para estatísticas do dashboard admin)
+    // NÃO carregar todos os usuários aqui (economia de banda). 
+    // A lista de usuários será carregada sob demanda na aba de Gestão de Usuários.
     let allUsers: User[] = [currentUser].filter(Boolean) as User[];
-    if (currentUser?.isAdmin) {
-      try {
-        const usersResponse = await apiService.adminGetUsers();
-        if (usersResponse.success && Array.isArray(usersResponse.data)) {
-          allUsers = usersResponse.data.map(convertApiUserToUser);
-
-          // Garantir que o usuário atual está na lista (para evitar problemas de referência)
-          if (currentUser && !allUsers.some(u => u.id === currentUser.id)) {
-            allUsers.push(currentUser);
-          }
-        }
-      } catch (e) {
-        console.error('Erro ao carregar lista de usuários:', e);
-      }
-    }
 
     return {
       currentUser,

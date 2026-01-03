@@ -16,6 +16,9 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
     const [newCostAmount, setNewCostAmount] = useState('');
     const [financeHistory, setFinanceHistory] = useState<any[]>([]);
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+    const [historyOffset, setHistoryOffset] = useState(0);
+    const [hasMoreHistory, setHasMoreHistory] = useState(false);
+    const LIMIT = 50;
 
 
     useEffect(() => {
@@ -34,12 +37,16 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
         }
     };
 
-    const fetchFinanceHistory = async () => {
+    const fetchFinanceHistory = async (isLoadMore = false) => {
         setIsHistoryLoading(true);
         try {
-            const res = await apiService.get<any>('/admin/finance-history');
+            const currentOffset = isLoadMore ? historyOffset + LIMIT : 0;
+            const res = await apiService.get<any>(`/admin/finance-history?limit=${LIMIT}&offset=${currentOffset}`);
             if (res.success) {
-                setFinanceHistory(res.data || []);
+                const newLogs = res.data || [];
+                setFinanceHistory(prev => isLoadMore ? [...prev, ...newLogs] : newLogs);
+                setHasMoreHistory(res.pagination?.hasMore || false);
+                if (isLoadMore) setHistoryOffset(currentOffset);
             }
         } catch (e) {
             console.error('Erro ao buscar histórico financeiro:', e);
@@ -262,6 +269,18 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
                                 </div>
                             </div>
                         ))}
+
+                        {hasMoreHistory && (
+                            <div className="pt-4 flex justify-center">
+                                <button
+                                    onClick={() => fetchFinanceHistory(true)}
+                                    disabled={isHistoryLoading}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-[10px] font-black uppercase text-zinc-400 px-6 py-2.5 rounded-xl border border-zinc-700 transition-all flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    {isHistoryLoading ? 'Carregando...' : 'Carregar mais movimentações'}
+                                </button>
+                            </div>
+                        )}
 
                         {!isHistoryLoading && financeHistory.length === 0 && (
                             <div className="py-20 text-center opacity-30">

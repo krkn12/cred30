@@ -16,6 +16,12 @@ interface ApiResponse<T> {
   message: string;
   data?: T;
   errors?: any[];
+  pagination?: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
 }
 
 interface AuthResponse {
@@ -289,10 +295,14 @@ class ApiService {
     return response.data!;
   }
 
-  // Método para obter transações do usuário
-  async getUserTransactions(): Promise<{ transactions: any[] }> {
-    const response = await this.request<{ transactions: any[] }>('/users/transactions');
-    return response.data!;
+  // Método para obter transações do usuário com paginação
+  async getUserTransactions(options?: { limit?: number, offset?: number }): Promise<any> {
+    const query = new URLSearchParams();
+    if (options?.limit) query.append('limit', options.limit.toString());
+    if (options?.offset) query.append('offset', options.offset.toString());
+
+    const response = await this.request<any>(`/users/transactions?${query.toString()}`);
+    return response;
   }
 
   // Método para obter cotas do usuário
@@ -394,14 +404,6 @@ class ApiService {
     return response; // Return full response to check requiresConfirmation
   }
 
-  // Método para jogar Caça-Níquel
-  async spinSlot(): Promise<any> {
-    // Retorna a resposta completa, pois o componente espera verificar result.success
-    return this.request<any>('/games/slot/spin', {
-      method: 'POST',
-      body: JSON.stringify({}),
-    });
-  }
 
   // Método para excluir conta
   async deleteAccount(twoFactorCode?: string): Promise<any> {
@@ -700,11 +702,13 @@ class ApiService {
   }
 
   // --- Gestão de Equipe e Usuários (Admin) ---
-  async adminGetUsers(options?: { search?: string, role?: string, status?: string }): Promise<any> {
+  async adminGetUsers(options?: { search?: string, role?: string, status?: string, limit?: number, offset?: number }): Promise<any> {
     const query = new URLSearchParams();
     if (options?.search) query.append('search', options.search);
     if (options?.role) query.append('role', options.role);
     if (options?.status) query.append('status', options.status);
+    if (options?.limit) query.append('limit', options.limit.toString());
+    if (options?.offset) query.append('offset', options.offset.toString());
 
     const response = await this.request<any>(`/admin/users?${query.toString()}`);
     return response;
@@ -1184,6 +1188,68 @@ class ApiService {
       body: JSON.stringify(data)
     });
     return response.data;
+  }
+
+  // ==================== LOGISTICS ====================
+
+  // Listar entregas disponíveis
+  async getAvailableDeliveries(): Promise<any[]> {
+    const response = await this.request<any>('/logistics/available');
+    return response.data || [];
+  }
+
+  // Aceitar uma entrega
+  async acceptDelivery(orderId: number): Promise<any> {
+    const response = await this.request<any>(`/logistics/accept/${orderId}`, {
+      method: 'POST'
+    });
+    return response;
+  }
+
+  // Confirmar coleta do produto
+  async confirmPickup(orderId: number, pickupCode?: string): Promise<any> {
+    const response = await this.request<any>(`/logistics/pickup/${orderId}`, {
+      method: 'POST',
+      body: JSON.stringify({ pickupCode })
+    });
+    return response;
+  }
+
+  // Confirmar entrega realizada
+  async confirmDelivered(orderId: number): Promise<any> {
+    const response = await this.request<any>(`/logistics/delivered/${orderId}`, {
+      method: 'POST'
+    });
+    return response;
+  }
+
+  // Cancelar entrega aceita
+  async cancelDelivery(orderId: number): Promise<any> {
+    const response = await this.request<any>(`/logistics/cancel/${orderId}`, {
+      method: 'POST'
+    });
+    return response;
+  }
+
+  // Minhas entregas (histórico)
+  async getMyDeliveries(status?: 'active' | 'completed'): Promise<{
+    deliveries: any[];
+    stats: { totalDeliveries: number; totalEarnings: string };
+  }> {
+    const query = status ? `?status=${status}` : '';
+    const response = await this.request<any>(`/logistics/my-deliveries${query}`);
+    return response.data || { deliveries: [], stats: { totalDeliveries: 0, totalEarnings: '0.00' } };
+  }
+
+  // Estatísticas de entregas
+  async getDeliveryStats(): Promise<{
+    completedDeliveries: number;
+    inProgressDeliveries: number;
+    totalEarned: string;
+    avgEarningPerDelivery: string;
+  }> {
+    const response = await this.request<any>('/logistics/stats');
+    return response.data || { completedDeliveries: 0, inProgressDeliveries: 0, totalEarned: '0.00', avgEarningPerDelivery: '0.00' };
   }
 }
 
