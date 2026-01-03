@@ -916,6 +916,275 @@ class ApiService {
     });
     return response.data;
   }
+
+  // ==================== MARKETPLACE ====================
+
+  // Listar anúncios do mercado
+  async getMarketplaceListings(limit: number = 50, offset: number = 0): Promise<any> {
+    const response = await this.request<any>(`/marketplace/listings?limit=${limit}&offset=${offset}`);
+    return response.data;
+  }
+
+  // Criar novo anúncio
+  async createMarketplaceListing(data: {
+    title: string;
+    description: string;
+    price: number;
+    category?: string;
+    imageUrl?: string;
+    quotaId?: number;
+  }): Promise<any> {
+    const response = await this.request<any>('/marketplace/create', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return response;
+  }
+
+  // Comprar um anúncio
+  async buyMarketplaceListing(data: {
+    listingId: number;
+    deliveryAddress?: string;
+    contactPhone?: string;
+    paymentMethod?: 'BALANCE' | 'PIX' | 'CARD';
+    deliveryType?: 'SELF_PICKUP' | 'COURIER_REQUEST';
+    offeredDeliveryFee?: number;
+    pickupAddress?: string;
+    payerCpfCnpj?: string;
+    creditCard?: {
+      holderName: string;
+      number: string;
+      expiryMonth: string;
+      expiryYear: string;
+      ccv: string;
+      cpf: string;
+    };
+  }): Promise<any> {
+    const response = await this.request<any>('/marketplace/buy', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return response;
+  }
+
+  // Comprar parcelado
+  async buyMarketplaceOnCredit(data: {
+    listingId: number;
+    installments: number;
+    deliveryAddress?: string;
+    contactPhone?: string;
+    deliveryType?: 'SELF_PICKUP' | 'COURIER_REQUEST';
+    offeredDeliveryFee?: number;
+    pickupAddress?: string;
+  }): Promise<any> {
+    const response = await this.request<any>('/marketplace/buy-on-credit', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return response;
+  }
+
+  // Meus anúncios
+  async getMyMarketplaceListings(): Promise<any> {
+    const response = await this.request<any>('/marketplace/my-listings');
+    return response.data;
+  }
+
+  // Meus pedidos (compras)
+  async getMyMarketplaceOrders(): Promise<any> {
+    const response = await this.request<any>('/marketplace/my-orders');
+    return response.data;
+  }
+
+  // Minhas vendas
+  async getMyMarketplaceSales(): Promise<any> {
+    const response = await this.request<any>('/marketplace/my-sales');
+    return response.data;
+  }
+
+  // Marcar pedido como enviado
+  async shipMarketplaceOrder(orderId: number, trackingCode?: string): Promise<any> {
+    const response = await this.request<any>(`/marketplace/order/${orderId}/ship`, {
+      method: 'POST',
+      body: JSON.stringify({ trackingCode })
+    });
+    return response;
+  }
+
+  // Confirmar recebimento do pedido
+  async receiveMarketplaceOrder(orderId: number): Promise<any> {
+    const response = await this.request<any>(`/marketplace/order/${orderId}/receive`, {
+      method: 'POST',
+      body: JSON.stringify({})
+    });
+    return response;
+  }
+
+  // Cancelar anúncio
+  async cancelMarketplaceListing(listingId: number): Promise<any> {
+    const response = await this.request<any>(`/marketplace/listing/${listingId}/cancel`, {
+      method: 'POST'
+    });
+    return response;
+  }
+
+  // Sugestão de descrição via IA
+  async getMarketplaceAiSuggestion(title: string): Promise<{ description: string; category: string }> {
+    const response = await this.request<any>('/marketplace/ai-assist', {
+      method: 'POST',
+      body: JSON.stringify({ title })
+    });
+    return response.data;
+  }
+
+  // Impulsionar anúncio
+  async boostMarketplaceListing(listingId: number, days: number = 7): Promise<any> {
+    const response = await this.request<any>('/marketplace/boost', {
+      method: 'POST',
+      body: JSON.stringify({ listingId, days })
+    });
+    return response;
+  }
+
+  // ==================== PROMO VIDEOS ====================
+
+  // Listar tags disponíveis
+  async getPromoVideoTags(): Promise<string[]> {
+    const response = await this.request<any>('/promo-videos/tags');
+    return response.data || [];
+  }
+
+  // Feed de vídeos disponíveis para assistir
+  async getPromoVideoFeed(tag?: string): Promise<any[]> {
+    const url = tag ? `/promo-videos/feed?tag=${tag}` : '/promo-videos/feed';
+    const response = await this.request<any>(url);
+    return response.data || [];
+  }
+
+  // Próximo vídeo para assistir (farm)
+  async getNextPromoVideo(): Promise<any> {
+    const response = await this.request<any>('/promo-videos/farm/next');
+    return response;
+  }
+
+  // Criar campanha de vídeo
+  async createPromoVideoCampaign(data: {
+    title: string;
+    description?: string;
+    videoUrl: string;
+    thumbnailUrl?: string;
+    platform?: 'YOUTUBE' | 'TIKTOK' | 'INSTAGRAM' | 'KWAI' | 'OTHER';
+    tag?: string;
+    durationSeconds?: number;
+    minWatchSeconds?: number;
+    budget: number;
+    pricePerView?: number;
+    paymentMethod: 'BALANCE' | 'PIX' | 'CARD';
+    payerCpfCnpj?: string;
+    cardData?: {
+      holderName: string;
+      number: string;
+      expiryMonth: string;
+      expiryYear: string;
+      ccv: string;
+      cpf: string;
+    };
+  }): Promise<any> {
+    const response = await this.request<any>('/promo-videos/create', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return response;
+  }
+
+  // Buscar dados de pagamento de campanha pendente
+  async getPromoVideoPayment(videoId: number): Promise<any> {
+    const response = await this.request<any>(`/promo-videos/${videoId}/payment`);
+    return response.data;
+  }
+
+  // Iniciar visualização de vídeo
+  async startPromoVideoView(videoId: number): Promise<any> {
+    const response = await this.request<any>(`/promo-videos/${videoId}/start-view`, {
+      method: 'POST',
+      body: JSON.stringify({})
+    });
+    return response;
+  }
+
+  // Completar visualização e receber recompensa
+  async completePromoVideoView(videoId: number, watchTimeSeconds: number): Promise<any> {
+    const response = await this.request<any>(`/promo-videos/${videoId}/complete-view`, {
+      method: 'POST',
+      body: JSON.stringify({ watchTimeSeconds })
+    });
+    return response;
+  }
+
+  // Minhas campanhas
+  async getMyPromoVideoCampaigns(): Promise<any[]> {
+    const response = await this.request<any>('/promo-videos/my-campaigns');
+    return response.data || [];
+  }
+
+  // Meus ganhos assistindo vídeos
+  async getMyPromoVideoEarnings(): Promise<{
+    totalEarned: number;
+    currentPoints: number;
+    videosWatched: number;
+    conversionRate: number;
+    minConversionPoints: number;
+  }> {
+    const response = await this.request<any>('/promo-videos/my-earnings');
+    return response.data;
+  }
+
+  // Remover/cancelar campanha
+  async deletePromoVideoCampaign(videoId: number): Promise<any> {
+    const response = await this.request<any>(`/promo-videos/${videoId}`, {
+      method: 'DELETE'
+    });
+    return response;
+  }
+
+  // Converter pontos de vídeo em dinheiro
+  async convertPromoVideoPoints(): Promise<{
+    convertedAmount: number;
+    remainingPoints: number;
+  }> {
+    const response = await this.request<any>('/promo-videos/convert-points', {
+      method: 'POST'
+    });
+    return response.data;
+  }
+
+  // ==================== EDUCATION ====================
+
+  // Iniciar sessão de estudo
+  async startEducationSession(lessonId: string | number): Promise<{ sessionId: number }> {
+    const response = await this.request<any>('/education/start-session', {
+      method: 'POST',
+      body: JSON.stringify({ lessonId })
+    });
+    return response.data;
+  }
+
+  // Receber recompensa por estudo
+  async claimEducationReward(data: {
+    points: number;
+    lessonId: string | number;
+    sessionId: number;
+  }): Promise<{
+    transactionId: number;
+    amount: number;
+    scoreAdded: number;
+  }> {
+    const response = await this.request<any>('/education/reward', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return response.data;
+  }
 }
 
 // Exportar instância única do serviço

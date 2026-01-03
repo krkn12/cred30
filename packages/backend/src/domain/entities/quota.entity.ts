@@ -1,13 +1,10 @@
-import { ObjectId } from 'mongodb';
-
 export interface Quota {
-  _id?: ObjectId;
-  id?: string;
-  userId: string | ObjectId;
+  id: string | number;
+  userId: string | number;
   purchasePrice: number;
-  purchaseDate: number;
+  purchaseDate: number | Date;
   currentValue: number;
-  yieldRate: number;
+  status: 'ACTIVE' | 'SOLD' | 'REDEEMED' | 'LIQUIDATED';
 }
 
 export interface CreateQuotaRequest {

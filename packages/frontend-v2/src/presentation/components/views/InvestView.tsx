@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { TrendingUp, X as XIcon, Users, ShieldCheck, Info, CheckCircle2, Building2, ArrowRight, Zap, Scale, Gavel, FileText } from 'lucide-react';
+import { useState } from 'react';
+import { TrendingUp, X as XIcon, Users, ShieldCheck, Info, CheckCircle2, Building2, ArrowRight, Zap, Gavel } from 'lucide-react';
 import { QUOTA_PRICE, QUOTA_SHARE_VALUE, QUOTA_ADM_FEE } from '../../../shared/constants/app.constants';
 import { calculateTotalToPay } from '../../../shared/utils/financial.utils';
 
@@ -9,6 +9,7 @@ interface InvestViewProps {
 }
 
 export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
+    void isPro;
     const [qty, setQty] = useState(1);
     const [method, setMethod] = useState<'PIX' | 'BALANCE' | 'CARD'>('PIX');
     const [showConfirm, setShowConfirm] = useState(false);

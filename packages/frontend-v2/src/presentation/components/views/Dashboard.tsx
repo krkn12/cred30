@@ -1,16 +1,12 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import packageJson from '../../../../package.json';
 import {
-    Users, Gamepad2, TrendingUp, DollarSign, ArrowUpFromLine, BookOpen,
-    Repeat, Crown, Clock, ArrowDownLeft, ArrowUpRight,
-    PieChart, AlertTriangle, LogOut, Star, Zap,
-    ShoppingBag, Tag, PlusCircle, ShieldCheck, ChevronRight, Wallet, Coins, Settings, BarChart3, Gift, Sparkles, Bell, Eye, EyeOff, Grid2x2 as Grid
+    Users, Gamepad2, TrendingUp, ArrowUpFromLine, BookOpen,
+    Crown, Clock, ArrowDownLeft, ArrowUpRight,
+    PieChart, Star, Zap,
+    ShieldCheck, ChevronRight, Wallet, Settings, BarChart3, Gift, Sparkles, Eye, EyeOff
 } from 'lucide-react';
-import { AppState, User, Transaction, Quota, Loan } from '../../../domain/types/common.types';
-import { QUOTA_PRICE } from '../../../shared/constants/app.constants';
-import { AdBanner } from '../ui/AdBanner';
-import { fastForwardTime, deleteUserAccount } from '../../../application/services/storage.service';
+import { AppState, Transaction, Quota, Loan } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 import { LoadingScreen } from '../ui/LoadingScreen';
 
@@ -20,21 +16,14 @@ interface DashboardProps {
     onGames: () => void;
     onLoans: () => void;
     onWithdraw: () => void;
-    onReinvest: () => void;
     onRefer: () => void;
-    onVip: () => void;
-    onLogout: () => void;
     onSuccess: (title: string, message: string) => void;
     onError: (title: string, message: string) => void;
-    onChangePassword: (oldPass: string, newPass: string) => Promise<void>;
-    onClaimReward: () => Promise<void>;
-    onMarketplace: () => void;
-    onEarn: () => void;
     onEducation: () => void;
     onVoting: () => void;
 }
 
-export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onReinvest, onRefer, onVip, onLogout, onSuccess, onError, onChangePassword, onClaimReward, onMarketplace, onEarn, onEducation, onVoting }: DashboardProps) => {
+export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onRefer, onSuccess, onError, onEducation, onVoting }: DashboardProps) => {
     const user = state?.currentUser;
 
     // Guard clause: prevent crash if state or user is not loaded yet
@@ -98,7 +87,6 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
             .slice(0, 5);
     }, [state.transactions, user.id]);
 
-    const isLoadingTransactions = state.isLoading;
 
     const handleOpenChest = async () => {
         if (chestsRemaining <= 0 || chestCountdown > 0 || isOpeningChest) return;
@@ -153,7 +141,6 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
         return { name: 'Bronze', color: 'bg-orange-700/20 text-orange-600 border-orange-700/30' };
     };
 
-    const vipLevel = getVipLevel(userQuotas.length);
     const getNextLevelInfo = (level: string) => {
         if (level === 'Bronze') return { next: 'Prata', goal: 10 };
         if (level === 'Prata') return { next: 'Ouro', goal: 50 };
@@ -161,6 +148,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
         return { next: null, goal: 100 };
     };
 
+    const vipLevel = getVipLevel(userQuotas.length);
     const nextLevel = getNextLevelInfo(vipLevel.name);
     const progressToNext = nextLevel.next ? Math.min((userQuotas.length / nextLevel.goal) * 100, 100) : 100;
 
@@ -170,6 +158,15 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
 
     const isLocked = user.securityLockUntil ? new Date(user.securityLockUntil).getTime() > Date.now() : false;
     const lockTimeRemaining = user.securityLockUntil ? Math.ceil((new Date(user.securityLockUntil).getTime() - Date.now()) / (1000 * 60 * 60)) : 0;
+
+    // Supress unused warnings for items we want to keep
+    void isPro;
+    void totalCurrentValue;
+    void userLoans;
+    void totalDebt;
+    void welcomeBenefit;
+    void progressToNext;
+    void onLoans;
 
     return (
         <div className="space-y-6 pb-24">

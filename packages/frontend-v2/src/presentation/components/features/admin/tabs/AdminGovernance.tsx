@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Vote, Send, BarChart3, Gavel, ShieldCheck, Trophy, Info } from 'lucide-react';
+import { Vote, Send, BarChart3, Gavel, ShieldCheck, Info } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
 interface AdminGovernanceProps {

@@ -19,7 +19,7 @@ interface MyBugReportsViewProps {
     onError: (title: string, message: string) => void;
 }
 
-export const MyBugReportsView: React.FC<MyBugReportsViewProps> = ({ onBack, onSuccess, onError }) => {
+export const MyBugReportsView: React.FC<MyBugReportsViewProps> = ({ onBack, onSuccess: _onSuccess, onError }) => {
     const [reports, setReports] = useState<BugReport[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReport, setSelectedReport] = useState<BugReport | null>(null);
@@ -168,9 +168,9 @@ export const MyBugReportsView: React.FC<MyBugReportsViewProps> = ({ onBack, onSu
                             {/* Header */}
                             <div className="flex items-start gap-3">
                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${selectedReport.severity === 'critical' ? 'bg-red-500/20 text-red-400' :
-                                        selectedReport.severity === 'high' ? 'bg-orange-500/20 text-orange-400' :
-                                            selectedReport.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                                                'bg-zinc-800 text-zinc-400'
+                                    selectedReport.severity === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                                        selectedReport.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                            'bg-zinc-800 text-zinc-400'
                                     }`}>
                                     <Bug size={20} />
                                 </div>

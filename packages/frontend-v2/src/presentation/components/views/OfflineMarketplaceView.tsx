@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
-import { CheckCircle2, QrCode, ScanLine, XCircle, ArrowRight, UploadCloud, WifiOff, Smartphone } from 'lucide-react';
+import { CheckCircle2, QrCode, ScanLine, XCircle, UploadCloud, WifiOff } from 'lucide-react';
 
 interface OfflineMarketplaceViewProps {
     user: any;

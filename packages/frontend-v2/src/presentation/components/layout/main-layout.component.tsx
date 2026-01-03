@@ -1,6 +1,4 @@
-import React, { useEffect } from 'react';
-import { LogOut, Home, PieChart, DollarSign, Settings, TrendingUp, ArrowUpFromLine, Gamepad2, ShoppingBag, HelpCircle, MessageCircle, Play } from 'lucide-react';
-import { AdBanner } from '../ui/AdBanner';
+import { LogOut, Home, PieChart, DollarSign, Settings, TrendingUp, ArrowUpFromLine, Gamepad2, ShoppingBag, HelpCircle, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../../../domain/types/common.types';
 

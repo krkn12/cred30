@@ -1,6 +1,6 @@
 {
   "name": "cred30-backend",
-  "version": "1.0.249",
+  "version": "1.0.250",
   "description": "Backend para Plataforma Associativa Cred30",
   "main": "src/index.ts",
   "scripts": {
@@ -9,7 +9,8 @@
     "start": "tsx src/index.ts",
     "start:prod": "tsx src/index.ts",
     "lint": "bunx eslint . --ext .ts",
-    "format": "bunx prettier --write ."
+    "format": "bunx prettier --write .",
+    "release": "cd ../.. && npm run release"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { DollarSign, AlertTriangle, X as XIcon, CheckCircle2, ShieldCheck, Clock, TrendingUp, Download, FileText, QrCode, CreditCard, Wallet } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { DollarSign, AlertTriangle, X as XIcon, Clock, TrendingUp, Download, FileText, QrCode, CreditCard, Wallet } from 'lucide-react';
 import { Loan, User } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 import { downloadLoanContract, createContractData } from '../../../application/services/contract.service';
-import { AdBanner } from '../ui/AdBanner';
+
 
 interface LoansViewProps {
     loans: Loan[];
@@ -58,6 +58,11 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
     const getInstallmentValue = (loan: Loan) => {
         return loan.totalRepayment / loan.installments;
     };
+
+    void isPro;
+    void viewDetailsId;
+    void setViewDetailsId;
+    void getRemainingInstallments;
 
     return (
         <div className="space-y-8 pb-32">
@@ -270,6 +275,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                     const daysUntilDue = loan.dueDate ? Math.ceil((new Date(loan.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
                     const isOverdue = daysUntilDue < 0;
                     const isUrgent = daysUntilDue <= 3 && daysUntilDue >= 0;
+                    void isUrgent;
 
                     const paidAmount = loan.totalPaid || 0;
                     const remainingAmount = loan.remainingAmount || loan.totalRepayment;

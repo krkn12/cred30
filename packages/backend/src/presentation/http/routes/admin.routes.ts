@@ -3,24 +3,23 @@ import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import { PoolClient } from 'pg';
 import { authMiddleware, adminMiddleware, attendantMiddleware } from '../middleware/auth.middleware';
-import { auditMiddleware, initializeAuditTable } from '../../../infrastructure/logging/audit.middleware';
+import { auditMiddleware } from '../../../infrastructure/logging/audit.middleware';
 import { adminRateLimit } from '../middleware/rate-limit.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import {
-  DIVIDEND_USER_SHARE,
-  DIVIDEND_MAINTENANCE_SHARE,
   QUOTA_PRICE,
   QUOTA_SHARE_VALUE,
   QUOTA_ADM_FEE,
-  REFERRAL_BONUS
 } from '../../../shared/constants/business.constants';
-import { executeInTransaction, updateUserBalance, createTransaction, updateTransactionStatus, processTransactionApproval, processLoanApproval } from '../../../domain/services/transaction.service';
+import { executeInTransaction, updateUserBalance, createTransaction, processTransactionApproval } from '../../../domain/services/transaction.service';
 import { distributeProfits } from '../../../application/services/profit-distribution.service';
-import { runAutoLiquidation } from '../../../application/services/auto-liquidation.service';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
-import { calculateGatewayCost } from '../../../shared/utils/financial.utils';
-import { simulatePaymentApproval, createPayout, detectPixKeyType, getAccountBalance } from '../../../infrastructure/gateways/asaas.service';
+import { createPayout, detectPixKeyType } from '../../../infrastructure/gateways/asaas.service';
 import { CacheService, addCacheHeaders } from '../../../infrastructure/cache/memory-cache.service';
+import { calculateGatewayCost } from '../../../shared/utils/financial.utils';
+import { updateTransactionStatus } from '../../../domain/services/transaction.service';
+import { runAutoLiquidation } from '../../../application/services/auto-liquidation.service';
+import { simulatePaymentApproval } from '../../../infrastructure/gateways/mercadopago.service';
 
 interface PaymentApprovalResult {
   success: boolean;
@@ -59,7 +58,7 @@ const actionSchema = z.object({
 });
 
 const simulateMpSchema = z.object({
-  paymentId: z.string(),
+  paymentId: z.coerce.number(),
   transactionId: z.string()
 });
 

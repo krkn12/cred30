@@ -1,0 +1,2 @@
+src/presentation/components/features/admin/tabs/AdminSystem.tsx(96,11): error TS6133: '_handleUpdateProfit' is declared but its value is never read.
+src/presentation/components/ui/ConfirmModal.tsx(33,11): error TS6133: '_iconColor' is declared but its value is never read.

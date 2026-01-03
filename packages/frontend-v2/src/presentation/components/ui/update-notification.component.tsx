@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { RefreshCw, Download } from 'lucide-react';
 // @ts-ignore - Virtual module provided by vite-plugin-pwa
 import { useRegisterSW } from 'virtual:pwa-register/react';
