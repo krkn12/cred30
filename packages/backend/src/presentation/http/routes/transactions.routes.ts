@@ -19,21 +19,32 @@ const withdrawSchema = z.object({
   pixKey: z.string().min(5),
 });
 
-// Listar transações do usuário
+// Listar transações do usuário com paginação
 transactionRoutes.get('/', authMiddleware, async (c) => {
   try {
     const user = c.get('user') as UserContext;
     const pool = getDbPool(c);
+    const { limit, offset } = c.req.query();
+    const limitNum = parseInt(limit || '20');
+    const offsetNum = parseInt(offset || '0');
 
-    // Buscar transações do usuário
+    // Buscar total de transações para paginação
+    const totalResult = await pool.query(
+      'SELECT COUNT(*) FROM transactions WHERE user_id = $1',
+      [user.id]
+    );
+    const total = parseInt(totalResult.rows[0].count);
+
+    // Buscar transações do usuário paginadas
     const result = await pool.query(
       `SELECT t.id, t.user_id, t.type, t.amount, t.description, t.status, t.metadata, t.created_at as date,
               u.name as user_name, u.email as user_email
        FROM transactions t
        LEFT JOIN users u ON t.user_id = u.id
        WHERE t.user_id = $1
-       ORDER BY t.created_at DESC`,
-      [user.id]
+       ORDER BY t.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [user.id, limitNum, offsetNum]
     );
 
     // Formatar transações para resposta
@@ -44,7 +55,7 @@ transactionRoutes.get('/', authMiddleware, async (c) => {
 
       return {
         id: transaction.id,
-        userId: transaction.user_id, // Adicionado campo userId
+        userId: transaction.user_id,
         type: transaction.type,
         amount: parseFloat(transaction.amount),
         date: brasiliaDate.getTime(),
@@ -61,6 +72,12 @@ transactionRoutes.get('/', authMiddleware, async (c) => {
       data: {
         transactions: formattedTransactions,
       },
+      pagination: {
+        total,
+        limit: limitNum,
+        offset: offsetNum,
+        hasMore: offsetNum + limitNum < total
+      }
     });
   } catch (error) {
     console.error('Erro ao listar transações:', error);
