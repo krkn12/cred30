@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Store, Phone, MapPin, Building2, CheckCircle, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
-import { apiService } from '../../../application/services/storage.service';
+import { useState, useEffect } from 'react';
+import { Store, Phone, MapPin, Building2, CheckCircle, AlertCircle, Loader2, ArrowLeft, BadgeCheck, Percent, Zap } from 'lucide-react';
+import { apiService } from '../../../application/services/api.service';
 import { useNavigate } from 'react-router-dom';
 
 interface SellerStatus {
@@ -38,8 +38,8 @@ export const SellerRegistrationView = () => {
 
     const fetchSellerStatus = async () => {
         try {
-            const response = await apiService.get('/seller/status') as any;
-            if (response.success) {
+            const response = await apiService.getSellerStatus();
+            if (response) {
                 setSellerStatus(response);
             }
         } catch (err) {
@@ -56,7 +56,7 @@ export const SellerRegistrationView = () => {
         setSubmitting(true);
 
         try {
-            const response = await apiService.post('/seller/register', formData) as any;
+            const response = await apiService.registerSeller(formData);
             if (response.success) {
                 setSuccess('Conta de vendedor criada com sucesso! Agora você pode receber pagamentos diretamente.');
                 fetchSellerStatus();
@@ -94,11 +94,16 @@ export const SellerRegistrationView = () => {
                     <p className="text-zinc-400 mb-4">
                         {sellerStatus.companyName && <span className="text-white font-medium">{sellerStatus.companyName}</span>}
                     </p>
-                    <p className="text-sm text-emerald-400">
+                    <p className="text-sm text-emerald-400 mb-4">
                         Seus pagamentos são recebidos diretamente via Asaas com split automático.
                     </p>
+                    <div className="bg-zinc-900 p-4 rounded-xl mb-6">
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest mb-2">Sua taxa</p>
+                        <p className="text-3xl font-black text-emerald-400">12%</p>
+                        <p className="text-zinc-500 text-xs">por venda (vs 27.5% sem verificação)</p>
+                    </div>
                     <button
-                        onClick={() => navigate('/marketplace')}
+                        onClick={() => navigate(-1)}
                         className="mt-6 bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 px-8 rounded-xl transition-all"
                     >
                         Ir para o Marketplace
@@ -124,8 +129,8 @@ export const SellerRegistrationView = () => {
                         <Store className="w-7 h-7 text-primary-400" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-white">Tornar-se Vendedor</h1>
-                        <p className="text-zinc-400 text-sm">Receba pagamentos direto na sua conta</p>
+                        <h1 className="text-2xl font-bold text-white">Tornar-se Vendedor Verificado</h1>
+                        <p className="text-zinc-400 text-sm">Receba pagamentos direto na sua conta com taxa reduzida</p>
                     </div>
                 </div>
             </div>
@@ -145,21 +150,42 @@ export const SellerRegistrationView = () => {
                 </div>
             )}
 
-            {/* Info Box */}
+            {/* Comparativo de Taxas */}
             <div className="mb-6 bg-zinc-900 border border-white/5 rounded-2xl p-5">
-                <h3 className="text-white font-bold mb-2">Vantagens de ser Vendedor:</h3>
+                <h3 className="text-white font-bold mb-4 text-center">Comparativo de Taxas</h3>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-center">
+                        <p className="text-red-400 text-xs font-bold uppercase mb-2">Não Verificado</p>
+                        <p className="text-2xl font-black text-red-400">27.5%</p>
+                        <p className="text-zinc-500 text-xs mt-1">por venda</p>
+                    </div>
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl text-center">
+                        <div className="flex items-center justify-center gap-1 mb-2">
+                            <BadgeCheck size={12} className="text-emerald-400" />
+                            <p className="text-emerald-400 text-xs font-bold uppercase">Verificado</p>
+                        </div>
+                        <p className="text-2xl font-black text-emerald-400">12%</p>
+                        <p className="text-zinc-500 text-xs mt-1">por venda</p>
+                    </div>
+                </div>
+
+                <h3 className="text-white font-bold mb-3">Vantagens de ser Verificado:</h3>
                 <ul className="space-y-2 text-sm text-zinc-400">
                     <li className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-emerald-500" />
-                        Receba pagamentos diretamente via Asaas
+                        <Percent className="w-4 h-4 text-emerald-500" />
+                        Taxa reduzida de <span className="text-emerald-400 font-bold">12%</span> (economia de 15%)
+                    </li>
+                    <li className="flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-emerald-500" />
+                        Recebimento automático via Split Payment
+                    </li>
+                    <li className="flex items-center gap-2">
+                        <BadgeCheck className="w-4 h-4 text-emerald-500" />
+                        Selo de Vendedor Verificado nos anúncios
                     </li>
                     <li className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-emerald-500" />
-                        Split automático (você recebe 95%, plataforma fica com 5%)
-                    </li>
-                    <li className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-emerald-500" />
-                        Saque para sua conta bancária quando quiser
+                        Saque direto para sua conta bancária
                     </li>
                 </ul>
             </div>
