@@ -3,7 +3,7 @@ import {
     Search, Tag, ShoppingBag, PlusCircle, ImageIcon, Zap, Sparkles,
     ChevronRight, ArrowLeft, ShieldCheck, Heart, Share2,
     Truck, CheckCircle2, History, Package, RefreshCw, Wand2, X as XIcon,
-    QrCode, MapPin, Phone, Navigation2
+    QrCode, MapPin, Phone, Navigation2, Loader2, ChevronDown
 } from 'lucide-react';
 
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -82,6 +82,10 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 300); // Debounce de 300ms
     const [selectedCategory, setSelectedCategory] = useState('TODOS');
+    const [offset, setOffset] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const LIMIT = 20;
     const [confirmData, setConfirmData] = useState<any>(null);
     const [offlineVoucher, setOfflineVoucher] = useState<{ code: string, amount: number, item: string } | null>(null);
     const [redeemCode, setRedeemCode] = useState('');
@@ -156,16 +160,47 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         }
     }, [location.state]);
 
+    const fetchBrowseData = useCallback(async (isLoadMore = false) => {
+        if (!isLoadMore) {
+            setIsLoading(true);
+            setOffset(0);
+        } else {
+            setIsLoadingMore(true);
+        }
+
+        try {
+            const currentOffset = isLoadMore ? offset + LIMIT : 0;
+            const query = new URLSearchParams({
+                limit: LIMIT.toString(),
+                offset: currentOffset.toString(),
+                category: selectedCategory,
+                search: debouncedSearchQuery
+            }).toString();
+
+            const response = await apiService.get<any>(`/marketplace/listings?${query}`);
+            if (response.success) {
+                const newListings = response.data.listings || [];
+                setListings(prev => isLoadMore ? [...prev, ...newListings] : newListings);
+                setHasMore(newListings.length === LIMIT);
+                if (isLoadMore) setOffset(currentOffset);
+            }
+        } catch (error) {
+            console.error('Erro ao buscar anúncios:', error);
+        } finally {
+            setIsLoading(false);
+            setIsLoadingMore(false);
+        }
+    }, [offset, selectedCategory, debouncedSearchQuery]);
+
     const fetchData = useCallback(async () => {
+        if (view === 'browse') {
+            fetchBrowseData(false);
+            return;
+        }
+
         setIsLoading(true);
         try {
-            if (view === 'browse') {
-                const response = await apiService.get<any>('/marketplace/listings');
-                if (response.success) {
-                    const data = response.data;
-                    setListings(Array.isArray(data) ? data : (data?.listings || []));
-                }
-            } else if (view === 'my-orders') {
+            if (view === 'my-orders') {
                 const response = await apiService.get<any>('/marketplace/my-orders');
                 if (response.success) {
                     const data = response.data;
@@ -182,11 +217,11 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         } finally {
             setIsLoading(false);
         }
-    }, [view]);
+    }, [view, fetchBrowseData]);
 
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+    }, [view, selectedCategory, debouncedSearchQuery]); // Removi fetchData da dependência para evitar loops se não for browse
 
     const handleCreateListing = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -351,12 +386,12 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                     Meus Pedidos
                 </button>
                 <button
-                    onClick={() => setView('missions')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${view === 'missions' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
+                    onClick={() => navigate('/app/logistics')}
+                    className="flex-1 py-2 text-xs font-bold rounded-lg transition text-zinc-500 hover:bg-zinc-800 hover:text-white"
                 >
                     <div className="flex items-center justify-center gap-1">
-                        <Truck size={10} className={view === 'missions' ? 'text-primary-400' : 'text-zinc-500'} />
-                        Missões
+                        <Truck size={10} className="text-zinc-500" />
+                        Ser Entregador
                     </div>
                 </button>
                 <button
@@ -453,14 +488,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-in fade-in duration-300">
                     {(() => {
                         // Usar debouncedSearchQuery para evitar filtros excessivos durante digitação
-                        const filtered = listings.filter(item => {
-                            const matchesSearch = item.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-                                item.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
-                            const matchesCategory = selectedCategory === 'TODOS' || item.category === selectedCategory;
-                            return matchesSearch && matchesCategory;
-                        });
-
-                        if (filtered.length === 0 && (debouncedSearchQuery || selectedCategory !== 'TODOS')) {
+                        if (listings.length === 0 && (debouncedSearchQuery || selectedCategory !== 'TODOS')) {
                             return (
                                 <div className="col-span-full py-20 text-center animate-in fade-in zoom-in duration-300">
                                     <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-4 border border-zinc-800">
@@ -478,7 +506,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                             );
                         }
 
-                        if (filtered.length === 0) {
+                        if (listings.length === 0) {
                             return (
                                 <div className="col-span-full py-12 text-center">
                                     <Tag size={48} className="text-zinc-800 mx-auto mb-4" />
@@ -500,7 +528,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     />
                                 </div>
 
-                                {filtered.map((item, index) => (
+                                {listings.map((item, index) => (
                                     <Fragment key={item.id}>
                                         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden group hover:border-primary-500/30 transition-all flex flex-col">
                                             <div className="aspect-square bg-zinc-950 flex items-center justify-center relative">
@@ -509,6 +537,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                         src={item.image_url.includes('cloudinary') ? item.image_url.replace('/upload/', '/upload/w_600,c_fill,g_auto,q_auto,f_auto/') : item.image_url}
                                                         alt={item.title}
                                                         className="w-full h-full object-cover"
+                                                        loading="lazy"
                                                     />
                                                 ) : (
                                                     <ImageIcon size={40} className="text-zinc-800" />
@@ -582,6 +611,32 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                         description="Dica: Clique em anúncios parceiros para aumentar seu Score Cred30."
                                     />
                                 </div>
+
+                                {hasMore && (
+                                    <div className="col-span-full pt-10 pb-6 flex flex-col items-center gap-4">
+                                        <div className="w-full h-px bg-gradient-to-r from-transparent via-zinc-800 to-transparent mb-4" />
+                                        <button
+                                            onClick={() => fetchBrowseData(true)}
+                                            disabled={isLoadingMore}
+                                            className="bg-zinc-900/50 hover:bg-zinc-800 text-white px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center gap-4 border border-zinc-800 shadow-2xl group"
+                                        >
+                                            {isLoadingMore ? (
+                                                <>
+                                                    <Loader2 className="w-5 h-5 animate-spin text-primary-400" />
+                                                    CARREGANDO...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ChevronDown size={18} className="text-primary-400 group-hover:translate-y-1 transition-transform" />
+                                                    Ver mais ofertas
+                                                </>
+                                            )}
+                                        </button>
+                                        <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">
+                                            Mostrando {listings.length} resultados
+                                        </p>
+                                    </div>
+                                )}
                             </>
                         );
                     })()}

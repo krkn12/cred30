@@ -48,7 +48,7 @@ export const AdminOverview = ({ state }: AdminOverviewProps) => {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <MetricCard title="Membros" value={state.users?.length ?? 0} subtitle="Usuários Totais" icon={Users} color="blue" />
+                <MetricCard title="Membros" value={state.stats?.usersCount ?? state.users?.length ?? 0} subtitle="Usuários Totais" icon={Users} color="blue" />
                 <MetricCard title="Participações" value={state.stats?.quotasCount ?? 0} subtitle="Licenças em Operação" icon={PieChart} color="cyan" />
                 <MetricCard title="Reserva p/ Investimento" value={formatCurrency(state.stats?.systemConfig?.investment_reserve || 0)} subtitle="Fundo de Crescimento" icon={TrendingUp} color="orange" />
                 <MetricCard title="Liquidez Real" value={formatCurrency(state.stats?.systemConfig?.real_liquidity ?? state.systemBalance ?? 0)} subtitle="Disponível p/ Saque/Apoio" icon={DollarSign} color="emerald" />

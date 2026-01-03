@@ -6,6 +6,7 @@ import { serve } from '@hono/node-server';
 import { Hono, Context } from 'hono';
 import { cors } from 'hono/cors';
 import { compress } from 'hono/compress';
+import { etag } from 'hono/etag';
 import { authRoutes } from './presentation/http/routes/auth.routes';
 import { userRoutes } from './presentation/http/routes/users.routes';
 import { quotaRoutes } from './presentation/http/routes/quotas.routes';
@@ -31,6 +32,7 @@ import { promoVideosRoutes } from './presentation/http/routes/promo-videos.route
 import { bugReportsRoutes } from './presentation/http/routes/bug-reports.routes';
 import { earnRoutes } from './presentation/http/routes/earn.routes';
 import { sellerRoutes } from './presentation/http/routes/seller.routes';
+import { logisticsRoutes } from './presentation/http/routes/logistics.routes';
 import { initializeDatabase, pool } from './infrastructure/database/postgresql/connection/pool';
 
 const app = new Hono();
@@ -38,6 +40,7 @@ const app = new Hono();
 // Middlewares Globais
 app.use('*', cors());
 app.use('*', compress());
+app.use('*', etag());
 app.use('*', logger());
 app.use('*', secureHeaders());
 app.use('*', timing());
@@ -72,6 +75,7 @@ async function startServer() {
     app.route('/api/bugs', bugReportsRoutes);
     app.route('/api/earn', earnRoutes);
     app.route('/api/seller', sellerRoutes);
+    app.route('/api/logistics', logisticsRoutes);
 
     // Rota raiz para evitar 404 em monitoramentos e pings de wakeup
     app.get('/', (c: Context) => c.json({

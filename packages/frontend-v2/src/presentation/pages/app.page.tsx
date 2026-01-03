@@ -61,6 +61,7 @@ const PromoVideosView = lazyWithRetry(() => import('../components/views/PromoVid
 const ViewFarmView = lazyWithRetry(() => import('../components/views/ViewFarmView').then(m => ({ default: m.ViewFarmView })));
 const SellerRegistrationView = lazyWithRetry(() => import('../components/views/SellerRegistrationView'));
 const MyBugReportsView = lazyWithRetry(() => import('../components/views/MyBugReportsView').then(m => ({ default: m.MyBugReportsView })));
+const LogisticsView = lazyWithRetry(() => import('../components/views/LogisticsView'));
 
 export default function App() {
   const [state, setState] = useState<AppState>({
@@ -560,6 +561,7 @@ export default function App() {
                 <Route path="promo-videos/farm" element={<Suspense fallback={null}><ViewFarmView onBack={() => navigate('/app/promo-videos')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} onRefresh={refreshState} /></Suspense>} />
                 <Route path="history" element={<Suspense fallback={null}><HistoryView transactions={state.transactions.filter(t => t.userId === state.currentUser!.id)} isPro={state.currentUser?.membership_type === 'PRO'} /></Suspense>} />
                 <Route path="seller" element={<Suspense fallback={null}><SellerRegistrationView /></Suspense>} />
+                <Route path="logistics" element={<Suspense fallback={null}><LogisticsView /></Suspense>} />
                 <Route path="bug-reports" element={<Suspense fallback={null}><MyBugReportsView onBack={() => navigate('/app/settings')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} /></Suspense>} />
                 <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
               </Routes>

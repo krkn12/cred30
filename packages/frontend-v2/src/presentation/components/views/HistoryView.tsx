@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { ArrowDownLeft, ArrowUpRight, Clock, CheckCircle2, XCircle, Search, Filter, Calendar, DollarSign, TrendingUp, TrendingDown, Receipt, ChevronDown } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Clock, CheckCircle2, XCircle, Search, Filter, Calendar, DollarSign, TrendingUp, TrendingDown, Receipt, ChevronDown, Loader2 } from 'lucide-react';
+import { apiService } from '../../../application/services/api.service';
 import { Transaction } from '../../../domain/types/common.types';
 import { AdBanner } from '../ui/AdBanner';
 
@@ -11,15 +12,37 @@ interface HistoryViewProps {
 type FilterType = 'ALL' | 'IN' | 'OUT';
 type StatusFilter = 'ALL' | 'APPROVED' | 'PENDING' | 'REJECTED';
 
-export const HistoryView = ({ transactions, isPro }: HistoryViewProps) => {
+export const HistoryView = ({ transactions: initialTransactions, isPro }: HistoryViewProps) => {
+    const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions || []);
     const [searchTerm, setSearchTerm] = useState('');
     const [typeFilter, setTypeFilter] = useState<FilterType>('ALL');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
     const [showFilters, setShowFilters] = useState(false);
+    const [hasMore, setHasMore] = useState(initialTransactions?.length === 20); // /sync returns 20
+    const [offset, setOffset] = useState(initialTransactions?.length || 0);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const LIMIT = 20;
+
+    const fetchMore = async () => {
+        setIsLoadingMore(true);
+        try {
+            const res = await apiService.getUserTransactions({ limit: LIMIT, offset });
+            if (res.success) {
+                const newTx = res.data?.transactions || [];
+                setTransactions(prev => [...prev, ...newTx]);
+                setHasMore(newTx.length === LIMIT);
+                setOffset(prev => prev + newTx.length);
+            }
+        } catch (e) {
+            console.error('Erro ao buscar mais transações:', e);
+        } finally {
+            setIsLoadingMore(false);
+        }
+    };
 
     // Classificar tipos de transação
-    const isIncoming = (type: string) => ['DEPOSIT', 'DIVIDEND', 'REFERRAL_BONUS', 'LOAN_RECEIVED', 'QUOTA_SELL', 'EDUCATION_REWARD', 'GAME_WIN', 'ADMIN_GIFT'].includes(type);
-    const isOutgoing = (type: string) => ['WITHDRAWAL', 'LOAN_PAYMENT', 'QUOTA_PURCHASE', 'LOAN_INSTALLMENT', 'GAME_BET'].includes(type);
+    const isIncoming = (type: string) => ['DEPOSIT', 'DIVIDEND', 'REFERRAL_BONUS', 'LOAN_RECEIVED', 'QUOTA_SELL', 'EDUCATION_REWARD', 'ADMIN_GIFT'].includes(type);
+    const isOutgoing = (type: string) => ['WITHDRAWAL', 'LOAN_PAYMENT', 'QUOTA_PURCHASE', 'LOAN_INSTALLMENT'].includes(type);
 
     // Traduzir tipos
     const translateType = (type: string) => {
@@ -31,7 +54,6 @@ export const HistoryView = ({ transactions, isPro }: HistoryViewProps) => {
             'LOAN_RECEIVED': 'Apoio Mútuo Recebido',
             'QUOTA_SELL': 'Cessão de Participação',
             'EDUCATION_REWARD': 'Recompensa Educacional',
-            'GAME_WIN': 'Bonificação de Interação',
             'ADMIN_GIFT': 'Presente Administrativo',
         };
         return map[type] || type;
@@ -270,6 +292,28 @@ export const HistoryView = ({ transactions, isPro }: HistoryViewProps) => {
                                 </div>
                             </div>
                         ))}
+
+                        {hasMore && (
+                            <div className="pt-4 flex justify-center pb-12">
+                                <button
+                                    onClick={fetchMore}
+                                    disabled={isLoadingMore}
+                                    className="glass glass-hover px-10 py-5 rounded-3xl flex items-center gap-4 text-sm font-bold text-white transition-all active:scale-95 disabled:opacity-50 group"
+                                >
+                                    {isLoadingMore ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin text-primary-400" />
+                                            <span>Buscando registros...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ChevronDown className="w-5 h-5 text-primary-400 group-hover:translate-y-1 transition-transform" />
+                                            <span>Ver transações mais antigas</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
 

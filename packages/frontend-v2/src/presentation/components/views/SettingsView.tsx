@@ -266,6 +266,20 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                         </div>
                     </button>
 
+                    <button onClick={() => navigate('/app/logistics')} className="w-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 hover:from-blue-500/20 hover:to-purple-500/20 text-white border border-blue-500/20 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group">
+                        <span className="flex items-center gap-3">
+                            <ShieldCheck size={18} className="text-blue-400 group-hover:text-purple-400 transition-colors" />
+                            Ser Entregador da Comunidade
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] bg-blue-500 text-black px-2 py-1 rounded-full font-extrabold">
+                                GANHE 90%
+                            </span>
+                            <ChevronRight size={16} className="text-zinc-600 group-hover:text-white transition-colors" />
+                        </div>
+                    </button>
+
+
                     <button onClick={() => window.dispatchEvent(new CustomEvent('open-bug-report'))} className="w-full bg-surfaceHighlight hover:bg-zinc-800 text-white border border-white/5 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group">
                         <span className="flex items-center gap-3">
                             <Bug size={18} className="text-zinc-400 group-hover:text-red-400 transition-colors" />

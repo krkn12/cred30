@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Shield, UserX, UserCheck, ShieldCheck, Mail, Calendar, DollarSign, Award, Plus, X as XIcon, UserPlus } from 'lucide-react';
+import { Search, Shield, UserX, UserCheck, ShieldCheck, Mail, Calendar, DollarSign, Award, Plus, X as XIcon, UserPlus, Loader2, ChevronDown } from 'lucide-react';
 import { apiService } from '../../../../application/services/api.service';
 
 interface User {
@@ -17,9 +17,15 @@ interface User {
 export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: any, onError: any }) => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
-    const [statusFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
+    const [offset, setOffset] = useState(0);
+    const [hasMore, setHasMore] = useState(false);
+    const [total, setTotal] = useState(0);
+    const LIMIT = 50;
+
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newAttendant, setNewAttendant] = useState({
         name: '',
@@ -33,17 +39,35 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: any, on
         fetchUsers();
     }, [roleFilter, statusFilter]);
 
-    const fetchUsers = async () => {
-        setLoading(true);
+    const fetchUsers = async (isLoadMore = false) => {
+        if (!isLoadMore) {
+            setLoading(true);
+            setOffset(0);
+        } else {
+            setIsLoadingMore(true);
+        }
+
         try {
-            const res = await apiService.adminGetUsers({ search, role: roleFilter, status: statusFilter });
+            const currentOffset = isLoadMore ? offset + LIMIT : 0;
+            const res = await apiService.adminGetUsers({
+                search,
+                role: roleFilter,
+                status: statusFilter,
+                limit: LIMIT,
+                offset: currentOffset
+            });
             if (res.success) {
-                setUsers(res.data);
+                const newUsers = res.data || [];
+                setUsers(prev => isLoadMore ? [...prev, ...newUsers] : newUsers);
+                setHasMore(res.pagination?.hasMore || false);
+                setTotal(res.pagination?.total || 0);
+                if (isLoadMore) setOffset(currentOffset);
             }
         } catch (error: any) {
             onError('Erro', 'Falha ao buscar membros');
         } finally {
             setLoading(false);
+            setIsLoadingMore(false);
         }
     };
 
@@ -108,6 +132,17 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: any, on
                         <option value="MEMBER">Membros</option>
                         <option value="ATTENDANT">Atendentes</option>
                         <option value="ADMIN">Admins</option>
+                    </select>
+
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-bold rounded-xl px-4 py-3.5 outline-none focus:border-primary-500/50 cursor-pointer"
+                        aria-label="Filtrar por status"
+                    >
+                        <option value="">Todos Status</option>
+                        <option value="ACTIVE">Ativos</option>
+                        <option value="BLOCKED">Bloqueados</option>
                     </select>
 
                     <button
@@ -222,6 +257,31 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: any, on
                         </tbody>
                     </table>
                 </div>
+
+                {hasMore && (
+                    <div className="p-8 flex flex-col items-center gap-4 bg-black/20 border-t border-zinc-800/50">
+                        <button
+                            onClick={() => fetchUsers(true)}
+                            disabled={isLoadingMore}
+                            className="bg-zinc-800 hover:bg-zinc-700 text-white px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-3 border border-zinc-700 shadow-xl group disabled:opacity-50"
+                        >
+                            {isLoadingMore ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin text-primary-400" />
+                                    Buscando Membros...
+                                </>
+                            ) : (
+                                <>
+                                    <ChevronDown size={16} className="text-primary-400 group-hover:translate-y-0.5 transition-transform" />
+                                    Ver mais usuários
+                                </>
+                            )}
+                        </button>
+                        <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.2em]">
+                            Mostrando {users.length} de {total} membros no total
+                        </p>
+                    </div>
+                )}
             </div>
 
             {showCreateModal && (

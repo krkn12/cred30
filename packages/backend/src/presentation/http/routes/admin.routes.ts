@@ -168,19 +168,40 @@ adminRoutes.post('/costs/:id/pay', adminMiddleware, auditMiddleware('PAY_COST', 
   }
 });
 
-// Histórico Financeiro do Admin (Extrato)
+// Histórico Financeiro do Admin (Extrato) com Paginação
 adminRoutes.get('/finance-history', adminMiddleware, async (c) => {
   try {
     const pool = getDbPool(c);
+    const { limit, offset } = c.req.query();
+    const limitNum = parseInt(limit || '50');
+    const offsetNum = parseInt(offset || '0');
+
+    const baseFilter = `WHERE action IN ('MANUAL_PROFIT_ADD', 'PAY_COST', 'ADD_COST', 'DELETE_COST', 'MANUAL_ADD_QUOTA')`;
+
+    // Buscar total
+    const totalResult = await pool.query(`SELECT COUNT(*) FROM admin_logs ${baseFilter}`);
+    const total = parseInt(totalResult.rows[0].count);
+
+    // Buscar logs paginados
     const result = await pool.query(`
       SELECT l.*, u.name as admin_name 
       FROM admin_logs l
       LEFT JOIN users u ON l.admin_id = u.id
-      WHERE l.action IN ('MANUAL_PROFIT_ADD', 'PAY_COST', 'ADD_COST', 'DELETE_COST', 'MANUAL_ADD_QUOTA')
+      ${baseFilter}
       ORDER BY l.created_at DESC
-      LIMIT 50
-    `);
-    return c.json({ success: true, data: result.rows });
+      LIMIT $1 OFFSET $2
+    `, [limitNum, offsetNum]);
+
+    return c.json({
+      success: true,
+      data: result.rows,
+      pagination: {
+        total,
+        limit: limitNum,
+        offset: offsetNum,
+        hasMore: offsetNum + result.rows.length < total
+      }
+    });
   } catch (error: any) {
     return c.json({ success: false, message: error.message }, 500);
   }
@@ -1827,14 +1848,15 @@ const createAttendantSchema = z.object({
   pixKey: z.string().min(5)
 });
 
-// Listar todos os usuários com filtros
+// Listar todos os usuários com filtros e paginação
 adminRoutes.get('/users', adminMiddleware, async (c) => {
   try {
     const pool = getDbPool(c);
-    const { search, role, status } = c.req.query();
+    const { search, role, status, limit, offset } = c.req.query();
+    const limitNum = parseInt(limit || '50');
+    const offsetNum = parseInt(offset || '0');
 
-    let query = `
-      SELECT id, name, email, role, status, balance, score, created_at, pix_key, membership_type
+    let baseQuery = `
       FROM users
       WHERE 1=1
     `;
@@ -1842,28 +1864,49 @@ adminRoutes.get('/users', adminMiddleware, async (c) => {
     let paramIndex = 1;
 
     if (search) {
-      query += ` AND (name ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`;
+      baseQuery += ` AND (name ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`;
       params.push(`%${search}%`);
       paramIndex++;
     }
 
     if (role) {
-      query += ` AND role = $${paramIndex}`;
+      baseQuery += ` AND role = $${paramIndex}`;
       params.push(role);
       paramIndex++;
     }
 
     if (status) {
-      query += ` AND status = $${paramIndex}`;
+      baseQuery += ` AND status = $${paramIndex}`;
       params.push(status);
       paramIndex++;
     }
 
-    query += ` ORDER BY created_at DESC LIMIT 100`;
+    // Buscar total para paginação
+    const totalResult = await pool.query(`SELECT COUNT(*) as total ${baseQuery}`, params);
+    const total = parseInt(totalResult.rows[0].total);
 
-    const result = await pool.query(query, params);
-    return c.json({ success: true, data: result.rows });
+    // Buscar dados paginados
+    const dataQuery = `
+      SELECT id, name, email, role, status, balance, score, created_at, pix_key, membership_type
+      ${baseQuery}
+      ORDER BY created_at DESC 
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+    params.push(limitNum, offsetNum);
+
+    const result = await pool.query(dataQuery, params);
+    return c.json({
+      success: true,
+      data: result.rows,
+      pagination: {
+        total,
+        limit: limitNum,
+        offset: offsetNum,
+        hasMore: offsetNum + result.rows.length < total
+      }
+    });
   } catch (error: any) {
+    console.error('Erro ao listar usuários:', error);
     return c.json({ success: false, message: error.message }, 500);
   }
 });

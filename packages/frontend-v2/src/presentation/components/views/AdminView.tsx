@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import packageJson from '../../../../package.json';
 import {
-    ShieldCheck, RefreshCw, LogOut, Send, MessageSquare, PieChart, Activity, Settings as SettingsIcon, UserPlus, ShoppingBag as ShoppingBagIcon, Vote, Bug, TrendingUp
+    ShieldCheck, RefreshCw, LogOut, Send, MessageSquare, PieChart, Activity, Settings as SettingsIcon, UserPlus, ShoppingBag as ShoppingBagIcon, Vote, Bug, TrendingUp, Truck
 } from 'lucide-react';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { AppState } from '../../../domain/types/common.types';
@@ -19,6 +19,7 @@ import { AdminGovernance } from '../features/admin/tabs/AdminGovernance';
 import { AdminReviews } from '../features/admin/tabs/AdminReviews';
 import { AdminBugs } from '../features/admin/tabs/AdminBugs';
 import { AdminInvestments } from '../features/admin/tabs/AdminInvestments';
+import { AdminLogistics } from '../features/admin/tabs/AdminLogistics';
 
 // Existing Shared Components
 import { AdminStoreManager } from '../features/store/admin-store.component';
@@ -32,7 +33,7 @@ interface AdminViewProps {
     onError: (title: string, message: string) => void;
 }
 
-type TabType = 'overview' | 'payouts' | 'system' | 'investments' | 'store' | 'referrals' | 'support' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs';
+type TabType = 'overview' | 'payouts' | 'system' | 'investments' | 'store' | 'referrals' | 'support' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics';
 
 export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: AdminViewProps) => {
     const [isLoading, setIsLoading] = useState(false);
@@ -68,7 +69,11 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
 
     useEffect(() => {
         fetchCounts();
-        const interval = setInterval(fetchCounts, 30000);
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                fetchCounts();
+            }
+        }, 30000);
         return () => clearInterval(interval);
     }, [fetchCounts]);
 
@@ -109,6 +114,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         { id: 'governance', name: 'Governança', icon: Vote, roles: ['ADMIN'] },
         { id: 'reviews', name: 'Depoimentos', icon: MessageSquare, count: pendingReviewsCount, roles: ['ADMIN'] },
         { id: 'bugs', name: 'Bugs', icon: Bug, count: pendingBugsCount, roles: ['ADMIN'] },
+        { id: 'logistics', name: 'Logística', icon: Truck, roles: ['ADMIN'] },
         { id: 'support', name: 'Suporte', icon: MessageSquare, count: pendingChatsCount, roles: ['ADMIN', 'ATTENDANT'] },
     ].filter(tab => tab.roles.includes(userRole));
 
@@ -190,6 +196,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                 {activeTab === 'governance' && <AdminGovernance onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'reviews' && <AdminReviews onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'bugs' && <AdminBugs onSuccess={onSuccess} onError={onError} />}
+                {activeTab === 'logistics' && <AdminLogistics />}
                 {activeTab === 'support' && <SupportAdminView />}
             </div>
 
