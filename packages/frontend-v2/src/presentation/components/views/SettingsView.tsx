@@ -253,6 +253,19 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                 <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest ml-1 mb-4">Conta</h3>
                 <div className="space-y-3">
 
+                    <button onClick={() => navigate('/app/seller')} className="w-full bg-gradient-to-r from-primary-500/10 to-emerald-500/10 hover:from-primary-500/20 hover:to-emerald-500/20 text-white border border-primary-500/20 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group">
+                        <span className="flex items-center gap-3">
+                            <ShieldCheck size={18} className="text-primary-400 group-hover:text-emerald-400 transition-colors" />
+                            Tornar-se Vendedor Verificado
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] bg-primary-500 text-black px-2 py-1 rounded-full font-extrabold">
+                                TAXA 12%
+                            </span>
+                            <ChevronRight size={16} className="text-zinc-600 group-hover:text-white transition-colors" />
+                        </div>
+                    </button>
+
                     <button onClick={() => window.dispatchEvent(new CustomEvent('open-bug-report'))} className="w-full bg-surfaceHighlight hover:bg-zinc-800 text-white border border-white/5 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group">
                         <span className="flex items-center gap-3">
                             <Bug size={18} className="text-zinc-400 group-hover:text-red-400 transition-colors" />
