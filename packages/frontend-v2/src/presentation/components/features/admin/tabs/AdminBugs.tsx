@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bug, CheckCircle2, Clock, AlertTriangle, Trash2, MessageSquare, RefreshCw } from 'lucide-react';
+import { Bug, CheckCircle2, Clock, AlertTriangle, Trash2, RefreshCw } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
 interface AdminBugsProps {

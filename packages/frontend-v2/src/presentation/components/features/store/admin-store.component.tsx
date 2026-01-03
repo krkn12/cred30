@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, ExternalLink, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { Plus, Edit2, Trash2, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { Product } from '../../../../domain/types/common.types';
 import { apiService } from '../../../../application/services/api.service';
 import { ConfirmModal } from '../../ui/ConfirmModal';

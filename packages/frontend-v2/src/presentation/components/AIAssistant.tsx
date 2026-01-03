@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, MessageSquare, X, Send, Star } from 'lucide-react';
+import { X, Send, Star } from 'lucide-react';
 import { apiService } from '../../application/services/api.service';
 
 interface AIAssistantProps {
-  appState: any;
 }
 
-export const AIAssistant: React.FC<AIAssistantProps> = ({ appState }) => {
+export const AIAssistant: React.FC<AIAssistantProps> = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([]);

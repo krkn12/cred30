@@ -1,13 +1,13 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense, useMemo } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from '../components/layout/main-layout.component';
 import { UpdateNotification } from '../components/ui/update-notification.component';
 import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, repayInstallment, changePassword, upgradePro, claimAdReward, apiService } from '../../application/services/storage.service';
 import { syncService } from '../../application/services/sync.service';
-import { AppState, Quota, Loan, Transaction, User } from '../../domain/types/common.types';
+import { AppState } from '../../domain/types/common.types';
 import { QUOTA_PRICE } from '../../shared/constants/app.constants';
 import { calculateTotalToPay } from '../../shared/utils/financial.utils';
-import { Check, X as XIcon, RefreshCw, AlertTriangle, Users, Copy, Wallet, TrendingUp, ArrowUpFromLine, Lock, Download } from 'lucide-react';
+import { Check, X as XIcon, RefreshCw, AlertTriangle, Users, Copy, TrendingUp } from 'lucide-react';
 import { PIXModal } from '../components/ui/pix-modal.component';
 import { CardModal } from '../components/ui/card-modal.component';
 import { AuthScreen } from '../components/views/AuthScreen';
@@ -82,6 +82,7 @@ export default function App() {
   const isOnline = useOnlineStatus();
   const [showReferral, setShowReferral] = useState(false);
   const [showVip, setShowVip] = useState(false);
+  void showVip; void setShowVip;
 
   const [pixModalData, setPixModalData] = useState<{
     isOpen: boolean,
@@ -135,12 +136,12 @@ export default function App() {
 
   const [showBugReport, setShowBugReport] = useState(false);
 
-  const isStaff = React.useMemo(() => {
+  const isStaff = useMemo(() => {
     if (!state.currentUser) return false;
     return state.currentUser.isAdmin || state.currentUser.role === 'ADMIN' || state.currentUser.role === 'ATTENDANT';
   }, [state.currentUser?.isAdmin, state.currentUser?.role]);
 
-  const totalQuotaValue = React.useMemo(() => {
+  const totalQuotaValue = useMemo(() => {
     if (!state.currentUser) return 0;
     return state.quotas
       .filter(q => q.userId === state.currentUser.id)
@@ -158,7 +159,7 @@ export default function App() {
     const handleAuthExpired = () => setState(prev => ({ ...prev, currentUser: null }));
     window.addEventListener('auth-expired', handleAuthExpired);
 
-    const handleActionQueued = (e: any) => {
+    const handleActionQueued = () => {
       setShowSuccess({
         isOpen: true,
         title: 'Modo Offline',
@@ -314,6 +315,7 @@ export default function App() {
       setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Aporte realizado com sucesso!' });
     } catch (error: any) { setShowError({ isOpen: true, title: 'Erro', message: error.message }); }
   };
+  void handleReinvest;
 
   const handleRequestLoan = async (amount: number, installments: number) => {
     try {
@@ -396,6 +398,7 @@ export default function App() {
       setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Recompensa creditada!' });
     } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
   };
+  void handleClaimAdReward;
 
   const handleUpgradeProClick = async (method: 'pix' | 'card') => {
     try {
@@ -493,19 +496,9 @@ export default function App() {
                       onGames={() => navigate('/app/games')}
                       onLoans={() => navigate('/app/loans')}
                       onWithdraw={() => navigate('/app/withdraw')}
-                      onReinvest={handleReinvest}
                       onRefer={() => setShowReferral(true)}
-                      onVip={() => setShowVip(true)}
-                      onLogout={handleLogout}
                       onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
                       onError={(title, message) => setShowError({ isOpen: true, title, message })}
-                      onChangePassword={async (oldPass, newPass) => {
-                        await changePassword(oldPass, newPass);
-                        setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Senha alterada!' });
-                      }}
-                      onClaimReward={handleClaimAdReward}
-                      onMarketplace={() => navigate('/app/marketplace')}
-                      onEarn={() => navigate('/app/earn')}
                       onEducation={() => navigate('/app/education')}
                       onVoting={() => navigate('/app/voting')}
                     />
@@ -736,7 +729,7 @@ export default function App() {
                 onError={(t, m) => setShowError({ isOpen: true, title: t, message: m })}
               />
             )}
-            <AIAssistant appState={state} />
+            <AIAssistant />
           </>
         } />
       </Routes>

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { CheckCircle2, XCircle, Info, Trophy, BarChart3, Clock, AlertTriangle, FileText, Download, Users, ShieldCheck, Zap, Gavel } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CheckCircle2, XCircle, Info, Trophy, BarChart3, FileText, Users, ShieldCheck, Zap, Gavel } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 import jsPDF from 'jspdf';
 import { AppState } from '../../../domain/types/common.types';
@@ -14,7 +14,8 @@ interface VotingViewProps {
     onError: (title: string, msg: string) => void;
 }
 
-export const VotingView: React.FC<VotingViewProps> = ({ appState, onBack, onRefresh, onSuccess, onError }) => {
+export const VotingView = ({ appState, onBack, onRefresh, onSuccess, onError }: VotingViewProps) => {
+    void onBack;
     const [proposals, setProposals] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [votingInProgress, setVotingInProgress] = useState<number | null>(null);
@@ -23,6 +24,7 @@ export const VotingView: React.FC<VotingViewProps> = ({ appState, onBack, onRefr
     const user = appState?.currentUser;
     const activeQuotas = appState?.quotas?.filter(q => q.userId === user?.id && q.status === 'ACTIVE').length ?? 0;
     const totalCommunityMembers = appState?.users?.length ?? 0;
+    void totalCommunityMembers;
 
     // Guard clause: prevent crash if appState or user is not loaded yet
     if (!appState || !user) {

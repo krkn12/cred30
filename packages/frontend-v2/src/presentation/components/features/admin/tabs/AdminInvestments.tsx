@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Plus, DollarSign, RefreshCw, Briefcase, PiggyBank, ArrowUpRight, ArrowDownRight, Coins, AlertTriangle } from 'lucide-react';
+import { TrendingUp, Plus, RefreshCw, Briefcase, PiggyBank, ArrowUpRight, ArrowDownRight, Coins, AlertTriangle } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
 interface Investment {

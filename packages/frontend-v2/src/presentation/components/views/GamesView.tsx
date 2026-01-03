@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Gamepad2, PlayCircle, Trophy, ArrowLeft, RefreshCw, X as XIcon, BookOpen } from 'lucide-react';
 import { PromoVideoPlayer } from '../ui/PromoVideoPlayer';
@@ -8,7 +8,7 @@ interface GamesViewProps {
     onBack?: () => void;
 }
 
-export const GamesView: React.FC<GamesViewProps> = ({ onBack }) => {
+export const GamesView = ({ onBack }: GamesViewProps) => {
     const [loadingAd, setLoadingAd] = useState(false);
     const [showAdModal, setShowAdModal] = useState(false);
     const [selectedGameUrl, setSelectedGameUrl] = useState('');

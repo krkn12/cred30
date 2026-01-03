@@ -1,6 +1,6 @@
-import React from 'react';
+import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, Copy, Lock, ChevronRight, LogOut, Trash2, X as XIcon, ShieldCheck, QrCode, Repeat, AlertCircle, Check, Bug, FileText } from 'lucide-react';
+import { Star, Copy, Lock, ChevronRight, LogOut, Trash2, X as XIcon, ShieldCheck, QrCode, AlertCircle, Check, Bug, FileText } from 'lucide-react';
 import { User } from '../../../domain/types/common.types';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { get2FASetup, verify2FA } from '../../../application/services/storage.service';
@@ -13,27 +13,27 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
     onChangePassword: (oldPass: string, newPass: string) => Promise<void>,
     onRefresh?: () => void
 }) => {
-    const [showConfirmDelete, setShowConfirmDelete] = React.useState(false);
-    const [showChangePassword, setShowChangePassword] = React.useState(false);
-    const [oldPassword, setOldPassword] = React.useState('');
-    const [newPassword, setNewPassword] = React.useState('');
-    const [confirmPassword, setConfirmPassword] = React.useState('');
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
-    const [deleteCode, setDeleteCode] = React.useState('');
-    const [error, setError] = React.useState('');
+    const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+    const [showChangePassword, setShowChangePassword] = useState(false);
+    const [oldPassword, setOldPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [deleteCode, setDeleteCode] = useState('');
+    const [error, setError] = useState('');
 
     // CPF State
-    const [showCpfModal, setShowCpfModal] = React.useState(false);
-    const [cpfInput, setCpfInput] = React.useState('');
-    const [cpfError, setCpfError] = React.useState('');
-    const [cpfSuccess, setCpfSuccess] = React.useState('');
-    const [savingCpf, setSavingCpf] = React.useState(false);
+    const [showCpfModal, setShowCpfModal] = useState(false);
+    const [cpfInput, setCpfInput] = useState('');
+    const [cpfError, setCpfError] = useState('');
+    const [cpfSuccess, setCpfSuccess] = useState('');
+    const [savingCpf, setSavingCpf] = useState(false);
 
     // 2FA Setup
-    const [show2FASetup, setShow2FASetup] = React.useState(false);
-    const [twoFactorData, setTwoFactorData] = React.useState<{ secret: string, qrCode: string, otpUri: string } | null>(null);
-    const [verifyCode, setVerifyCode] = React.useState('');
-    const [successMessage, setSuccessMessage] = React.useState('');
+    const [show2FASetup, setShow2FASetup] = useState(false);
+    const [twoFactorData, setTwoFactorData] = useState<{ secret: string, qrCode: string, otpUri: string } | null>(null);
+    const [verifyCode, setVerifyCode] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
 
     // Format CPF: 000.000.000-00
     const formatCpf = (value: string) => {
@@ -79,7 +79,7 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
         }
     };
 
-    const handleVerify2FA = async (e: React.FormEvent) => {
+    const handleVerify2FA = async (e: FormEvent) => {
         e.preventDefault();
         setError('');
         setIsSubmitting(true);
@@ -101,7 +101,7 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
         }
     };
 
-    const handlePasswordChange = async (e: React.FormEvent) => {
+    const handlePasswordChange = async (e: FormEvent) => {
         e.preventDefault();
         setError('');
 

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Lock, EyeOff, ShieldCheck, Database, Fingerprint, Trash2, FileCheck, Globe, AlertTriangle } from 'lucide-react';
 

@@ -6,7 +6,6 @@ import { executeInTransaction, updateUserBalance, createTransaction, processTran
 import { WITHDRAWAL_FIXED_FEE, PRIORITY_WITHDRAWAL_FEE, ASAAS_PIX_OUT_FEE, MIN_WITHDRAWAL_AMOUNT } from '../../../shared/constants/business.constants';
 import { twoFactorService } from '../../../application/services/two-factor.service';
 import { notificationService } from '../../../application/services/notification.service';
-import { calculateUserLoanLimit } from '../../../application/services/credit-analysis.service';
 import { getWelcomeBenefit, consumeWelcomeBenefitUse } from '../../../application/services/welcome-benefit.service';
 
 const withdrawalRoutes = new Hono();

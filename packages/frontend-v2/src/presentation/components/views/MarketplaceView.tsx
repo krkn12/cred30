@@ -1,12 +1,11 @@
-import React, { useState, useEffect, memo, useMemo, useCallback } from 'react';
+import { useState, useEffect, memo, useCallback, Fragment } from 'react';
 import {
     Search, Tag, ShoppingBag, PlusCircle, ImageIcon, Zap, Sparkles,
-    ChevronRight, ArrowLeft, ShieldCheck, Heart, Share2, MessageCircle,
-    Truck, Clock, CheckCircle2, History, Package, RefreshCw, Wand2, X as XIcon,
-    QrCode, WifiOff, ScanLine, MapPin, Phone, Navigation2
+    ChevronRight, ArrowLeft, ShieldCheck, Heart, Share2,
+    Truck, CheckCircle2, History, Package, RefreshCw, Wand2, X as XIcon,
+    QrCode, MapPin, Phone, Navigation2
 } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
-import { Scanner } from '@yudiel/react-qr-scanner';
+
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppState } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
@@ -302,6 +301,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         setRedeemCode('');
         setView('browse');
     };
+    void handleRedeemOfflineCode;
 
     const formatCurrency = (val: number) => {
         return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -501,7 +501,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 </div>
 
                                 {filtered.map((item, index) => (
-                                    <React.Fragment key={item.id}>
+                                    <Fragment key={item.id}>
                                         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden group hover:border-primary-500/30 transition-all flex flex-col">
                                             <div className="aspect-square bg-zinc-950 flex items-center justify-center relative">
                                                 {item.image_url ? (
@@ -573,7 +573,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                 img={index === 2 ? "https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=600&q=80" : "https://images.unsplash.com/photo-1554224155-16974a4005d1?auto=format&fit=crop&w=600&q=80"}
                                             />
                                         )}
-                                    </React.Fragment>
+                                    </Fragment>
                                 ))}
 
                                 <div className="col-span-1">

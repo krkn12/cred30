@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { UserPlus, Users, Trash2 } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
@@ -7,7 +7,7 @@ interface AdminReferralsProps {
     onError: (title: string, message: string) => void;
 }
 
-export const AdminReferrals: React.FC<AdminReferralsProps> = ({ onSuccess, onError }) => {
+export const AdminReferrals = ({ onSuccess, onError }: AdminReferralsProps) => {
     const [referralCodes, setReferralCodes] = useState<any[]>([]);
     const [newReferralCode, setNewReferralCode] = useState('');
     const [referralMaxUses, setReferralMaxUses] = useState('');

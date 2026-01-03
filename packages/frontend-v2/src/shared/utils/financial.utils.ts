@@ -1,4 +1,4 @@
-import { MARKETPLACE_ESCROW_FEE_RATE } from '../constants/app.constants';
+import { MARKETPLACE_ESCROW_FEE_RATE as _MARKETPLACE_ESCROW_FEE_RATE } from '../constants/app.constants';
 
 // Taxas do Asaas (Gateway de Pagamento) - Sincronizadas com o Backend
 export const MERCADO_PAGO_PIX_FEE_PERCENT = 0.0099; // 0.99% para PIX

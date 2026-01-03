@@ -2,7 +2,8 @@ import { User, Quota, Loan, Transaction, AppState } from '../../domain/types/com
 import { apiService } from './api.service';
 export { apiService };
 import { syncService } from './sync.service';
-import { QUOTA_PRICE, LOAN_INTEREST_RATE, PENALTY_RATE, VESTING_PERIOD_MS } from '../../shared/constants/app.constants';
+// Imports removed as they were unused
+
 
 // Função para converter dados da API para o formato esperado pelo frontend
 const convertApiUserToUser = (apiUser: any): User => {
@@ -227,7 +228,7 @@ export const loadState = async (): Promise<AppState> => {
 };
 
 // Salvar estado da aplicação (não necessário com API, mas mantido para compatibilidade)
-export const saveState = (state: AppState): void => {
+export const saveState = (_state: AppState): void => {
   // Com a API, não precisamos salvar o estado no localStorage
   // Esta função é mantida apenas para compatibilidade com o código existente
   console.log('saveState chamado, mas não é necessário com API');
@@ -248,7 +249,8 @@ export const updateProfitPool = async (amountToAdd: number): Promise<{ success: 
   }
 };
 
-const CACHE_DURATION = 10000; // 10 segundos de cache (mantido para compatibilidade se necessário)
+// CACHE_DURATION removed as it was unused
+
 
 // Cache para dashboard administrativo
 let cachedDashboard: any = null;
@@ -342,7 +344,7 @@ export const upgradePro = async (method: 'pix' | 'card' | 'balance', cardData?: 
   return await apiService.post<any>('/monetization/upgrade-pro', { method, ...cardData });
 };
 
-export const fastForwardTime = async (months: number): Promise<void> => {
+export const fastForwardTime = async (_months: number): Promise<void> => {
   console.log('Simulação de tempo desativada.');
 };
 

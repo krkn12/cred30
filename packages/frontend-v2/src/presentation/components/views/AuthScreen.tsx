@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Users, KeyRound, Lock, QrCode, Repeat, ArrowLeft, Mail, ShieldCheck, XCircle, ChevronRight, Check, Copy } from 'lucide-react';
+import { Users, KeyRound, Lock, QrCode, Repeat, ArrowLeft, Mail, ShieldCheck, XCircle, Check, Copy } from 'lucide-react';
 import { loginUser, registerUser, resetPassword, verify2FA, apiService } from '../../../application/services/storage.service';
 import { TermsAcceptanceModal } from '../ui/TermsAcceptanceModal';
 import { User } from '../../../domain/types/common.types';
@@ -27,7 +27,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
 
     // 2FA Setup State
     const [twoFactorData, setTwoFactorData] = useState<{ secret: string, qrCode: string, otpUri: string } | null>(null);
-    const [is2FASetup, setIs2FASetup] = useState(false);
+    const [, setIs2FASetup] = useState(false);
     const [requires2FA, setRequires2FA] = useState(false);
     const [twoFactorCode, setTwoFactorCode] = useState('');
 
@@ -37,11 +37,13 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
     const [showTerms, setShowTerms] = useState(false);
     const [pendingUser, setPendingUser] = useState<User | null>(null);
 
+
+
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
 
     // Capturar código de indicação da URL se existir
-    React.useEffect(() => {
+    useEffect(() => {
         const ref = searchParams.get('ref');
         if (ref) {
             setReferralCode(ref.toUpperCase());
@@ -49,7 +51,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
         }
     }, [searchParams]);
 
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleLogin = async (e: FormEvent) => {
         e.preventDefault();
         setError(null);
         setSuccess(null);
@@ -103,7 +105,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
     };
 
     // Função para recuperar 2FA usando email + senha + frase secreta
-    const handleRecover2FA = async (e: React.FormEvent) => {
+    const handleRecover2FA = async (e: FormEvent) => {
         e.preventDefault();
         setError(null);
         setSuccess(null);
@@ -147,7 +149,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
     };
 
 
-    const handleVerifySubmit = async (e: React.FormEvent) => {
+    const handleVerifySubmit = async (e: FormEvent) => {
         e.preventDefault();
         setError(null);
         try {

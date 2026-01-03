@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowRight, Shield, PiggyBank, CreditCard, Download, Smartphone, X as XIcon, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowRight, Shield, Download, Smartphone, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // Interface para o evento de instalação do PWA

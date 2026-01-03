@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { QrCode, Copy, X as XIcon, CheckCircle2 } from 'lucide-react';
+import { QrCode, Copy, CheckCircle2 } from 'lucide-react';
 
 interface PIXModalProps {
     isOpen: boolean;

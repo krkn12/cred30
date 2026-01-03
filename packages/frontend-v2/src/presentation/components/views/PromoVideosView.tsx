@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
-import { Play, Pause, DollarSign, Clock, Eye, ChevronRight, Plus, X as XIcon, CheckCircle2, AlertTriangle, Youtube, Film, ExternalLink, Loader2, Wallet, Smartphone, CreditCard, Zap, Trash2 } from 'lucide-react';
+import { Play, DollarSign, Clock, Eye, ChevronRight, Plus, X as XIcon, CheckCircle2, Youtube, Film, ExternalLink, Wallet, Smartphone, CreditCard, Zap, Trash2 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { apiService } from '../../../application/services/api.service';
 
@@ -859,7 +859,6 @@ const CreateCampaignModal: React.FC<{
     const [loading, setLoading] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<'BALANCE' | 'PIX' | 'CARD'>('BALANCE');
     const [payerCpfCnpj, setPayerCpfCnpj] = useState('');
-    const [paymentSuccessData, setPaymentSuccessData] = useState<any>(null);
     const [form, setForm] = useState({
         title: '',
         description: '',
@@ -880,8 +879,6 @@ const CreateCampaignModal: React.FC<{
 
     const estimatedViews = Math.floor((form.budget / form.pricePerView) * 1.02); // 2% bonus views
     const viewerEarning = form.pricePerView * 0.60;
-    const quotaHoldersShare = form.pricePerView * 0.25;
-    const serviceFee = form.pricePerView * 0.15;
 
     // Lista de tags para o formulário
     const FORM_TAGS = ['ENTRETENIMENTO', 'MUSICA', 'EDUCACAO', 'GAMES', 'LIFESTYLE', 'TECNOLOGIA', 'NEGOCIOS', 'SAUDE', 'HUMOR', 'OUTROS'];

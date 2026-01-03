@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { TrendingUp, X as XIcon, Lock, DollarSign, Award, Download, ShieldCheck, Calendar, Info, Repeat } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { TrendingUp, X as XIcon, Lock, DollarSign, Award, Download, ShieldCheck, Info, Repeat } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Quota } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
@@ -21,7 +21,7 @@ export const PortfolioView = ({ quotas, hasLoans, onSell, onSellAll }: Portfolio
     const [titleInfo, setTitleInfo] = useState<any>(null);
     const navigate = useNavigate();
 
-    React.useEffect(() => {
+    useEffect(() => {
         checkEligibility();
     }, []);
 

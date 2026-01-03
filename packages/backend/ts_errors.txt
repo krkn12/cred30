@@ -1,0 +1,15 @@
+src/application/validators/auth.validator.ts(2,33): error TS2307: Cannot find module '../../../shared/errors/validation.error' or its corresponding type declarations.
+src/domain/entities/loan.entity.ts(1,26): error TS2307: Cannot find module 'mongodb' or its corresponding type declarations.
+src/domain/entities/quota.entity.ts(1,26): error TS2307: Cannot find module 'mongodb' or its corresponding type declarations.
+src/domain/entities/transaction.entity.ts(1,26): error TS2307: Cannot find module 'mongodb' or its corresponding type declarations.
+src/presentation/http/controllers/auth.controller.ts(4,33): error TS2307: Cannot find module '../../../application/use-cases/auth/register.use-case' or its corresponding type declarations.
+src/presentation/http/controllers/auth.controller.ts(5,38): error TS2307: Cannot find module '../../../application/use-cases/auth/reset-password.use-case' or its corresponding type declarations.
+src/presentation/http/controllers/auth.controller.ts(6,10): error TS2305: Module '"../../../application/dto/auth.dto"' has no exported member 'AuthDto'.
+src/presentation/http/routes/admin.routes.ts(865,25): error TS2304: Cannot find name 'calculateGatewayCost'.
+src/presentation/http/routes/admin.routes.ts(922,29): error TS2304: Cannot find name 'calculateGatewayCost'.
+src/presentation/http/routes/admin.routes.ts(977,34): error TS2304: Cannot find name 'updateTransactionStatus'.
+src/presentation/http/routes/admin.routes.ts(1143,34): error TS2304: Cannot find name 'updateTransactionStatus'.
+src/presentation/http/routes/admin.routes.ts(1329,34): error TS2304: Cannot find name 'updateTransactionStatus'.
+src/presentation/http/routes/admin.routes.ts(1415,34): error TS2304: Cannot find name 'updateTransactionStatus'.
+src/presentation/http/routes/admin.routes.ts(1482,13): error TS2304: Cannot find name 'simulatePaymentApproval'.
+src/presentation/http/routes/admin.routes.ts(1781,26): error TS2304: Cannot find name 'runAutoLiquidation'.

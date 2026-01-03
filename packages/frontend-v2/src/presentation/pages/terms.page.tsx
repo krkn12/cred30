@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ScrollText, ShieldCheck, Scale, Users, Gavel, AlertTriangle, CreditCard, ClockIcon, FileText, Zap, ShoppingBag, Tag, Lock, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Scale, Users, Gavel, AlertTriangle, ClockIcon, FileText, ShoppingBag, Lock, CheckCircle2 } from 'lucide-react';
 
 const TermsPage = () => {
     const navigate = useNavigate();

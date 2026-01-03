@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { User, UpdateUserRequest } from '../../../domain/entities/user.entity';
+import { User } from '../../../domain/entities/user.entity';
 import { UserContext } from '../../../shared/types/hono.types';
 import bcrypt from 'bcrypt';
 import { twoFactorService } from '../../../application/services/two-factor.service';

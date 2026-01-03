@@ -1,17 +1,15 @@
-import { ObjectId } from 'mongodb';
-
 export interface Loan {
-  _id?: ObjectId;
-  id?: string;
-  userId: string | ObjectId;
+  id: string | number;
+  userId: string | number;
   amount: number;
   totalRepayment: number;
   installments: number;
   interestRate: number;
-  requestDate: number;
-  status: 'PENDING' | 'APPROVED' | 'PAID' | 'DEFAULTED' | 'REJECTED' | 'PAYMENT_PENDING';
-  pixKeyToReceive: string;
-  dueDate: number;
+  requestDate?: number;
+  created_at?: Date;
+  status: 'PENDING' | 'APPROVED' | 'PAID' | 'DEFAULTED' | 'REJECTED' | 'PAYMENT_PENDING' | 'OVERDUE' | 'CANCELLED';
+  pixKeyToReceive?: string;
+  dueDate?: number | Date;
 }
 
 export interface CreateLoanRequest {

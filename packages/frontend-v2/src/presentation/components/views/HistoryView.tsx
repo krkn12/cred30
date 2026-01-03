@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { ArrowDownLeft, ArrowUpRight, Clock, CheckCircle2, XCircle, Search, Filter, Calendar, DollarSign, TrendingUp, TrendingDown, Receipt, ChevronDown } from 'lucide-react';
 import { Transaction } from '../../../domain/types/common.types';
 import { AdBanner } from '../ui/AdBanner';
@@ -91,7 +91,7 @@ export const HistoryView = ({ transactions, isPro }: HistoryViewProps) => {
     }, [filteredTransactions]);
 
     const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto pb-32">

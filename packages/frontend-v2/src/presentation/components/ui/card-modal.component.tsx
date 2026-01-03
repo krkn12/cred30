@@ -27,7 +27,7 @@ export const CardModal: React.FC<CardModalProps> = ({
     const [holderName, setHolderName] = useState('');
     const [expiry, setExpiry] = useState(''); // MM/YY
     const [cvv, setCvv] = useState('');
-    const [installments, setInstallments] = useState('1');
+    const [installments] = useState('1');
 
     // Holder Info
     const [cpf, setCpf] = useState(currentUser?.cpf || '');

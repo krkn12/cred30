@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BookOpen, PlayCircle, Clock, Trophy, AlertTriangle, CheckCircle2, X as XIcon, BrainCircuit, MousePointerClick, ArrowLeft } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 
@@ -15,9 +15,9 @@ interface EducationViewProps {
 }
 
 const POINTS_PER_SECOND = 0.5; // ~30 pontos por minuto. 1000 pontos = ~33 min. 
-const POINTS_TO_CURRENCY_RATE = 0.29 / 1000; // 1000 pontos = R$ 0.29
+const POINTS_TO_CURRENCY_RATE = 0.03 / 1000; // 1000 pontos = R$ 0.03
 
-export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess }) => {
+export const EducationView = ({ onBack, onSuccess }: EducationViewProps) => {
     // Estados da Aula
     const [selectedLesson, setSelectedLesson] = useState<any>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -25,6 +25,7 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
     // Estados de Farm e Pontos
     const [sessionPoints, setSessionPoints] = useState(0);
     const [totalPoints, setTotalPoints] = useState(0); // Acumulado persistente (mock por enquanto)
+    void totalPoints; void setTotalPoints;
     const [sessionTime, setSessionTime] = useState(0);
     const [playerState, setPlayerState] = useState<number>(-1);
     const [sessionId, setSessionId] = useState<number | null>(null);
@@ -268,7 +269,7 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
                                 <h3 className="text-white font-bold leading-tight mb-2">{lesson.title}</h3>
                                 <div className="flex items-center gap-2 text-[10px] text-zinc-500">
                                     <Trophy size={12} className="text-yellow-500" />
-                                    <span>Ganhe até R$ 0,29 a cada 1k pts</span>
+                                    <span>Ganhe até R$ 0,03 a cada 1k pts</span>
                                 </div>
                             </div>
                         </div>
@@ -404,12 +405,12 @@ export const EducationView: React.FC<EducationViewProps> = ({ onBack, onSuccess 
 };
 
 // Helper component to initialize individual YouTube players
-const YouTubeInit: React.FC<{
+const YouTubeInit = ({ videoId, onStateChange, onReady, playerId = 'edu-player' }: {
     videoId: string;
     onStateChange: (state: number) => void;
     onReady: (player: any) => void;
     playerId?: string;
-}> = ({ videoId, onStateChange, onReady, playerId = 'edu-player' }) => {
+}) => {
     useEffect(() => {
         const initPlayer = () => {
             new window.YT.Player(playerId, {

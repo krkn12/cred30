@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { apiService } from '../../../application/services/api.service';
 import { MessageSquare, User, Clock, Send, CheckCircle, RefreshCw, XCircle, Star, BarChart3 } from 'lucide-react';
 

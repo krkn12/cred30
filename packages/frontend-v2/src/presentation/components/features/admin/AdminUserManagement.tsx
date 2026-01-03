@@ -19,7 +19,7 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: any, on
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
-    const [statusFilter, setStatusFilter] = useState('');
+    const [statusFilter] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newAttendant, setNewAttendant] = useState({
         name: '',

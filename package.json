@@ -1,7 +1,7 @@
 {
   "name": "cred30",
   "private": true,
-  "version": "1.0.249",
+  "version": "1.0.250",
   "description": "Plataforma Associativa Cred30 - Monorepo",
   "workspaces": [
     "packages/*"
@@ -15,10 +15,10 @@
     "build:frontend": "cd packages/frontend-v2 && npm run build",
     "test": "npm run test:backend && npm run test:frontend",
     "test:backend": "cd packages/backend && npm test",
-    "test:frontend": "cd packages/frontend && npm test",
+    "test:frontend": "cd packages/frontend-v2 && npm test",
     "lint": "npm run lint:backend && npm run lint:frontend",
     "lint:backend": "cd packages/backend && npm run lint",
-    "lint:frontend": "cd packages/frontend && npm run lint",
+    "lint:frontend": "cd packages/frontend-v2 && npm run lint",
     "format": "prettier --write \"packages/**/*.{js,ts,tsx,json,css,md}\"",
     "clean": "npm run clean:backend && npm run clean:frontend",
     "clean:backend": "cd packages/backend && rm -rf dist",
