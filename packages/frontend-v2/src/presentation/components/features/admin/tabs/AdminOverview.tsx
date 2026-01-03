@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { PieChart, TrendingUp, DollarSign, Vote, Users } from 'lucide-react';
 import { AppState } from '../../../../../domain/types/common.types';
 
@@ -33,7 +33,7 @@ const MetricCard = memo(({ title, value, subtitle, icon: Icon, color }: any) => 
 
 MetricCard.displayName = 'MetricCard';
 
-export const AdminOverview: React.FC<AdminOverviewProps> = ({ state }) => {
+export const AdminOverview = ({ state }: AdminOverviewProps) => {
     const formatCurrency = (val: number | string) => {
         const numVal = typeof val === 'string' ? parseFloat(val) : val;
         if (typeof numVal !== 'number' || isNaN(numVal)) return 'R$ 0,00';

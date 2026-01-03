@@ -13,7 +13,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     isOpen,
     onClose,
     onSubmit,
-    transactionId,
+    transactionId: _transactionId,
     amount
 }) => {
     const [rating, setRating] = useState(5);
@@ -101,8 +101,8 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                                         <Star
                                             size={36}
                                             className={`transition-colors ${star <= (hoveredStar || rating)
-                                                    ? 'text-amber-400 fill-amber-400'
-                                                    : 'text-zinc-700'
+                                                ? 'text-amber-400 fill-amber-400'
+                                                : 'text-zinc-700'
                                                 }`}
                                         />
                                     </button>

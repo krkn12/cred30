@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
-    ArrowRight, Shield, PiggyBank, CreditCard, Download,
-    Smartphone, X as XIcon, ChevronDown, Rocket,
+    ArrowRight, Shield, Download,
+    Rocket,
     Star, Zap, Users, ShieldCheck, TrendingUp, Globe
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const LandingPage = () => {
     const [isVisible, setIsVisible] = useState(false);
-    const [activeTab, setActiveTab] = useState(0);
     const navigate = useNavigate();
 
     useEffect(() => {

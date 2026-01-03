@@ -30,10 +30,6 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         type === 'warning' ? 'bg-yellow-500 hover:bg-yellow-400 text-black' :
             'bg-primary-500 hover:bg-primary-400 text-black';
 
-    const iconColor = type === 'danger' ? 'text-red-400' :
-        type === 'warning' ? 'text-yellow-400' :
-            'text-primary-400';
-
     return (
         <div
             className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center z-[500] p-0 sm:p-4 animate-in fade-in duration-300"

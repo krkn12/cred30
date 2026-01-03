@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
-    Gamepad2, Star, Coins, Crown, PlayCircle,
+    Coins, Crown, PlayCircle,
     ArrowLeft, TrendingUp, ShieldCheck, Zap,
-    ChevronRight, Sparkles, Wand2, Lightbulb, RefreshCw, Users, Play, X as XIcon, Clock,
-    Gift, Calendar, Search, ShieldAlert, BadgeCheck, Rocket
+    Sparkles, RefreshCw, Users, X as XIcon, Clock,
+    Calendar, Search, ShieldAlert, BadgeCheck, Rocket
 } from 'lucide-react';
-import { PromoVideoPlayer } from '../ui/PromoVideoPlayer';
 import { AppState } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 

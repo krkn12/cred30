@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { TrendingUp, Coins, Activity, ArrowUpRight, ArrowDownLeft, Trash2, Check, Settings as SettingsIcon, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { TrendingUp, Activity, ArrowUpRight, ArrowDownLeft, Trash2, Check, Settings as SettingsIcon, AlertTriangle } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 import { AppState } from '../../../../../domain/types/common.types';
-import { updateProfitPool } from '../../../../../application/services/storage.service';
 
 interface AdminSystemProps {
     state: AppState;
@@ -11,13 +10,13 @@ interface AdminSystemProps {
     onError: (title: string, message: string) => void;
 }
 
-export const AdminSystem: React.FC<AdminSystemProps> = ({ state, onRefresh, onSuccess, onError }) => {
+export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSystemProps) => {
     const [systemCosts, setSystemCosts] = useState<any[]>([]);
     const [newCostDescription, setNewCostDescription] = useState('');
     const [newCostAmount, setNewCostAmount] = useState('');
     const [financeHistory, setFinanceHistory] = useState<any[]>([]);
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-    const [newProfit, setNewProfit] = useState('');
+
 
     useEffect(() => {
         fetchSystemCosts();
@@ -88,24 +87,6 @@ export const AdminSystem: React.FC<AdminSystemProps> = ({ state, onRefresh, onSu
             await apiService.delete(`/admin/costs/${id}`);
             onSuccess('Sucesso', 'Custo removido.');
             fetchSystemCosts();
-        } catch (e: any) {
-            onError('Erro', e.message);
-        }
-    };
-
-    const handleUpdateProfit = async () => {
-        if (!newProfit) return;
-        try {
-            const amount = parseFloat(newProfit);
-            const res = await updateProfitPool(amount);
-            if (res.success) {
-                onSuccess('Sucesso', 'Fundo de recompensas atualizado!');
-                setNewProfit('');
-                fetchFinanceHistory();
-                onRefresh();
-            } else {
-                onError('Erro', res.message);
-            }
         } catch (e: any) {
             onError('Erro', e.message);
         }

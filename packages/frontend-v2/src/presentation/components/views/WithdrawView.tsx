@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ArrowUpFromLine, ShieldCheck, Clock, XCircle, TrendingUp } from 'lucide-react';
 // import packageJson from '../../../../package.json';
 import { User } from '../../../domain/types/common.types';
@@ -25,6 +25,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
     const quickAmounts = [50, 100, 200, 500];
 
     const { isValidAmount, withdrawalAmount, isFree, fee, netAmount } = useMemo(() => {
+        void withdrawalAmount;
         const amount = parseFloat(val) || 0;
         const valid = val !== '' && amount >= WITHDRAWAL_MIN_AMOUNT && amount <= balance;
         const free = totalQuotaValue >= amount;
@@ -88,6 +89,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
 
     const handleRequestWithdrawal = async () => {
         const amount = parseFloat(val);
+        void amount;
         // Regra de anúncio: mostrar sempre ao solicitar saque
         setShowAd(true);
         setAdTimer(5);

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { ScrollText, CheckCircle2, X } from 'lucide-react';
 
 interface TermsAcceptanceModalProps {

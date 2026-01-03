@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Users, ShieldCheck, DollarSign, Play } from 'lucide-react';
+import { TrendingUp, Users, ShieldCheck, DollarSign } from 'lucide-react';
 
 interface PromoVideoPlayerProps {
     duration: number; // Duration in seconds

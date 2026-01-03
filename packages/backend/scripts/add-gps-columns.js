@@ -1,5 +1,5 @@
 const { Pool } = require('pg');
-require('dotenv').config({ path: '../../.env' });
+require('dotenv').config({ path: '.env' });
 
 async function migrate() {
     const pool = new Pool({
@@ -17,7 +17,7 @@ async function migrate() {
 
         console.log('✅ Colunas adicionadas com sucesso!');
     } catch (err) {
-        console.error('❌ Erro na migração:', err.message);
+        console.error('❌ Erro na migração:', err);
     } finally {
         await pool.end();
     }

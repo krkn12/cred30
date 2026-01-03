@@ -1,14 +1,12 @@
-import { ObjectId } from 'mongodb';
-
 export interface Transaction {
-  _id?: ObjectId;
-  id?: string;
-  userId: string | ObjectId;
-  type: 'DEPOSIT' | 'WITHDRAWAL' | 'BUY_QUOTA' | 'SELL_QUOTA' | 'LOAN_RECEIVED' | 'LOAN_PAYMENT' | 'REFERRAL_BONUS';
+  id: string | number;
+  userId: string | number;
+  type: string;
   amount: number;
-  date: number;
+  gateway_cost?: number;
+  created_at?: Date;
   description: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'FAILED' | 'CANCELLED';
   metadata?: any;
 }
 

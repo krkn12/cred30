@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Activity, Cpu, Database, Search, Clock, HardDrive } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 import { useDebounce } from '../../../../hooks/use-performance';
 
-export const AdminMetrics: React.FC = () => {
+export const AdminMetrics = () => {
     const [healthMetrics, setHealthMetrics] = useState<any>(null);
     const [isMetricsLoading, setIsMetricsLoading] = useState(false);
     const [metricsSearch, setMetricsSearch] = useState('');
     const debouncedMetricsSearch = useDebounce(metricsSearch, 300);
+    void debouncedMetricsSearch;
 
     useEffect(() => {
         fetchHealthMetrics();
