@@ -184,7 +184,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                         {isValidAmount && (
                             <div className="mt-3 p-3 bg-zinc-800/50 rounded-lg text-xs space-y-1">
                                 <div className="flex justify-between">
-                                    <span className="text-zinc-400">Taxa de resgate ({isFree ? 'Grátis' : 'Taxa Fixa'})</span>
+                                    <span className="text-zinc-400">Taxa de resgate operativo ({isFree ? 'Grátis' : 'Taxa de Manutenção'})</span>
                                     <span className={isFree ? 'text-emerald-400' : 'text-zinc-300'}>
                                         {isFree ? 'R$ 0,00' : fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                     </span>
@@ -268,7 +268,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                     <span>Processamento em até 24h úteis</span>
                 </p>
                 <p className="text-xs text-zinc-400 mt-2">
-                    Taxa fixa de manutenção por saque de {WITHDRAWAL_FEE_FIXED.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.
+                    Taxa de manutenção por resgate de {WITHDRAWAL_FEE_FIXED.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.
                 </p>
                 <p className="text-xs text-emerald-400/80 mt-2">
                     💡 <strong>Benefício VIP:</strong> Se o valor das suas participações (cotas) for maior ou igual ao resgate, a taxa é <strong>ZERO</strong>!
