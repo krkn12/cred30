@@ -1267,6 +1267,16 @@ class ApiService {
     });
     return response;
   }
+
+  // ==================== ADMIN UTILS ====================
+
+  // Popular dados de demonstração
+  async seedDemoData(): Promise<any> {
+    const response = await this.request<any>('/admin/seed-demo-data', {
+      method: 'POST'
+    });
+    return response;
+  }
 }
 
 // Exportar instância única do serviço
