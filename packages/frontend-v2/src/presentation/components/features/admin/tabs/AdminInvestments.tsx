@@ -79,6 +79,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
     const [showSellModal, setShowSellModal] = useState<Investment | null>(null);
     const [showDividendModal, setShowDividendModal] = useState<Investment | null>(null);
     const [showUpdateModal, setShowUpdateModal] = useState<Investment | null>(null);
+    const [showReserveModal, setShowReserveModal] = useState(false);
 
     // Estados dos formulários
     const [newInvestment, setNewInvestment] = useState({
@@ -95,6 +96,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
     const [sellData, setSellData] = useState({ saleValue: '' });
     const [dividendData, setDividendData] = useState({ amount: '', reinvest: false });
     const [updateData, setUpdateData] = useState({ currentValue: '' });
+    const [reserveData, setReserveData] = useState({ amount: '', description: '' });
 
     const fetchInvestments = async () => {
         setIsLoading(true);
@@ -199,20 +201,52 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
         }
     };
 
+    const handleAddReserve = async () => {
+        try {
+            const res = await apiService.post<any>('/admin/investments/reserve/add', {
+                amount: parseFloat(reserveData.amount),
+                description: reserveData.description
+            });
+
+            if (res.success) {
+                onSuccess('Reserva Atualizada', res.message);
+                setShowReserveModal(false);
+                setReserveData({ amount: '', description: '' });
+                fetchInvestments();
+            } else {
+                onError('Erro', res.message);
+            }
+        } catch (error: any) {
+            onError('Erro', error.message);
+        }
+    };
+
     return (
         <div className="space-y-8 pb-32">
             {/* Header com Resumo */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-gradient-to-br from-primary-500/10 to-cyan-500/5 border border-primary-500/20 rounded-3xl p-5 sm:p-6">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-9 h-9 rounded-xl bg-primary-500/20 flex items-center justify-center">
-                            <PiggyBank size={18} className="text-primary-400" />
+                <div className="bg-gradient-to-br from-primary-500/10 to-cyan-500/5 border border-primary-500/20 rounded-3xl p-5 sm:p-6 relative overflow-hidden group">
+                    <div className="flex items-center justify-between mb-3 relative z-10">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-primary-500/20 flex items-center justify-center">
+                                <PiggyBank size={18} className="text-primary-400" />
+                            </div>
+                            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Disponível</span>
                         </div>
-                        <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Disponível</span>
+                        <button
+                            onClick={() => setShowReserveModal(true)}
+                            className="w-8 h-8 rounded-lg bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 flex items-center justify-center transition-colors"
+                            title="Aporte Externo"
+                        >
+                            <Plus size={16} />
+                        </button>
                     </div>
-                    <p className="text-xl sm:text-2xl font-black text-white">
+                    <p className="text-xl sm:text-2xl font-black text-white relative z-10">
                         R$ {summary?.availableReserve.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
                     </p>
+                    <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                        <PiggyBank size={80} />
+                    </div>
                 </div>
 
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-5 sm:p-6">
@@ -387,110 +421,166 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
             {/* Modais */}
             {showAddModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4" onClick={() => setShowAddModal(false)}>
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-[2rem] p-6 sm:p-10 w-full max-w-2xl animate-in zoom-in duration-300 overflow-y-auto max-h-[90vh] scrollbar-hide" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center gap-4 mb-8">
-                            <div className="w-12 h-12 bg-primary-500/20 rounded-2xl flex items-center justify-center border border-primary-500/20">
-                                <Plus size={24} className="text-primary-400" />
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-6 sm:p-10 w-full max-w-3xl animate-in zoom-in duration-300 overflow-y-auto max-h-[90vh] scrollbar-hide shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-10">
+                            <div className="flex items-center gap-5">
+                                <div className="w-14 h-14 bg-primary-500/10 rounded-2xl flex items-center justify-center border border-primary-500/20 shadow-inner">
+                                    <Plus size={28} className="text-primary-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl font-black text-white tracking-tight">Nova Alocação</h3>
+                                    <p className="text-sm text-zinc-500 font-medium">Registre a compra de um novo ativo estratégico</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="text-2xl font-black text-white">Nova Alocação</h3>
-                                <p className="text-sm text-zinc-500">Registre a compra de um novo ativo</p>
-                            </div>
+                            <button
+                                onClick={() => setShowAddModal(false)}
+                                className="w-10 h-10 rounded-full bg-zinc-800/50 flex items-center justify-center text-zinc-500 hover:bg-zinc-800 hover:text-white transition-all"
+                            >
+                                <Plus size={20} className="rotate-45" />
+                            </button>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                            {/* Coluna 1: Dados do Ativo */}
+                            <div className="space-y-6">
+                                <h4 className="text-[10px] font-black text-primary-500 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                                    <div className="w-1 h-3 bg-primary-500 rounded-full"></div>
+                                    Dados do Ativo
+                                </h4>
+
                                 <div>
-                                    <label className="text-[10px] text-zinc-400 font-black uppercase mb-2 block">Nome do Ativo</label>
+                                    <label className="text-[10px] text-zinc-500 font-black uppercase mb-2 block ml-1">Tikcer / Nome</label>
                                     <input
                                         type="text"
-                                        placeholder="Ex: ITSA4"
+                                        placeholder="Ex: ITSA4, BTC, Tesouro..."
                                         value={newInvestment.assetName}
                                         onChange={e => setNewInvestment({ ...newInvestment, assetName: e.target.value })}
-                                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl px-4 py-3 text-white placeholder:text-zinc-600 focus:border-primary-500 focus:outline-none"
+                                        className="w-full bg-zinc-800/30 border border-zinc-700/50 rounded-2xl px-5 py-4 text-white placeholder:text-zinc-600 focus:border-primary-500 focus:bg-zinc-800/50 focus:outline-none transition-all"
                                     />
                                 </div>
+
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-[10px] text-zinc-400 font-black uppercase mb-2 block">Tipo</label>
+                                        <label className="text-[10px] text-zinc-500 font-black uppercase mb-2 block ml-1">Categoria</label>
                                         <select
                                             value={newInvestment.assetType}
                                             onChange={e => setNewInvestment({ ...newInvestment, assetType: e.target.value as Investment['assetType'] })}
-                                            className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl px-4 py-3 text-white focus:border-primary-500 focus:outline-none"
+                                            className="w-full bg-zinc-800/30 border border-zinc-700/50 rounded-2xl px-4 py-4 text-white focus:border-primary-500 focus:outline-none transition-all appearance-none cursor-pointer"
                                         >
-                                            <option value="STOCK">Ação</option>
-                                            <option value="FII">FII</option>
+                                            <option value="STOCK">Ações</option>
+                                            <option value="FII">FIIs</option>
                                             <option value="BOND">Renda Fixa</option>
-                                            <option value="ETF">ETF</option>
+                                            <option value="ETF">ETFs</option>
                                             <option value="OTHER">Outros</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="text-[10px] text-zinc-400 font-black uppercase mb-2 block">Qtd</label>
+                                        <label className="text-[10px] text-zinc-500 font-black uppercase mb-2 block ml-1">Quantidade</label>
                                         <input
                                             type="number"
+                                            placeholder="0"
                                             value={newInvestment.quantity}
                                             onChange={e => setNewInvestment({ ...newInvestment, quantity: e.target.value })}
-                                            className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl px-4 py-3 text-white focus:border-primary-500 focus:outline-none"
+                                            className="w-full bg-zinc-800/30 border border-zinc-700/50 rounded-2xl px-5 py-4 text-white focus:border-primary-500 focus:outline-none transition-all"
                                         />
                                     </div>
                                 </div>
+
                                 <div>
-                                    <label className="text-[10px] text-zinc-400 font-black uppercase mb-2 block">Preço Unitário (R$)</label>
+                                    <label className="text-[10px] text-zinc-500 font-black uppercase mb-2 block ml-1">Preço Unitário (R$)</label>
                                     <input
                                         type="number"
+                                        placeholder="0.00"
                                         value={newInvestment.unitPrice}
                                         onChange={e => setNewInvestment({ ...newInvestment, unitPrice: e.target.value })}
-                                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl px-4 py-3 text-white focus:border-primary-500 focus:outline-none"
+                                        className="w-full bg-zinc-800/30 border border-zinc-700/50 rounded-2xl px-5 py-4 text-white focus:border-primary-500 focus:outline-none transition-all"
                                     />
                                 </div>
                             </div>
 
-                            <div className="space-y-4">
+                            {/* Coluna 2: Detalhes Financeiros */}
+                            <div className="space-y-6">
+                                <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                                    <div className="w-1 h-3 bg-emerald-500 rounded-full"></div>
+                                    Custódia & Data
+                                </h4>
+
                                 <div>
-                                    <label className="text-[10px] text-zinc-400 font-black uppercase mb-2 block">Total Alocado (R$)</label>
-                                    <input
-                                        type="number"
-                                        value={newInvestment.totalInvested}
-                                        onChange={e => setNewInvestment({ ...newInvestment, totalInvested: e.target.value })}
-                                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl px-4 py-3 text-white focus:border-primary-500 focus:outline-none"
-                                    />
-                                    {summary && parseFloat(newInvestment.totalInvested) > summary.availableReserve && (
-                                        <div className="flex items-center gap-1.5 mt-2 text-red-400">
-                                            <AlertTriangle size={12} />
-                                            <span className="text-[10px] font-bold uppercase">Saldo Insuficiente</span>
-                                        </div>
-                                    )}
+                                    <label className="text-[10px] text-zinc-500 font-black uppercase mb-2 block ml-1">Total Alocado (R$)</label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            placeholder="0.00"
+                                            value={newInvestment.totalInvested}
+                                            onChange={e => setNewInvestment({ ...newInvestment, totalInvested: e.target.value })}
+                                            className={`w-full bg-zinc-800/30 border rounded-2xl px-5 py-4 text-white focus:outline-none transition-all ${summary && parseFloat(newInvestment.totalInvested) > summary.availableReserve
+                                                    ? 'border-red-500/50 focus:border-red-500'
+                                                    : 'border-zinc-700/50 focus:border-primary-500'
+                                                }`}
+                                        />
+                                        {summary && parseFloat(newInvestment.totalInvested) > summary.availableReserve && (
+                                            <div className="flex items-center gap-1.5 mt-2 ml-2 text-red-500 animate-pulse">
+                                                <AlertTriangle size={12} />
+                                                <span className="text-[10px] font-black uppercase tracking-tighter">Saldo Insuficiente na Reserva</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
+
                                 <div>
-                                    <label className="text-[10px] text-zinc-400 font-black uppercase mb-2 block">Instituição / Corretora</label>
+                                    <label className="text-[10px] text-zinc-500 font-black uppercase mb-2 block ml-1">Instituição / Corretora</label>
                                     <input
                                         type="text"
-                                        placeholder="Ex: BTG Pactual"
+                                        placeholder="Ex: BTG Pactual, Binance..."
                                         value={newInvestment.broker}
                                         onChange={e => setNewInvestment({ ...newInvestment, broker: e.target.value })}
-                                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl px-4 py-3 text-white placeholder:text-zinc-600 focus:border-primary-500 focus:outline-none"
+                                        className="w-full bg-zinc-800/30 border border-zinc-700/50 rounded-2xl px-5 py-4 text-white focus:border-primary-500 focus:outline-none transition-all"
                                     />
                                 </div>
+
                                 <div>
-                                    <label className="text-[10px] text-zinc-400 font-black uppercase mb-2 block">Data da Compra</label>
+                                    <label className="text-[10px] text-zinc-500 font-black uppercase mb-2 block ml-1">Data da Efetivação</label>
                                     <input
                                         type="date"
                                         value={newInvestment.investedAt}
                                         onChange={e => setNewInvestment({ ...newInvestment, investedAt: e.target.value })}
-                                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl px-4 py-3 text-white focus:border-primary-500 focus:outline-none"
+                                        className="w-full bg-zinc-800/30 border border-zinc-700/50 rounded-2xl px-5 py-4 text-white focus:border-primary-500 focus:outline-none transition-all"
                                     />
                                 </div>
                             </div>
+
+                            {/* Campo de Notas (Full Width) */}
+                            <div className="md:col-span-2 space-y-2">
+                                <label className="text-[10px] text-zinc-500 font-black uppercase mb-2 block ml-1">Observações Estratégicas</label>
+                                <textarea
+                                    placeholder="Motivo da compra, stop loss, teto de preço..."
+                                    rows={3}
+                                    value={newInvestment.notes}
+                                    onChange={e => setNewInvestment({ ...newInvestment, notes: e.target.value })}
+                                    className="w-full bg-zinc-800/30 border border-zinc-700/50 rounded-2xl px-5 py-4 text-white focus:border-primary-500 focus:outline-none transition-all resize-none text-sm"
+                                />
+                            </div>
                         </div>
 
-                        <div className="mt-8 flex gap-4">
-                            <button onClick={() => setShowAddModal(false)} className="flex-1 py-4 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold transition-all">Cancelar</button>
-                            <button onClick={handleAddInvestment} className="flex-1 py-4 rounded-2xl bg-primary-500 hover:bg-primary-400 text-black font-black uppercase text-sm transition-all shadow-xl shadow-primary-500/20">Registrar</button>
+                        <div className="mt-10 pt-8 border-t border-zinc-800 flex flex-col sm:flex-row gap-4">
+                            <button
+                                onClick={() => setShowAddModal(false)}
+                                className="flex-1 py-4.5 rounded-2xl bg-zinc-800/50 border border-zinc-700/50 text-zinc-400 font-bold hover:bg-zinc-800 hover:text-white transition-all uppercase text-xs tracking-widest"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleAddInvestment}
+                                disabled={!newInvestment.assetName || !newInvestment.totalInvested || (summary && parseFloat(newInvestment.totalInvested) > summary.availableReserve)}
+                                className="flex-[2] py-4.5 rounded-2xl bg-primary-500 hover:bg-primary-400 text-black font-black uppercase text-xs tracking-widest transition-all shadow-xl shadow-primary-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                                Confirmar Alocação
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
+
 
             {showSellModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4" onClick={() => setShowSellModal(null)}>
@@ -574,6 +664,57 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                         <div className="mt-8 flex gap-3">
                             <button onClick={() => setShowUpdateModal(null)} className="flex-1 py-3 text-zinc-500 font-bold">Cancelar</button>
                             <button onClick={handleUpdateValue} className="flex-2 bg-blue-500 hover:bg-blue-400 text-white py-3 px-6 rounded-xl font-black uppercase text-xs">Atualizar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Aporte Externo (Lançamento de Ganhos) */}
+            {showReserveModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4" onClick={() => setShowReserveModal(false)}>
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-[2rem] p-8 w-full max-w-sm animate-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-center mb-6">
+                            <div className="w-16 h-16 bg-primary-500/10 rounded-full flex items-center justify-center border border-primary-500/20">
+                                <Plus size={32} className="text-primary-400" />
+                            </div>
+                        </div>
+                        <h3 className="text-xl font-black text-white text-center mb-2">Aporte de Capital</h3>
+                        <p className="text-zinc-500 text-xs text-center mb-8">Adicionar fundos "de fora" para a reserva de investimentos</p>
+
+                        <div className="space-y-6">
+                            <div>
+                                <label className="text-[10px] text-zinc-400 font-black uppercase mb-2 block text-center">Valor do Aporte (R$)</label>
+                                <input
+                                    type="number"
+                                    autoFocus
+                                    placeholder="0,00"
+                                    value={reserveData.amount}
+                                    onChange={e => setReserveData({ ...reserveData, amount: e.target.value })}
+                                    className="w-full bg-zinc-800 border-2 border-zinc-700 rounded-2xl px-6 py-4 text-2xl font-black text-white text-center focus:border-primary-500 focus:outline-none transition-all"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] text-zinc-400 font-black uppercase mb-2 block">Descrição / Origem (Opcional)</label>
+                                <input
+                                    type="text"
+                                    placeholder="Ex: Lucro de venda externa"
+                                    value={reserveData.description}
+                                    onChange={e => setReserveData({ ...reserveData, description: e.target.value })}
+                                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white focus:border-primary-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mt-8 flex gap-3">
+                            <button onClick={() => setShowReserveModal(false)} className="flex-1 py-3 text-zinc-500 font-bold hover:text-white transition-colors">Cancelar</button>
+                            <button
+                                onClick={handleAddReserve}
+                                disabled={!reserveData.amount || parseFloat(reserveData.amount) <= 0}
+                                className="flex-2 bg-primary-500 hover:bg-primary-400 text-black py-4 px-8 rounded-2xl font-black uppercase text-xs transition-all shadow-lg shadow-primary-500/20 disabled:opacity-50"
+                            >
+                                Confirmar Aporte
+                            </button>
                         </div>
                     </div>
                 </div>
