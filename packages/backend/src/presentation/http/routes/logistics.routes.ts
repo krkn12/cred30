@@ -190,9 +190,9 @@ logisticsRoutes.post('/pickup/:orderId', authMiddleware, async (c: Context) => {
 
         const order = orderCheck.rows[0];
 
-        // Verificar código de coleta (opcional, mas aumenta segurança)
-        if (order.pickup_code && pickupCode && order.pickup_code !== pickupCode) {
-            return c.json({ success: false, message: 'Código de coleta incorreto.' }, 400);
+        // Verificar código de coleta (OBRIGATÓRIO para segurança)
+        if (!pickupCode || order.pickup_code !== pickupCode?.toUpperCase()) {
+            return c.json({ success: false, message: 'Código de coleta incorreto ou ausente. Peça ao vendedor o código de segurança.' }, 400);
         }
 
         // Atualizar status
@@ -242,6 +242,14 @@ logisticsRoutes.post('/delivered/:orderId', authMiddleware, async (c: Context) =
 
         if (orderCheck.rows.length === 0) {
             return c.json({ success: false, message: 'Pedido não encontrado ou não está em trânsito.' }, 404);
+        }
+
+        const order = orderCheck.rows[0];
+        const { confirmationCode } = await c.req.json();
+
+        // Verificar código de confirmação do comprador
+        if (order.delivery_confirmation_code && order.delivery_confirmation_code !== confirmationCode?.toUpperCase()) {
+            return c.json({ success: false, message: 'Código de confirmação incorreto. Peça ao comprador o código que aparece no app dele.' }, 400);
         }
 
         // Atualizar status para DELIVERED
@@ -408,6 +416,8 @@ logisticsRoutes.get('/my-deliveries', authMiddleware, async (c: Context) => {
                         createdAt: row.created_at,
                         pickedUpAt: row.picked_up_at,
                         deliveredAt: row.delivered_at,
+                        pickupCode: row.pickup_code,
+                        contactPhone: row.contact_phone
                     };
                 }),
                 stats: {
@@ -482,6 +492,41 @@ logisticsRoutes.get('/stats', authMiddleware, async (c: Context) => {
             success: false,
             message: 'Erro ao buscar estatísticas.',
             debug: process.env.NODE_ENV !== 'production' ? error.message : undefined
+        }, 500);
+    }
+});
+
+/**
+ * PUT /logistics/profile
+ * Atualiza dados de veículo do entregador
+ */
+logisticsRoutes.put('/profile', authMiddleware, async (c: Context) => {
+    try {
+        const user = c.get('user') as UserContext;
+        const pool = getDbPool(c);
+        const { vehicleType, vehicleModel, vehiclePlate, photoUrl } = await c.req.json();
+
+        await pool.query(
+            `UPDATE users 
+             SET is_courier = TRUE,
+                 courier_vehicle_type = $1,
+                 courier_vehicle_model = $2,
+                 courier_vehicle_plate = $3,
+                 courier_photo_url = $4
+             WHERE id = $5`,
+            [vehicleType, vehicleModel, vehiclePlate, photoUrl, user.id]
+        );
+
+        return c.json({
+            success: true,
+            message: 'Perfil de entregador atualizado com sucesso!'
+        });
+    } catch (error: any) {
+        console.error('[LOGISTICS] Erro ao atualizar perfil:', error);
+        return c.json({
+            success: false,
+            message: 'Erro ao atualizar perfil de entregador.',
+            debug: error.message
         }, 500);
     }
 });

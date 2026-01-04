@@ -329,6 +329,7 @@ marketplaceRoutes.post('/buy-on-credit', authMiddleware, async (c: Context) => {
 
             const deliveryStatus = buyOnCreditSchema.parse(body).deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE';
             const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const confirmationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
             // Note: For credit, we don't charge the fee upfront from balance because it's financed, 
             // BUT usually delivery fee is paid upfront or included in loan used. 
             // For simplicity here: we include fee in the loan amount if requested.
@@ -343,9 +344,9 @@ marketplaceRoutes.post('/buy-on-credit', authMiddleware, async (c: Context) => {
             const sellerAmount = price - escrowFee;
 
             const orderResult = await client.query(
-                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, delivery_status, delivery_fee, pickup_code)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
-                [listingId, user.id, listing.seller_id, totalWithFee, escrowFee, sellerAmount, 'WAITING_SHIPPING', 'CRED30_CREDIT', deliveryAddress, finalPickupAddress, contactPhone, deliveryStatus, fee, pickupCode]
+                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, delivery_status, delivery_fee, pickup_code, delivery_confirmation_code)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
+                [listingId, user.id, listing.seller_id, totalWithFee, escrowFee, sellerAmount, 'WAITING_SHIPPING', 'CRED30_CREDIT', deliveryAddress, finalPickupAddress, contactPhone, deliveryStatus, fee, pickupCode, confirmationCode]
             );
             const orderId = orderResult.rows[0].id;
 
@@ -426,11 +427,12 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c: Context) => {
 
                 const deliveryStatus = deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE';
                 const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+                const confirmationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
                 const orderResult = await client.query(
-                    `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, offline_token, delivery_status, delivery_fee, pickup_code)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
-                    [listingId, user.id, listing.seller_id, price, fee, sellerAmount, 'WAITING_SHIPPING', 'BALANCE', deliveryAddress, finalPickupAddress, contactPhone, offlineToken, deliveryStatus, offeredDeliveryFee, pickupCode]
+                    `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, offline_token, delivery_status, delivery_fee, pickup_code, delivery_confirmation_code)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
+                    [listingId, user.id, listing.seller_id, price, fee, sellerAmount, 'WAITING_SHIPPING', 'BALANCE', deliveryAddress, finalPickupAddress, contactPhone, offlineToken, deliveryStatus, offeredDeliveryFee, pickupCode, confirmationCode]
                 );
                 const orderId = orderResult.rows[0].id;
 
@@ -554,6 +556,7 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c: Context) => {
 
             const deliveryStatus = deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE';
             const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const confirmationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
             // Taxas do Marketplace (Baseado na situação do vendedor e benefício do comprador)
             const sellerCheck = await client.query('SELECT asaas_wallet_id FROM users WHERE id = $1', [listing.seller_id]);
@@ -567,9 +570,9 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c: Context) => {
             const sellerAmount = price - escrowFee;
 
             const orderResult = await client.query(
-                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, offline_token, delivery_status, delivery_fee, pickup_code)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
-                [listingId, user.id, listing.seller_id, price, escrowFee, sellerAmount, 'WAITING_PAYMENT', paymentMethod, deliveryAddress, finalPickupAddress, contactPhone, offlineToken, deliveryStatus, offeredDeliveryFee, pickupCode]
+                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, offline_token, delivery_status, delivery_fee, pickup_code, delivery_confirmation_code)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
+                [listingId, user.id, listing.seller_id, price, escrowFee, sellerAmount, 'WAITING_PAYMENT', paymentMethod, deliveryAddress, finalPickupAddress, contactPhone, offlineToken, deliveryStatus, offeredDeliveryFee, pickupCode, confirmationCode]
             );
 
             const oId = orderResult.rows[0].id;
@@ -917,6 +920,10 @@ marketplaceRoutes.get('/my-orders', authMiddleware, async (c: Context) => {
               us.name as seller_name,
               uc.name as courier_name,
               COALESCE(uc.phone, uc.pix_key) as courier_phone,
+              uc.courier_vehicle_type,
+              uc.courier_vehicle_model,
+              uc.courier_vehicle_plate,
+              uc.courier_photo_url,
               ln.installments, ln.interest_rate, ln.total_repayment
        FROM marketplace_orders o
        JOIN marketplace_listings l ON o.listing_id = l.id
@@ -1114,7 +1121,7 @@ marketplaceRoutes.post('/logistic/mission/:id/accept', authMiddleware, async (c:
         return c.json({
             success: true,
             message: 'Missão aceita! Dirija-se ao vendedor.',
-            pickupCode: result.rows[0].pickup_code
+            data: { orderId }
         });
     } catch (error) {
         return c.json({ success: false, message: 'Erro ao aceitar missão' }, 500);
