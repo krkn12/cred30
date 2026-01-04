@@ -7,7 +7,10 @@ import {
   PLATFORM_FEE_TAX_SHARE,
   PLATFORM_FEE_OPERATIONAL_SHARE,
   PLATFORM_FEE_OWNER_SHARE,
-  PLATFORM_FEE_INVESTMENT_SHARE
+  PLATFORM_FEE_INVESTMENT_SHARE,
+  ACADEMY_AUTHOR_SHARE,
+  ACADEMY_PLATFORM_SHARE,
+  ACADEMY_SUPPORTERS_SHARE
 } from '../../shared/constants/business.constants';
 import { calculateGatewayCost } from '../../shared/utils/financial.utils';
 import { updateScore, SCORE_REWARDS } from '../../application/services/score.service';
@@ -562,6 +565,58 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
       );
 
       console.log(`[MARKET_BOOST] Anúncio ${metadata.listingId} impulsionado via transação ${id}`);
+    }
+  }
+
+  // COMPRA DE CURSO NA ACADEMIA
+  if (transaction.type === 'ACADEMY_PURCHASE') {
+    let metadata: any = transaction.metadata || {};
+    if (typeof metadata === 'string') {
+      try { metadata = JSON.parse(metadata); } catch { metadata = {}; }
+    }
+
+    if (metadata.courseId) {
+      const courseId = metadata.courseId;
+
+      // 1. Buscar curso
+      const courseRes = await client.query('SELECT * FROM academy_courses WHERE id = $1', [courseId]);
+      if (courseRes.rows.length > 0) {
+        const course = courseRes.rows[0];
+        const price = parseFloat(course.price);
+
+        // 2. Verificar se já possui matrícula ativa (para evitar duplicidade no webhook)
+        const checkEnroll = await client.query('SELECT id FROM academy_enrollments WHERE user_id = $1 AND course_id = $2 AND status = \'COMPLETED\'', [transaction.user_id, courseId]);
+
+        if (checkEnroll.rows.length === 0) {
+          // Dividir valores (82.5% Autor, 7.5% Plataforma, 10% Cotistas)
+          const authorAmount = price * ACADEMY_AUTHOR_SHARE;
+          const platformAmount = price * ACADEMY_PLATFORM_SHARE;
+          const supportersAmount = price * ACADEMY_SUPPORTERS_SHARE;
+
+          // 3. Pagar Autor
+          await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [authorAmount, course.author_id]);
+          await createTransaction(client, course.author_id, 'ACADEMY_SALE', authorAmount, `Venda do curso: ${course.title}`, 'APPROVED');
+
+          // 4. Alimentar Plataforma e Cotistas
+          // Se for pagamento externo, considerar custo de gateway se necessário (mas aqui simplificamos)
+          await client.query(`
+            UPDATE system_config SET 
+                system_balance = system_balance + $1,
+                profit_pool = profit_pool + $2
+          `, [platformAmount, supportersAmount]);
+
+          // 5. Matricular aluno
+          await client.query(`
+            INSERT INTO academy_enrollments (user_id, course_id, amount_paid, payment_method, status)
+            VALUES ($1, $2, $3, $4, 'COMPLETED')
+            ON CONFLICT (user_id, course_id) DO UPDATE SET status = 'COMPLETED'
+          `, [transaction.user_id, courseId, price, metadata.paymentMethod || 'external']);
+
+          await client.query('UPDATE academy_courses SET enrollment_count = enrollment_count + 1 WHERE id = $1', [courseId]);
+
+          console.log(`[ACADEMY_PURCHASE] Curso ${courseId} liberado para usuário ${transaction.user_id}`);
+        }
+      }
     }
   }
 
