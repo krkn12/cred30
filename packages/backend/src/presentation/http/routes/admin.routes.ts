@@ -2064,8 +2064,12 @@ adminRoutes.get('/investments', adminMiddleware, async (c) => {
   try {
     const pool = getDbPool(c);
 
-    const result = await pool.query(`
-      SELECT * FROM investments ORDER BY invested_at DESC
+    const activeResult = await pool.query(`
+      SELECT * FROM investments WHERE status = 'ACTIVE' ORDER BY invested_at DESC
+    `);
+
+    const soldResult = await pool.query(`
+      SELECT * FROM investments WHERE status = 'SOLD' ORDER BY sold_at DESC
     `);
 
     // Buscar saldo disponível para investir
@@ -2074,14 +2078,18 @@ adminRoutes.get('/investments', adminMiddleware, async (c) => {
     `);
 
     const availableReserve = parseFloat(reserveResult.rows[0]?.reserve || 0);
-    const totalInvested = result.rows.reduce((acc, inv) => acc + parseFloat(inv.total_invested), 0);
-    const totalCurrentValue = result.rows.reduce((acc, inv) => acc + parseFloat(inv.current_value || inv.total_invested), 0);
-    const totalDividends = result.rows.reduce((acc, inv) => acc + parseFloat(inv.dividends_received || 0), 0);
+    const totalInvested = activeResult.rows.reduce((acc: any, inv: any) => acc + parseFloat(inv.total_invested), 0);
+    const totalCurrentValue = activeResult.rows.reduce((acc: any, inv: any) => acc + parseFloat(inv.current_value || inv.total_invested), 0);
+
+    // Total de dividendos (ativos e vendidos)
+    const activeDividends = activeResult.rows.reduce((acc: any, inv: any) => acc + parseFloat(inv.dividends_received || 0), 0);
+    const soldDividends = soldResult.rows.reduce((acc: any, inv: any) => acc + parseFloat(inv.dividends_received || 0), 0);
+    const totalDividends = activeDividends + soldDividends;
 
     return c.json({
       success: true,
       data: {
-        investments: result.rows.map(inv => ({
+        investments: activeResult.rows.map(inv => ({
           id: inv.id,
           assetName: inv.asset_name,
           assetType: inv.asset_type,
@@ -2093,8 +2101,24 @@ adminRoutes.get('/investments', adminMiddleware, async (c) => {
           broker: inv.broker,
           notes: inv.notes,
           investedAt: inv.invested_at,
+          status: inv.status,
           profitLoss: parseFloat(inv.current_value || inv.total_invested) - parseFloat(inv.total_invested),
           profitLossPercent: ((parseFloat(inv.current_value || inv.total_invested) / parseFloat(inv.total_invested)) - 1) * 100
+        })),
+        sold: soldResult.rows.map(inv => ({
+          id: inv.id,
+          assetName: inv.asset_name,
+          assetType: inv.asset_type,
+          quantity: parseFloat(inv.quantity) || 0,
+          unitPrice: parseFloat(inv.unit_price),
+          totalInvested: parseFloat(inv.total_invested),
+          saleValue: parseFloat(inv.sale_value),
+          soldAt: inv.sold_at,
+          dividendsReceived: parseFloat(inv.dividends_received || 0),
+          broker: inv.broker,
+          status: inv.status,
+          profitLoss: parseFloat(inv.sale_value) - parseFloat(inv.total_invested),
+          profitLossPercent: ((parseFloat(inv.sale_value) / parseFloat(inv.total_invested)) - 1) * 100
         })),
         summary: {
           availableReserve,
@@ -2290,8 +2314,11 @@ adminRoutes.post('/investments/:id/sell', adminMiddleware, auditMiddleware('SELL
         [saleValue]
       );
 
-      // Remover investimento
-      await client.query('DELETE FROM investments WHERE id = $1', [id]);
+      // Marcar como vendido
+      await client.query(
+        'UPDATE investments SET status = $1, sale_value = $2, sold_at = NOW(), updated_at = NOW() WHERE id = $3',
+        ['SOLD', saleValue, id]
+      );
 
       return { assetName: investment.asset_name, profitLoss };
     });
