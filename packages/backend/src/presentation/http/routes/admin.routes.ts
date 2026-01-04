@@ -2342,6 +2342,7 @@ adminRoutes.post('/investments/reserve/add', adminMiddleware, auditMiddleware('M
   try {
     const body = await c.req.json();
     const { amount, description } = body;
+    const user = c.get('user');
 
     if (!amount || amount <= 0) {
       return c.json({ success: false, message: 'Valor inválido para aporte' }, 400);
@@ -2349,14 +2350,66 @@ adminRoutes.post('/investments/reserve/add', adminMiddleware, auditMiddleware('M
 
     const pool = getDbPool(c);
 
+    // Atualizar a reserva
     await pool.query(
       'UPDATE system_config SET investment_reserve = COALESCE(investment_reserve, 0) + $1, updated_at = NOW()',
       [amount]
     );
 
+    // Registrar no histórico de movimentações (admin_logs já captura via auditMiddleware)
+    // Também registrar em uma transaction para melhor rastreabilidade
+    await pool.query(`
+      INSERT INTO transactions (user_id, type, amount, description, status, metadata, created_at)
+      VALUES ($1, 'INVESTMENT_DEPOSIT', $2, $3, 'COMPLETED', $4, NOW())
+    `, [
+      user.id,
+      amount,
+      description || 'Aporte externo na reserva de investimentos',
+      JSON.stringify({ source: 'MANUAL_RESERVE_DEPOSIT', adminId: user.id, adminName: user.name })
+    ]);
+
     return c.json({
       success: true,
       message: `Aporte de R$ ${amount.toFixed(2)} registrado com sucesso na reserva!`
+    });
+  } catch (error: any) {
+    return c.json({ success: false, message: error.message }, 500);
+  }
+});
+
+// Histórico de movimentações da reserva de investimentos
+adminRoutes.get('/investments/reserve/history', adminMiddleware, async (c) => {
+  try {
+    const pool = getDbPool(c);
+
+    // Buscar transações de tipo INVESTMENT_DEPOSIT e vendas de investimentos
+    const result = await pool.query(`
+      SELECT 
+        t.id,
+        t.type,
+        t.amount,
+        t.description,
+        t.metadata,
+        t.created_at,
+        u.name as admin_name
+      FROM transactions t
+      LEFT JOIN users u ON u.id = t.user_id
+      WHERE t.type IN ('INVESTMENT_DEPOSIT', 'INVESTMENT_SALE', 'INVESTMENT_DIVIDEND')
+      ORDER BY t.created_at DESC
+      LIMIT 50
+    `);
+
+    return c.json({
+      success: true,
+      data: result.rows.map(r => ({
+        id: r.id,
+        type: r.type,
+        amount: parseFloat(r.amount),
+        description: r.description,
+        metadata: r.metadata,
+        adminName: r.admin_name,
+        createdAt: r.created_at
+      }))
     });
   } catch (error: any) {
     return c.json({ success: false, message: error.message }, 500);

@@ -418,6 +418,22 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                 </div>
             )}
 
+            {/* Histórico de Aportes/Movimentações */}
+            <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                    <Coins className="text-primary-400" size={24} />
+                    <h2 className="text-xl font-black text-white">Histórico de Movimentações da Reserva</h2>
+                </div>
+
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6">
+                    <p className="text-center text-zinc-500 text-sm">
+                        Os aportes externos são registrados automaticamente quando você adiciona fundos à reserva de investimentos.
+                        <br />
+                        <span className="text-xs text-zinc-600">Acesse "Logs do Sistema" para ver o histórico completo.</span>
+                    </p>
+                </div>
+            </div>
+
             {/* Modais */}
             {showAddModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4" onClick={() => setShowAddModal(false)}>
@@ -514,8 +530,8 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                                             value={newInvestment.totalInvested}
                                             onChange={e => setNewInvestment({ ...newInvestment, totalInvested: e.target.value })}
                                             className={`w-full bg-zinc-800/30 border rounded-2xl px-5 py-4 text-white focus:outline-none transition-all ${summary && parseFloat(newInvestment.totalInvested) > summary.availableReserve
-                                                    ? 'border-red-500/50 focus:border-red-500'
-                                                    : 'border-zinc-700/50 focus:border-primary-500'
+                                                ? 'border-red-500/50 focus:border-red-500'
+                                                : 'border-zinc-700/50 focus:border-primary-500'
                                                 }`}
                                         />
                                         {summary && parseFloat(newInvestment.totalInvested) > summary.availableReserve && (
@@ -585,7 +601,9 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
             {showSellModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4" onClick={() => setShowSellModal(null)}>
                     <div className="bg-zinc-900 border border-zinc-800 rounded-[2rem] p-8 w-full max-w-sm" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-xl font-black text-white text-center mb-6">Liquidar {showSellModal.assetName}</h3>
+                        <h3 className="text-xl font-black text-white text-center mb-2">Liquidar {showSellModal.assetName}</h3>
+                        <p className="text-xs text-zinc-500 text-center mb-6">Custo: R$ {showSellModal.totalInvested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+
                         <div className="space-y-4">
                             <div>
                                 <label className="text-[10px] text-zinc-400 font-black uppercase mb-2 block text-center">Valor Total da Venda (R$)</label>
@@ -597,10 +615,53 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                                     className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-6 py-4 text-2xl font-black text-white text-center focus:border-red-500 focus:outline-none"
                                 />
                             </div>
+
+                            {/* Preview do Resultado */}
+                            {sellData.saleValue && parseFloat(sellData.saleValue) > 0 && (
+                                <div className={`p-4 rounded-2xl border ${parseFloat(sellData.saleValue) >= showSellModal.totalInvested
+                                    ? 'bg-emerald-500/10 border-emerald-500/30'
+                                    : 'bg-red-500/10 border-red-500/30'
+                                    }`}>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs text-zinc-400 font-bold uppercase">Resultado:</span>
+                                        <span className={`text-lg font-black ${parseFloat(sellData.saleValue) >= showSellModal.totalInvested
+                                            ? 'text-emerald-400'
+                                            : 'text-red-400'
+                                            }`}>
+                                            {parseFloat(sellData.saleValue) >= showSellModal.totalInvested ? '+' : ''}
+                                            R$ {(parseFloat(sellData.saleValue) - showSellModal.totalInvested).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between mt-2">
+                                        <span className="text-[10px] text-zinc-500 uppercase">Rentabilidade:</span>
+                                        <span className={`text-sm font-black ${parseFloat(sellData.saleValue) >= showSellModal.totalInvested
+                                            ? 'text-emerald-400'
+                                            : 'text-red-400'
+                                            }`}>
+                                            {((parseFloat(sellData.saleValue) - showSellModal.totalInvested) / showSellModal.totalInvested * 100).toFixed(2)}%
+                                        </span>
+                                    </div>
+                                    <p className={`text-[10px] font-black uppercase mt-3 text-center ${parseFloat(sellData.saleValue) >= showSellModal.totalInvested
+                                        ? 'text-emerald-500'
+                                        : 'text-red-500'
+                                        }`}>
+                                        {parseFloat(sellData.saleValue) >= showSellModal.totalInvested
+                                            ? '✓ LUCRO NA OPERAÇÃO'
+                                            : '✗ PREJUÍZO NA OPERAÇÃO'}
+                                    </p>
+                                </div>
+                            )}
                         </div>
+
                         <div className="mt-8 flex gap-3">
                             <button onClick={() => setShowSellModal(null)} className="flex-1 py-3 text-zinc-500 font-bold">Cancelar</button>
-                            <button onClick={handleSellInvestment} className="flex-2 bg-red-500 hover:bg-red-400 text-white py-3 px-6 rounded-xl font-black uppercase text-xs">Confirmar Venda</button>
+                            <button
+                                onClick={handleSellInvestment}
+                                disabled={!sellData.saleValue || parseFloat(sellData.saleValue) <= 0}
+                                className="flex-2 bg-red-500 hover:bg-red-400 text-white py-3 px-6 rounded-xl font-black uppercase text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Confirmar Venda
+                            </button>
                         </div>
                     </div>
                 </div>
