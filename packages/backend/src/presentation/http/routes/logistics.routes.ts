@@ -13,7 +13,30 @@ const logisticsRoutes = new Hono();
  */
 logisticsRoutes.get('/available', authMiddleware, async (c: Context) => {
     try {
+        const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
+
+        // Buscar contagem de entregas concluídas deste entregador para calcular taxa dinâmica
+        // Nota: courier_id é INTEGER neste banco
+        const courierId = user?.id;
+
+        let completedCount = 0;
+        if (courierId) {
+            try {
+                const statsRes = await pool.query(
+                    'SELECT COUNT(*) as count FROM marketplace_orders WHERE courier_id = $1 AND status = \'COMPLETED\'',
+                    [courierId]
+                );
+                completedCount = parseInt(statsRes.rows[0]?.count || '0');
+            } catch (e) {
+                console.error('[LOGISTICS] Erro ao contar entregas:', e);
+            }
+        }
+
+        // Cálculo de Taxa Dinâmica (Motivação por volume)
+        let courierFeeRate = LOGISTICS_SUSTAINABILITY_FEE_RATE;
+        if (completedCount >= 50) courierFeeRate = 0.04;
+        else if (completedCount >= 10) courierFeeRate = 0.07;
 
         const result = await pool.query(`
             SELECT 
@@ -29,8 +52,7 @@ logisticsRoutes.get('/available', authMiddleware, async (c: Context) => {
                 seller.name as seller_name,
                 seller.id as seller_id,
                 buyer.name as buyer_name,
-                buyer.id as buyer_id,
-                (mo.delivery_fee * (1 - $1)) as courier_earnings
+                buyer.id as buyer_id
             FROM marketplace_orders mo
             JOIN marketplace_listings ml ON mo.listing_id = ml.id
             JOIN users seller ON mo.seller_id = seller.id
@@ -39,30 +61,40 @@ logisticsRoutes.get('/available', authMiddleware, async (c: Context) => {
               AND mo.status = 'WAITING_SHIPPING'
             ORDER BY mo.delivery_fee DESC, mo.created_at ASC
             LIMIT 50
-        `, [LOGISTICS_SUSTAINABILITY_FEE_RATE]);
+        `);
 
         return c.json({
             success: true,
-            data: result.rows.map(row => ({
-                orderId: row.order_id,
-                itemTitle: row.item_title,
-                itemPrice: parseFloat(row.item_price),
-                imageUrl: row.image_url,
-                deliveryFee: parseFloat(row.delivery_fee),
-                courierEarnings: parseFloat(row.courier_earnings).toFixed(2),
-                deliveryAddress: row.delivery_address,
-                pickupAddress: row.pickup_address,
-                contactPhone: row.contact_phone,
-                sellerName: row.seller_name,
-                sellerId: row.seller_id,
-                buyerName: row.buyer_name,
-                buyerId: row.buyer_id,
-                createdAt: row.created_at,
-            }))
+            data: result.rows.map(row => {
+                const deliveryFee = parseFloat(row.delivery_fee);
+                const courierEarnings = deliveryFee * (1 - courierFeeRate);
+
+                return {
+                    orderId: row.order_id,
+                    itemTitle: row.item_title,
+                    itemPrice: parseFloat(row.item_price),
+                    imageUrl: row.image_url,
+                    deliveryFee: deliveryFee,
+                    courierEarnings: courierEarnings.toFixed(2),
+                    courierFeeRate: courierFeeRate,
+                    deliveryAddress: row.delivery_address,
+                    pickupAddress: row.pickup_address,
+                    contactPhone: row.contact_phone,
+                    sellerName: row.seller_name,
+                    sellerId: row.seller_id,
+                    buyerName: row.buyer_name,
+                    buyerId: row.buyer_id,
+                    createdAt: row.created_at,
+                };
+            })
         });
-    } catch (error) {
-        console.error('[LOGISTICS] Erro ao listar entregas:', error);
-        return c.json({ success: false, message: 'Erro ao buscar entregas disponíveis' }, 500);
+    } catch (error: any) {
+        console.error('[LOGISTICS] Erro ao listar entregas disponíveis:', error);
+        return c.json({
+            success: false,
+            message: 'Erro ao buscar entregas disponíveis no momento.',
+            debug: process.env.NODE_ENV !== 'production' ? error.message : undefined
+        }, 500);
     }
 });
 
@@ -212,9 +244,13 @@ logisticsRoutes.post('/delivered/:orderId', authMiddleware, async (c: Context) =
             [orderId]
         );
 
+        // Aumentar Score do Entregador (Bônus de Performance)
+        const { updateScore } = await import('../../../application/services/score.service');
+        await updateScore(pool, user.id, 15, `Entrega concluída #${orderId}`);
+
         return c.json({
             success: true,
-            message: 'Entrega marcada como concluída! Aguardando confirmação do comprador para liberar seu pagamento.',
+            message: 'Entrega concluída! +15 Score ganho. Aguardando confirmação do comprador.',
         });
     } catch (error) {
         console.error('[LOGISTICS] Erro ao marcar entrega:', error);
