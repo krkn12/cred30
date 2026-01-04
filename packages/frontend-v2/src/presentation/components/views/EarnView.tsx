@@ -179,7 +179,7 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                         <Coins className="text-primary-400" />
                         Ganhos & Bônus
                     </h1>
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Aumente sua Renda na Cred30</p>
+                    <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Aumente sua Participação Social</p>
                 </div>
             </div>
 
@@ -195,7 +195,7 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                         </div>
                         <span className="text-xs font-black text-primary-400 uppercase">Vídeo Premiado</span>
                     </div>
-                    <h3 className="text-xl font-bold text-white mb-2">Ganhe Saldo em Segundos</h3>
+                    <h3 className="text-xl font-bold text-white mb-2">Bônus em Segundos</h3>
                     <p className="text-sm text-zinc-400 mb-6 leading-relaxed">
                         Assista a um breve vídeo informativo de nossos parceiros e receba bônus de saldo e pontos de Score imediatamente.
                     </p>

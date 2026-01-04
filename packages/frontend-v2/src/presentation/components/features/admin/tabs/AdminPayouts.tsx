@@ -61,8 +61,8 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ onSuccess, onError }
                             </div>
                         ) : (
                             payoutQueue.transactions.map((t) => (
-                                <div key={t.id} className="bg-black/30 border border-zinc-800/50 rounded-2xl p-6 transition-all hover:border-zinc-700 hover:bg-black/40 group">
-                                    <div className="flex justify-between items-start gap-4">
+                                <div key={t.id} className="bg-black/30 border border-zinc-800/50 rounded-2xl p-5 sm:p-6 transition-all hover:border-zinc-700 hover:bg-black/40 group">
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
                                         <div className="space-y-3 flex-1">
                                             <div>
                                                 <p className="text-sm font-bold text-white mb-0.5">{t.user_name}</p>
@@ -78,7 +78,7 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ onSuccess, onError }
                                         </div>
                                         <button
                                             onClick={() => handleConfirmPayout(t.id, 'TRANSACTION')}
-                                            className="p-4 bg-primary-500/10 text-primary-400 rounded-2xl hover:bg-primary-500 hover:text-black transition-all flex flex-col items-center justify-center gap-2 min-w-[120px]"
+                                            className="p-4 bg-primary-500/10 text-primary-400 rounded-2xl hover:bg-primary-500 hover:text-black transition-all flex flex-row sm:flex-col items-center justify-center gap-2 w-full sm:w-auto sm:min-w-[120px]"
                                         >
                                             <Check size={20} />
                                             <span className="text-[10px] font-black uppercase">Confirmar</span>

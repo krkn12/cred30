@@ -414,10 +414,19 @@ quotaRoutes.post('/sell', authMiddleware, async (c) => {
       }, 400);
     }
 
-    // Calcular valor de resgate
+    // Calcular valor de resgate baseado na Senioridade (1 ano desde a 1ª cota)
+    const firstQuotaResult = await pool.query(
+      'SELECT MIN(purchase_date) as first_purchase FROM quotas WHERE user_id = $1',
+      [user.id]
+    );
+    const firstPurchaseDate = new Date(firstQuotaResult.rows[0].first_purchase).getTime();
+
     const now = Date.now();
-    const timeDiff = now - new Date(quota.purchase_date).getTime();
-    const isEarlyExit = timeDiff < VESTING_PERIOD_MS;
+    const seniorityTime = now - firstPurchaseDate;
+    const hasSeniority = seniorityTime >= VESTING_PERIOD_MS;
+
+    // Agora a carência é baseada na senioridade do usuário, não na data da cota individual
+    const isEarlyExit = !hasSeniority;
 
     const originalAmount = parseFloat(quota.purchase_price);
     let finalAmount = originalAmount;
@@ -428,8 +437,7 @@ quotaRoutes.post('/sell', authMiddleware, async (c) => {
       penaltyAmount = originalAmount * PENALTY_RATE;
       finalAmount = originalAmount - penaltyAmount;
       // NOVA REGRA: A multa de 40% é direcionada para o lucro de juros
-      // Isso transforma a penalidade em receita para o sistema
-      profitAmount = penaltyAmount; // 100% da multa vai para o lucro de juros
+      profitAmount = penaltyAmount;
     }
 
     // Registrar auditoria antes da transação
@@ -591,27 +599,30 @@ quotaRoutes.post('/sell-all', authMiddleware, async (c) => {
       return c.json({ success: false, message: 'Você não possui participações para cessão' }, 400);
     }
 
-    // Calcular valores
+    // Calcular valores baseado na Senioridade
+    const firstQuotaResult = await pool.query(
+      'SELECT MIN(purchase_date) as first_purchase FROM quotas WHERE user_id = $1',
+      [user.id]
+    );
+    const firstPurchaseDate = new Date(firstQuotaResult.rows[0].first_purchase).getTime();
+    const now = Date.now();
+    const seniorityTime = now - firstPurchaseDate;
+    const hasSeniority = seniorityTime >= VESTING_PERIOD_MS;
+
     let totalReceived = 0;
     let totalPenalty = 0;
     let totalProfit = 0;
-    const now = Date.now();
 
     for (const quota of userQuotas) {
-      const timeDiff = now - new Date(quota.purchase_date).getTime();
-      const isEarlyExit = timeDiff < VESTING_PERIOD_MS;
-
       const originalAmount = parseFloat(quota.purchase_price);
       let amount = originalAmount;
       let penalty = 0;
 
-      if (isEarlyExit) {
+      if (!hasSeniority) {
         penalty = originalAmount * PENALTY_RATE;
         amount = originalAmount - penalty;
-        // CORREÇÃO: A multa é uma PERDA para o usuário, não lucro para o sistema
-        // O dinheiro da multa simplesmente "desaparece" do sistema (é uma penalidade real)
-        // Não adicionamos ao lucro de juros, pois isso criaria dinheiro do nada
         totalPenalty += penalty;
+        totalProfit += penalty;
       }
 
       totalReceived += amount;

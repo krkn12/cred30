@@ -75,7 +75,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                 <div className="relative z-10">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
                         <div>
-                            <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1 block">Empréstimo Ativo</span>
+                            <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1 block">Apoio Mútuo em Aberto</span>
                             {/* This activeLoan variable is not defined in the current scope.
                                 Assuming it should be derived from 'loans' or 'activeLoans' if there's only one active loan to display here.
                                 For now, I'll use a placeholder or the first active loan if available.
@@ -109,7 +109,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                             onClick={() => activeLoans.length > 0 && setInstallmentModalData({ loanId: activeLoans[0].id, installmentAmount: getInstallmentValue(activeLoans[0]) })}
                             className="bg-emerald-500 hover:bg-emerald-400 text-black py-4 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
                         >
-                            Pagar Parcela
+                            Repor Parcela
                         </button>
                         <button
                             onClick={() => activeLoans.length > 0 && setPayModalId(activeLoans[0].id)}
@@ -179,7 +179,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                         {/* Simulation Inputs */}
                         <div className="space-y-6">
                             <div>
-                                <label className="text-xs text-zinc-400 font-medium mb-2 block">Quanto você precisa?</label>
+                                <label className="text-xs text-zinc-400 font-medium mb-2 block">Quanto você solicita de apoio?</label>
                                 <div className="relative">
                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 font-medium">R$</span>
                                     <input
@@ -236,7 +236,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                         <span className="text-red-400 font-medium">{(totalRepay - amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-zinc-500">Valor da Parcela</span>
+                                        <span className="text-zinc-500">Valor da Reposição</span>
                                         <span className="text-primary-400 font-medium">{monthlyPayment.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                     </div>
                                     <div className="h-px bg-zinc-800 my-2"></div>

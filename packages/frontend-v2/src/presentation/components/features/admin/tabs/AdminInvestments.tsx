@@ -191,7 +191,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                         <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
                             <Briefcase size={20} className="text-blue-400" />
                         </div>
-                        <span className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Investido</span>
+                        <span className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Alocado</span>
                     </div>
                     <p className="text-2xl font-black text-white">
                         R$ {summary?.totalInvested.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
@@ -217,13 +217,13 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                     )}
                 </div>
 
-                {/* Dividendos */}
+                {/* Excedentes */}
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6">
                     <div className="flex items-center gap-3 mb-3">
                         <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
                             <Coins size={20} className="text-amber-400" />
                         </div>
-                        <span className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Dividendos</span>
+                        <span className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Excedentes</span>
                     </div>
                     <p className="text-2xl font-black text-white">
                         R$ {summary?.totalDividends.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
@@ -233,7 +233,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
 
             {/* Ações */}
             <div className="flex items-center justify-between">
-                <h2 className="text-xl font-black text-white">Meus Investimentos</h2>
+                <h2 className="text-xl font-black text-white">Alocações de Capital</h2>
                 <div className="flex gap-3">
                     <button
                         onClick={fetchInvestments}
@@ -247,7 +247,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                         className="bg-primary-500 hover:bg-primary-400 text-black px-5 py-2.5 rounded-xl flex items-center gap-2 text-sm font-black transition-colors"
                     >
                         <Plus size={18} />
-                        Novo Investimento
+                        Nova Alocação
                     </button>
                 </div>
             </div>
@@ -260,8 +260,8 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
             ) : investments.length === 0 ? (
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-12 text-center">
                     <Briefcase size={48} className="text-zinc-700 mx-auto mb-4" />
-                    <p className="text-zinc-500 font-bold">Nenhum investimento registrado</p>
-                    <p className="text-zinc-600 text-sm mt-2">Clique em "Novo Investimento" para começar</p>
+                    <p className="text-zinc-500 font-bold">Nenhuma alocação registrada</p>
+                    <p className="text-zinc-600 text-sm mt-2">Clique em "Nova Alocação" para começar</p>
                 </div>
             ) : (
                 <div className="space-y-4">
@@ -284,7 +284,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
 
                                 <div className="flex items-center gap-6">
                                     <div className="text-right">
-                                        <p className="text-xs text-zinc-500 uppercase font-bold">Investido</p>
+                                        <p className="text-xs text-zinc-500 uppercase font-bold">Alocado</p>
                                         <p className="text-lg font-bold text-white">R$ {inv.totalInvested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                                     </div>
 
@@ -338,7 +338,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
             {showAddModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4" onClick={() => setShowAddModal(false)}>
                     <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 w-full max-w-lg" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-xl font-black text-white mb-6">Registrar Novo Investimento</h3>
+                        <h3 className="text-xl font-black text-white mb-6">Registrar Nova Alocação de Capital</h3>
 
                         <div className="space-y-4">
                             <div>
@@ -444,7 +444,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                                 disabled={!newInvestment.assetName || !newInvestment.totalInvested}
                                 className="flex-1 bg-primary-500 hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed text-black py-3 rounded-xl font-black transition-colors"
                             >
-                                Registrar Investimento
+                                Registrar Alocação
                             </button>
                         </div>
                     </div>

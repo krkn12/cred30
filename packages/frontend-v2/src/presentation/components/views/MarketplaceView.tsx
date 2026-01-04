@@ -110,7 +110,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         quotaId: null as number | null
     });
 
-    const categories = ['COTAS', 'ELETRÔNICOS', 'VEÍCULOS', 'IMÓVEIS', 'SERVIÇOS', 'MODA', 'OUTROS'];
+    const categories = ['PARTICIPAÇÕES', 'ELETRÔNICOS', 'VEÍCULOS', 'IMÓVEIS', 'SERVIÇOS', 'MODA', 'OUTROS'];
     const [aiLoading, setAiLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -151,7 +151,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 title: navState.preloadQuota.title || `Cota-Parte #${navState.preloadQuota.id}`,
                 description: `Cessão de cota-parte do grupo Cred30. Valor de mercado atual. Transferida automaticamente após confirmação do pagamento.`,
                 price: String(navState.preloadQuota.price || ''),
-                category: 'COTAS',
+                category: 'PARTICIPAÇÕES',
                 image_url: '',
                 quotaId: navState.preloadQuota.id
             });

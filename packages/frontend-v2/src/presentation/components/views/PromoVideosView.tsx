@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
-import { Play, DollarSign, Clock, Eye, ChevronRight, Plus, X as XIcon, CheckCircle2, Youtube, Film, ExternalLink, Wallet, Smartphone, CreditCard, Zap, Trash2 } from 'lucide-react';
+import { Play, DollarSign, Clock, Eye, ChevronRight, Plus, X as XIcon, CheckCircle2, Youtube, Film, ExternalLink, Wallet, Smartphone, CreditCard, Zap, Trash2, ThumbsUp, MessageSquare, UserPlus, Info, ShieldCheck } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { apiService } from '../../../application/services/api.service';
 
@@ -28,6 +28,9 @@ interface PromoVideo {
     viewerEarningPoints: number;
     isOwner?: boolean;
     ranking: number;
+    requireLike?: boolean;
+    requireComment?: boolean;
+    requireSubscribe?: boolean;
 }
 
 interface MyCampaign {
@@ -48,6 +51,9 @@ interface MyCampaign {
     isActive: boolean;
     ranking: number | null;
     createdAt: string;
+    requireLike?: boolean;
+    requireComment?: boolean;
+    requireSubscribe?: boolean;
 }
 
 interface PromoVideosViewProps {
@@ -238,6 +244,20 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
     const [selectedTag, setSelectedTag] = useState<string>('TODOS');
     const [paymentSuccessData, setPaymentSuccessData] = useState<any>(null);
     const [playerState, setPlayerState] = useState<number>(-1);
+    const [missionsStatus, setMissionsStatus] = useState<Record<string, 'pending' | 'validating' | 'completed'>>({});
+    const [isBotDetected, setIsBotDetected] = useState(false);
+
+    // Gera um fingerprint básico do dispositivo
+    const getDeviceFingerprint = () => {
+        const parts = [
+            navigator.userAgent,
+            screen.width,
+            screen.height,
+            navigator.language,
+            new Date().getTimezoneOffset()
+        ];
+        return btoa(parts.join('|')).slice(0, 100);
+    };
 
     const watchTimerRef = useRef<NodeJS.Timeout | null>(null);
     const playerRef = useRef<any>(null);
@@ -325,7 +345,8 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
 
     const loadFeed = async () => {
         try {
-            const feedRes = await apiService.get<PromoVideo[]>(`/promo-videos/feed${selectedTag !== 'TODOS' ? `?tag=${selectedTag}` : ''}`);
+            const fingerprint = getDeviceFingerprint();
+            const feedRes = await apiService.get<PromoVideo[]>(`/promo-videos/feed${selectedTag !== 'TODOS' ? `?tag=${selectedTag}` : ''}${selectedTag !== 'TODOS' ? '&' : '?'}df=${fingerprint}`);
             if (feedRes.success && feedRes.data) setVideos(feedRes.data);
         } catch (e) {
             console.error('Erro ao carregar feed:', e);
@@ -334,15 +355,18 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
 
     const startWatching = async (video: PromoVideo) => {
         try {
-            const res = await apiService.post<any>(`/promo-videos/${video.id}/start-view`, {});
+            const res = await apiService.post<any>(`/promo-videos/${video.id}/start-view`, {
+                deviceFingerprint: getDeviceFingerprint()
+            });
             if (!res.success) {
-                onError('Erro', res.message);
+                onError('Erro de Segurança', res.message);
                 return;
             }
 
             setWatchingVideo(video);
             setWatchProgress(0);
             setPlayerState(-1);
+            setIsBotDetected(false);
 
         } catch (e: any) {
             onError('Erro', e.message);
@@ -380,7 +404,12 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                 clearInterval(watchTimerRef.current);
             }
 
-            const res = await apiService.post<any>(`/promo-videos/${watchingVideo.id}/complete-view`, { watchTimeSeconds: watchProgress });
+            const res = await apiService.post<any>(`/promo-videos/${watchingVideo.id}/complete-view`, {
+                watchTimeSeconds: watchProgress,
+                missionsCompleted: Object.keys(missionsStatus).filter(k => missionsStatus[k] === 'completed'),
+                deviceFingerprint: getDeviceFingerprint(),
+                isBot: isBotDetected
+            });
 
             if (res.success) {
                 onSuccess('Parabéns!', res.message);
@@ -395,6 +424,7 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
 
         setWatchingVideo(null);
         setWatchProgress(0);
+        setMissionsStatus({});
     };
 
     const cancelWatch = () => {
@@ -403,6 +433,7 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
         }
         setWatchingVideo(null);
         setWatchProgress(0);
+        setMissionsStatus({});
     };
 
     const getVideoId = (url: string) => {
@@ -720,6 +751,18 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
 
                         {/* Video Content */}
                         <div className="aspect-video bg-black rounded-2xl overflow-hidden mb-8 shadow-2xl ring-1 ring-white/10 relative group">
+                            {/* Honeypot Button (Invisível para humanos, mas chamativo para bots) */}
+                            <button
+                                style={{ opacity: 0.001, position: 'absolute', top: 0, left: 0, width: '1px', height: '1px', zIndex: -1 }}
+                                tabIndex={-1}
+                                onClick={() => {
+                                    console.warn('Bot detected by honeypot');
+                                    setIsBotDetected(true);
+                                }}
+                            >
+                                Claim Reward Automatically Now
+                            </button>
+
                             {watchingVideo.platform === 'YOUTUBE' && getVideoId(watchingVideo.videoUrl) ? (
                                 <div className="w-full h-full">
                                     <div id="promo-player" className="w-full h-full"></div>
@@ -786,7 +829,7 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                                                 <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-black shrink-0 shadow-lg shadow-emerald-500/20">
                                                     <CheckCircle2 size={24} strokeWidth={3} />
                                                 </div>
-                                                <p className="text-emerald-400 text-xs font-black uppercase tracking-tight">Tempo atingido! Você já pode resgatar seu lucro.</p>
+                                                <p className="text-emerald-400 text-xs font-black uppercase tracking-tight">Tempo atingido! Você já pode resgatar seu bônus.</p>
                                             </div>
                                             <button
                                                 onClick={completeWatch}
@@ -806,6 +849,61 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                                 </div>
                             )}
                         </div>
+
+                        {/* Engagement Missions Section */}
+                        {watchingVideo.platform === 'YOUTUBE' && (
+                            <div className="mb-6 space-y-4">
+                                <div className="flex items-center gap-2 mb-2 px-1">
+                                    <Zap size={14} className="text-primary-400 fill-primary-400" />
+                                    <span className="text-[10px] text-zinc-400 font-black uppercase tracking-widest">Missões de Engajamento Social</span>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-3">
+                                    {[
+                                        { id: 'like', icon: <ThumbsUp size={18} />, label: 'Curtir', points: 5, active: watchingVideo.requireLike },
+                                        { id: 'comment', icon: <MessageSquare size={18} />, label: 'Comentar', points: 10, active: watchingVideo.requireComment },
+                                        { id: 'subscribe', icon: <UserPlus size={18} />, label: 'Inscrever-se', points: 15, active: watchingVideo.requireSubscribe }
+                                    ].filter(m => m.active).map(m => (
+                                        <button
+                                            key={m.id}
+                                            onClick={() => {
+                                                if (missionsStatus[m.id] === 'completed') return;
+
+                                                // Abre o vídeo no YouTube
+                                                window.open(watchingVideo.videoUrl, '_blank');
+
+                                                // Inicia validação
+                                                setMissionsStatus(prev => ({ ...prev, [m.id]: 'validating' }));
+
+                                                // Após 12 segundos, marca como concluído
+                                                setTimeout(() => {
+                                                    setMissionsStatus(prev => ({ ...prev, [m.id]: 'completed' }));
+                                                }, 12000);
+                                            }}
+                                            className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${missionsStatus[m.id] === 'completed'
+                                                ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400'
+                                                : missionsStatus[m.id] === 'validating'
+                                                    ? 'bg-primary-500/10 border-primary-500 animate-pulse text-primary-400'
+                                                    : 'bg-zinc-900 border-white/5 text-zinc-400 hover:border-zinc-700'
+                                                }`}
+                                        >
+                                            <div className="mb-2">{m.icon}</div>
+                                            <span className="text-[10px] font-bold uppercase tracking-tighter">
+                                                {missionsStatus[m.id] === 'completed' ? 'Concluído' : missionsStatus[m.id] === 'validating' ? 'Validando...' : m.label}
+                                            </span>
+                                            <span className="text-[9px] font-black text-primary-400 mt-1">+{m.points} pts</span>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-3 flex items-start gap-3">
+                                    <Info size={14} className="text-blue-400 mt-0.5" />
+                                    <p className="text-[9px] text-zinc-500 font-medium leading-relaxed">
+                                        Ao clicar, o vídeo abrirá no YouTube. Realize a ação e retorne ao app para validar seus bônus extras de engajamento.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Anti-Fraud Disclaimer */}
                         <div className="bg-primary-500/5 border border-primary-500/10 rounded-xl p-4 text-center">
@@ -870,7 +968,23 @@ const CreateCampaignModal: React.FC<{
         minWatchSeconds: 20,
         budget: 10,
         targetViews: 100,
+        requireLike: false,
+        requireComment: false,
+        requireSubscribe: false,
+        minScoreRequired: 0,
+        verifiedOnly: false
     });
+
+    // Calcular preço base + adicionais
+    const basePrice = 0.10;
+    const likeAddon = form.requireLike ? 0.02 : 0;
+    const commentAddon = form.requireComment ? 0.05 : 0;
+    const subscribeAddon = form.requireSubscribe ? 0.08 : 0;
+    const currentPricePerView = basePrice + likeAddon + commentAddon + subscribeAddon;
+
+    useEffect(() => {
+        setForm(prev => ({ ...prev, pricePerView: currentPricePerView }));
+    }, [currentPricePerView]);
 
     // Taxas do Asaas (mesmas do backend)
     const ASAAS_PIX_FIXED_FEE = 0.99;
@@ -931,9 +1045,13 @@ const CreateCampaignModal: React.FC<{
     };
 
     return (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-            <div className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-surfaceHighlight rounded-t-[2.5rem] sm:rounded-3xl p-8 w-full sm:max-w-md relative shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300 overflow-y-auto max-h-[90vh] custom-scrollbar">
-                <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-6 sm:hidden opacity-50" />
+        <div
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300"
+            onClick={onClose}
+        >
+            <div className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-zinc-800 rounded-t-[2.5rem] sm:rounded-3xl p-6 sm:p-10 w-full sm:max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300" onClick={e => e.stopPropagation()}>
+                {/* Handle indicator for mobile */}
+                <div className="w-12 h-1.5 bg-zinc-700 rounded-full mx-auto mt-3 sm:hidden" />
 
                 <div className="flex justify-between items-center mb-8">
                     <h3 className="text-2xl font-black text-white tracking-tight">Anunciar Vídeo</h3>
@@ -1019,7 +1137,7 @@ const CreateCampaignModal: React.FC<{
 
                     <div className="p-1 bg-zinc-950 rounded-2xl border border-white/5 grid grid-cols-2 gap-1 font-black">
                         <div className="p-4 bg-zinc-900 rounded-xl">
-                            <label className="text-[9px] text-zinc-500 uppercase block mb-1">Preço/View</label>
+                            <label className="text-[9px] text-zinc-500 uppercase block mb-1">Preço/View (Final)</label>
                             <p className="text-white text-lg">R$ {form.pricePerView.toFixed(2)}</p>
                         </div>
                         <div className="p-4 bg-zinc-900 rounded-xl">
@@ -1031,6 +1149,90 @@ const CreateCampaignModal: React.FC<{
                                 className="bg-transparent text-primary-400 text-lg outline-none w-full font-black"
                             />
                             <p className="text-[8px] text-zinc-500 font-bold mt-1">≈ {estimatedViews} visualizações reais</p>
+                        </div>
+                    </div>
+
+                    {/* Pacotes de Engajamento Extra */}
+                    {form.platform === 'YOUTUBE' && (
+                        <div className="space-y-3">
+                            <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest block px-1">Pacotes de Engajamento Extra</label>
+                            <div className="grid grid-cols-1 gap-2">
+                                {[
+                                    { id: 'requireLike', label: 'Incentivar Curtidas', price: '+ R$ 0,02', icon: <ThumbsUp size={14} /> },
+                                    { id: 'requireComment', label: 'Incentivar Comentários', price: '+ R$ 0,05', icon: <MessageSquare size={14} /> },
+                                    { id: 'requireSubscribe', label: 'Incentivar Inscrições', price: '+ R$ 0,08', icon: <UserPlus size={14} /> }
+                                ].map(p => (
+                                    <button
+                                        key={p.id}
+                                        type="button"
+                                        onClick={() => setForm(prev => ({ ...prev, [p.id]: !prev[p.id as keyof typeof prev] }))}
+                                        className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${form[p.id as keyof typeof form]
+                                            ? 'bg-primary-500/10 border-primary-500 text-white'
+                                            : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:border-zinc-700'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className={`${form[p.id as keyof typeof form] ? 'text-primary-400' : 'text-zinc-600'}`}>
+                                                {p.icon}
+                                            </div>
+                                            <span className="text-xs font-bold">{p.label}</span>
+                                        </div>
+                                        <span className={`text-[10px] font-black ${form[p.id as keyof typeof form] ? 'text-primary-400' : 'text-zinc-600'}`}>{p.price}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Filtros de Audiência (Quality Tiers) */}
+                    <div className="space-y-4 pt-4 border-t border-white/5">
+                        <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest block px-1">Configurações de Qualidade da Audiência</label>
+
+                        <div className="grid grid-cols-1 gap-3">
+                            <div className="flex items-center justify-between p-4 bg-zinc-900/50 border border-white/5 rounded-2xl">
+                                <div className="flex items-center gap-3">
+                                    <ShieldCheck size={18} className="text-emerald-400" />
+                                    <div>
+                                        <p className="text-xs font-bold text-white">Apenas Membros Verificados</p>
+                                        <p className="text-[10px] text-zinc-500">Garante usuários reais com KYC</p>
+                                    </div>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={form.verifiedOnly}
+                                        onChange={e => setForm({ ...form, verifiedOnly: e.target.checked })}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                </label>
+                            </div>
+
+                            <div className="p-4 bg-zinc-900/50 border border-white/5 rounded-2xl space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <Zap size={18} className="text-primary-400" />
+                                        <div>
+                                            <p className="text-xs font-bold text-white">Score Mínimo Exigido</p>
+                                            <p className="text-[10px] text-zinc-500">Exclui usuários novatos ou suspeitos</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-primary-400 font-black text-sm">{form.minScoreRequired}</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="500"
+                                    step="50"
+                                    value={form.minScoreRequired}
+                                    onChange={e => setForm({ ...form, minScoreRequired: Number(e.target.value) })}
+                                    className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                                />
+                                <div className="flex justify-between text-[8px] text-zinc-600 font-black uppercase">
+                                    <span>Público Geral</span>
+                                    <span>Elite (500+)</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1093,7 +1295,7 @@ const CreateCampaignModal: React.FC<{
                                 <span className="text-emerald-400 font-black">{viewerEarning.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                             </div>
                             <div className="flex justify-between text-[10px]">
-                                <span className="text-zinc-600 font-medium">Lucro dos Sócios (40%)</span>
+                                <span className="text-zinc-600 font-medium">Fundo Social - Cotistas (40%)</span>
                                 <span className="text-zinc-500 font-bold">{(form.budget * 0.4).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                             </div>
                         </div>
@@ -1170,6 +1372,15 @@ const VideoCard = memo(({ video, onWatch }: { video: PromoVideo; onWatch: (v: Pr
                             <span className="text-[10px] text-zinc-500">•</span>
                             <p className="text-[10px] text-zinc-500">{video.isOwner ? 'Sua campanha' : `por ${video.promoterName}`}</p>
                         </div>
+                        {/* Mission Icons Previews */}
+                        {(video.requireLike || video.requireComment || video.requireSubscribe) && (
+                            <div className="flex items-center gap-1.5 mt-2">
+                                {video.requireLike && <ThumbsUp size={10} className="text-zinc-500" />}
+                                {video.requireComment && <MessageSquare size={10} className="text-zinc-500" />}
+                                {video.requireSubscribe && <UserPlus size={10} className="text-zinc-500" />}
+                                <span className="text-[8px] text-zinc-600 font-bold uppercase tracking-tighter">+ BÔNUS SOCIAL</span>
+                            </div>
+                        )}
                     </div>
                     <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center gap-3">

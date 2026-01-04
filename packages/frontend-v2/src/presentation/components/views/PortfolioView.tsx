@@ -137,7 +137,7 @@ export const PortfolioView = ({ quotas, hasLoans, onSell, onSellAll }: Portfolio
                         <p className="text-sm opacity-80">Gestão de Apoio à Comunidade</p>
                     </div>
                     <div className="text-right">
-                        <p className="text-sm opacity-80">Capital em Circulação</p>
+                        <p className="text-sm opacity-80">Capital Social sob Gestão</p>
                         <p className="text-3xl font-bold">{totalCurrentValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                     </div>
                 </div>
@@ -148,7 +148,7 @@ export const PortfolioView = ({ quotas, hasLoans, onSell, onSellAll }: Portfolio
                         <p className="text-xl font-bold">{totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                     </div>
                     <div className="bg-white/20 rounded-xl p-4">
-                        <p className="text-sm opacity-80 mb-1">Excedentes Gerados</p>
+                        <p className="text-sm opacity-80 mb-1">Sobras Distribuídas</p>
                         <p className="text-xl font-bold flex items-center gap-1">
                             {totalEarnings >= 0 ? '+' : ''}{totalEarnings.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             <span className="text-xs bg-black/20 px-1.5 py-0.5 rounded-full">

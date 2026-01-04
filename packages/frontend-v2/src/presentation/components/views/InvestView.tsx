@@ -232,35 +232,36 @@ export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
                 </footer>
             </div>
 
-            {/* Modals from previous version adapted */}
+            {/* Modal: Termo de Ciência e Sustentabilidade Financeira */}
             {showTermsModal && (
                 <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[700] flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
-                    <div className="bg-zinc-900 border border-white/10 rounded-[2.5rem] p-10 w-full max-w-sm max-h-[80vh] overflow-y-auto relative shadow-2xl ring-1 ring-white/10">
+                    <div className="bg-zinc-900 border border-white/10 rounded-[2.5rem] p-6 sm:p-10 w-full max-w-sm max-h-[85vh] overflow-y-auto relative shadow-2xl ring-1 ring-white/10 scrollbar-hide">
                         <button onClick={() => setShowTermsModal(false)} className="absolute top-6 right-6 text-zinc-600 hover:text-white bg-white/5 p-2 rounded-full transition-colors"><XIcon size={20} /></button>
 
                         <div className="text-center mb-8">
                             <div className="w-20 h-20 bg-primary-500/10 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-primary-500/20 shadow-xl shadow-primary-900/20">
-                                <ShieldCheck size={40} className="text-primary-500" />
+                                <Building2 size={40} className="text-primary-500" />
                             </div>
-                            <h3 className="text-2xl font-black text-white tracking-tight uppercase">Termo de Adesão</h3>
-                            <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mt-2">Leia atentamente antes de prosseguir</p>
+                            <h3 className="text-2xl font-black text-white tracking-tight uppercase">Termo de Ciência do Cooperado</h3>
+                            <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mt-2 px-2 leading-tight">Sustentabilidade e Transparência Cred30</p>
                         </div>
 
                         <div className="space-y-4 text-xs text-zinc-500 leading-relaxed font-medium">
-                            <p className="text-black font-black bg-primary-500 p-4 rounded-2xl text-center shadow-lg shadow-primary-500/20 uppercase tracking-tighter">Declaração de Ciência e Aceite</p>
+                            <p className="text-black font-black bg-emerald-500 p-4 rounded-2xl text-center shadow-lg shadow-emerald-500/20 uppercase tracking-tighter">Economia Circular Cooperativa</p>
 
-                            <TermItem num="01" text="Trata-se de uma adesão a um sistema de suporte mútuo e economia colaborativa (SCP - Sociedade em Conta de Participação)." />
-                            <TermItem num="02" text="O valor aportado compõe o capital social da comunidade para fins de socorro financeiro e benefícios mútuos." />
-                            <TermItem num="03" text="Os excedentes operacionais distribuídos são frutos do desempenho coletivo da plataforma." />
-                            <TermItem num="04" text="Não há garantia de rendimento fixo. Resultados passados não garantem resultados futuros." highlight />
-                            <TermItem num="05" text="Existe um período de carência (Vesting) de 365 dias para o resgate do capital social sem taxas de saída." />
+                            <TermItem num="01" text="Natureza Associativa: O Cred30 é um sistema de suporte mútuo privado. Você não está comprando um 'investimento', mas sim integralizando capital em uma Sociedade Cooperativa Digital." />
+                            <TermItem num="02" text="Sustentabilidade Real: A receita da plataforma provém de serviços reais de marketing (vídeos), taxas de marketplace e juros de empréstimos sociais. Não depende da entrada de novos membros para pagar os antigos." highlight />
+                            <TermItem num="03" text="Rentabilidade Variável: A distribuição de lucros (excedentes) é variável e depende exclusivamente do faturamento real da comunidade. Não existe qualquer promessa de rendimento fixo ou garantido." highlight />
+                            <TermItem num="04" text="Circulação de Valor: Para o crescimento do grupo, o capital social é utilizado para fomentar o crédito interno entre associados, gerando riqueza que volta para você na forma de bônus e dividendos." />
+                            <TermItem num="05" text="Carência e Segurança: O resgate integral (100%) é liberado após 365 dias da primeira cota. Se resgatado antes, a multa de 40% é revertida inteiramente para o lucro dos outros associados ativos." />
+                            <TermItem num="06" text="Anti-Fraude: Tentativas de burlar missões sociais ou criar contas falsas resultam em perda imediata do bônus pendente e suspensão do selo de confiança." />
                         </div>
 
                         <button
                             onClick={() => { setAcceptedTerms(true); setShowTermsModal(false); }}
                             className="w-full bg-white text-black font-black py-5 rounded-2xl mt-8 text-xs uppercase tracking-[0.2em] hover:scale-[1.02] transition-all shadow-xl active:scale-95"
                         >
-                            ENTENDI E ACEITO
+                            ENTENDI E ACEITO OS RISCOS E REGRAS
                         </button>
                     </div>
                 </div>

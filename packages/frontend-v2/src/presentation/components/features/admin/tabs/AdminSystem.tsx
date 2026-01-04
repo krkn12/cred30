@@ -213,7 +213,7 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
                             <p className="text-lg font-black text-white">{formatCurrency(state.stats?.systemConfig?.total_owner_profit || 0)}</p>
                         </div>
                         <div className="bg-black/40 border border-zinc-800/50 p-4 rounded-2xl">
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Reserva Investimento</p>
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Reserva Social</p>
                             <p className="text-lg font-black text-primary-400">{formatCurrency(state.stats?.systemConfig?.investment_reserve || 0)}</p>
                         </div>
                     </div>

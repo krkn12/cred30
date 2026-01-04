@@ -568,7 +568,7 @@ export default function App() {
 
               {showReferral && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center z-[500] p-0 sm:p-4 animate-in fade-in duration-300" onClick={() => setShowReferral(false)}>
-                  <div className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-surfaceHighlight rounded-t-[2.5rem] sm:rounded-3xl p-8 w-full sm:max-w-sm relative animate-in slide-in-from-bottom-full sm:zoom-in-95 duration-500 sm:duration-300" onClick={e => e.stopPropagation()}>
+                  <div className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-surfaceHighlight rounded-t-[2.5rem] sm:rounded-3xl p-6 sm:p-8 w-full sm:max-w-sm max-h-[92vh] overflow-y-auto relative animate-in slide-in-from-bottom-full sm:zoom-in-95 duration-500 sm:duration-300 scrollbar-hide" onClick={e => e.stopPropagation()}>
                     <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-6 sm:hidden opacity-50" />
 
                     <button title="Fechar" onClick={() => setShowReferral(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white hidden sm:block">✕</button>

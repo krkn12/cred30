@@ -8,18 +8,18 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ 
-  user, 
-  currentView, 
-  onChangeView, 
-  onLogout, 
-  children 
+export const Layout: React.FC<LayoutProps> = ({
+  user,
+  currentView,
+  onChangeView,
+  onLogout,
+  children
 }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'invest', label: 'Investir', icon: '💰' },
-    { id: 'portfolio', label: 'Carteira', icon: '💼' },
-    { id: 'loans', label: 'Empréstimos', icon: '💸' },
+    { id: 'invest', label: 'Participar', icon: '🤝' },
+    { id: 'portfolio', label: 'Participação', icon: '💼' },
+    { id: 'loans', label: 'Apoio Mútuo', icon: '💸' },
     { id: 'withdraw', label: 'Saques', icon: '💳' },
     { id: 'settings', label: 'Configurações', icon: '⚙️' },
   ];
@@ -44,11 +44,10 @@ export const Layout: React.FC<LayoutProps> = ({
                 <button
                   key={item.id}
                   onClick={() => onChangeView(item.id)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    currentView === item.id
-                      ? 'bg-primary-500 text-black'
-                      : 'text-zinc-300 hover:text-white hover:bg-surfaceHighlight'
-                  }`}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === item.id
+                    ? 'bg-primary-500 text-black'
+                    : 'text-zinc-300 hover:text-white hover:bg-surfaceHighlight'
+                    }`}
                 >
                   <span className="mr-2">{item.icon}</span>
                   {item.label}
@@ -79,11 +78,10 @@ export const Layout: React.FC<LayoutProps> = ({
             <button
               key={item.id}
               onClick={() => onChangeView(item.id)}
-              className={`block w-full text-left px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                currentView === item.id
-                  ? 'bg-primary-500 text-black'
-                  : 'text-zinc-300 hover:text-white hover:bg-surfaceHighlight'
-              }`}
+              className={`block w-full text-left px-3 py-2 rounded-md text-base font-medium transition-colors ${currentView === item.id
+                ? 'bg-primary-500 text-black'
+                : 'text-zinc-300 hover:text-white hover:bg-surfaceHighlight'
+                }`}
             >
               <span className="mr-2">{item.icon}</span>
               {item.label}

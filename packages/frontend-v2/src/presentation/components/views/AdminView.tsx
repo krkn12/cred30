@@ -110,7 +110,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         { id: 'referrals', name: 'Indicações', icon: UserPlus, roles: ['ADMIN'] },
         { id: 'users', name: 'Usuários', icon: ShieldCheck, roles: ['ADMIN'] },
         { id: 'store', name: 'Loja', icon: ShoppingBagIcon, roles: ['ADMIN'] },
-        { id: 'investments', name: 'Investimentos', icon: TrendingUp, roles: ['ADMIN'] },
+        { id: 'investments', name: 'Gestão de Capital', icon: TrendingUp, roles: ['ADMIN'] },
         { id: 'governance', name: 'Governança', icon: Vote, roles: ['ADMIN'] },
         { id: 'reviews', name: 'Depoimentos', icon: MessageSquare, count: pendingReviewsCount, roles: ['ADMIN'] },
         { id: 'bugs', name: 'Bugs', icon: Bug, count: pendingBugsCount, roles: ['ADMIN'] },
@@ -119,9 +119,9 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     ].filter(tab => tab.roles.includes(userRole));
 
     return (
-        <div className="space-y-8 pb-20 max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="space-y-6 sm:space-y-8 pb-32 max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-8">
             {/* Header Modernizado */}
-            <div className="bg-gradient-to-br from-zinc-900 to-black rounded-3xl p-8 border border-zinc-800 shadow-2xl relative overflow-hidden group">
+            <div className="bg-gradient-to-br from-zinc-900 to-black rounded-3xl p-6 sm:p-8 border border-zinc-800 shadow-2xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
 
                 <div className="flex flex-col lg:flex-row items-center justify-between gap-8 relative z-10">
@@ -159,14 +159,14 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                 </div>
             </div>
 
-            {/* Abas */}
-            <div className="flex items-center gap-1.5 p-1.5 bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 rounded-[2rem] overflow-x-auto no-scrollbar shadow-xl sticky top-4 z-50">
+            {/* Abas com Scroll Otimizado */}
+            <div className="flex items-center gap-1.5 p-1.5 bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 rounded-[2rem] overflow-x-auto no-scrollbar shadow-xl sticky top-4 z-50 touch-pan-x">
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as TabType)}
                         className={`
-                            relative flex items-center gap-3 px-8 py-4 rounded-[1.5rem] text-sm font-bold transition-all duration-500 whitespace-nowrap
+                            relative flex items-center gap-3 px-6 sm:px-8 py-3.5 sm:py-4 rounded-[1.5rem] text-xs sm:text-sm font-bold transition-all duration-500 whitespace-nowrap
                             ${activeTab === tab.id
                                 ? 'bg-zinc-800 text-white shadow-2xl border border-zinc-700/50 scale-[1.02]'
                                 : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/30'}

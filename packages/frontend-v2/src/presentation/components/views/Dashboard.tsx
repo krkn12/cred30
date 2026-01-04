@@ -169,7 +169,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
     void onLoans;
 
     return (
-        <div className="space-y-6 pb-24">
+        <div className="space-y-6 pb-32">
             {/* 1. Header com Boas-Vindas */}
             <div className="relative overflow-hidden rounded-3xl glass p-5 sm:p-8 animate-fade-in animate-float">
                 <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none select-none">
@@ -258,7 +258,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                                 <TrendingUp size={18} />
                             </div>
                             <div>
-                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Excedente</p>
+                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Sobras</p>
                                 <p className="text-sm font-black text-emerald-400">+{earningsPercentage.toFixed(1)}%</p>
                             </div>
                         </div>
@@ -336,7 +336,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                         <span className="glass px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest text-primary-400">{userQuotas.length} ATIVAS</span>
                     </div>
                     <div>
-                        <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2">Capital Alocado</p>
+                        <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2">Capital Social Integralizado</p>
                         <h3 className="text-3xl font-black text-white tracking-tight">{formatCurrency(totalInvested)}</h3>
                     </div>
                 </div>
@@ -349,7 +349,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                         <span className="glass px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest text-emerald-400">+{earningsPercentage.toFixed(1)}%</span>
                     </div>
                     <div>
-                        <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2">Excedentes Totais</p>
+                        <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2">Excedentes Acumulados</p>
                         <h3 className="text-3xl font-black text-emerald-400 tracking-tight">{formatCurrency(totalEarnings)}</h3>
                     </div>
                 </div>

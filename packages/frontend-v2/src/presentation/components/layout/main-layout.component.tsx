@@ -26,7 +26,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
     { id: 'promo-videos', label: 'Views', icon: Play },
     { id: 'invest', label: 'Ativação', icon: TrendingUp },
     { id: 'games', label: 'Diversão', icon: Gamepad2 },
-    { id: 'portfolio', label: 'Meus Ativos', icon: PieChart },
+    { id: 'portfolio', label: 'Participações', icon: PieChart },
     { id: 'loans', label: 'Apoio', icon: DollarSign },
     { id: 'withdraw', label: 'Resgatar', icon: ArrowUpFromLine },
     { id: 'faq', label: 'Dúvidas', icon: HelpCircle },
@@ -121,8 +121,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
         </div>
       </main>
 
-      {/* Mobile Bottom Nav - Floating Dock (Elevado para não cobrar o Ad) */}
-      <div className="md:hidden fixed bottom-[110px] left-1/2 -translate-x-1/2 w-[92%] max-w-sm bg-black/60 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] flex justify-around items-center px-4 py-4 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] z-30 ring-1 ring-white/5">
+      {/* Mobile Bottom Nav - Floating Dock Premium */}
+      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-sm bg-black/60 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] flex justify-around items-center px-4 py-4 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] z-30 ring-1 ring-white/5">
         {navItems.filter(i => ['dashboard', 'marketplace', 'promo-videos', 'invest', 'loans'].includes(i.id)).map((item) => (
           <button
             key={item.id}
