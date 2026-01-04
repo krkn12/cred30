@@ -262,8 +262,42 @@ export const initializeDatabase = async () => {
         title_downloaded_at TIMESTAMP,
         role VARCHAR(20) DEFAULT 'MEMBER',
         status VARCHAR(20) DEFAULT 'ACTIVE',
+        address TEXT,
+        phone VARCHAR(20),
+        is_seller BOOLEAN DEFAULT FALSE,
+        seller_status VARCHAR(20) DEFAULT 'none',
+        asaas_account_id VARCHAR(255),
+        asaas_wallet_id VARCHAR(255),
+        seller_company_name VARCHAR(255),
+        seller_cpf_cnpj VARCHAR(255),
+        seller_phone VARCHAR(255),
+        seller_address_street VARCHAR(255),
+        seller_address_number VARCHAR(255),
+        seller_address_neighborhood VARCHAR(255),
+        seller_address_city VARCHAR(255),
+        seller_address_state VARCHAR(255),
+        seller_address_postal_code VARCHAR(255),
+        seller_created_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Garantir que todas as colunas de vendedor existam na tabela users
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_seller BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_status VARCHAR(20) DEFAULT 'none';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS asaas_account_id VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS asaas_wallet_id VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_company_name VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_cpf_cnpj VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_phone VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_street VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_number VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_neighborhood VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_city VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_state VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_postal_code VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_created_at TIMESTAMP;
     `);
 
     // Verificar o tipo da coluna id da tabela users para garantir integridade das chaves estrangeiras
@@ -292,8 +326,14 @@ export const initializeDatabase = async () => {
         purchase_price DECIMAL(10,2) NOT NULL,
         current_value DECIMAL(10,2) NOT NULL,
         purchase_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        status VARCHAR(20) DEFAULT 'ACTIVE'
+        status VARCHAR(20) DEFAULT 'ACTIVE',
+        yield_rate DECIMAL(5,2) DEFAULT 0.5
       );
+    `);
+
+    // Garantir colunas novas na tabela quotas
+    await client.query(`
+      ALTER TABLE quotas ADD COLUMN IF NOT EXISTS yield_rate DECIMAL(5,2) DEFAULT 0.5;
     `);
 
     // Verificar se a tabela quotas tem a estrutura antiga
@@ -728,6 +768,9 @@ export const initializeDatabase = async () => {
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_fee DECIMAL(10, 2) DEFAULT 0;
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS courier_id INTEGER REFERENCES users(id);
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS pickup_code VARCHAR(10);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(20);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS picked_up_at TIMESTAMP;
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
     `);
@@ -904,6 +947,7 @@ export const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS safe_contact_phone VARCHAR(20);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS welcome_benefit_uses INTEGER DEFAULT 0; -- Contador de usos do benefício de boas-vindas
       ALTER TABLE users ADD COLUMN IF NOT EXISTS video_points INTEGER DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS ad_points INTEGER DEFAULT 0;
     `);
 
     // Criar tabelas de auditoria e webhooks
