@@ -127,9 +127,9 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({ isOp
                                 VOCÊ PODE PERDER TODO O CAPITAL APORTADO.
                             </p>
                             <p className="text-zinc-400 text-xs md:text-sm leading-relaxed">
-                                O sistema de apoio mútuo <strong className="text-white">NÃO GARANTE</strong> retorno do investimento.
-                                Os rendimentos passados não garantem rendimentos futuros.
-                                Não invista recursos que você não pode perder.
+                                O sistema de apoio mútuo <strong className="text-white">NÃO GARANTE</strong> distribuição de excedentes.
+                                As sobras passadas não garantem benefícios futuros.
+                                Não realize aportes de recursos que você não possa disponibilizar à comunidade.
                             </p>
                         </div>
                     </section>
@@ -141,7 +141,7 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({ isOp
                         <p className="text-zinc-400 text-xs md:text-sm leading-relaxed">
                             Ao clicar em "Aceitar", você declara ter <strong className="text-white">18 anos ou mais</strong>,
                             possuir plena capacidade civil e que leu, compreendeu e concorda com todos os termos acima,
-                            incluindo os <strong className="text-white">riscos de perda financeira</strong>.
+                            incluindo os <strong className="text-white">riscos de perda de capital social</strong>.
                         </p>
                     </section>
 

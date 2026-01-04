@@ -134,7 +134,7 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
     const lockTimeRemaining = user.securityLockUntil ? Math.ceil((user.securityLockUntil - Date.now()) / (1000 * 60 * 60)) : 0;
 
     return (
-        <div className="space-y-6 max-w-xl mx-auto pb-24">
+        <div className="space-y-6 max-w-xl mx-auto pb-32">
             {/* Alerta de Segurança */}
             {isLocked && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-500">

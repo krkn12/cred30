@@ -55,6 +55,10 @@ export const HistoryView = ({ transactions: initialTransactions, isPro }: Histor
             'QUOTA_SELL': 'Cessão de Participação',
             'EDUCATION_REWARD': 'Recompensa Educacional',
             'ADMIN_GIFT': 'Presente Administrativo',
+            'LOAN_PAYMENT': 'Quitação de Apoio Mútuo',
+            'QUOTA_PURCHASE': 'Aporte em Participação',
+            'LOAN_INSTALLMENT': 'Reposição de Apoio',
+            'PRO_UPGRADE': 'Assinatura Cred30 PRO',
         };
         return map[type] || type;
     };

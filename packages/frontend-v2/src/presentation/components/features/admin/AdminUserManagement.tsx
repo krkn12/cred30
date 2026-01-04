@@ -121,14 +121,14 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: any, on
                     />
                 </div>
 
-                <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
                     <select
                         value={roleFilter}
                         onChange={(e) => setRoleFilter(e.target.value)}
-                        className="bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-bold rounded-xl px-4 py-3.5 outline-none focus:border-primary-500/50 cursor-pointer"
+                        className="flex-1 md:flex-none bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-bold rounded-xl px-4 py-3.5 outline-none focus:border-primary-500/50 cursor-pointer"
                         aria-label="Filtrar por cargo"
                     >
-                        <option value="">Todos Cargos</option>
+                        <option value="">Cargos</option>
                         <option value="MEMBER">Membros</option>
                         <option value="ATTENDANT">Atendentes</option>
                         <option value="ADMIN">Admins</option>
@@ -137,19 +137,19 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: any, on
                     <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-bold rounded-xl px-4 py-3.5 outline-none focus:border-primary-500/50 cursor-pointer"
+                        className="flex-1 md:flex-none bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-bold rounded-xl px-4 py-3.5 outline-none focus:border-primary-500/50 cursor-pointer"
                         aria-label="Filtrar por status"
                     >
-                        <option value="">Todos Status</option>
+                        <option value="">Status</option>
                         <option value="ACTIVE">Ativos</option>
                         <option value="BLOCKED">Bloqueados</option>
                     </select>
 
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="flex-1 md:flex-none bg-primary-500 hover:bg-primary-400 text-black font-black px-6 py-3.5 rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2 whitespace-nowrap"
+                        className="w-full md:w-auto md:flex-none bg-primary-500 hover:bg-primary-400 text-black font-black px-6 py-3.5 rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2 whitespace-nowrap"
                     >
-                        <Plus size={20} /> ADICIONAR EQUIPE
+                        <Plus size={20} /> EQUIPE
                     </button>
                 </div>
             </div>
