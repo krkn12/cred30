@@ -1,10 +1,19 @@
 import { v4 as uuidv4 } from 'uuid';
 
 // Asaas API Configuration
-const ASAAS_API_KEY = process.env.ASAAS_API_KEY || '';
-const ASAAS_BASE_URL = process.env.ASAAS_SANDBOX === 'true'
+const IS_SANDBOX = process.env.ASAAS_SANDBOX === 'true';
+
+// Usar chave de sandbox ou produção automaticamente
+const ASAAS_API_KEY = IS_SANDBOX
+    ? (process.env.ASAAS_SANDBOX_KEY || process.env.ASAAS_API_KEY || '')
+    : (process.env.ASAAS_API_KEY || '');
+
+const ASAAS_BASE_URL = IS_SANDBOX
     ? 'https://sandbox.asaas.com/api/v3'
     : 'https://api.asaas.com/v3';
+
+console.log(`[ASAAS] Modo: ${IS_SANDBOX ? 'SANDBOX (testes)' : 'PRODUÇÃO (dinheiro real)'}`);
+console.log(`[ASAAS] URL: ${ASAAS_BASE_URL}`);
 
 export interface PaymentRequest {
     amount: number;
