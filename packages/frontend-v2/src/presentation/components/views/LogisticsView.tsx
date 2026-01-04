@@ -45,10 +45,15 @@ export const LogisticsView = () => {
     const [actionLoading, setActionLoading] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [showTerms, setShowTerms] = useState(false);
+    const [isAgreed, setIsAgreed] = useState(localStorage.getItem('logistics_terms_agreed') === 'true');
 
     useEffect(() => {
+        if (!isAgreed && activeTab === 'available') {
+            setShowTerms(true);
+        }
         loadData();
-    }, [activeTab]);
+    }, [activeTab, isAgreed]);
 
     const loadData = async () => {
         setLoading(true);
@@ -142,6 +147,12 @@ export const LogisticsView = () => {
         } finally {
             setActionLoading(null);
         }
+    };
+
+    const handleAgreeTerms = () => {
+        localStorage.setItem('logistics_terms_agreed', 'true');
+        setIsAgreed(true);
+        setShowTerms(false);
     };
 
     const getStatusBadge = (status: string) => {
@@ -308,7 +319,7 @@ export const LogisticsView = () => {
                                     <div>
                                         <p className="text-xs text-zinc-500">Você ganha</p>
                                         <p className="text-xl font-bold text-emerald-400">{formatCurrency(delivery.courierEarnings)}</p>
-                                        <p className="text-[10px] text-zinc-600">Taxa: {formatCurrency(delivery.deliveryFee)} (90% p/ você)</p>
+                                        <p className="text-[10px] text-zinc-600">Taxa: {(100 - ((delivery as any).courierFeeRate * 100))}% p/ você</p>
                                     </div>
                                     <button
                                         onClick={() => handleAccept(delivery.orderId)}
@@ -440,10 +451,53 @@ export const LogisticsView = () => {
                     </li>
                     <li className="flex items-start gap-2">
                         <span className="text-primary-400 font-bold">4.</span>
-                        Quando o comprador confirmar, você recebe <span className="text-emerald-400 font-bold">90%</span> do valor do frete
+                        Quando o comprador confirmar, você recebe até <span className="text-emerald-400 font-bold">96%</span> do valor do frete
+                    </li>
+                    <li className="flex items-start gap-2 bg-primary-500/5 p-2 rounded-lg border border-primary-500/10 mt-2">
+                        <Star size={16} className="text-primary-400 shrink-0 mt-0.5" />
+                        <span className="text-[10px] text-zinc-300">
+                            <strong>Níveis de Ganhos:</strong> Comece ganhando 90%. Após 10 entregas, ganhe 93%. Após 50 entregas, você fica com 96% do frete!
+                        </span>
                     </li>
                 </ul>
             </div>
+            {/* Modal de Blindagem Jurídica */}
+            {showTerms && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-zinc-900 border border-zinc-800 w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl space-y-6">
+                        <div className="w-20 h-20 bg-primary-500/10 rounded-3xl flex items-center justify-center mx-auto text-primary-400">
+                            <CheckCircle size={48} />
+                        </div>
+
+                        <div className="text-center space-y-2">
+                            <h2 className="text-2xl font-black text-white">Termo de Adesão ao Ato Cooperativo</h2>
+                            <p className="text-zinc-400 text-sm">Para continuar, você precisa aceitar os termos da nossa comunidade.</p>
+                        </div>
+
+                        <div className="bg-black/40 rounded-2xl p-4 text-xs text-zinc-500 leading-relaxed max-h-48 overflow-y-auto space-y-4 border border-zinc-800">
+                            <p>
+                                Ao aceitar este termo, você declara estar ciente de que a atividade de entrega no ecossistema Cred30 é um <strong>Ato Cooperativo (Lei 5.764/71)</strong>, realizado de forma voluntária entre membros da associação.
+                            </p>
+                            <p>
+                                📍 <strong>Sem Vínculo Empregatício:</strong> Você tem total autonomia sobre seus horários, sem subordinação e sem obrigatoriedade de frequência.
+                            </p>
+                            <p>
+                                💰 <strong>Ajuda de Custo:</strong> O valor recebido é uma ajuda de custo pela tarefa realizada, e como membro, você também participa dos excedentes do sistema através das suas cotas.
+                            </p>
+                            <p>
+                                🤝 <strong>Natureza Associativa:</strong> Esta é uma plataforma de colaboração mútua, não uma empresa de logística tradicional.
+                            </p>
+                        </div>
+
+                        <button
+                            onClick={handleAgreeTerms}
+                            className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition-all shadow-lg shadow-primary-500/20"
+                        >
+                            Compreendo e Aceito
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
