@@ -152,9 +152,13 @@ logisticsRoutes.post('/accept/:orderId', authMiddleware, async (c: Context) => {
                 deliveryFee: parseFloat(order.delivery_fee),
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('[LOGISTICS] Erro ao aceitar entrega:', error);
-        return c.json({ success: false, message: 'Erro ao aceitar entrega' }, 500);
+        return c.json({
+            success: false,
+            message: 'Erro ao aceitar entrega.',
+            debug: process.env.NODE_ENV !== 'production' ? error.message : undefined
+        }, 500);
     }
 });
 
@@ -209,9 +213,13 @@ logisticsRoutes.post('/pickup/:orderId', authMiddleware, async (c: Context) => {
                 contactPhone: order.contact_phone,
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('[LOGISTICS] Erro ao confirmar coleta:', error);
-        return c.json({ success: false, message: 'Erro ao confirmar coleta' }, 500);
+        return c.json({
+            success: false,
+            message: 'Erro ao confirmar coleta.',
+            debug: process.env.NODE_ENV !== 'production' ? error.message : undefined
+        }, 500);
     }
 });
 
@@ -252,9 +260,13 @@ logisticsRoutes.post('/delivered/:orderId', authMiddleware, async (c: Context) =
             success: true,
             message: 'Entrega concluída! +15 Score ganho. Aguardando confirmação do comprador.',
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('[LOGISTICS] Erro ao marcar entrega:', error);
-        return c.json({ success: false, message: 'Erro ao marcar entrega como concluída' }, 500);
+        return c.json({
+            success: false,
+            message: 'Erro ao marcar entrega como concluída.',
+            debug: process.env.NODE_ENV !== 'production' ? error.message : undefined
+        }, 500);
     }
 });
 
@@ -294,9 +306,13 @@ logisticsRoutes.post('/cancel/:orderId', authMiddleware, async (c: Context) => {
             success: true,
             message: 'Entrega cancelada. Outro entregador poderá aceitar.',
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('[LOGISTICS] Erro ao cancelar entrega:', error);
-        return c.json({ success: false, message: 'Erro ao cancelar entrega' }, 500);
+        return c.json({
+            success: false,
+            message: 'Erro ao cancelar entrega.',
+            debug: process.env.NODE_ENV !== 'production' ? error.message : undefined
+        }, 500);
     }
 });
 
@@ -310,6 +326,23 @@ logisticsRoutes.get('/my-deliveries', authMiddleware, async (c: Context) => {
         const pool = getDbPool(c);
         const status = c.req.query('status'); // 'active', 'completed', ou vazio para todos
 
+        // 1. Calcular a taxa atual do entregador (mesma lógica da rota /available)
+        const courierId = user?.id;
+        let completedCount = 0;
+        if (courierId) {
+            const statsRes = await pool.query(
+                'SELECT COUNT(*) as count FROM marketplace_orders WHERE courier_id = $1 AND status = \'COMPLETED\'',
+                [courierId]
+            );
+            completedCount = parseInt(statsRes.rows[0]?.count || '0');
+        }
+
+        let courierFeeRate = LOGISTICS_SUSTAINABILITY_FEE_RATE;
+        if (completedCount >= 50) courierFeeRate = 0.04;
+        else if (completedCount >= 10) courierFeeRate = 0.07;
+
+
+        // 2. Buscar entregas
         let whereClause = 'WHERE mo.courier_id = $1';
         if (status === 'active') {
             whereClause += ` AND mo.delivery_status IN ('ACCEPTED', 'IN_TRANSIT', 'DELIVERED')`;
@@ -320,7 +353,7 @@ logisticsRoutes.get('/my-deliveries', authMiddleware, async (c: Context) => {
         const result = await pool.query(`
             SELECT 
                 mo.id as order_id,
-                mo.delivery_fee,
+                mo.delivery_fee::float,
                 mo.delivery_address,
                 mo.pickup_address,
                 mo.delivery_status,
@@ -331,8 +364,7 @@ logisticsRoutes.get('/my-deliveries', authMiddleware, async (c: Context) => {
                 ml.title as item_title,
                 ml.image_url,
                 seller.name as seller_name,
-                buyer.name as buyer_name,
-                (mo.delivery_fee * (1 - $2)) as courier_earnings
+                buyer.name as buyer_name
             FROM marketplace_orders mo
             JOIN marketplace_listings ml ON mo.listing_id = ml.id
             JOIN users seller ON mo.seller_id = seller.id
@@ -340,47 +372,57 @@ logisticsRoutes.get('/my-deliveries', authMiddleware, async (c: Context) => {
             ${whereClause}
             ORDER BY mo.created_at DESC
             LIMIT 100
-        `, [user.id, LOGISTICS_SUSTAINABILITY_FEE_RATE]);
+        `, [user.id]);
 
-        // Calcular totais
+        // 3. Calcular totais para o cabeçalho
         const totalResult = await pool.query(`
             SELECT 
                 COUNT(*) as total_deliveries,
-                COALESCE(SUM(delivery_fee * (1 - $2)), 0) as total_earnings
+                COALESCE(SUM(delivery_fee), 0)::float as total_delivery_fees
             FROM marketplace_orders
             WHERE courier_id = $1 AND status = 'COMPLETED'
-        `, [user.id, LOGISTICS_SUSTAINABILITY_FEE_RATE]);
+        `, [user.id]);
 
         const totals = totalResult.rows[0];
+        const totalFees = parseFloat(totals.total_delivery_fees || '0');
 
         return c.json({
             success: true,
             data: {
-                deliveries: result.rows.map(row => ({
-                    orderId: row.order_id,
-                    itemTitle: row.item_title,
-                    imageUrl: row.image_url,
-                    deliveryFee: parseFloat(row.delivery_fee),
-                    courierEarnings: parseFloat(row.courier_earnings).toFixed(2),
-                    deliveryAddress: row.delivery_address,
-                    pickupAddress: row.pickup_address,
-                    deliveryStatus: row.delivery_status,
-                    orderStatus: row.order_status,
-                    sellerName: row.seller_name,
-                    buyerName: row.buyer_name,
-                    createdAt: row.created_at,
-                    pickedUpAt: row.picked_up_at,
-                    deliveredAt: row.delivered_at,
-                })),
+                deliveries: result.rows.map(row => {
+                    const deliveryFee = parseFloat(row.delivery_fee || '0');
+                    const courierEarnings = deliveryFee * (1 - courierFeeRate);
+                    return {
+                        orderId: row.order_id,
+                        itemTitle: row.item_title,
+                        imageUrl: row.image_url,
+                        deliveryFee: deliveryFee,
+                        courierEarnings: courierEarnings.toFixed(2),
+                        courierFeeRate: courierFeeRate,
+                        deliveryAddress: row.delivery_address,
+                        pickupAddress: row.pickup_address,
+                        deliveryStatus: row.delivery_status,
+                        orderStatus: row.order_status,
+                        sellerName: row.seller_name,
+                        buyerName: row.buyer_name,
+                        createdAt: row.created_at,
+                        pickedUpAt: row.picked_up_at,
+                        deliveredAt: row.delivered_at,
+                    };
+                }),
                 stats: {
-                    totalDeliveries: parseInt(totals.total_deliveries),
-                    totalEarnings: parseFloat(totals.total_earnings).toFixed(2),
+                    totalDeliveries: parseInt(totals.total_deliveries || '0'),
+                    totalEarnings: (totalFees * (1 - courierFeeRate)).toFixed(2),
                 }
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('[LOGISTICS] Erro ao listar minhas entregas:', error);
-        return c.json({ success: false, message: 'Erro ao buscar suas entregas' }, 500);
+        return c.json({
+            success: false,
+            message: 'Erro ao buscar suas entregas.',
+            debug: process.env.NODE_ENV !== 'production' ? error.message : undefined
+        }, 500);
     }
 });
 
@@ -393,30 +435,54 @@ logisticsRoutes.get('/stats', authMiddleware, async (c: Context) => {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
 
+        // 1. Buscar dados base (taxa do entregador)
+        const courierId = user?.id;
+        let completedCount = 0;
+        if (courierId) {
+            const statsRes = await pool.query(
+                'SELECT COUNT(*) as count FROM marketplace_orders WHERE courier_id = $1 AND status = \'COMPLETED\'',
+                [courierId]
+            );
+            completedCount = parseInt(statsRes.rows[0]?.count || '0');
+        }
+
+        let courierFeeRate = LOGISTICS_SUSTAINABILITY_FEE_RATE;
+        if (completedCount >= 50) courierFeeRate = 0.04;
+        else if (completedCount >= 10) courierFeeRate = 0.07;
+
+        // 2. Buscar estatísticas (soma bruta de fretes para calcular ganhos no código)
         const result = await pool.query(`
             SELECT 
                 COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed,
                 COUNT(*) FILTER (WHERE delivery_status IN ('ACCEPTED', 'IN_TRANSIT', 'DELIVERED')) as in_progress,
-                COALESCE(SUM(delivery_fee * (1 - $2)) FILTER (WHERE status = 'COMPLETED'), 0) as total_earned,
-                COALESCE(AVG(delivery_fee * (1 - $2)) FILTER (WHERE status = 'COMPLETED'), 0) as avg_earning
+                COALESCE(SUM(delivery_fee) FILTER (WHERE status = 'COMPLETED'), 0)::float as gross_earned
             FROM marketplace_orders
             WHERE courier_id = $1
-        `, [user.id, LOGISTICS_SUSTAINABILITY_FEE_RATE]);
+        `, [user.id]);
 
         const stats = result.rows[0];
+        const completed = parseInt(stats.completed || '0');
+        const grossEarned = parseFloat(stats.gross_earned || '0');
+        const netEarned = grossEarned * (1 - courierFeeRate);
+        const avgEarning = completed > 0 ? netEarned / completed : 0;
 
         return c.json({
             success: true,
             data: {
-                completedDeliveries: parseInt(stats.completed) || 0,
-                inProgressDeliveries: parseInt(stats.in_progress) || 0,
-                totalEarned: parseFloat(stats.total_earned).toFixed(2),
-                avgEarningPerDelivery: parseFloat(stats.avg_earning).toFixed(2),
+                completedDeliveries: completed,
+                inProgressDeliveries: parseInt(stats.in_progress || '0'),
+                totalEarned: netEarned.toFixed(2),
+                avgEarningPerDelivery: avgEarning.toFixed(2),
+                currentTierRate: (1 - courierFeeRate) * 100
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('[LOGISTICS] Erro ao buscar estatísticas:', error);
-        return c.json({ success: false, message: 'Erro ao buscar estatísticas' }, 500);
+        return c.json({
+            success: false,
+            message: 'Erro ao buscar estatísticas.',
+            debug: process.env.NODE_ENV !== 'production' ? error.message : undefined
+        }, 500);
     }
 });
 
