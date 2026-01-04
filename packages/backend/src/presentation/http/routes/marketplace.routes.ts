@@ -53,7 +53,7 @@ const buyListingSchema = z.object({
     contactPhone: z.string().min(8, 'Telefone inválido').optional(),
     offlineToken: z.string().optional(),
     payerCpfCnpj: z.string().optional(),
-    deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST']).optional().default('SELF_PICKUP'),
+    deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST', 'EXTERNAL_SHIPPING']).optional().default('SELF_PICKUP'),
     offeredDeliveryFee: z.number().min(0).optional().default(0),
     pickupAddress: z.string().optional(),
     paymentMethod: z.enum(['BALANCE', 'PIX', 'CARD']).default('BALANCE'),
@@ -72,7 +72,7 @@ const buyOnCreditSchema = z.object({
     installments: z.number().int().min(1).max(MARKET_CREDIT_MAX_INSTALLMENTS),
     deliveryAddress: z.string().min(10, 'Endereço muito curto').optional(),
     contactPhone: z.string().min(8, 'Telefone inválido').optional(),
-    deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST']).optional().default('SELF_PICKUP'),
+    deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST', 'EXTERNAL_SHIPPING']).optional().default('SELF_PICKUP'),
     offeredDeliveryFee: z.number().min(0).optional().default(0),
     pickupAddress: z.string().optional(),
 });
@@ -344,9 +344,9 @@ marketplaceRoutes.post('/buy-on-credit', authMiddleware, async (c: Context) => {
             const sellerAmount = price - escrowFee;
 
             const orderResult = await client.query(
-                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, delivery_status, delivery_fee, pickup_code, delivery_confirmation_code)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
-                [listingId, user.id, listing.seller_id, totalWithFee, escrowFee, sellerAmount, 'WAITING_SHIPPING', 'CRED30_CREDIT', deliveryAddress, finalPickupAddress, contactPhone, deliveryStatus, fee, pickupCode, confirmationCode]
+                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, delivery_status, delivery_type, delivery_fee, pickup_code, delivery_confirmation_code)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
+                [listingId, user.id, listing.seller_id, totalWithFee, escrowFee, sellerAmount, 'WAITING_SHIPPING', 'CRED30_CREDIT', deliveryAddress, finalPickupAddress, contactPhone, deliveryStatus, buyOnCreditSchema.parse(body).deliveryType, fee, pickupCode, confirmationCode]
             );
             const orderId = orderResult.rows[0].id;
 
@@ -430,9 +430,9 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c: Context) => {
                 const confirmationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
                 const orderResult = await client.query(
-                    `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, offline_token, delivery_status, delivery_fee, pickup_code, delivery_confirmation_code)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
-                    [listingId, user.id, listing.seller_id, price, fee, sellerAmount, 'WAITING_SHIPPING', 'BALANCE', deliveryAddress, finalPickupAddress, contactPhone, offlineToken, deliveryStatus, offeredDeliveryFee, pickupCode, confirmationCode]
+                    `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, offline_token, delivery_status, delivery_type, delivery_fee, pickup_code, delivery_confirmation_code)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id`,
+                    [listingId, user.id, listing.seller_id, price, fee, sellerAmount, 'WAITING_SHIPPING', 'BALANCE', deliveryAddress, finalPickupAddress, contactPhone, offlineToken, deliveryStatus, deliveryType, offeredDeliveryFee, pickupCode, confirmationCode]
                 );
                 const orderId = orderResult.rows[0].id;
 
@@ -570,9 +570,9 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c: Context) => {
             const sellerAmount = price - escrowFee;
 
             const orderResult = await client.query(
-                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, offline_token, delivery_status, delivery_fee, pickup_code, delivery_confirmation_code)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
-                [listingId, user.id, listing.seller_id, price, escrowFee, sellerAmount, 'WAITING_PAYMENT', paymentMethod, deliveryAddress, finalPickupAddress, contactPhone, offlineToken, deliveryStatus, offeredDeliveryFee, pickupCode, confirmationCode]
+                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, offline_token, delivery_status, delivery_type, delivery_fee, pickup_code, delivery_confirmation_code)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id`,
+                [listingId, user.id, listing.seller_id, price, escrowFee, sellerAmount, 'WAITING_PAYMENT', paymentMethod, deliveryAddress, finalPickupAddress, contactPhone, offlineToken, deliveryStatus, deliveryType, offeredDeliveryFee, pickupCode, confirmationCode]
             );
 
             const oId = orderResult.rows[0].id;
@@ -1151,6 +1151,35 @@ marketplaceRoutes.post('/logistic/mission/:id/pickup', authMiddleware, async (c:
 });
 
 /**
+ * Informar Código de Rastreamento (Para entregas por Correios/Transportadora)
+ */
+marketplaceRoutes.post('/order/:id/ship', authMiddleware, async (c: Context) => {
+    try {
+        const user = c.get('user') as UserContext;
+        const pool = getDbPool(c);
+        const orderId = c.req.param('id');
+        const { trackingCode } = await c.req.json();
+
+        if (!trackingCode) return c.json({ success: false, message: 'Código de rastreio é obrigatório' }, 400);
+
+        const result = await pool.query(
+            `UPDATE marketplace_orders 
+             SET tracking_code = $1, status = 'IN_TRANSIT', delivery_status = 'SHIPPED', updated_at = NOW()
+             WHERE id = $2 AND seller_id = $3 AND status = 'WAITING_SHIPPING'`,
+            [trackingCode, orderId, user.id]
+        );
+
+        if (result.rowCount === 0) {
+            return c.json({ success: false, message: 'Pedido não encontrado ou já enviado.' }, 404);
+        }
+
+        return c.json({ success: true, message: 'Código de rastreio registrado com sucesso!' });
+    } catch (error) {
+        return c.json({ success: false, message: 'Erro ao registrar envio' }, 500);
+    }
+});
+
+/**
  * Sincronização de Vendas Offline
  * Recebe uma lista de transações realizadas sem internet e processa.
  */
@@ -1229,6 +1258,55 @@ marketplaceRoutes.post('/offline/sync', authMiddleware, async (c: Context) => {
 });
 
 /**
+ * Confirmar Recebimento (Libera o dinheiro do Escrow para o vendedor)
+ */
+marketplaceRoutes.post('/order/:id/confirm-receipt', authMiddleware, async (c: Context) => {
+    try {
+        const user = c.get('user') as UserContext;
+        const pool = getDbPool(c);
+        const orderId = c.req.param('id');
+
+        const result = await executeInTransaction(pool, async (client) => {
+            // 1. Buscar o pedido e garantir que o usuário é o comprador
+            const orderRes = await client.query(
+                `SELECT * FROM marketplace_orders WHERE id = $1 AND buyer_id = $2 AND status = 'IN_TRANSIT'`,
+                [orderId, user.id]
+            );
+
+            if (orderRes.rows.length === 0) {
+                return { success: false, message: 'Pedido não encontrado ou não está em trânsito.' };
+            }
+
+            const order = orderRes.rows[0];
+
+            // 2. Atualizar status do pedido
+            await client.query(
+                `UPDATE marketplace_orders SET status = 'COMPLETED', delivery_status = 'DELIVERED', updated_at = NOW(), delivered_at = NOW() WHERE id = $1`,
+                [orderId]
+            );
+
+            // 3. Liberar saldo para o vendedor
+            await updateUserBalance(client, order.seller_id, order.seller_amount, 'credit');
+            await createTransaction(client, order.seller_id, 'MARKET_SALE', order.seller_amount, `Venda Concluída: Pedido #${orderId}`, 'APPROVED', { orderId });
+
+            // 4. Se houver entregador, liberar a taxa dele (TODO: Implementar lógica de pagamento do courier se necessário)
+
+            return { success: true };
+        });
+
+        if (!result.success) return c.json(result, 400);
+
+        // Atualizar pontuação do comprador por confirmar
+        await updateScore(pool, user.id, 5, `Confirmação de recebimento #${orderId}`);
+
+        return c.json({ success: true, message: 'Recebimento confirmado! Saldo liberado para o vendedor.' });
+    } catch (error) {
+        console.error('Error confirming receipt:', error);
+        return c.json({ success: false, message: 'Erro ao confirmar recebimento' }, 500);
+    }
+});
+
+/**
  * Atualizar localização GPS do Entregador (Rastreio em Tempo Real)
  */
 marketplaceRoutes.post('/logistic/mission/:id/location', authMiddleware, async (c: Context) => {
@@ -1273,7 +1351,8 @@ marketplaceRoutes.get('/order/:id/tracking', authMiddleware, async (c: Context) 
         const result = await pool.query(
             `SELECT o.id, o.status, o.courier_id, o.courier_lat, o.courier_lng, 
                     o.delivery_address, o.pickup_address,
-                    u.name as courier_name, u.phone as courier_phone
+                    u.name as courier_name, u.phone as courier_phone,
+                    u.courier_vehicle_type
              FROM marketplace_orders o
              LEFT JOIN users u ON o.courier_id = u.id
              WHERE o.id = $1 AND (o.buyer_id = $2 OR o.courier_id = $2 OR o.seller_id = $2)`,
