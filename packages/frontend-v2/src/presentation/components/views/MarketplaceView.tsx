@@ -823,15 +823,42 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                             </button>
                                         )}
 
+                                        {/* Código de Confirmação para o Comprador */}
+                                        {order.buyer_id === state.currentUser?.id && order.delivery_confirmation_code && order.delivery_status !== 'DELIVERED' && order.delivery_status !== 'NONE' && (
+                                            <div className="bg-indigo-500/20 border border-indigo-500/30 px-3 py-1.5 rounded-lg flex flex-col">
+                                                <span className="text-[8px] text-indigo-400 font-black uppercase tracking-tighter">Código p/ Entregador</span>
+                                                <span className="text-sm font-mono font-black text-white">{order.delivery_confirmation_code}</span>
+                                            </div>
+                                        )}
+
                                         <span className="text-[9px] font-black px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 capitalize">
                                             {order.buyer_id === state.currentUser?.id ? 'Compra' : order.seller_id === state.currentUser?.id ? 'Venda' : 'Entrega'}
                                         </span>
+                                        {/* Código de Coleta para o Vendedor */}
+                                        {order.seller_id === state.currentUser?.id && order.pickup_code && order.delivery_status === 'ACCEPTED' && (
+                                            <div className="bg-amber-500/20 border border-amber-500/30 px-3 py-1.5 rounded-lg flex flex-col">
+                                                <span className="text-[8px] text-amber-400 font-black uppercase tracking-tighter">Código p/ Entregador coeltar</span>
+                                                <span className="text-sm font-mono font-black text-white">{order.pickup_code}</span>
+                                            </div>
+                                        )}
+
                                         {order.courier_name && (
-                                            <div className="flex items-center gap-2 text-[10px] text-amber-500 font-black">
-                                                <div className="flex items-center gap-1"><Truck size={12} /> {order.courier_name.split(' ')[0]}</div>
-                                                <div className="flex items-center gap-1 text-zinc-500 font-mono font-normal">
-                                                    <Phone size={10} /> {order.courier_phone}
+                                            <div className="flex flex-col gap-1 mt-4">
+                                                <div className="flex items-center gap-2 text-[10px] text-amber-500 font-black">
+                                                    <div className="flex items-center gap-1"><Truck size={12} /> {order.courier_name}</div>
+                                                    <div className="flex items-center gap-1 text-zinc-500 font-mono font-normal">
+                                                        <Phone size={10} /> {order.courier_phone}
+                                                    </div>
                                                 </div>
+                                                {order.courier_vehicle_model && (
+                                                    <div className="text-[9px] text-zinc-500 font-bold bg-zinc-800/50 px-2 py-1 rounded inline-flex items-center gap-2">
+                                                        <span className="text-zinc-600 uppercase">{order.courier_vehicle_type}</span>
+                                                        <span className="text-zinc-300">{order.courier_vehicle_model}</span>
+                                                        {order.courier_vehicle_plate && (
+                                                            <span className="bg-white/10 px-1 rounded text-white">{order.courier_vehicle_plate}</span>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -901,7 +928,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                         try {
                                                             const res = await apiService.post<any>(`/marketplace/logistic/mission/${mission.id}/accept`, {});
                                                             if (res.success) {
-                                                                onSuccess('Missão Aceita!', `Código de Coleta: ${res.data.pickupCode}. Mostre ao vendedor.`);
+                                                                onSuccess('Missão Aceita!', `Dirija-se ao local de coleta. O vendedor lhe fornecerá o código de segurança para validar a retirada.`);
                                                                 setConfirmData(null);
                                                                 fetchData(); // refresh
                                                             }
