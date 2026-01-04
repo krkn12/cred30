@@ -2337,6 +2337,32 @@ adminRoutes.post('/investments/:id/sell', adminMiddleware, auditMiddleware('SELL
   }
 });
 
+// Aporte manual na reserva de investimentos (Dinheiro vindo de fora)
+adminRoutes.post('/investments/reserve/add', adminMiddleware, auditMiddleware('MANUAL_INVESTMENT_DEPOSIT', 'INVESTMENT'), async (c) => {
+  try {
+    const body = await c.req.json();
+    const { amount, description } = body;
+
+    if (!amount || amount <= 0) {
+      return c.json({ success: false, message: 'Valor inválido para aporte' }, 400);
+    }
+
+    const pool = getDbPool(c);
+
+    await pool.query(
+      'UPDATE system_config SET investment_reserve = COALESCE(investment_reserve, 0) + $1, updated_at = NOW()',
+      [amount]
+    );
+
+    return c.json({
+      success: true,
+      message: `Aporte de R$ ${amount.toFixed(2)} registrado com sucesso na reserva!`
+    });
+  } catch (error: any) {
+    return c.json({ success: false, message: error.message }, 500);
+  }
+});
+
 // =====================================================
 // LIMPEZA DE ANÚNCIOS ANTIGOS SEM IMPULSO (ECONOMIZAR BD)
 // =====================================================
