@@ -63,33 +63,70 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         accountAgeDays: number;
         hasOverdue: boolean;
         totalSpent: number;
+        accumulatedProfit: number;
         maxLoanAmount: number;
     }
 }> => {
     try {
-        // Dados do usuário e gastos
+        // Dados do usuário, cotas e histórico
         const userDataRes = await pool.query(`
             SELECT 
                 u.score, 
                 u.created_at,
+                -- Cotas ativas
                 (SELECT COUNT(*) FROM quotas WHERE user_id = $1 AND status = 'ACTIVE') as quotas_count,
                 (SELECT COALESCE(SUM(current_value), 0) FROM quotas WHERE user_id = $1 AND status = 'ACTIVE') as total_quotas_value,
+                -- Transações de marketplace
                 (SELECT COUNT(*) FROM marketplace_orders WHERE buyer_id = $1 AND status = 'COMPLETED') as purchases,
                 (SELECT COUNT(*) FROM marketplace_orders mo JOIN marketplace_listings ml ON mo.listing_id = ml.id WHERE ml.user_id = $1 AND mo.status = 'COMPLETED') as sales,
+                -- Empréstimos em atraso
                 (SELECT COUNT(*) FROM loans WHERE user_id = $1 AND status = 'APPROVED' AND due_date < NOW()) as overdue_loans,
-                -- Total gasto (sem cotas)
-                COALESCE((SELECT SUM(total_price) FROM marketplace_orders WHERE buyer_id = $1 AND status = 'COMPLETED'), 0) as marketplace_spent,
-                COALESCE((SELECT SUM(budget_gross) FROM promo_videos WHERE user_id = $1), 0) as campaign_spent,
+                
+                -- ========================================
+                -- LUCRO ACUMULADO QUE O SISTEMA TEVE COM ESSE USUÁRIO
+                -- ========================================
+                
+                -- 1. Taxa administrativa das cotas (R$ 8 por cota comprada)
+                COALESCE((SELECT COUNT(*) * 8.00 FROM quotas WHERE user_id = $1), 0) as quota_fees_profit,
+                
+                -- 2. Taxas quando VENDEU no marketplace (12% ou 27.5% que ficou no sistema)
+                COALESCE((SELECT SUM(
+                    CASE 
+                        WHEN u2.asaas_wallet_id IS NOT NULL THEN mo.total_price * 0.12  -- Verificado: 12%
+                        ELSE mo.total_price * 0.275  -- Não verificado: 27.5%
+                    END
+                ) FROM marketplace_orders mo 
+                JOIN marketplace_listings ml ON mo.listing_id = ml.id 
+                LEFT JOIN users u2 ON ml.user_id = u2.id
+                WHERE ml.user_id = $1 AND mo.status = 'COMPLETED'), 0) as marketplace_seller_profit,
+                
+                -- 3. Taxas quando COMPROU no marketplace (taxa vai pro vendedor, mas frete tem 10%)
+                COALESCE((SELECT SUM(COALESCE(shipping_cost, 0) * 0.10) FROM marketplace_orders WHERE buyer_id = $1 AND status = 'COMPLETED'), 0) as logistics_profit,
+                
+                -- 4. Taxa de originação de empréstimos anteriores (3%)
+                COALESCE((SELECT SUM(amount * 0.03) FROM loans WHERE user_id = $1 AND status IN ('PAID', 'APPROVED')), 0) as loan_origination_profit,
+                
+                -- 5. Campanhas de vídeo (15% fica no sistema)
+                COALESCE((SELECT SUM(budget_gross * 0.15) FROM promo_videos WHERE user_id = $1), 0) as video_campaign_profit,
+                
+                -- 6. Compras na Academy (7.5% fica no sistema)
+                COALESCE((SELECT SUM(t.amount * 0.075) FROM transactions t WHERE t.user_id = $1 AND t.type = 'ACADEMY_PURCHASE' AND t.status = 'APPROVED'), 0) as academy_profit,
+                
+                -- 7. Upgrades, badges, score packages (100% fica no sistema como lucro)
                 COALESCE((SELECT SUM(ABS(amount)) FROM transactions 
                     WHERE user_id = $1 AND status = 'APPROVED' 
                     AND type IN ('MEMBERSHIP_UPGRADE', 'BUY_VERIFIED_BADGE', 'BUY_SCORE_PACKAGE', 'MARKET_BOOST')
-                ), 0) as platform_spent
+                ), 0) as platform_services_profit,
+                
+                -- Total gasto para estatísticas
+                COALESCE((SELECT SUM(total_price) FROM marketplace_orders WHERE buyer_id = $1 AND status = 'COMPLETED'), 0) as marketplace_spent,
+                COALESCE((SELECT SUM(budget_gross) FROM promo_videos WHERE user_id = $1), 0) as campaign_spent
             FROM users u
             WHERE u.id = $1
         `, [userId]);
 
         if (userDataRes.rows.length === 0) {
-            return { eligible: false, reason: 'Usuário não encontrado', details: { score: 0, quotasCount: 0, quotasValue: 0, marketplaceTransactions: 0, accountAgeDays: 0, hasOverdue: false, totalSpent: 0, maxLoanAmount: 0 } };
+            return { eligible: false, reason: 'Usuário não encontrado', details: { score: 0, quotasCount: 0, quotasValue: 0, marketplaceTransactions: 0, accountAgeDays: 0, hasOverdue: false, totalSpent: 0, accumulatedProfit: 0, maxLoanAmount: 0 } };
         }
 
         const userData = userDataRes.rows[0];
@@ -100,17 +137,32 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         const accountAgeDays = Math.floor((Date.now() - new Date(userData.created_at).getTime()) / (1000 * 60 * 60 * 24));
         const hasOverdue = parseInt(userData.overdue_loans) > 0;
 
-        // Total gasto (sem cotas)
+        // Total gasto (para estatísticas)
         const totalSpent = parseFloat(userData.marketplace_spent || 0) +
             parseFloat(userData.campaign_spent || 0) +
-            parseFloat(userData.platform_spent || 0);
+            parseFloat(userData.platform_services_profit || 0);
 
-        // Limite máximo = 80% do total gasto
-        const maxLoanAmount = Math.floor(totalSpent * LIMIT_PERCENTAGE);
+        // ========================================
+        // CÁLCULO DO LUCRO ACUMULADO (RISCO ZERO)
+        // ========================================
+        const accumulatedProfit =
+            parseFloat(userData.quota_fees_profit || 0) +           // Taxa das cotas
+            parseFloat(userData.marketplace_seller_profit || 0) +   // Taxas de vendas
+            parseFloat(userData.logistics_profit || 0) +            // Taxa de frete
+            parseFloat(userData.loan_origination_profit || 0) +     // Taxa de empréstimos anteriores
+            parseFloat(userData.video_campaign_profit || 0) +       // Taxa de campanhas
+            parseFloat(userData.academy_profit || 0) +              // Taxa da academy
+            parseFloat(userData.platform_services_profit || 0);     // Upgrades/badges
 
-        const details = { score, quotasCount, quotasValue, marketplaceTransactions, accountAgeDays, hasOverdue, totalSpent, maxLoanAmount };
+        // ========================================
+        // LIMITE MÁXIMO = LUCRO ACUMULADO + VALOR DAS COTAS
+        // Assim o sistema NUNCA perde dinheiro com calote!
+        // ========================================
+        const maxLoanAmount = Math.floor(accumulatedProfit + quotasValue);
 
-        // Verificações
+        const details = { score, quotasCount, quotasValue, marketplaceTransactions, accountAgeDays, hasOverdue, totalSpent, accumulatedProfit, maxLoanAmount };
+
+        // Verificações de elegibilidade
         if (hasOverdue) {
             return { eligible: false, reason: 'Você possui empréstimos em atraso.', details };
         }
@@ -126,14 +178,17 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         if (accountAgeDays < MIN_ACCOUNT_AGE_DAYS) {
             return { eligible: false, reason: `Conta precisa ter ${MIN_ACCOUNT_AGE_DAYS}+ dias.`, details };
         }
-        if (totalSpent <= 0) {
-            return { eligible: false, reason: 'Você precisa ter gastos na plataforma (marketplace, campanhas, assinatura).', details };
+        if (accumulatedProfit <= 0 && quotasValue <= 0) {
+            return { eligible: false, reason: 'Você precisa gerar lucro para a plataforma antes de solicitar empréstimo.', details };
+        }
+        if (maxLoanAmount < 10) {
+            return { eligible: false, reason: `Limite muito baixo (R$ ${maxLoanAmount.toFixed(2)}). Continue gerando lucro para a plataforma.`, details };
         }
 
         return { eligible: true, details };
     } catch (error) {
         console.error('Erro ao verificar elegibilidade:', error);
-        return { eligible: false, reason: 'Erro ao verificar', details: { score: 0, quotasCount: 0, quotasValue: 0, marketplaceTransactions: 0, accountAgeDays: 0, hasOverdue: false, totalSpent: 0, maxLoanAmount: 0 } };
+        return { eligible: false, reason: 'Erro ao verificar', details: { score: 0, quotasCount: 0, quotasValue: 0, marketplaceTransactions: 0, accountAgeDays: 0, hasOverdue: false, totalSpent: 0, accumulatedProfit: 0, maxLoanAmount: 0 } };
     }
 };
 
@@ -169,11 +224,11 @@ export const calculateLoanOffer = async (
             return { approved: false, reason: eligibility.reason };
         }
 
-        const { quotasValue, maxLoanAmount } = eligibility.details;
+        const { quotasValue, maxLoanAmount, accumulatedProfit } = eligibility.details;
 
         // Verificar se o valor solicitado está dentro do limite
         if (requestedAmount > maxLoanAmount) {
-            return { approved: false, reason: `Valor máximo disponível: R$ ${maxLoanAmount.toFixed(2)} (80% do seu gasto na plataforma)` };
+            return { approved: false, reason: `Valor máximo disponível: R$ ${maxLoanAmount.toFixed(2)} (lucro gerado R$ ${accumulatedProfit.toFixed(2)} + cotas R$ ${quotasValue.toFixed(2)})` };
         }
 
         // Calcular garantia em R$
@@ -242,6 +297,8 @@ export const getCreditAnalysis = async (pool: Pool | PoolClient, userId: string)
         eligible: eligibility.eligible,
         reason: eligibility.reason,
         limit: eligibility.details.maxLoanAmount,
+        accumulatedProfit: eligibility.details.accumulatedProfit,
+        quotasValue: eligibility.details.quotasValue,
         details: {
             ...eligibility.details,
             minScore: MIN_SCORE_FOR_LOAN,
