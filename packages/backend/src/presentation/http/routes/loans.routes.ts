@@ -128,7 +128,7 @@ loanRoutes.get('/', authMiddleware, async (c) => {
   }
 });
 
-// Obter limite de crédito disponível (MÉRITO + GASTO)
+// Obter limite de crédito disponível (LUCRO ACUMULADO + COTAS)
 loanRoutes.get('/available-limit', authMiddleware, async (c) => {
   try {
     const user = c.get('user');
@@ -148,6 +148,8 @@ loanRoutes.get('/available-limit', authMiddleware, async (c) => {
       success: true,
       data: {
         totalLimit: creditAnalysis.limit,
+        accumulatedProfit: creditAnalysis.accumulatedProfit || 0,
+        quotasValue: creditAnalysis.quotasValue || 0,
         activeDebt: activeDebt,
         remainingLimit: remainingLimit,
         analysis: creditAnalysis
