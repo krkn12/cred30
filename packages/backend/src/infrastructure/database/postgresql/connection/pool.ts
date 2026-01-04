@@ -528,26 +528,28 @@ export const initializeDatabase = async () => {
     await client.query(`
       CREATE TABLE IF NOT EXISTS system_config (
         id SERIAL PRIMARY KEY,
-        system_balance DECIMAL(15,2) DEFAULT 0,
-        profit_pool DECIMAL(15,2) DEFAULT 0,
-        total_gateway_costs DECIMAL(15,2) DEFAULT 0,
-        total_tax_reserve DECIMAL(15,2) DEFAULT 0,
-        total_operational_reserve DECIMAL(15,2) DEFAULT 0,
-        total_owner_profit DECIMAL(15,2) DEFAULT 0,
+        system_balance DECIMAL(20,2) DEFAULT 0,
+        profit_pool DECIMAL(20,2) DEFAULT 0,
+        investment_reserve DECIMAL(20,2) DEFAULT 0,
+        total_gateway_costs DECIMAL(20,2) DEFAULT 0,
+        total_tax_reserve DECIMAL(20,2) DEFAULT 0,
+        total_operational_reserve DECIMAL(20,2) DEFAULT 0,
+        total_owner_profit DECIMAL(20,2) DEFAULT 0,
         quota_price DECIMAL(10,2) DEFAULT 100,
         loan_interest_rate DECIMAL(5,2) DEFAULT 0.2,
         penalty_rate DECIMAL(5,2) DEFAULT 0.4,
         vesting_period_ms BIGINT DEFAULT 31536000000,
-        total_manual_costs DECIMAL(15,2) DEFAULT 0,
+        total_manual_costs DECIMAL(20,2) DEFAULT 0,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
     // Garantir que as colunas novas existam em bancos já criados
     await client.query(`
-      ALTER TABLE system_config ADD COLUMN IF NOT EXISTS total_tax_reserve DECIMAL(15,2) DEFAULT 0;
-      ALTER TABLE system_config ADD COLUMN IF NOT EXISTS total_operational_reserve DECIMAL(15,2) DEFAULT 0;
-      ALTER TABLE system_config ADD COLUMN IF NOT EXISTS total_owner_profit DECIMAL(15,2) DEFAULT 0;
+      ALTER TABLE system_config ADD COLUMN IF NOT EXISTS total_tax_reserve DECIMAL(20,2) DEFAULT 0;
+      ALTER TABLE system_config ADD COLUMN IF NOT EXISTS total_operational_reserve DECIMAL(20,2) DEFAULT 0;
+      ALTER TABLE system_config ADD COLUMN IF NOT EXISTS total_owner_profit DECIMAL(20,2) DEFAULT 0;
+      ALTER TABLE system_config ADD COLUMN IF NOT EXISTS investment_reserve DECIMAL(20,2) DEFAULT 0;
     `);
 
     // Verificar se a coluna total_gateway_costs existe na tabela system_config
@@ -1026,6 +1028,7 @@ export const initializeDatabase = async () => {
       CREATE INDEX IF NOT EXISTS idx_reviews_approved ON transaction_reviews(is_approved, is_public);
 
       -- Tabela de Reportes de Bug
+      -- Tabela de Reportes de Bug
       CREATE TABLE IF NOT EXISTS bug_reports (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -1049,6 +1052,36 @@ export const initializeDatabase = async () => {
       CREATE INDEX IF NOT EXISTS idx_bug_reports_status ON bug_reports(status);
       CREATE INDEX IF NOT EXISTS idx_bug_reports_severity ON bug_reports(severity);
       CREATE INDEX IF NOT EXISTS idx_bug_reports_created_at ON bug_reports(created_at DESC);
+    `);
+
+    // Tabela de Investimentos
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS investments (
+          id SERIAL PRIMARY KEY,
+          asset_name VARCHAR(100) NOT NULL,
+          asset_type VARCHAR(50) NOT NULL,
+          quantity DECIMAL(15,6) DEFAULT 0,
+          unit_price DECIMAL(15,2) NOT NULL,
+          total_invested DECIMAL(15,2) NOT NULL,
+          current_value DECIMAL(15,2) DEFAULT 0,
+          dividends_received DECIMAL(15,2) DEFAULT 0,
+          broker VARCHAR(100),
+          notes TEXT,
+          status VARCHAR(20) DEFAULT 'ACTIVE',
+          sale_value DECIMAL(15,2),
+          invested_at TIMESTAMP DEFAULT NOW(),
+          sold_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      ALTER TABLE investments ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'ACTIVE';
+      ALTER TABLE investments ADD COLUMN IF NOT EXISTS sale_value DECIMAL(15,2);
+      ALTER TABLE investments ADD COLUMN IF NOT EXISTS sold_at TIMESTAMP;
+
+      CREATE INDEX IF NOT EXISTS idx_investments_asset_type ON investments(asset_type);
+      CREATE INDEX IF NOT EXISTS idx_investments_status ON investments(status);
+      CREATE INDEX IF NOT EXISTS idx_investments_invested_at ON investments(invested_at);
     `);
 
     // Adicionar coluna tag na tabela promo_videos e índices
