@@ -1251,6 +1251,21 @@ class ApiService {
     const response = await this.request<any>('/logistics/stats');
     return response.data || { completedDeliveries: 0, inProgressDeliveries: 0, totalEarned: '0.00', avgEarningPerDelivery: '0.00' };
   }
+
+  // --- ACADEMY ADMIN ---
+  async getAdminAcademyCourses(status?: string): Promise<any[]> {
+    const query = status ? `?status=${status}` : '';
+    const response = await this.request<any[]>(`/education/admin/courses${query}`);
+    return response.data || [];
+  }
+
+  async updateAcademyCourseStatus(id: number | string, status: 'APPROVED' | 'REJECTED'): Promise<any> {
+    const response = await this.request<any>(`/education/admin/courses/${id}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ status })
+    });
+    return response;
+  }
 }
 
 // Exportar instância única do serviço

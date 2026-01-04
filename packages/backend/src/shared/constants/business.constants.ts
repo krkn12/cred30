@@ -59,6 +59,12 @@ export const VIDEO_VIEWER_SHARE = 0.60;       // 60% para quem assiste
 export const VIDEO_QUOTA_HOLDERS_SHARE = 0.25; // 25% para quem tem cotas (profit_pool)
 export const VIDEO_SERVICE_FEE_SHARE = 0.15;  // 15% taxa de serviço (system_balance)
 
+// --- Taxas da Academia (Marketplace Estilo Udemy) ---
+export const ACADEMY_TOTAL_FEE_RATE = 0.175;       // 17.5% Taxa total
+export const ACADEMY_AUTHOR_SHARE = 0.825;         // 82.5% Para o professor
+export const ACADEMY_PLATFORM_SHARE = 0.075;       // 7.5% Para o sistema (system_balance)
+export const ACADEMY_SUPPORTERS_SHARE = 0.10;      // 10% Para cotistas (profit_pool)
+
 // --- SISTEMA DE BENEFÍCIO DE BOAS-VINDAS (INDICAÇÃO) ---
 // Ao invés de pagar R$ 5,00 de bônus, o indicado ganha desconto nas taxas
 export const REFERRAL_BONUS = 0; // Desativado - substituído pelo sistema de benefício
