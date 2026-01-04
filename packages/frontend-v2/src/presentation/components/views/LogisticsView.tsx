@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
     Truck, Package, Phone, Clock, CheckCircle, XCircle,
-    ArrowRight, Loader2, DollarSign, Star, AlertCircle, RefreshCw,
-    Navigation, User, Store
+    Loader2, DollarSign, Star, AlertCircle, RefreshCw,
+    Navigation, User, Store, Map as MapIcon
 } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
+import { OrderTrackingMap } from '../features/marketplace/OrderTrackingMap';
 
 interface Delivery {
     orderId: number;
@@ -47,6 +48,7 @@ export const LogisticsView = () => {
     const [success, setSuccess] = useState<string | null>(null);
     const [showTerms, setShowTerms] = useState(false);
     const [isAgreed, setIsAgreed] = useState(localStorage.getItem('logistics_terms_agreed') === 'true');
+    const [trackingOrder, setTrackingOrder] = useState<any>(null);
 
     useEffect(() => {
         if (!isAgreed && activeTab === 'available') {
@@ -328,20 +330,29 @@ export const LogisticsView = () => {
                                         <p className="text-xl font-bold text-emerald-400">{formatCurrency(delivery.courierEarnings)}</p>
                                         <p className="text-[10px] text-zinc-600">Taxa: {(100 - ((delivery as any).courierFeeRate * 100))}% p/ você</p>
                                     </div>
-                                    <button
-                                        onClick={() => handleAccept(delivery.orderId)}
-                                        disabled={actionLoading === delivery.orderId}
-                                        className="bg-primary-500 hover:bg-primary-400 text-black font-bold py-3 px-6 rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
-                                    >
-                                        {actionLoading === delivery.orderId ? (
-                                            <Loader2 size={18} className="animate-spin" />
-                                        ) : (
-                                            <>
-                                                Aceitar
-                                                <ArrowRight size={18} />
-                                            </>
-                                        )}
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setTrackingOrder(delivery)}
+                                            className="bg-zinc-800 hover:bg-zinc-700 text-white p-3 rounded-xl transition-all"
+                                            title="Ver no Mapa"
+                                        >
+                                            <MapIcon size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleAccept(delivery.orderId)}
+                                            disabled={actionLoading === delivery.orderId}
+                                            className="bg-primary-500 hover:bg-primary-400 text-black font-bold py-3 px-6 rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+                                        >
+                                            {actionLoading === delivery.orderId ? (
+                                                <Loader2 size={18} className="animate-spin" />
+                                            ) : (
+                                                <>
+                                                    <CheckCircle size={18} />
+                                                    Aceitar
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -486,6 +497,13 @@ export const LogisticsView = () => {
                                 <div className="flex items-center justify-between">
                                     <p className="text-emerald-400 font-bold">{formatCurrency(delivery.courierEarnings)}</p>
                                     <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setTrackingOrder(delivery)}
+                                            className="bg-indigo-500/10 text-indigo-400 p-2 rounded-lg border border-indigo-500/20"
+                                            title="Ver no Mapa"
+                                        >
+                                            <MapIcon size={16} />
+                                        </button>
                                         {delivery.deliveryStatus === 'ACCEPTED' && (
                                             <>
                                                 <button
@@ -601,6 +619,14 @@ export const LogisticsView = () => {
                         </button>
                     </div>
                 </div>
+            )}
+            {/* Modal de Rastreio */}
+            {trackingOrder && (
+                <OrderTrackingMap
+                    orderId={trackingOrder.orderId}
+                    onClose={() => setTrackingOrder(null)}
+                    userRole="courier"
+                />
             )}
         </div>
     );

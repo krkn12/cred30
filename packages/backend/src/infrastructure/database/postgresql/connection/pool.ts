@@ -775,6 +775,7 @@ export const initializeDatabase = async () => {
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS seller_rating INTEGER;
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS pickup_address TEXT;
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_status VARCHAR(30) DEFAULT 'NONE';
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_type VARCHAR(30) DEFAULT 'SELF_PICKUP';
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_fee DECIMAL(10, 2) DEFAULT 0;
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS courier_id INTEGER REFERENCES users(id);
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS pickup_code VARCHAR(10);
@@ -994,6 +995,35 @@ export const initializeDatabase = async () => {
     // --- SISTEMA DE GOVERNANÇA (VOTAÇÃO) ---
     console.log('Verificando tabelas de votação...');
     await client.query(`
+      -- Tabela de Propostas de Votação (Governance V2)
+      CREATE TABLE IF NOT EXISTS governance_proposals (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          title TEXT NOT NULL,
+          description TEXT NOT NULL,
+          creator_id ${userIdType} REFERENCES users(id),
+          status TEXT DEFAULT 'active' CHECK (status IN ('active', 'passed', 'rejected', 'executed')),
+          category TEXT DEFAULT 'general' CHECK (category IN ('general', 'financial', 'regulation', 'exclusion')),
+          yes_votes_power DECIMAL(20, 2) DEFAULT 0,
+          no_votes_power DECIMAL(20, 2) DEFAULT 0,
+          min_power_quorum DECIMAL(20, 2) DEFAULT 100,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          expires_at TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP + INTERVAL '7 days')
+      );
+
+      -- Tabela de Votos Individuais
+      CREATE TABLE IF NOT EXISTS governance_votes (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          proposal_id UUID REFERENCES governance_proposals(id) ON DELETE CASCADE,
+          user_id ${userIdType} REFERENCES users(id),
+          choice TEXT NOT NULL CHECK (choice IN ('yes', 'no')),
+          voting_power DECIMAL(20, 2) NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(proposal_id, user_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_gov_votes_proposal ON governance_votes(proposal_id);
+      CREATE INDEX IF NOT EXISTS idx_gov_proposals_status ON governance_proposals(status);
+
       CREATE TABLE IF NOT EXISTS voting_proposals (
         id SERIAL PRIMARY KEY,
         title VARCHAR(255) NOT NULL,

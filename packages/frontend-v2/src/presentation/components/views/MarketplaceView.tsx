@@ -1,12 +1,35 @@
-import { useState, useEffect, memo, useCallback, Fragment } from 'react';
+import React, { useState, useEffect, memo, useCallback } from 'react';
 import {
-    Search, Tag, ShoppingBag, PlusCircle, ImageIcon, Zap, Sparkles,
-    ChevronRight, ArrowLeft, ShieldCheck, Heart, Share2,
-    Truck, CheckCircle2, History, Package, RefreshCw, Wand2, X as XIcon,
-    QrCode, MapPin, Phone, Navigation2, Loader2, ChevronDown
+    Search,
+    Tag,
+    ShoppingBag,
+    PlusCircle,
+    Image as ImageIcon,
+    Zap,
+    Sparkles,
+    ChevronRight,
+    ArrowLeft,
+    ShieldCheck,
+    Heart,
+    Share2,
+    Truck,
+    CheckCircle2,
+    History as HistoryIcon,
+    Package,
+    RefreshCw,
+    Wand2,
+    X as XIcon,
+    QrCode,
+    MapPin,
+    Phone,
+    Navigation2,
+    Loader2,
+    ChevronDown,
+    Store,
+    CheckCircle
 } from 'lucide-react';
 
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AppState } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 import { ConfirmModal } from '../ui/ConfirmModal';
@@ -75,7 +98,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const [listings, setListings] = useState<any[]>([]);
     const [myOrders, setMyOrders] = useState<any[]>([]);
     const [missions, setMissions] = useState<any[]>([]);
-    const [deliveryOption, setDeliveryOption] = useState<'SELF_PICKUP' | 'COURIER_REQUEST'>('SELF_PICKUP');
+    const [deliveryOption, setDeliveryOption] = useState<'SELF_PICKUP' | 'COURIER_REQUEST' | 'EXTERNAL_SHIPPING'>('SELF_PICKUP');
     const [offeredFee, setOfferedFee] = useState<string>('5.00');
     const [isLoading, setIsLoading] = useState(true);
     const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -141,24 +164,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         }
     };
 
-    // Handle navigation state from PortfolioView (preloaded quota)
-    const location = useLocation();
-    useEffect(() => {
-        const navState = location.state as any;
-        if (navState?.view === 'create' && navState?.preloadQuota) {
-            setView('create');
-            setNewListing({
-                title: navState.preloadQuota.title || `Cota-Parte #${navState.preloadQuota.id}`,
-                description: `Cessão de cota-parte do grupo Cred30. Valor de mercado atual. Transferida automaticamente após confirmação do pagamento.`,
-                price: String(navState.preloadQuota.price || ''),
-                category: 'PARTICIPAÇÕES',
-                image_url: '',
-                quotaId: navState.preloadQuota.id
-            });
-            // Limpar o state para evitar reprocessamento
-            window.history.replaceState({}, document.title);
-        }
-    }, [location.state]);
+    const [deliveryAddress, setDeliveryAddress] = useState('');
 
     const fetchBrowseData = useCallback(async (isLoadMore = false) => {
         if (!isLoadMore) {
@@ -529,7 +535,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 </div>
 
                                 {listings.map((item, index) => (
-                                    <Fragment key={item.id}>
+                                    <React.Fragment key={item.id}>
                                         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden group hover:border-primary-500/30 transition-all flex flex-col">
                                             <div className="aspect-square bg-zinc-950 flex items-center justify-center relative">
                                                 {item.image_url ? (
@@ -602,7 +608,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                 img={index === 2 ? "https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=600&q=80" : "https://images.unsplash.com/photo-1554224155-16974a4005d1?auto=format&fit=crop&w=600&q=80"}
                                             />
                                         )}
-                                    </Fragment>
+                                    </React.Fragment>
                                 ))}
 
                                 <div className="col-span-1">
@@ -792,7 +798,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                     <h3 className="text-lg font-bold text-white mb-4">Minhas Compras</h3>
                     {myOrders.length === 0 ? (
                         <div className="py-20 text-center bg-zinc-900 border border-zinc-800 rounded-3xl">
-                            <History size={48} className="text-zinc-800 mx-auto mb-4" />
+                            <HistoryIcon size={48} className="text-zinc-800 mx-auto mb-4" />
                             <p className="text-zinc-500 text-sm">Você ainda não realizou nenhuma compra.</p>
                             <button onClick={() => setView('browse')} className="text-primary-400 text-xs font-bold mt-2">Explorar Mercado</button>
                         </div>
@@ -842,6 +848,14 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                             </div>
                                         )}
 
+                                        {/* Código de Rastreio para Envio Externo */}
+                                        {order.tracking_code && (
+                                            <div className="bg-blue-500/20 border border-blue-500/30 px-3 py-1.5 rounded-lg flex flex-col">
+                                                <span className="text-[8px] text-blue-400 font-black uppercase tracking-tighter">Rastreamento Nacional</span>
+                                                <span className="text-xs font-mono font-black text-white">{order.tracking_code}</span>
+                                            </div>
+                                        )}
+
                                         {order.courier_name && (
                                             <div className="flex flex-col gap-1 mt-4">
                                                 <div className="flex items-center gap-2 text-[10px] text-amber-500 font-black">
@@ -860,6 +874,56 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                     </div>
                                                 )}
                                             </div>
+                                        )}
+                                    </div>
+
+                                    {/* Ações de Ordem */}
+                                    <div className="flex gap-2 mt-4 pt-4 border-t border-white/5">
+                                        {/* Vendedor: Informar Rastreio */}
+                                        {order.seller_id === state.currentUser?.id && order.status === 'WAITING_SHIPPING' && order.delivery_type === 'EXTERNAL_SHIPPING' && (
+                                            <button
+                                                onClick={() => {
+                                                    const code = prompt('Digite o código de rastreamento (Correios/Transportadora):');
+                                                    if (code) {
+                                                        apiService.post(`/marketplace/order/${order.id}/ship`, { trackingCode: code })
+                                                            .then(() => { onSuccess('Sucesso', 'Produto enviado!'); fetchData(); })
+                                                            .catch(err => onError('Erro', err.message));
+                                                    }
+                                                }}
+                                                className="bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-black px-4 py-2 rounded-lg transition-all uppercase tracking-widest"
+                                            >
+                                                Informar Envio
+                                            </button>
+                                        )}
+
+                                        {/* Comprador: Confirmar Recebimento */}
+                                        {order.buyer_id === state.currentUser?.id && order.status === 'IN_TRANSIT' && (
+                                            <button
+                                                onClick={() => {
+                                                    setConfirmData({
+                                                        isOpen: true,
+                                                        title: 'Confirmar Recebimento?',
+                                                        message: 'Ao confirmar, o dinheiro será liberado para o vendedor. Faça isso apenas se já estiver com o produto em mãos.',
+                                                        confirmText: 'CONFIRMAR RECEBIMENTO',
+                                                        type: 'success',
+                                                        onConfirm: async () => {
+                                                            try {
+                                                                const res = await apiService.post<any>(`/marketplace/order/${order.id}/confirm-receipt`, {});
+                                                                if (res.success) {
+                                                                    onSuccess('Sucesso!', 'Pedido concluído e dinheiro liberado.');
+                                                                    fetchData();
+                                                                    setConfirmData(null);
+                                                                }
+                                                            } catch (err: any) {
+                                                                onError('Erro', err.message);
+                                                            }
+                                                        }
+                                                    });
+                                                }}
+                                                className="bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black px-4 py-2 rounded-lg transition-all uppercase tracking-widest shadow-lg shadow-emerald-600/20"
+                                            >
+                                                Confirmar Recebimento
+                                            </button>
                                         )}
                                     </div>
                                 </div>
@@ -1010,21 +1074,65 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 <p className="text-sm text-zinc-400 leading-relaxed whitespace-pre-wrap">{selectedItem.description}</p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-400"><ShieldCheck size={16} /></div>
-                                        <span className="text-[10px] font-black text-zinc-300 uppercase">Segurança</span>
-                                    </div>
-                                    <p className="text-[10px] text-zinc-500 leading-tight">Pagamento protegido por Escrow Cred30.</p>
+                            <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6 space-y-4">
+                                <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Truck size={14} className="text-primary-400" /> Opções de Entrega
+                                </h4>
+                                <div className="grid grid-cols-1 gap-2">
+                                    <button
+                                        onClick={() => setDeliveryOption('SELF_PICKUP')}
+                                        className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${deliveryOption === 'SELF_PICKUP' ? 'bg-primary-500/10 border-primary-500/50' : 'bg-zinc-900/50 border-zinc-800'}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-zinc-800 rounded-lg text-zinc-400"><Store size={18} /></div>
+                                            <div className="text-left">
+                                                <p className="text-xs font-black text-white uppercase">Retirada Pessoal</p>
+                                                <p className="text-[10px] text-zinc-500">Você vai até o vendedor.</p>
+                                            </div>
+                                        </div>
+                                        {deliveryOption === 'SELF_PICKUP' && <CheckCircle size={16} className="text-primary-400" />}
+                                    </button>
+
+                                    <button
+                                        onClick={() => setDeliveryOption('COURIER_REQUEST')}
+                                        className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${deliveryOption === 'COURIER_REQUEST' ? 'bg-primary-500/10 border-primary-500/50' : 'bg-zinc-900/50 border-zinc-800'}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-zinc-800 rounded-lg text-zinc-400"><Truck size={18} /></div>
+                                            <div className="text-left">
+                                                <p className="text-xs font-black text-white uppercase">Entregador Cred30</p>
+                                                <p className="text-[10px] text-zinc-500">Para entregas na mesma região.</p>
+                                            </div>
+                                        </div>
+                                        {deliveryOption === 'COURIER_REQUEST' && <CheckCircle size={16} className="text-primary-400" />}
+                                    </button>
+
+                                    <button
+                                        onClick={() => setDeliveryOption('EXTERNAL_SHIPPING')}
+                                        className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${deliveryOption === 'EXTERNAL_SHIPPING' ? 'bg-primary-500/10 border-primary-500/50' : 'bg-zinc-900/50 border-zinc-800'}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-zinc-800 rounded-lg text-zinc-400"><Package size={18} /></div>
+                                            <div className="text-left">
+                                                <p className="text-xs font-black text-white uppercase">Envio Nacional</p>
+                                                <p className="text-[10px] text-zinc-500">Correios ou Transportadoras (Interstadual).</p>
+                                            </div>
+                                        </div>
+                                        {deliveryOption === 'EXTERNAL_SHIPPING' && <CheckCircle size={16} className="text-primary-400" />}
+                                    </button>
                                 </div>
-                                <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <div className="p-1.5 bg-primary-500/10 rounded-lg text-primary-400"><Truck size={16} /></div>
-                                        <span className="text-[10px] font-black text-zinc-300 uppercase">Logística</span>
+
+                                {deliveryOption !== 'SELF_PICKUP' && (
+                                    <div className="space-y-2 animate-in slide-in-from-top-2">
+                                        <label className="text-[10px] text-zinc-500 font-black uppercase">Endereço de Entrega</label>
+                                        <input
+                                            placeholder="Rua, Número, Bairro, Cidade - Estado"
+                                            value={deliveryAddress}
+                                            onChange={e => setDeliveryAddress(e.target.value)}
+                                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white"
+                                        />
                                     </div>
-                                    <p className="text-[10px] text-zinc-500 leading-tight">Retirada ou Apoio Colaborativo (Sem Vínculo Empregatício).</p>
-                                </div>
+                                )}
                             </div>
 
                             <div className="sticky bottom-6 mt-12 bg-black border border-zinc-800 p-4 rounded-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
@@ -1086,7 +1194,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                             <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Preço Final</p>
                                             <p className="text-xl font-black text-white">
                                                 {(() => {
-                                                    const base = parseFloat(selectedItem.price) + (deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee || '0') : 0);
+                                                    const base = parseFloat(selectedItem.price) + (deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee || '0') : deliveryOption === 'EXTERNAL_SHIPPING' ? 35.00 : 0);
                                                     if (paymentMethod === 'PIX') return formatCurrency(base + 0.99);
                                                     if (paymentMethod === 'CARD') return formatCurrency((base + 0.49) / (1 - 0.0299));
                                                     return formatCurrency(base);
@@ -1125,9 +1233,9 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                     const res = await apiService.post<any>('/marketplace/buy', {
                                                         listingId: selectedItem.id,
                                                         deliveryType: deliveryOption,
-                                                        offeredDeliveryFee: parseFloat(offeredFee),
-                                                        deliveryAddress: 'Endereço Principal', // TODO: Pegar do user ou input
-                                                        contactPhone: '000000000',
+                                                        offeredDeliveryFee: deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee) : deliveryOption === 'EXTERNAL_SHIPPING' ? 35.00 : 0,
+                                                        deliveryAddress: deliveryAddress || 'Endereço Principal',
+                                                        contactPhone: (state.currentUser as any)?.phone || '000000000',
                                                         paymentMethod: paymentMethod,
                                                         payerCpfCnpj: paymentMethod !== 'BALANCE' ? cardData.cpf : undefined,
                                                         creditCard: paymentMethod === 'CARD' ? cardData : undefined
@@ -1167,7 +1275,13 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                             onClick={() => setDeliveryOption('COURIER_REQUEST')}
                                             className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition ${deliveryOption === 'COURIER_REQUEST' ? 'bg-indigo-900/40 border-indigo-500/50 text-indigo-300' : 'bg-transparent border-zinc-800 text-zinc-500'}`}
                                         >
-                                            Solicitar Colaborador
+                                            Entregador
+                                        </button>
+                                        <button
+                                            onClick={() => setDeliveryOption('EXTERNAL_SHIPPING')}
+                                            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition ${deliveryOption === 'EXTERNAL_SHIPPING' ? 'bg-blue-900/40 border-blue-500/50 text-blue-300' : 'bg-transparent border-zinc-800 text-zinc-500'}`}
+                                        >
+                                            Envio Nacional
                                         </button>
                                     </div>
 
