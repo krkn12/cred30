@@ -1216,9 +1216,10 @@ class ApiService {
   }
 
   // Confirmar entrega realizada
-  async confirmDelivered(orderId: number): Promise<any> {
+  async confirmDelivered(orderId: number, confirmationCode?: string): Promise<any> {
     const response = await this.request<any>(`/logistics/delivered/${orderId}`, {
-      method: 'POST'
+      method: 'POST',
+      body: JSON.stringify({ confirmationCode })
     });
     return response;
   }

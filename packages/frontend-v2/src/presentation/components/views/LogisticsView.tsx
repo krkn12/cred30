@@ -34,7 +34,7 @@ interface DeliveryStats {
     avgEarningPerDelivery: string;
 }
 
-type Tab = 'available' | 'active' | 'history';
+type Tab = 'available' | 'active' | 'history' | 'profile';
 
 export const LogisticsView = () => {
     const [activeTab, setActiveTab] = useState<Tab>('available');
@@ -95,10 +95,13 @@ export const LogisticsView = () => {
     };
 
     const handlePickup = async (orderId: number) => {
+        const code = prompt('Digite o CÓDIGO DE COLETA fornecido pelo vendedor:');
+        if (!code) return;
+
         setActionLoading(orderId);
         setError(null);
         try {
-            const result = await apiService.confirmPickup(orderId);
+            const result = await apiService.confirmPickup(orderId, code);
             if (result.success) {
                 setSuccess('Coleta confirmada! Agora leve até o comprador.');
                 loadData();
@@ -113,12 +116,15 @@ export const LogisticsView = () => {
     };
 
     const handleDelivered = async (orderId: number) => {
+        const code = prompt('Digite o CÓDIGO DE CONFIRMAÇÃO fornecido pelo comprador:');
+        if (!code) return;
+
         setActionLoading(orderId);
         setError(null);
         try {
-            const result = await apiService.confirmDelivered(orderId);
+            const result = await apiService.confirmDelivered(orderId, code);
             if (result.success) {
-                setSuccess('Entrega marcada como concluída! Aguardando confirmação do comprador.');
+                setSuccess('Entrega marcada como concluída! Saldo liberado.');
                 loadData();
             } else {
                 setError(result.message || 'Erro ao marcar entrega');
@@ -239,6 +245,7 @@ export const LogisticsView = () => {
                     { id: 'available' as Tab, label: 'Disponíveis', icon: Package },
                     { id: 'active' as Tab, label: 'Minhas Ativas', icon: Truck },
                     { id: 'history' as Tab, label: 'Histórico', icon: Clock },
+                    { id: 'profile' as Tab, label: 'Meu Perfil', icon: User },
                 ].map(tab => (
                     <button
                         key={tab.id}
@@ -340,6 +347,103 @@ export const LogisticsView = () => {
                         ))}
                     </div>
                 )
+            ) : activeTab === 'profile' ? (
+                <div className="animate-in fade-in duration-300">
+                    <div className="glass p-6 rounded-3xl">
+                        <h3 className="text-xl font-bold text-white mb-6">Identificação do Entregador</h3>
+                        <p className="text-zinc-400 text-sm mb-8">
+                            Complete seu perfil para que vendedores e compradores possam te identificar facilmente.
+                            Isso aumenta sua credibilidade e segurança.
+                        </p>
+
+                        <form onSubmit={async (e) => {
+                            e.preventDefault();
+                            const formData = new FormData(e.currentTarget);
+                            const data = {
+                                vehicleType: formData.get('vehicleType'),
+                                vehicleModel: formData.get('vehicleModel'),
+                                vehiclePlate: formData.get('vehiclePlate'),
+                                photoUrl: (e.currentTarget as any).photoPreview || ''
+                            };
+
+                            try {
+                                setActionLoading(999);
+                                await apiService.put('/logistics/profile', data);
+                                setSuccess('Perfil atualizado com sucesso!');
+                                loadData();
+                            } catch (err: any) {
+                                setError(err.message || 'Erro ao atualizar perfil');
+                            } finally {
+                                setActionLoading(null);
+                            }
+                        }} className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1 block mb-1">Tipo de Veículo</label>
+                                    <select
+                                        name="vehicleType"
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary-500/50"
+                                        required
+                                    >
+                                        <option value="BICYCLE">Bicicleta</option>
+                                        <option value="MOTORCYCLE">Moto</option>
+                                        <option value="CAR">Carro</option>
+                                        <option value="VAN">Van</option>
+                                        <option value="TRUCK">Caminhão</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1 block mb-1">Modelo / Cor</label>
+                                    <input
+                                        name="vehicleModel"
+                                        type="text"
+                                        placeholder="Ex: Honda CG 160 Vermelha"
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary-500/50"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1 block mb-1">Placa (Opcional)</label>
+                                    <input
+                                        name="vehiclePlate"
+                                        type="text"
+                                        placeholder="ABC-1234"
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary-500/50 uppercase"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1 block mb-1">Foto de Perfil</label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                const reader = new FileReader();
+                                                reader.onload = (ev) => {
+                                                    const form = (e.target as any).closest('form');
+                                                    form.photoPreview = ev.target?.result;
+                                                };
+                                                reader.readAsDataURL(file);
+                                            }
+                                        }}
+                                        className="w-full text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-semibold file:bg-primary-500/10 file:text-primary-400 hover:file:bg-primary-500/20"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="pt-4">
+                                <button
+                                    type="submit"
+                                    disabled={actionLoading === 999}
+                                    className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition shadow-lg shadow-primary-500/20 uppercase tracking-widest text-[11px] disabled:opacity-50"
+                                >
+                                    {actionLoading === 999 ? 'Salvando...' : 'Salvar Dados do Entregador'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             ) : (
                 myDeliveries.length === 0 ? (
                     <div className="text-center py-20">

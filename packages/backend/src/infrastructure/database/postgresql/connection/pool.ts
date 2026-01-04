@@ -278,6 +278,11 @@ export const initializeDatabase = async () => {
         seller_address_state VARCHAR(255),
         seller_address_postal_code VARCHAR(255),
         seller_created_at TIMESTAMP,
+        is_courier BOOLEAN DEFAULT FALSE,
+        courier_vehicle_type VARCHAR(50),
+        courier_vehicle_model VARCHAR(100),
+        courier_vehicle_plate VARCHAR(20),
+        courier_photo_url TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -298,6 +303,11 @@ export const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_state VARCHAR(255);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_postal_code VARCHAR(255);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_created_at TIMESTAMP;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_courier BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_vehicle_type VARCHAR(50);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_vehicle_model VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_vehicle_plate VARCHAR(20);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_photo_url TEXT;
     `);
 
     // Verificar o tipo da coluna id da tabela users para garantir integridade das chaves estrangeiras
@@ -771,6 +781,7 @@ export const initializeDatabase = async () => {
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(20);
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS picked_up_at TIMESTAMP;
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP;
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_confirmation_code VARCHAR(10);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
     `);
