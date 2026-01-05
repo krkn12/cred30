@@ -597,6 +597,32 @@ adminRoutes.get('/payout-queue', adminMiddleware, async (c) => {
   }
 });
 
+// Listar Transações Pendentes (Aprovações Iniciais - Depósitos, Cotas, etc)
+adminRoutes.get('/pending-transactions', adminMiddleware, async (c) => {
+  try {
+    const pool = getDbPool(c);
+
+    // Buscar transações que dependem de ação humana (Status PENDING)
+    // EXCLUINDO saques que já estão na fila de pagamento (PENDING_PAYMENT)
+    const result = await pool.query(
+      `SELECT t.*, u.name as user_name, u.email as user_email, u.pix_key as user_pix
+       FROM transactions t
+       LEFT JOIN users u ON t.user_id = u.id
+       WHERE t.status = 'PENDING' 
+         AND t.payout_status = 'NONE'
+       ORDER BY t.created_at ASC`
+    );
+
+    return c.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Erro ao buscar transações pendentes:', error);
+    return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
+  }
+});
+
 // Confirmar Pagamento Efetuado (PIX Manual enviado pelo Admin)
 adminRoutes.post('/confirm-payout', adminMiddleware, auditMiddleware('CONFIRM_PAYOUT', 'TRANSACTION_LOAN'), async (c) => {
   console.log('[CONFIRM-PAYOUT] Iniciando confirmação manual...');

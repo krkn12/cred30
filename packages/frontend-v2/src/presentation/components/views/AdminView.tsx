@@ -20,6 +20,7 @@ import { AdminReviews } from '../features/admin/tabs/AdminReviews';
 import { AdminBugs } from '../features/admin/tabs/AdminBugs';
 import { AdminInvestments } from '../features/admin/tabs/AdminInvestments';
 import { AdminLogistics } from '../features/admin/tabs/AdminLogistics';
+import { AdminApprovals } from '../features/admin/tabs/AdminApprovals';
 
 // Existing Shared Components
 import { AdminStoreManager } from '../features/store/admin-store.component';
@@ -33,7 +34,7 @@ interface AdminViewProps {
     onError: (title: string, message: string) => void;
 }
 
-type TabType = 'overview' | 'payouts' | 'system' | 'investments' | 'store' | 'referrals' | 'support' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics';
+type TabType = 'overview' | 'approvals' | 'payouts' | 'system' | 'investments' | 'store' | 'referrals' | 'support' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics';
 
 export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: AdminViewProps) => {
     const [isLoading, setIsLoading] = useState(false);
@@ -45,20 +46,23 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     );
 
     const [pendingChatsCount, setPendingChatsCount] = useState(0);
+    const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
     const [pendingPayoutsCount, setPendingPayoutsCount] = useState(0);
     const [pendingReviewsCount, setPendingReviewsCount] = useState(0);
     const [pendingBugsCount, setPendingBugsCount] = useState(0);
 
     const fetchCounts = useCallback(async () => {
         try {
-            const [supportRes, payoutRes, reviewsRes, bugsRes] = await Promise.all([
+            const [supportRes, approvalsRes, payoutRes, reviewsRes, bugsRes] = await Promise.all([
                 apiService.getPendingSupportChats(),
+                apiService.getPendingTransactions(),
                 apiService.getPayoutQueue(),
                 apiService.getAdminReviews(),
                 apiService.get<any>('/bugs/admin?status=open')
             ]);
 
             setPendingChatsCount(supportRes.chats?.filter((c: any) => c.status === 'PENDING_HUMAN').length || 0);
+            setPendingApprovalsCount(approvalsRes?.length || 0);
             setPendingPayoutsCount(payoutRes.transactions?.length || 0);
             setPendingReviewsCount(reviewsRes.data?.filter((r: any) => r.is_public && !r.is_approved).length || 0);
             setPendingBugsCount(bugsRes.data?.length || 0);
@@ -104,6 +108,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
 
     const tabs = [
         { id: 'overview', name: 'Resumo', icon: PieChart, roles: ['ADMIN'] },
+        { id: 'approvals', name: 'Pendentes', icon: ShieldCheck, count: pendingApprovalsCount, roles: ['ADMIN', 'ATTENDANT'] },
         { id: 'payouts', name: 'Resgates', icon: Send, count: pendingPayoutsCount, roles: ['ADMIN'] },
         { id: 'metrics', name: 'Monitoramento', icon: Activity, roles: ['ADMIN', 'ATTENDANT'] },
         { id: 'system', name: 'Financeiro', icon: SettingsIcon, roles: ['ADMIN'] },
@@ -186,6 +191,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
             {/* Tab Content */}
             <div className="min-h-[600px]">
                 {activeTab === 'overview' && <AdminOverview state={state} />}
+                {activeTab === 'approvals' && <AdminApprovals onSuccess={onSuccess} onError={onError} onRefresh={fetchCounts} />}
                 {activeTab === 'payouts' && <AdminPayouts onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'metrics' && <AdminMetrics />}
                 {activeTab === 'system' && <AdminSystem state={state} onRefresh={onRefresh} onSuccess={onSuccess} onError={onError} />}

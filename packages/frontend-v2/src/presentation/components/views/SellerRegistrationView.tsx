@@ -95,7 +95,7 @@ export const SellerRegistrationView = () => {
                         {sellerStatus.companyName && <span className="text-white font-medium">{sellerStatus.companyName}</span>}
                     </p>
                     <p className="text-sm text-emerald-400 mb-4">
-                        Seus pagamentos são recebidos diretamente via Asaas com split automático.
+                        Seus recebimentos são processados internamente com split automático no saldo Cred30.
                     </p>
                     <div className="bg-zinc-900 p-4 rounded-xl mb-6">
                         <p className="text-xs text-zinc-500 uppercase tracking-widest mb-2">Sua taxa</p>

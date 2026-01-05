@@ -483,6 +483,20 @@ class ApiService {
     });
   }
 
+  // Listar transações aguardando aprovação
+  async getPendingTransactions(): Promise<any> {
+    const response = await this.request<any>('/admin/pending-transactions');
+    return response.data;
+  }
+
+  // Aprovar ou rejeitar uma transação/empréstimo
+  async processAction(id: string | number, type: 'TRANSACTION' | 'LOAN', action: 'APPROVE' | 'REJECT'): Promise<any> {
+    return await this.request<any>('/admin/process-action', {
+      method: 'POST',
+      body: JSON.stringify({ id, type, action }),
+    });
+  }
+
   // --- AVALIAÇÕES DE TRANSAÇÕES ---
   async submitReview(transactionId: number, rating: number, comment: string, isPublic: boolean): Promise<any> {
     return await this.request<any>('/transactions/review', {

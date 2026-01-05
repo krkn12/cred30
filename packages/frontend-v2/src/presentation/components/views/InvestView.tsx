@@ -6,9 +6,10 @@ import { calculateTotalToPay } from '../../../shared/utils/financial.utils';
 interface InvestViewProps {
     onBuy: (qty: number, method: 'PIX' | 'BALANCE') => void;
     isPro?: boolean;
+    userBalance?: number;
 }
 
-export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
+export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) => {
     void isPro;
     const [qty, setQty] = useState(1);
     const [method, setMethod] = useState<'PIX' | 'BALANCE'>('PIX');
@@ -120,6 +121,7 @@ export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
                                             active={method === 'BALANCE'}
                                             onClick={() => setMethod('BALANCE')}
                                             label="SALDO"
+                                            sublabel={userBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                         />
                                     </div>
                                 </div>
@@ -297,9 +299,15 @@ export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
                         <div className="space-y-4">
                             <button
                                 onClick={handlePurchase}
-                                className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black uppercase tracking-[0.2em] py-5 rounded-2xl transition-all shadow-xl shadow-primary-500/20 active:scale-[0.98] text-xs flex items-center justify-center gap-3"
+                                disabled={method === 'BALANCE' && userBalance < total}
+                                className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl ${method === 'BALANCE' && userBalance < total
+                                    ? 'bg-zinc-800 text-zinc-600 opacity-50 cursor-not-allowed'
+                                    : 'bg-primary-500 text-black hover:bg-primary-400 shadow-primary-500/20 active:scale-[0.98]'
+                                    }`}
                             >
-                                {method === 'BALANCE' ? 'PAGAR COM MEU SALDO' : 'GERAR PAGAMENTO PIX'}
+                                {method === 'BALANCE'
+                                    ? (userBalance < total ? 'SALDO INSUFICIENTE' : 'PAGAR COM MEU SALDO')
+                                    : 'GERAR PAGAMENTO PIX'}
                                 <ArrowRight size={18} />
                             </button>
                             <button
@@ -330,15 +338,16 @@ const BenefitCard = ({ icon, title, description, color }: { icon: any, title: st
     </div>
 );
 
-const MethodButton = ({ active, onClick, label }: any) => (
+const MethodButton = ({ active, onClick, label, sublabel }: any) => (
     <button
         onClick={onClick}
-        className={`flex-1 py-3.5 rounded-xl text-[10px] font-black tracking-widest transition-all ${active
+        className={`flex-1 py-3.5 rounded-xl text-[10px] font-black tracking-widest transition-all flex flex-col items-center justify-center ${active
             ? 'bg-primary-500 text-black shadow-lg shadow-primary-500/20'
             : 'text-zinc-600 hover:text-white hover:bg-white/5'
             }`}
     >
-        {label}
+        <span>{label}</span>
+        {sublabel && <span className={`text-[8px] mt-0.5 opacity-70 ${active ? 'text-black' : 'text-zinc-500'}`}>{sublabel}</span>}
     </button>
 );
 
