@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Check, X, Clipboard, ArrowDownCircle } from 'lucide-react';
+import { ShieldCheck, Check, X, ArrowDownCircle, Phone } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
 interface AdminApprovalsProps {
@@ -93,8 +93,8 @@ export const AdminApprovals: React.FC<AdminApprovalsProps> = ({ onSuccess, onErr
                                         <div className="space-y-3 flex-1">
                                             <div className="flex items-center justify-between">
                                                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${t.type === 'DEPOSIT' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                                        t.type === 'WITHDRAWAL' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                                            'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                                    t.type === 'WITHDRAWAL' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                                        'bg-blue-500/10 text-blue-400 border-blue-500/20'
                                                     }`}>
                                                     {getTypeLabel(t.type)}
                                                 </span>
@@ -103,7 +103,20 @@ export const AdminApprovals: React.FC<AdminApprovalsProps> = ({ onSuccess, onErr
 
                                             <div>
                                                 <p className="text-sm font-bold text-white mb-0.5 uppercase tracking-tight">{t.user_name}</p>
-                                                <p className="text-[11px] text-zinc-500 font-medium lowercase tracking-tight">{t.user_email}</p>
+                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                                                    <p className="text-[11px] text-zinc-500 font-medium lowercase tracking-tight">{t.user_email}</p>
+                                                    {t.user_phone && (
+                                                        <a
+                                                            href={`https://wa.me/55${t.user_phone.replace(/\D/g, '')}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-[11px] text-primary-400 font-bold hover:underline flex items-center gap-1"
+                                                        >
+                                                            <Phone size={10} />
+                                                            {t.user_phone}
+                                                        </a>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             <div className="flex items-center gap-4">

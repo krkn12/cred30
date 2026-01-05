@@ -27,7 +27,6 @@ import { logger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
 import { timing } from 'hono/timing';
 import { monetizationRoutes } from './presentation/http/routes/monetization.routes';
-import { supportRoutes } from './presentation/http/routes/support.routes';
 import { promoVideosRoutes } from './presentation/http/routes/promo-videos.routes';
 import { bugReportsRoutes } from './presentation/http/routes/bug-reports.routes';
 import { earnRoutes } from './presentation/http/routes/earn.routes';
@@ -68,7 +67,6 @@ async function startServer() {
     app.route('/api/notifications', notificationRoutes);
     app.route('/api/marketplace', marketplaceRoutes);
     app.route('/api/monetization', monetizationRoutes);
-    app.route('/api/support', supportRoutes);
     app.route('/api/education', educationRoutes);
     app.route('/api/voting', votingRoutes);
     app.route('/api/promo-videos', promoVideosRoutes);

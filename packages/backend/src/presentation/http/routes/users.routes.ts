@@ -487,6 +487,32 @@ userRoutes.post('/update-cpf', authMiddleware, async (c) => {
   }
 });
 
+// Atualizar Telefone do usuário
+userRoutes.post('/update-phone', authMiddleware, async (c) => {
+  try {
+    const { phone } = await c.req.json();
+    const userContext = c.get('user') as UserContext;
+    const pool = getDbPool(c);
+
+    // Validar formato (apenas números, 10 a 11 dígitos)
+    const cleanPhone = phone?.replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 10 || cleanPhone.length > 11) {
+      return c.json({ success: false, message: 'Telefone inválido. Informe 10 ou 11 dígitos com DDD.' }, 400);
+    }
+
+    // Atualizar no banco
+    await pool.query(
+      'UPDATE users SET phone = $1 WHERE id = $2',
+      [cleanPhone, userContext.id]
+    );
+
+    return c.json({ success: true, message: 'Telefone atualizado com sucesso!' });
+  } catch (error) {
+    console.error('Erro ao atualizar telefone:', error);
+    return c.json({ success: false, message: 'Erro interno ao atualizar telefone' }, 500);
+  }
+});
+
 // Recompensa por assistir anúncio (Gera Score - Seguro para o Caixa)
 userRoutes.post('/reward-ad', authMiddleware, async (c) => {
   try {
