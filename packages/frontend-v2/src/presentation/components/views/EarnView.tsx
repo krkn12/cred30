@@ -14,7 +14,7 @@ interface EarnViewProps {
     onSuccess: (title: string, message: string) => void;
     onError: (title: string, message: string) => void;
     onRefresh: () => Promise<void>;
-    onUpgrade: (method: 'balance' | 'pix' | 'card') => Promise<void>;
+    onUpgrade: () => Promise<void>;
 }
 
 export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgrade }: EarnViewProps) => {
@@ -113,7 +113,7 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
         }
     };
 
-    const [proMethod, setProMethod] = useState<'balance' | 'pix' | 'card'>('balance');
+    const [proMethod, setProMethod] = useState<'balance' | 'pix'>('balance');
     const [loadingLocal, setLoadingLocal] = useState(false);
     const [buyingBadge, setBuyingBadge] = useState(false);
     const [buyingBoost, setBuyingBoost] = useState(false);
@@ -121,7 +121,7 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
     const handleUpgradePro = async () => {
         setLoadingLocal(true);
         try {
-            await onUpgrade(proMethod);
+            await onUpgrade();
         } catch (e: any) {
             // Erros são tratados no app.page por prop
         } finally {
@@ -266,18 +266,12 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                         >
                             PIX
                         </button>
-                        <button
-                            onClick={() => setProMethod('card')}
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-black tracking-widest transition ${proMethod === 'card' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-500 hover:text-white'}`}
-                        >
-                            CARTÃO
-                        </button>
                     </div>
 
                     <button
                         onClick={handleUpgradePro}
                         disabled={loadingLocal || user.membership_type === 'PRO'}
-                        className={`w-full py-4 rounded-2xl font-black transition active:scale-95 flex items-center justify-center gap-2 ${user.membership_type === 'PRO' ? 'bg-zinc-800 text-zinc-500' : (proMethod === 'pix' ? 'bg-emerald-500 text-black' : (proMethod === 'card' ? 'bg-blue-500 text-white' : 'bg-white text-black hover:bg-zinc-200'))} shadow-xl`}
+                        className={`w-full py-4 rounded-2xl font-black transition active:scale-95 flex items-center justify-center gap-2 ${user.membership_type === 'PRO' ? 'bg-zinc-800 text-zinc-500' : (proMethod === 'pix' ? 'bg-emerald-500 text-black' : 'bg-white text-black hover:bg-zinc-200')} shadow-xl`}
                     >
                         {loadingLocal ? <RefreshCw className="animate-spin" size={20} /> : (user.membership_type === 'PRO' ? 'MEMBRO PRO ATIVO' : `ASSINAR PRO POR R$ 29,90`)}
                     </button>

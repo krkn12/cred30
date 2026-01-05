@@ -1,10 +1,5 @@
 import { z } from 'zod';
 
-// Schema para validação de valores monetários
-const monetaryValue = z.number()
-  .positive("Valor deve ser maior que zero")
-  .max(999999.99, "Valor máximo permitido é R$ 999.999,99")
-  .refine((val) => Number.isFinite(val), "Valor deve ser um número válido");
 
 // Schema para validação de email
 const emailSchema = z.string()

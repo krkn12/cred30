@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { authMiddleware, adminMiddleware, attendantMiddleware } from '../middleware/auth.middleware';
+import { authMiddleware, attendantMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { supportService } from '../../../application/services/support.service';
 

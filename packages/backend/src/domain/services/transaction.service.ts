@@ -2,15 +2,10 @@ import { Pool, PoolClient } from 'pg';
 import {
   QUOTA_PRICE,
   QUOTA_SHARE_VALUE,
-  QUOTA_ADM_FEE,
-  ASAAS_PIX_OUT_FEE,
   PLATFORM_FEE_TAX_SHARE,
   PLATFORM_FEE_OPERATIONAL_SHARE,
   PLATFORM_FEE_OWNER_SHARE,
-  PLATFORM_FEE_INVESTMENT_SHARE,
-  ACADEMY_AUTHOR_SHARE,
-  ACADEMY_PLATFORM_SHARE,
-  ACADEMY_SUPPORTERS_SHARE
+  PLATFORM_FEE_INVESTMENT_SHARE
 } from '../../shared/constants/business.constants';
 import { calculateGatewayCost } from '../../shared/utils/financial.utils';
 import { updateScore, SCORE_REWARDS } from '../../application/services/score.service';
@@ -337,7 +332,6 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
       // Extrair o valor base (o que o sistema realmente quer receber)
       const serviceFee = metadata.serviceFee ? parseFloat(metadata.serviceFee) : 0;
       const baseCost = metadata.baseCost ? parseFloat(metadata.baseCost) : (parseFloat(transaction.amount) - (metadata.userFee ? parseFloat(metadata.userFee) : 0) - serviceFee);
-      const principalAmount = baseCost;
 
       const gatewayCost = calculateGatewayCost(baseCost, paymentMethod);
 
@@ -346,12 +340,7 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
         [gatewayCost, transaction.id]
       );
 
-      // Calcular separação de valores: R$ 42,00 principal + R$ 8,00 manutenção
-      const totalShareValue = qty * QUOTA_SHARE_VALUE;
-      const totalAdmFee = qty * QUOTA_ADM_FEE;
-
-      // Atualizar caixa do sistema: O principal (R$ 42) entra no caixa, e a taxa de manutenção (R$ 8) também.
-      // A soma total (R$ 50) deve entrar no system_balance para cobrir custos e lastrear saques futuros.
+      // Atualizar caixa do sistema
       // O gateway cost é subtraído conforme regra atual.
 
       await client.query(
@@ -446,10 +435,8 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
     // 1. Ativar Plano PRO para o usuário
     await client.query('UPDATE users SET membership_type = $1 WHERE id = $2', ['PRO', transaction.user_id]);
 
-    // 2. Distribuir o valor (85% para cotistas / 15% Operacional)
+    // 2. Distribuir o valor (regra 25/25/25/25)
     const upgradeFee = Math.abs(parseFloat(transaction.amount));
-    const feeForProfit = upgradeFee * 0.85;
-    const feeForOperational = upgradeFee * 0.15;
 
     await client.query(
       `UPDATE system_config SET 
@@ -568,82 +555,6 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
     }
   }
 
-  // COMPRA DE CURSO NA ACADEMIA
-  if (transaction.type === 'ACADEMY_PURCHASE') {
-    let metadata: any = transaction.metadata || {};
-    if (typeof metadata === 'string') {
-      try { metadata = JSON.parse(metadata); } catch { metadata = {}; }
-    }
-
-    if (metadata.courseId) {
-      const courseId = metadata.courseId;
-
-      // 1. Buscar curso
-      const courseRes = await client.query('SELECT * FROM academy_courses WHERE id = $1', [courseId]);
-      if (courseRes.rows.length > 0) {
-        const course = courseRes.rows[0];
-        const price = parseFloat(course.price);
-
-        // 2. Verificar se já possui matrícula ativa (para evitar duplicidade no webhook)
-        const checkEnroll = await client.query('SELECT id FROM academy_enrollments WHERE user_id = $1 AND course_id = $2 AND status = \'COMPLETED\'', [transaction.user_id, courseId]);
-
-        if (checkEnroll.rows.length === 0) {
-          // Dividir valores (82.5% Autor, 7.5% Plataforma, 10% Cotistas)
-          const authorAmount = price * ACADEMY_AUTHOR_SHARE;
-          const platformAmount = price * ACADEMY_PLATFORM_SHARE;
-          const supportersAmount = price * ACADEMY_SUPPORTERS_SHARE;
-
-          // 3. Pagar Autor
-          await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [authorAmount, course.author_id]);
-          await createTransaction(client, course.author_id, 'ACADEMY_SALE', authorAmount, `Venda do curso: ${course.title}`, 'APPROVED');
-
-          // 4. Alimentar Plataforma e Cotistas
-          // Se for pagamento externo, considerar custo de gateway se necessário (mas aqui simplificamos)
-          await client.query(`
-            UPDATE system_config SET 
-                system_balance = system_balance + $1,
-                profit_pool = profit_pool + $2
-          `, [platformAmount, supportersAmount]);
-
-          // 5. Matricular aluno
-          await client.query(`
-            INSERT INTO academy_enrollments (user_id, course_id, amount_paid, payment_method, status)
-            VALUES ($1, $2, $3, $4, 'COMPLETED')
-            ON CONFLICT (user_id, course_id) DO UPDATE SET status = 'COMPLETED'
-          `, [transaction.user_id, courseId, price, metadata.paymentMethod || 'external']);
-
-          await client.query('UPDATE academy_courses SET enrollment_count = enrollment_count + 1 WHERE id = $1', [courseId]);
-
-          console.log(`[ACADEMY_PURCHASE] Curso ${courseId} liberado para usuário ${transaction.user_id}`);
-        }
-      }
-    }
-  }
-
-  // DEPÓSITO DE SALDO
-  if (transaction.type === 'DEPOSIT') {
-    // 1. Aumentar saldo do usuário
-    await updateUserBalance(client, transaction.user_id, Math.abs(parseFloat(transaction.amount)), 'credit');
-
-    // 2. Aumentar caixa real do sistema (System Balance)
-    let gatewayCost = 0;
-    let metadata: any = transaction.metadata || {};
-    if (typeof metadata === 'string') {
-      try { metadata = JSON.parse(metadata); } catch { metadata = {}; }
-    }
-
-    if (metadata.asaas_id) {
-      gatewayCost = calculateGatewayCost(Math.abs(parseFloat(transaction.amount)), 'pix');
-    }
-
-    await client.query(
-      'UPDATE system_config SET system_balance = system_balance + $1 - $2, total_gateway_costs = total_gateway_costs + $2',
-      [Math.abs(parseFloat(transaction.amount)), gatewayCost]
-    );
-
-    console.log(`[DEPOSIT_APPROVED] R$ ${transaction.amount} adicionados ao usuário ${transaction.user_id}`);
-  }
-
   // SAQUE (Dedução real do caixa operacional)
   if (transaction.type === 'WITHDRAWAL') {
     let metadata: any = transaction.metadata || {};
@@ -673,16 +584,13 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
       console.warn(`[WARNING] Saque aprovado com liquidez apertada. Disponível: ${realLiquidity}, Solicitado: ${netAmount}`);
     }
 
-    let feeForOperational = 0;
-    let feeForProfit = 0;
-
-    // 1. Subtrair o valor enviado (líquido) E o custo do gateway (Asaas Payout Fee) do saldo real do sistema
-    // A plataforma "absorve" o custo de R$ 5,00 do Asaas conforme solicitado.
-    const totalDeduction = netAmount + ASAAS_PIX_OUT_FEE;
+    // 1. Subtrair o valor enviado (líquido) do saldo real do sistema
+    // PIX Manual - sem custo de gateway externo
+    const totalDeduction = netAmount;
 
     await client.query(
-      'UPDATE system_config SET system_balance = system_balance - $1, total_gateway_costs = total_gateway_costs + $2',
-      [totalDeduction, ASAAS_PIX_OUT_FEE]
+      'UPDATE system_config SET system_balance = system_balance - $1',
+      [totalDeduction]
     );
 
     // 2. Se houver taxa cobrada do usuário (ex: R$ 2,00), aplicar a regra de divisão: 25/25/25/25
@@ -704,13 +612,10 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
       );
     }
 
-    console.log('DEBUG - Saque processado contabilmente (Regra 85/15 + Absorção Gateway):', {
+    console.log('DEBUG - Saque processado contabilmente (PIX Manual):', {
       netAmount,
       feeAmount,
-      gatewayCost: ASAAS_PIX_OUT_FEE,
-      totalDeduction,
-      feeForOperational,
-      feeForProfit
+      totalDeduction
     });
   }
 

@@ -2,11 +2,9 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { Transaction } from '../../../domain/entities/transaction.entity';
 import { UserContext } from '../../../shared/types/hono.types';
 import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction } from '../../../domain/services/transaction.service';
 import { financialRateLimit } from '../middleware/rate-limit.middleware';
-import { createPayout, detectPixKeyType } from '../../../infrastructure/gateways/asaas.service';
 
 const transactionRoutes = new Hono();
 
@@ -131,9 +129,6 @@ transactionRoutes.post('/withdraw', authMiddleware, securityLockMiddleware, asyn
       }, 400);
     }
 
-    const userCpf = userCheck.rows[0].cpf;
-    const userName = userCheck.rows[0].name;
-
     // Buscar valor total de cotas ativas do cliente
     const quotasResult = await pool.query(
       "SELECT COALESCE(SUM(current_value), 0) as total_quota_value FROM quotas WHERE user_id = $1 AND status = 'ACTIVE'",
@@ -170,49 +165,21 @@ transactionRoutes.post('/withdraw', authMiddleware, securityLockMiddleware, asyn
         );
       }
 
-      // ENVIAR PIX AUTOMATICAMENTE VIA ASAAS
-      let payoutResult = null;
-      let payoutError = null;
-
-      try {
-        const pixKeyType = detectPixKeyType(pixKey);
-        payoutResult = await createPayout({
-          pixKey: pixKey,
-          pixKeyType,
-          amount: netAmount,
-          description: `Saque Cred30 - ${user.name?.split(' ')[0] || 'Cliente'}`
-        });
-
-        console.log('[SAQUE AUTOMÁTICO] PIX enviado com sucesso:', payoutResult);
-      } catch (err: any) {
-        console.error('[SAQUE AUTOMÁTICO] Erro ao enviar PIX:', err);
-        payoutError = err.message;
-      }
-
-      // Determinar status da transação
-      const transactionStatus = payoutResult ? 'APPROVED' : 'PENDING';
-      const payoutStatus = payoutResult ? 'PAID' : 'PENDING_MANUAL';
-
-      // Criar transação de saque
+      // PIX Manual - Saque será processado manualmente pelo admin
+      // Criar transação de saque PENDENTE
       const transactionResult = await createTransaction(
         client,
         user.id,
         'WITHDRAWAL',
         amount,
-        payoutResult
-          ? `Saque automático processado (PIX: ${pixKey})`
-          : `Saque pendente de processamento manual (${pixKey})`,
-        transactionStatus,
+        `Saque pendente de processamento manual (PIX: ${pixKey})`,
+        'PENDING',
         {
           pixKey,
           fee: fee,
           netAmount: netAmount,
           totalAmount: amount,
-          asaas_transfer_id: payoutResult?.id,
-          asaas_transfer_status: payoutResult?.status,
-          payout_error: payoutError,
-          payout_method: payoutResult ? 'AUTOMATIC' : 'MANUAL_PENDING',
-          processed_at: payoutResult ? new Date().toISOString() : null
+          payout_method: 'MANUAL_PIX'
         }
       );
 
@@ -222,28 +189,23 @@ transactionRoutes.post('/withdraw', authMiddleware, securityLockMiddleware, asyn
 
       // Atualizar payout_status na transação
       await client.query(
-        "UPDATE transactions SET payout_status = $1, processed_at = $2 WHERE id = $3",
-        [payoutStatus, payoutResult ? new Date() : null, transactionResult.transactionId]
+        "UPDATE transactions SET payout_status = $1 WHERE id = $2",
+        ['PENDING_PAYMENT', transactionResult.transactionId]
       );
 
       // Criar notificação para o usuário
-      const notifMessage = payoutResult
-        ? `Seu saque de R$ ${netAmount.toFixed(2)} foi enviado para sua chave PIX! Confira sua conta.`
-        : `Seu saque de R$ ${netAmount.toFixed(2)} está sendo processado. Em breve será enviado para sua chave PIX.`;
-
       await client.query(
         `INSERT INTO notifications (user_id, title, message, type, metadata, created_at)
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [
           user.id,
-          payoutResult ? '💸 PIX Enviado!' : '⏳ Saque em Processamento',
-          notifMessage,
-          'PAYOUT_COMPLETED',
+          '⏳ Saque Solicitado',
+          `Seu saque de R$ ${netAmount.toFixed(2)} foi registrado. O PIX será enviado para sua chave em até 24h úteis.`,
+          'WITHDRAWAL_PENDING',
           JSON.stringify({
             transactionId: transactionResult.transactionId,
             amount: netAmount,
-            requiresReview: !!payoutResult,
-            automatic: !!payoutResult
+            pixKey: pixKey
           }),
           new Date()
         ]
@@ -253,9 +215,7 @@ transactionRoutes.post('/withdraw', authMiddleware, securityLockMiddleware, asyn
         transactionId: transactionResult.transactionId,
         newBalance: updateResult.newBalance,
         fee: fee,
-        netAmount: netAmount,
-        automatic: !!payoutResult,
-        payoutId: payoutResult?.id
+        netAmount: netAmount
       };
     });
 
@@ -266,22 +226,15 @@ transactionRoutes.post('/withdraw', authMiddleware, securityLockMiddleware, asyn
       }, 400);
     }
 
-    const isAutomatic = result.data?.automatic;
-
     return c.json({
       success: true,
-      message: isAutomatic
-        ? `PIX de R$ ${result.data?.netAmount.toFixed(2)} enviado automaticamente para sua chave!`
-        : 'Saque registrado! Será processado manualmente em breve.',
+      message: 'Saque registrado! O PIX será enviado para sua chave em até 24h úteis.',
       data: {
         transactionId: result.data?.transactionId,
         newBalance: result.data?.newBalance,
         fee: result.data?.fee,
         netAmount: result.data?.netAmount,
-        automatic: isAutomatic,
-        message: isAutomatic
-          ? `✅ Saque processado instantaneamente! Taxa: R$ ${result.data?.fee.toFixed(2)}`
-          : `⏳ Aguardando processamento. Taxa: R$ ${result.data?.fee.toFixed(2)}`
+        message: `⏳ Saque registrado. Taxa: R$ ${result.data?.fee.toFixed(2)}. Valor líquido: R$ ${result.data?.netAmount.toFixed(2)}`
       },
     });
   } catch (error) {

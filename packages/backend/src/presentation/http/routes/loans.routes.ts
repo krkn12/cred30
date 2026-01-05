@@ -9,11 +9,9 @@ import {
   PLATFORM_FEE_OPERATIONAL_SHARE,
   PLATFORM_FEE_OWNER_SHARE,
   PLATFORM_FEE_INVESTMENT_SHARE,
-  USE_ASAAS,
   ADMIN_PIX_KEY
 } from '../../../shared/constants/business.constants';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
-import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/asaas.service';
 import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
 import { executeInTransaction, processLoanApproval } from '../../../domain/services/transaction.service';
 import {
@@ -37,41 +35,19 @@ const createLoanSchema = z.object({
   guaranteePercentage: z.number().int().min(50).max(100).optional().default(100),
 });
 
-const cardDataSchema = {
-  creditCard: z.object({
-    holderName: z.string(),
-    number: z.string(),
-    expiryMonth: z.string(),
-    expiryYear: z.string(),
-    ccv: z.string(),
-  }).optional(),
-  creditCardHolderInfo: z.object({
-    name: z.string(),
-    email: z.string(),
-    cpfCnpj: z.string(),
-    postalCode: z.string(),
-    addressNumber: z.string(),
-    phone: z.string(),
-  }).optional(),
-};
-
-// Esquema de validação para pagamento de empréstimo
+// Esquema de validação para pagamento de empréstimo (apenas PIX manual ou saldo)
 const repayLoanSchema = z.object({
   loanId: z.union([z.string(), z.number()]).transform((val) => val.toString()),
   useBalance: z.boolean(),
-  paymentMethod: z.enum(['pix', 'card']).optional().default('pix'),
-  installments: z.number().optional(),
-  ...cardDataSchema
+  paymentMethod: z.enum(['pix']).optional().default('pix'),
 });
 
-// Esquema de validação para pagamento parcelado
+// Esquema de validação para pagamento parcelado (apenas PIX manual ou saldo)
 const repayInstallmentSchema = z.object({
   loanId: z.union([z.string(), z.number()]).transform((val) => val.toString()),
   installmentAmount: z.number().positive(),
   useBalance: z.boolean(),
-  paymentMethod: z.enum(['pix', 'card']).optional().default('pix'),
-  installments: z.number().optional(),
-  ...cardDataSchema
+  paymentMethod: z.enum(['pix']).optional().default('pix'),
 });
 
 // Listar empréstimos do usuário
@@ -130,7 +106,7 @@ loanRoutes.get('/', authMiddleware, async (c) => {
   }
 });
 
-// Obter limite de crédito disponível (LUCRO ACUMULADO + COTAS)
+// Obter limite de crédito disponível (MÉRITO + GASTO)
 loanRoutes.get('/available-limit', authMiddleware, async (c) => {
   try {
     const user = c.get('user');
@@ -150,8 +126,6 @@ loanRoutes.get('/available-limit', authMiddleware, async (c) => {
       success: true,
       data: {
         totalLimit: creditAnalysis.limit,
-        accumulatedProfit: creditAnalysis.accumulatedProfit || 0,
-        quotasValue: creditAnalysis.quotasValue || 0,
         activeDebt: activeDebt,
         remainingLimit: remainingLimit,
         analysis: creditAnalysis
@@ -292,10 +266,11 @@ loanRoutes.post('/request', authMiddleware, async (c) => {
 // ... (Pagar apoio: /repay e /repay-installment continuam iguais, pois o fluxo de pagamento não mudou)
 
 // [Mantendo as rotas de pagamento originais para não quebrar a funcionalidade]
+// [Rotas de pagamento atualizadas para PIX Manual]
 loanRoutes.post('/repay', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
-    const { loanId, useBalance, paymentMethod, installments } = repayLoanSchema.parse(body);
+    const { loanId, useBalance, paymentMethod } = repayLoanSchema.parse(body);
 
     const user = c.get('user');
     const pool = getDbPool(c);
@@ -309,16 +284,12 @@ loanRoutes.post('/repay', authMiddleware, async (c) => {
     const loan = loanResult.rows[0];
     if (loan.status !== 'APPROVED') return c.json({ success: false, message: 'Apoio não disponível para reposição' }, 400);
 
-    const userInfoResult = await pool.query('SELECT cpf, name FROM users WHERE id = $1', [user.id]);
-    const userCpf = userInfoResult.rows[0]?.cpf;
-    const userName = userInfoResult.rows[0]?.name;
-
     const totalRepayment = parseFloat(loan.total_repayment);
     const principalAmount = parseFloat(loan.amount);
     const totalInterest = totalRepayment - principalAmount;
 
     const method: PaymentMethod = useBalance ? 'balance' : (paymentMethod as PaymentMethod);
-    const { total: finalCost, fee: userFee } = calculateTotalToPay(totalRepayment, method);
+    const { total: finalCost } = calculateTotalToPay(totalRepayment, method);
 
     if (useBalance && user.balance < totalRepayment) return c.json({ success: false, message: 'Saldo insuficiente' }, 400);
 
@@ -328,60 +299,27 @@ loanRoutes.post('/repay', authMiddleware, async (c) => {
 
     await pool.query('UPDATE loans SET status = $1 WHERE id = $2', ['PAYMENT_PENDING', loanId]);
 
-    let mpData: any = null;
-    if (!useBalance) {
-      if (USE_ASAAS) {
-        if (paymentMethod === 'card' && body.creditCard) {
-          mpData = await createCardPayment({
-            amount: finalCost,
-            description: `Reposição total Cred30`,
-            email: user.email,
-            external_reference: `REPAY_${loanId}_${Date.now()}`,
-            installments: installments,
-            cpf: userCpf,
-            name: userName,
-            creditCard: body.creditCard,
-            creditCardHolderInfo: body.creditCardHolderInfo
-          });
-        } else {
-          mpData = await createPixPayment({
-            amount: finalCost,
-            description: `Reposição total Cred30`,
-            email: user.email,
-            external_reference: `REPAY_${loanId}_${Date.now()}`,
-            cpf: userCpf,
-            name: userName
-          });
-        }
-      } else {
-        console.log('[LOANS] Manual mode active. Skipping Asaas.');
-      }
-    }
-
     const transaction = await pool.query(
       `INSERT INTO transactions (user_id, type, amount, description, status, metadata)
        VALUES ($1, 'LOAN_PAYMENT', $2, $3, 'PENDING', $4) RETURNING id`,
       [
         user.id, finalCost,
-        `Reposição de Apoio (${useBalance ? 'Saldo' : 'Asaas'})`,
-        JSON.stringify({ loanId, useBalance, paymentMethod, principalAmount, interestAmount: totalInterest, mp_id: mpData?.id, qr_code: mpData?.qr_code })
+        `Reposição de Apoio (${useBalance ? 'Saldo' : 'PIX Manual'})`,
+        JSON.stringify({ loanId, useBalance, paymentMethod: 'pix', principalAmount, interestAmount: totalInterest, manualPix: !useBalance })
       ]
     );
 
-    return c.json({
-      success: true,
-      message: 'Reposição enviada!',
-      data: {
-        transactionId: transaction.rows[0].id,
-        finalCost,
-        pixData: mpData,
-        manualPix: !USE_ASAAS ? {
-          key: ADMIN_PIX_KEY,
-          owner: 'Admin Cred30',
-          description: `Transferir R$ ${finalCost.toFixed(2)} para quitar apoio`
-        } : null
+    // Retornar instruções de PIX Manual se não usar saldo
+    const pixData = !useBalance ? {
+      manualPix: {
+        key: ADMIN_PIX_KEY,
+        owner: 'Cred30',
+        amount: finalCost,
+        description: `Reposição de Apoio - ID ${loanId}`
       }
-    });
+    } : null;
+
+    return c.json({ success: true, message: 'Reposição enviada!', data: { transactionId: transaction.rows[0].id, finalCost, ...pixData } });
   } catch (error) {
     console.error('Erro ao pagar apoio:', error);
     return c.json({ success: false, message: 'Erro interno' }, 500);
@@ -391,7 +329,7 @@ loanRoutes.post('/repay', authMiddleware, async (c) => {
 loanRoutes.post('/repay-installment', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
-    const { loanId, installmentAmount, useBalance, paymentMethod, installments } = repayInstallmentSchema.parse(body);
+    const { loanId, installmentAmount, useBalance, paymentMethod } = repayInstallmentSchema.parse(body);
 
     const user = c.get('user');
     const pool = getDbPool(c);
@@ -401,65 +339,34 @@ loanRoutes.post('/repay-installment', authMiddleware, async (c) => {
     const loan = loanResult.rows[0];
     if (loan.status !== 'APPROVED') return c.json({ success: false, message: 'Apoio não está ativo' }, 400);
 
-    const userInfoResult = await pool.query('SELECT cpf, name FROM users WHERE id = $1', [user.id]);
-    const userCpf = userInfoResult.rows[0]?.cpf;
-    const userName = userInfoResult.rows[0]?.name;
-
     const paidInstallmentsResult = await pool.query('SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) as paid_amount FROM loan_installments WHERE loan_id = $1', [loanId]);
     const paidAmount = parseFloat(paidInstallmentsResult.rows[0].paid_amount);
     const remainingAmountPre = parseFloat(loan.total_repayment) - paidAmount;
 
     const method: PaymentMethod = useBalance ? 'balance' : (paymentMethod as PaymentMethod);
-    const { total: finalInstallmentCost, fee: userFee } = calculateTotalToPay(installmentAmount, method);
+    const { total: finalInstallmentCost } = calculateTotalToPay(installmentAmount, method);
 
     if (installmentAmount > remainingAmountPre) return c.json({ success: false, message: 'Valor excede o restante' }, 400);
 
-    let mpData: any = null;
+    // PIX Manual se não usar saldo
     if (!useBalance) {
-      if (USE_ASAAS) {
-        if (paymentMethod === 'card' && body.creditCard) {
-          mpData = await createCardPayment({
-            amount: finalInstallmentCost,
-            description: `Parcela Cred30`,
-            email: user.email,
-            external_reference: `INST_${loanId}_${Date.now()}`,
-            installments: installments,
-            cpf: userCpf,
-            name: userName,
-            creditCard: body.creditCard,
-            creditCardHolderInfo: body.creditCardHolderInfo
-          });
-        } else {
-          mpData = await createPixPayment({
-            amount: finalInstallmentCost,
-            description: `Parcela Cred30`,
-            email: user.email,
-            external_reference: `INST_${loanId}_${Date.now()}`,
-            cpf: userCpf,
-            name: userName
-          });
-        }
-      } else {
-        console.log('[LOANS] Manual mode active. Skipping Asaas.');
-      }
-
       await pool.query(
         `INSERT INTO transactions (user_id, type, amount, description, status, metadata)
          VALUES ($1, 'LOAN_PAYMENT', $2, $3, 'PENDING', $4)`,
-        [user.id, finalInstallmentCost, `Parcela (${paymentMethod})`, JSON.stringify({ loanId, installmentAmount, isInstallment: true, mp_id: mpData?.id, qr_code: mpData?.qr_code })]
+        [user.id, finalInstallmentCost, `Parcela (PIX Manual)`, JSON.stringify({ loanId, installmentAmount, isInstallment: true, manualPix: true })]
       );
 
       return c.json({
         success: true,
-        message: 'Código gerado!',
+        message: 'Realize a transferência PIX para confirmar!',
         data: {
           finalCost: finalInstallmentCost,
-          pixData: mpData,
-          manualPix: !USE_ASAAS ? {
+          manualPix: {
             key: ADMIN_PIX_KEY,
-            owner: 'Admin Cred30',
-            description: `Transferir R$ ${finalInstallmentCost.toFixed(2)} para pagar parcela`
-          } : null
+            owner: 'Cred30',
+            amount: finalInstallmentCost,
+            description: `Parcela do Apoio - ID ${loanId}`
+          }
         }
       });
     }

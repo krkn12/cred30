@@ -22,7 +22,6 @@ export interface User {
   ad_points?: number; // Pontos farm (1000 pts = R$ 0,03)
   is_verified?: boolean; // Selo de verificado
   is_seller?: boolean; // É vendedor no marketplace
-  phone?: string;
 }
 
 export interface Quota {
@@ -121,30 +120,4 @@ export interface Product {
   category: string;
   active: boolean;
   createdAt: string;
-}
-
-export interface AcademyCourse {
-  id: number;
-  author_id: number;
-  author_name?: string;
-  title: string;
-  description: string;
-  price: number;
-  video_url: string;
-  thumbnail_url?: string;
-  category: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  enrollment_count: number;
-  rating_avg: number;
-  created_at: string;
-}
-
-export interface AcademyEnrollment {
-  id: number;
-  user_id: number;
-  course_id: number;
-  amount_paid: number;
-  payment_method: string;
-  status: 'COMPLETED' | 'PENDING';
-  purchased_at: string;
 }

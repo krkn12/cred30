@@ -1,11 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import {
-    createSubAccount,
-    getSubAccount,
-    SubAccountRequest
-} from '../../../infrastructure/gateways/asaas.service';
 
 export const sellerRoutes = new Hono();
 
@@ -41,7 +36,7 @@ sellerRoutes.get('/status', authMiddleware, async (c) => {
 
 /**
  * POST /seller/register
- * Registra o usuário como vendedor e cria subconta no Asaas
+ * Registra o usuário como vendedor (registro local, sem Asaas)
  */
 sellerRoutes.post('/register', authMiddleware, async (c) => {
     try {
@@ -59,8 +54,7 @@ sellerRoutes.post('/register', authMiddleware, async (c) => {
             neighborhood,
             city,
             state,
-            postalCode,
-            companyType = 'INDIVIDUAL'
+            postalCode
         } = body;
 
         if (!companyName || !cpfCnpj || !mobilePhone || !address || !city || !state || !postalCode) {
@@ -72,63 +66,42 @@ sellerRoutes.post('/register', authMiddleware, async (c) => {
 
         // Verificar se já é vendedor
         const existingCheck = await pool.query(
-            `SELECT is_seller, asaas_account_id FROM users WHERE id = $1`,
+            `SELECT is_seller FROM users WHERE id = $1`,
             [user.id]
         );
 
-        if (existingCheck.rows[0]?.is_seller && existingCheck.rows[0]?.asaas_account_id) {
+        if (existingCheck.rows[0]?.is_seller) {
             return c.json({
                 success: false,
                 message: 'Você já é um vendedor registrado'
             }, 400);
         }
 
-        // Criar subconta no Asaas
-        const subAccountData: SubAccountRequest = {
-            name: companyName,
-            email: user.email,
-            cpfCnpj: cpfCnpj,
-            companyType: companyType,
-            mobilePhone: mobilePhone,
-            address: address,
-            addressNumber: addressNumber || 'S/N',
-            province: neighborhood || 'Centro',
-            city: city,
-            state: state,
-            postalCode: postalCode,
-        };
+        console.log('[SELLER] Registrando vendedor local:', user.email);
 
-        console.log('[SELLER] Criando subconta para:', user.email);
-
-        const subAccount = await createSubAccount(subAccountData);
-
-        // Atualizar usuário no banco de dados
+        // Atualizar usuário no banco de dados (sem subconta Asaas)
         await pool.query(
             `UPDATE users SET 
                 is_seller = TRUE,
                 seller_status = 'approved',
-                asaas_account_id = $1,
-                asaas_wallet_id = $2,
-                seller_company_name = $3,
-                seller_cpf_cnpj = $4,
-                seller_phone = $5,
-                seller_address_street = $6,
-                seller_address_number = $7,
-                seller_address_neighborhood = $8,
-                seller_address_city = $9,
-                seller_address_state = $10,
-                seller_address_postal_code = $11,
+                seller_company_name = $1,
+                seller_cpf_cnpj = $2,
+                seller_phone = $3,
+                seller_address_street = $4,
+                seller_address_number = $5,
+                seller_address_neighborhood = $6,
+                seller_address_city = $7,
+                seller_address_state = $8,
+                seller_address_postal_code = $9,
                 seller_created_at = CURRENT_TIMESTAMP
-             WHERE id = $12`,
+             WHERE id = $10`,
             [
-                subAccount.id,
-                subAccount.walletId,
                 companyName,
                 cpfCnpj,
                 mobilePhone,
                 address,
-                addressNumber,
-                neighborhood,
+                addressNumber || 'S/N',
+                neighborhood || 'Centro',
                 city,
                 state,
                 postalCode,
@@ -136,15 +109,14 @@ sellerRoutes.post('/register', authMiddleware, async (c) => {
             ]
         );
 
-        console.log('[SELLER] Vendedor registrado:', user.id, 'Wallet:', subAccount.walletId);
+        console.log('[SELLER] Vendedor registrado localmente:', user.id);
 
         return c.json({
             success: true,
-            message: 'Conta de vendedor criada com sucesso!',
+            message: 'Conta de vendedor criada com sucesso! Os pagamentos serão processados manualmente.',
             seller: {
-                accountId: subAccount.id,
-                walletId: subAccount.walletId,
                 status: 'approved',
+                paymentMethod: 'MANUAL_PIX'
             }
         });
     } catch (error: any) {

@@ -26,9 +26,13 @@ export const VotingView = ({ appState, onBack, onRefresh, onSuccess, onError }: 
     const totalCommunityMembers = appState?.users?.length ?? 0;
     void totalCommunityMembers;
 
-    // Apenas aguardamos o carregamento do estado inicial do app
+    // Guard clause: prevent crash if appState or user is not loaded yet
     if (!appState || !user) {
         return <LoadingScreen fullScreen message="Carregando Governança..." />;
+    }
+
+    if (isLoading && proposals.length === 0) {
+        return <LoadingScreen message="Buscando Propostas Ativas..." />;
     }
 
     const fetchProposals = async () => {

@@ -1,4 +1,3 @@
-import axios from 'axios';
 
 /**
  * Serviço para auditar métricas públicas do YouTube.
