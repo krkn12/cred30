@@ -53,9 +53,10 @@ export const PIXModal: React.FC<PIXModalProps> = ({
                             className="w-full aspect-square rounded-lg"
                         />
                     ) : (
-                        <div className="flex flex-col items-center justify-center p-8 bg-zinc-900/50 rounded-2xl border border-dashed border-zinc-700 gap-3">
-                            <QrCode className="text-zinc-600" size={48} />
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest text-center">Utilize a Chave PIX abaixo</p>
+                        <div className="flex flex-col items-center justify-center p-4 bg-zinc-900/50 rounded-2xl border border-dashed border-zinc-700 gap-3">
+                            <QrCode className="text-zinc-600 mb-2" size={48} />
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest text-center">Chave PIX:</p>
+                            <p className="text-xs text-emerald-400 font-mono font-black break-all text-center">{qrCode}</p>
                         </div>
                     )}
                 </div>
