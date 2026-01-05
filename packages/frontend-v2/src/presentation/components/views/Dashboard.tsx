@@ -21,9 +21,10 @@ interface DashboardProps {
     onError: (title: string, message: string) => void;
     onEducation: () => void;
     onVoting: () => void;
+    onDeposit: () => void;
 }
 
-export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onRefer, onSuccess, onError, onEducation, onVoting }: DashboardProps) => {
+export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onRefer, onSuccess, onError, onEducation, onVoting, onDeposit }: DashboardProps) => {
     const user = state?.currentUser;
 
     // Guard clause: prevent crash if state or user is not loaded yet
@@ -311,12 +312,18 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                             {showValues ? formatCurrency(user.balance) : '••••••'}
                         </h2>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <button
                                 onClick={onWithdraw}
                                 className="bg-black/20 hover:bg-black/40 text-white text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-2xl backdrop-blur-md transition-all flex items-center justify-center gap-3 border border-white/10 active:scale-95"
                             >
                                 <ArrowUpFromLine size={20} /> SACAR AGORA
+                            </button>
+                            <button
+                                onClick={onDeposit}
+                                className="bg-white/10 hover:bg-white/20 text-white text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-2xl backdrop-blur-md transition-all flex items-center justify-center gap-3 border border-white/10 active:scale-95"
+                            >
+                                <ArrowDownLeft size={20} /> DEPOSITAR
                             </button>
                             <button
                                 onClick={onBuyQuota}

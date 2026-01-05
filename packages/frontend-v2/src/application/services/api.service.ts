@@ -405,6 +405,15 @@ class ApiService {
   }
 
 
+  // Método para solicitar depósito
+  async requestDeposit(amount: number): Promise<any> {
+    const response = await this.request<any>('/deposits/request', {
+      method: 'POST',
+      body: JSON.stringify({ amount }),
+    });
+    return response.data;
+  }
+
   // Método para excluir conta
   async deleteAccount(twoFactorCode?: string): Promise<any> {
     const response = await this.request<any>('/users/me', {
@@ -1269,6 +1278,23 @@ class ApiService {
   }
 
   // ==================== ADMIN UTILS ====================
+
+  // ==================== ADMIN ACTIONS ====================
+
+  // Listar transações pendentes de aprovação manual
+  async getPendingTransactions(): Promise<any[]> {
+    const response = await this.request<any[]>('/admin/pending-transactions');
+    return response.data || [];
+  }
+
+  // Processar ação administrativa genérica (aprovar/rejeitar)
+  async adminProcessAction(data: { id: string | number, type: 'TRANSACTION' | 'LOAN', action: 'APPROVE' | 'REJECT' }): Promise<any> {
+    const response = await this.request<any>('/admin/process-action', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return response;
+  }
 
   // Popular dados de demonstração
   async seedDemoData(): Promise<any> {

@@ -10,6 +10,7 @@ import {
   QUOTA_PRICE,
   QUOTA_SHARE_VALUE,
   QUOTA_ADM_FEE,
+  USE_ASAAS
 } from '../../../shared/constants/business.constants';
 import { executeInTransaction, updateUserBalance, createTransaction, processTransactionApproval } from '../../../domain/services/transaction.service';
 import { distributeProfits } from '../../../application/services/profit-distribution.service';
@@ -581,6 +582,30 @@ adminRoutes.post('/process-action', adminMiddleware, auditMiddleware('PROCESS_AC
   }
 });
 
+// Listar Transações Pendentes de Aprovação (Entradas de PIX Manual)
+adminRoutes.get('/pending-transactions', adminMiddleware, async (c) => {
+  try {
+    const pool = getDbPool(c);
+
+    const result = await pool.query(
+      `SELECT t.*, u.name as user_name, u.email as user_email, u.pix_key as user_pix
+       FROM transactions t
+       LEFT JOIN users u ON t.user_id = u.id
+       WHERE t.status = 'PENDING' 
+       AND t.type IN ('QUOTA_PURCHASE', 'LOAN_PAYMENT', 'UPGRADE_PRO', 'DEPOSIT', 'ADMIN_GIFT')
+       ORDER BY t.created_at DESC`
+    );
+
+    return c.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Erro ao buscar transações pendentes:', error);
+    return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
+  }
+});
+
 // Listar Fila de Pagamentos (Payout Queue)
 adminRoutes.get('/payout-queue', adminMiddleware, async (c) => {
   try {
@@ -647,24 +672,30 @@ adminRoutes.post('/confirm-payout', adminMiddleware, auditMiddleware('CONFIRM_PA
           throw new Error('Usuário não possui chave PIX cadastrada');
         }
 
-        // Tentar enviar PIX automaticamente via Asaas
+        // Tentar enviar PIX automaticamente via Asaas (apenas se USE_ASAAS for true)
         let payoutResult = null;
         let payoutError = null;
 
-        try {
-          const pixKeyType = detectPixKeyType(pixKeyToUse);
-          console.log('[CONFIRM-PAYOUT] Chamando createPayout...');
-          payoutResult = await createPayout({
-            pixKey: pixKeyToUse,
-            pixKeyType,
-            amount: netAmount,
-            description: `Saque Cred30 - ${name?.split(' ')[0] || 'Cliente'}`
-          });
+        if (USE_ASAAS) {
+          try {
+            const pixKeyType = detectPixKeyType(pixKeyToUse);
+            console.log('[CONFIRM-PAYOUT] Chamando createPayout...');
+            payoutResult = await createPayout({
+              pixKey: pixKeyToUse,
+              pixKeyType,
+              amount: netAmount,
+              description: `Saque Cred30 - ${name?.split(' ')[0] || 'Cliente'}`
+            });
 
-          console.log('[PAYOUT ASAAS] Sucesso:', payoutResult);
-        } catch (err: any) {
-          console.error('[PAYOUT ASAAS] Erro:', err);
-          payoutError = err.message;
+            console.log('[PAYOUT ASAAS] Sucesso:', payoutResult);
+          } catch (err: any) {
+            console.error('[PAYOUT ASAAS] Erro:', err);
+            payoutError = err.message;
+          }
+        } else {
+          console.log('[CONFIRM-PAYOUT] Modo manual ativo. Pulando Asaas e marcando como pago manualmente.');
+          // No modo manual, consideramos que o administrador já fez o PIX antes de clicar no botão
+          payoutResult = { id: 'MANUAL_' + Date.now(), status: 'CONFIRMED' };
         }
 
         // Atualizar status do pagamento
