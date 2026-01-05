@@ -1,6 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Users, KeyRound, Lock, QrCode, Repeat, ArrowLeft, Mail, ShieldCheck, XCircle, Check, Copy } from 'lucide-react';
+import { Users, KeyRound, Lock, QrCode, Repeat, ArrowLeft, Mail, ShieldCheck, XCircle, Check, Copy, Phone as PhoneIcon } from 'lucide-react';
 import { loginUser, registerUser, resetPassword, verify2FA, apiService } from '../../../application/services/storage.service';
 import { TermsAcceptanceModal } from '../ui/TermsAcceptanceModal';
 import { User } from '../../../domain/types/common.types';
@@ -22,6 +22,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
     const [password, setPassword] = useState('');
     const [secretPhrase, setSecretPhrase] = useState('');
     const [pixKey, setPixKey] = useState('');
+    const [phone, setPhone] = useState('');
     const [referralCode, setReferralCode] = useState('');
     const [newPassword, setNewPassword] = useState('');
 
@@ -73,7 +74,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
 
         if (isRegister) {
             // Validar campos básicos antes de mostrar os termos
-            if (!name || !email || !password || !pixKey || !secretPhrase) {
+            if (!name || !email || !password || !pixKey || !secretPhrase || !phone) {
                 setError("Por favor, preencha todos os campos obrigatórios.");
                 return;
             }
@@ -135,7 +136,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
         setShowTerms(false);
         setError(null);
         try {
-            const res = await registerUser(name, email, password, pixKey, secretPhrase, referralCode, cpf);
+            const res = await registerUser(name, email, password, pixKey, secretPhrase, phone, referralCode, cpf);
             if (res.twoFactor) {
                 setTwoFactorData(res.twoFactor);
                 setVerifyEmailAddr(email);
@@ -436,6 +437,18 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                                 />
                                             </div>
 
+                                            <div className="relative group animate-in slide-in-from-left-2 duration-300 delay-[125ms]">
+                                                <PhoneIcon className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={18} />
+                                                <input
+                                                    type="tel"
+                                                    placeholder="Telefone / WhatsApp"
+                                                    value={phone}
+                                                    onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
+                                                    className="w-full glass border-white/5 rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition-all group-focus-within:bg-white/10"
+                                                    required
+                                                />
+                                            </div>
+
                                             <div className="relative group animate-in slide-in-from-left-2 duration-300 delay-150">
                                                 <Repeat className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={18} />
                                                 <input
@@ -513,7 +526,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                         <div className="flex justify-center gap-6 text-[10px] text-zinc-600 mb-2">
                             <a href="/terms" className="hover:text-zinc-400">Termos</a>
                             <a href="/privacy" className="hover:text-zinc-400">Privacidade</a>
-                            <a href="/support" className="hover:text-zinc-400">Suporte</a>
+                            <a href="https://wa.me/5591980177874?text=Olá, preciso de suporte com o Cred30" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400">Suporte</a>
                         </div>
                         <p className="text-[10px] text-zinc-700">© 2025 Cred30 Social Bank</p>
                     </footer>

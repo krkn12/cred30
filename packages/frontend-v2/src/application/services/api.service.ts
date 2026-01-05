@@ -188,10 +188,11 @@ class ApiService {
     password: string,
     secretPhrase: string,
     pixKey: string,
+    phone: string,
     referralCode?: string,
     cpf?: string
   ): Promise<AuthResponse & { twoFactor?: { secret: string, qrCode: string, otpUri: string } }> {
-    const requestBody: any = { name, email, password, secretPhrase, pixKey };
+    const requestBody: any = { name, email, password, secretPhrase, pixKey, phone };
     if (referralCode && referralCode.trim() !== '') {
       requestBody.referralCode = referralCode;
     }
@@ -268,6 +269,20 @@ class ApiService {
     }
 
     return response.data || { success: true, message: 'CPF atualizado com sucesso!' };
+  }
+
+  // Atualizar telefone do usuário
+  async updatePhone(phone: string): Promise<{ success: boolean; message: string }> {
+    const response = await this.request<{ success: boolean; message: string }>('/users/update-phone', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+    });
+
+    if (!response.success && response.message) {
+      throw new Error(response.message);
+    }
+
+    return response.data || { success: true, message: 'Telefone atualizado com sucesso!' };
   }
 
   // Método para obter perfil do usuário
@@ -615,77 +630,9 @@ class ApiService {
     });
   }
 
-  // --- Suporte via Chat ---
-  async getChatHistory(): Promise<any> {
-    const response = await this.request<any>('/support/history');
-    return response.data;
-  }
-
-  async sendChatMessage(content: string): Promise<any> {
-    const response = await this.request<any>('/support/message', {
-      method: 'POST',
-      body: JSON.stringify({ content })
-    });
-    return response.data;
-  }
-
-  async escalateChat(): Promise<any> {
-    const response = await this.request<any>('/support/escalate', {
-      method: 'POST'
-    });
-    return response;
-  }
-
-  // --- Admin Support ---
-  async getPendingSupportChats(): Promise<any> {
-    const response = await this.request<any>('/support/admin/pending');
-    return response.data;
-  }
-
-  async getAdminChatHistory(chatId: string | number): Promise<any> {
-    const response = await this.request<any>(`/support/admin/chat/${chatId}`);
-    return response.data;
-  }
-
-  async respondSupportChat(chatId: string | number, content: string): Promise<any> {
-    const response = await this.request<any>('/support/admin/respond', {
-      method: 'POST',
-      body: JSON.stringify({ chatId, content })
-    });
-    return response.data;
-  }
-
   // Notificações em tempo real (SSE) - DESATIVADO TEMPORARIAMENTE PARA ESTABILIDADE
   listenToNotifications(_onNotification: (data: any) => void): () => void {
-    /* 
-    if (!this.token) return () => { };
-
-    const url = `${API_BASE_URL}/notifications/stream?token=${this.token}`;
-    const eventSource = new EventSource(url);
-
-    ...
-    */
     return () => { };
-  }
-  async closeSupportChat(chatId: string | number): Promise<any> {
-    const response = await this.request<any>('/support/admin/close', {
-      method: 'POST',
-      body: JSON.stringify({ chatId })
-    });
-    return response.data;
-  }
-
-  async sendSupportFeedback(chatId: string | number, rating: number, comment?: string): Promise<any> {
-    const response = await this.request<any>('/support/feedback', {
-      method: 'POST',
-      body: JSON.stringify({ chatId, rating, comment })
-    });
-    return response.data;
-  }
-
-  async getSupportFeedbacks(): Promise<any> {
-    const response = await this.request<any>('/support/admin/feedback');
-    return response.data;
   }
 
   // --- Título de Sócio Majoritário ---

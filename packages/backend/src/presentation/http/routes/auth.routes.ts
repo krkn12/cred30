@@ -29,6 +29,7 @@ const registerSchema = z.object({
   password: z.string().min(6),
   secretPhrase: z.string().min(3),
   pixKey: z.string().min(5),
+  phone: z.string().min(10).max(15),
   referralCode: z.string().optional(),
   cpf: z.string().min(11).max(14).optional(), // CPF opcional no cadastro
 });
@@ -298,9 +299,9 @@ authRoutes.post('/register', async (c) => {
     const qrCode = await twoFactorService.generateQrCode(otpUri);
 
     const newUserResult = await pool.query(
-      `INSERT INTO users (name, email, password_hash, secret_phrase, pix_key, balance, referral_code, is_admin, score, two_factor_secret, two_factor_enabled, is_email_verified, accepted_terms_at, cpf)
-       VALUES ($1, $2, $3, $4, $5, 0, $6, $7, 0, $8, FALSE, TRUE, CURRENT_TIMESTAMP, $9)
-       RETURNING id, name, email, pix_key, balance, score, created_at, referral_code, is_admin, cpf`,
+      `INSERT INTO users (name, email, password_hash, secret_phrase, pix_key, balance, referral_code, is_admin, score, two_factor_secret, two_factor_enabled, is_email_verified, accepted_terms_at, cpf, phone)
+       VALUES ($1, $2, $3, $4, $5, 0, $6, $7, 0, $8, FALSE, TRUE, CURRENT_TIMESTAMP, $9, $10)
+       RETURNING id, name, email, pix_key, balance, score, created_at, referral_code, is_admin, cpf, phone`,
       [
         validatedData.name,
         userEmail,
@@ -310,7 +311,8 @@ authRoutes.post('/register', async (c) => {
         referralCode,
         isAdminEmail,
         tfaSecret,
-        validatedData.cpf || null
+        validatedData.cpf || null,
+        validatedData.phone
       ]
     );
 

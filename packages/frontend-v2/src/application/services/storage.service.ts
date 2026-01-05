@@ -33,6 +33,7 @@ const convertApiUserToUser = (apiUser: any): User => {
     score: apiUser.score ?? 0,
     twoFactorEnabled: apiUser.twoFactorEnabled || apiUser.two_factor_enabled || false,
     cpf: apiUser.cpf || null, // CPF do usuário (obrigatório para saque)
+    phone: apiUser.phone || null,
   };
 };
 
@@ -349,6 +350,7 @@ export const registerUser = async (
   password: string,
   pixKey: string,
   secretPhrase: string,
+  phone: string,
   referralCodeInput?: string,
   cpf?: string
 ): Promise<any> => {
@@ -358,6 +360,7 @@ export const registerUser = async (
     password,
     secretPhrase,
     pixKey,
+    phone,
     referralCodeInput,
     cpf
   );

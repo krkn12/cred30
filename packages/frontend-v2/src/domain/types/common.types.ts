@@ -15,6 +15,7 @@ export interface User {
   status?: 'ACTIVE' | 'BLOCKED';
   membership_type?: 'FREE' | 'PRO';
   cpf?: string | null; // CPF do usuário (obrigatório para saque)
+  phone?: string | null;
   securityLockUntil?: number; // Timestamp em milissegundos
   total_dividends_earned?: number;
   last_login_at?: string;

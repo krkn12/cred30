@@ -80,14 +80,16 @@ export const FaqView: React.FC = () => {
 
                 <div className="mt-8 p-6 bg-gradient-to-br from-zinc-900 to-black border border-zinc-800 rounded-3xl text-center">
                     <h3 className="text-white font-bold mb-2">Ainda tem dúvidas?</h3>
-                    <p className="text-xs text-zinc-500 mb-6">Nosso atendimento inteligente está disponível 24h para ajudar você diretamente pelo chat.</p>
-                    <button
-                        onClick={() => window.alert("Clique no ícone do 'Edy' no canto da tela para falar com nosso suporte direto!")}
+                    <p className="text-xs text-zinc-500 mb-6">Nosso atendimento via WhatsApp está disponível para ajudar você com qualquer questão.</p>
+                    <a
+                        href="https://wa.me/5591980177874?text=Olá, preciso de suporte com o Cred30"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 px-8 rounded-2xl transition-all flex items-center justify-center gap-3 text-sm shadow-xl shadow-primary-900/20"
                     >
                         <MessageCircle size={20} />
-                        Abrir Chat de Suporte
-                    </button>
+                        Falar no WhatsApp
+                    </a>
                 </div>
             </div>
         </div>

@@ -605,7 +605,7 @@ adminRoutes.get('/pending-transactions', adminMiddleware, async (c) => {
     // Buscar transações que dependem de ação humana (Status PENDING)
     // EXCLUINDO saques que já estão na fila de pagamento (PENDING_PAYMENT)
     const result = await pool.query(
-      `SELECT t.*, u.name as user_name, u.email as user_email, u.pix_key as user_pix
+      `SELECT t.*, u.name as user_name, u.email as user_email, u.pix_key as user_pix, u.phone as user_phone
        FROM transactions t
        LEFT JOIN users u ON t.user_id = u.id
        WHERE t.status = 'PENDING' 

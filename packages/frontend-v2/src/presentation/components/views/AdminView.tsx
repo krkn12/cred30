@@ -24,7 +24,6 @@ import { AdminApprovals } from '../features/admin/tabs/AdminApprovals';
 
 // Existing Shared Components
 import { AdminStoreManager } from '../features/store/admin-store.component';
-import { SupportAdminView } from './SupportAdminView';
 
 interface AdminViewProps {
     state: AppState;
@@ -34,7 +33,7 @@ interface AdminViewProps {
     onError: (title: string, message: string) => void;
 }
 
-type TabType = 'overview' | 'approvals' | 'payouts' | 'system' | 'investments' | 'store' | 'referrals' | 'support' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics';
+type TabType = 'overview' | 'approvals' | 'payouts' | 'system' | 'investments' | 'store' | 'referrals' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics';
 
 export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: AdminViewProps) => {
     const [isLoading, setIsLoading] = useState(false);
@@ -42,10 +41,9 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
 
     const userRole = state.currentUser?.role || (state.currentUser?.isAdmin ? 'ADMIN' : 'MEMBER');
     const [activeTab, setActiveTab] = useState<TabType>(
-        userRole === 'ATTENDANT' ? 'support' : 'overview'
+        userRole === 'ATTENDANT' ? 'approvals' : 'overview'
     );
 
-    const [pendingChatsCount, setPendingChatsCount] = useState(0);
     const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
     const [pendingPayoutsCount, setPendingPayoutsCount] = useState(0);
     const [pendingReviewsCount, setPendingReviewsCount] = useState(0);
@@ -53,15 +51,13 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
 
     const fetchCounts = useCallback(async () => {
         try {
-            const [supportRes, approvalsRes, payoutRes, reviewsRes, bugsRes] = await Promise.all([
-                apiService.getPendingSupportChats(),
+            const [approvalsRes, payoutRes, reviewsRes, bugsRes] = await Promise.all([
                 apiService.getPendingTransactions(),
                 apiService.getPayoutQueue(),
                 apiService.getAdminReviews(),
                 apiService.get<any>('/bugs/admin?status=open')
             ]);
 
-            setPendingChatsCount(supportRes.chats?.filter((c: any) => c.status === 'PENDING_HUMAN').length || 0);
             setPendingApprovalsCount(approvalsRes?.length || 0);
             setPendingPayoutsCount(payoutRes.transactions?.length || 0);
             setPendingReviewsCount(reviewsRes.data?.filter((r: any) => r.is_public && !r.is_approved).length || 0);
@@ -120,7 +116,6 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         { id: 'reviews', name: 'Depoimentos', icon: MessageSquare, count: pendingReviewsCount, roles: ['ADMIN'] },
         { id: 'bugs', name: 'Bugs', icon: Bug, count: pendingBugsCount, roles: ['ADMIN'] },
         { id: 'logistics', name: 'Logística', icon: Truck, roles: ['ADMIN'] },
-        { id: 'support', name: 'Suporte', icon: MessageSquare, count: pendingChatsCount, roles: ['ADMIN', 'ATTENDANT'] },
     ].filter(tab => tab.roles.includes(userRole));
 
     return (
@@ -203,7 +198,6 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                 {activeTab === 'reviews' && <AdminReviews onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'bugs' && <AdminBugs onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'logistics' && <AdminLogistics />}
-                {activeTab === 'support' && <SupportAdminView />}
             </div>
 
             {confirmMP && (

@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, Copy, Lock, ChevronRight, LogOut, Trash2, X as XIcon, ShieldCheck, QrCode, AlertCircle, Check, Bug, FileText } from 'lucide-react';
+import { Star, Copy, Lock, ChevronRight, LogOut, Trash2, X as XIcon, ShieldCheck, QrCode, AlertCircle, Check, Bug, FileText, Phone } from 'lucide-react';
 import { User } from '../../../domain/types/common.types';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { get2FASetup, verify2FA } from '../../../application/services/storage.service';
@@ -29,6 +29,13 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
     const [cpfSuccess, setCpfSuccess] = useState('');
     const [savingCpf, setSavingCpf] = useState(false);
 
+    // Phone State
+    const [showPhoneModal, setShowPhoneModal] = useState(false);
+    const [phoneInput, setPhoneInput] = useState('');
+    const [phoneError, setPhoneError] = useState('');
+    const [phoneSuccess, setPhoneSuccess] = useState('');
+    const [savingPhone, setSavingPhone] = useState(false);
+
     // 2FA Setup
     const [show2FASetup, setShow2FASetup] = useState(false);
     const [twoFactorData, setTwoFactorData] = useState<{ secret: string, qrCode: string, otpUri: string } | null>(null);
@@ -42,6 +49,14 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
         if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
         if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
         return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+    };
+
+    // Format Phone: (00) 00000-0000
+    const formatPhone = (value: string) => {
+        const digits = value.replace(/\D/g, '').slice(0, 11);
+        if (digits.length <= 2) return digits;
+        if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
     };
 
     const handleSaveCpf = async () => {
@@ -66,6 +81,31 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
             setCpfError(err.message || 'Erro ao salvar CPF');
         } finally {
             setSavingCpf(false);
+        }
+    };
+
+    const handleSavePhone = async () => {
+        setPhoneError('');
+        const cleanPhone = phoneInput.replace(/\D/g, '');
+        if (cleanPhone.length < 10) {
+            setPhoneError('Telefone deve ter pelo menos 10 dígitos (com DDD)');
+            return;
+        }
+        setSavingPhone(true);
+        try {
+            const res = await apiService.updatePhone(cleanPhone);
+            if (res.success) {
+                setPhoneSuccess('Telefone salvo com sucesso!');
+                setTimeout(() => {
+                    setShowPhoneModal(false);
+                    setPhoneSuccess('');
+                    if (onRefresh) onRefresh();
+                }, 1500);
+            }
+        } catch (err: any) {
+            setPhoneError(err.message || 'Erro ao salvar telefone');
+        } finally {
+            setSavingPhone(false);
         }
     };
 
@@ -165,6 +205,25 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                     <div>
                         <label className="text-xs text-zinc-500">Chave PIX</label>
                         <p className="text-white border-b border-surfaceHighlight pb-2">{user.pixKey}</p>
+                    </div>
+                    <div>
+                        <label className="text-xs text-zinc-500">Telefone / WhatsApp</label>
+                        <div className="flex items-center justify-between border-b border-surfaceHighlight pb-2">
+                            {user.phone ? (
+                                <p className="text-white font-medium">{formatPhone(user.phone)}</p>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <AlertCircle size={14} className="text-yellow-500" />
+                                    <p className="text-yellow-500 text-sm">Não cadastrado</p>
+                                </div>
+                            )}
+                            <button
+                                onClick={() => { setPhoneInput(user.phone || ''); setShowPhoneModal(true); }}
+                                className="text-xs text-primary-400 hover:text-primary-300 font-bold"
+                            >
+                                {user.phone ? 'Editar' : 'Adicionar'}
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <label className="text-xs text-zinc-500">CPF</label>
@@ -540,6 +599,56 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
             <div className="pt-8 text-center">
                 <p className="text-zinc-600 text-xs font-mono">Versão 2.1.0 • Cred30</p>
             </div>
+            {/* Phone Edit Modal */}
+            {showPhoneModal && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowPhoneModal(false); }}>
+                    <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 w-full max-w-sm relative animate-fade-in shadow-2xl">
+                        <button title="Fechar" onClick={() => setShowPhoneModal(false)} className="absolute top-4 right-4 text-zinc-400 hover:text-white bg-zinc-800 p-1.5 rounded-full z-10"><XIcon size={24} /></button>
+
+                        <h3 className="text-xl font-bold text-white mb-2">{user.phone ? 'Editar Telefone' : 'Adicionar Telefone'}</h3>
+                        <p className="text-zinc-400 text-sm mb-6">Seu WhatsApp é importante para o contato direto da administração.</p>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs text-zinc-400 font-medium mb-1.5 block">Telefone / WhatsApp</label>
+                                <div className="relative">
+                                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                                    <input
+                                        type="tel"
+                                        inputMode="numeric"
+                                        placeholder="(00) 00000-0000"
+                                        value={formatPhone(phoneInput)}
+                                        onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                                        className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-12 pr-4 text-white text-lg font-medium focus:border-primary-500 outline-none transition"
+                                    />
+                                </div>
+                            </div>
+
+                            {phoneError && (
+                                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-lg flex items-center gap-2">
+                                    <AlertCircle size={14} />
+                                    {phoneError}
+                                </div>
+                            )}
+
+                            {phoneSuccess && (
+                                <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs p-3 rounded-lg flex items-center gap-2">
+                                    <Check size={14} />
+                                    {phoneSuccess}
+                                </div>
+                            )}
+
+                            <button
+                                onClick={handleSavePhone}
+                                disabled={savingPhone || phoneInput.length < 10}
+                                className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 text-black font-bold py-3 rounded-xl transition"
+                            >
+                                {savingPhone ? 'Salvando...' : 'Salvar Telefone'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
