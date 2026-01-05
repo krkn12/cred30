@@ -8,14 +8,12 @@
 export const QUOTA_PRICE = 50.00; // Preço de aquisição total
 export const QUOTA_SHARE_VALUE = 40.00; // Valor que vai para o Capital Social (Resgatável)
 export const QUOTA_ADM_FEE = 10.00;   // Taxa de Manutenção Administrativa (Não resgatável)
-// Inclui: R$ 8 distribuição interna + ~R$ 2 para cobrir taxa Asaas
-
-// Distribuição da Taxa Administrativa LÍQUIDA (após Asaas)
-// Base de cálculo: R$ 8 (R$ 10 - R$ 2 do Asaas)
-export const QUOTA_FEE_TAX_SHARE = 0.25;         // 25% = R$ 2,00 → Impostos
-export const QUOTA_FEE_OPERATIONAL_SHARE = 0.25; // 25% = R$ 2,00 → Servidores/APIs
-export const QUOTA_FEE_OWNER_SHARE = 0.25;       // 25% = R$ 2,00 → Pró-labore
-export const QUOTA_FEE_INVESTMENT_SHARE = 0.25;  // 25% = R$ 2,00 → Fundo de Investimento
+// Distribuição da Taxa Administrativa (R$ 10,00)
+// 25% Impostos | 25% Operacional | 25% Salário | 25% Fundo de Investimento
+export const QUOTA_FEE_TAX_SHARE = 0.25;         // R$ 2,50
+export const QUOTA_FEE_OPERATIONAL_SHARE = 0.25; // R$ 2,50
+export const QUOTA_FEE_OWNER_SHARE = 0.25;       // R$ 2,50
+export const QUOTA_FEE_INVESTMENT_SHARE = 0.25;  // R$ 2,50
 
 // Constantes globais para distribuição de taxas da plataforma (Regra 25/25/25/25)
 // Usado em: Empréstimos, Marketplace, Upgrades, Boosts, etc.
