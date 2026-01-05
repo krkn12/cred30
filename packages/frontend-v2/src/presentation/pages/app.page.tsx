@@ -333,17 +333,20 @@ export default function App() {
       const response = await repayLoan(loanId, useBalance, method);
       await refreshState();
 
-      if (response && (response.pixData || response.data?.pixData)) {
-        const pixData = response.pixData || response.data?.pixData;
+      // Verificar se retornou dados de PIX manual
+      if (response && (response.manualPix || response.data?.manualPix)) {
+        const manualPix = response.manualPix || response.data?.manualPix;
         setPixModalData({
           isOpen: true,
-          qrCode: pixData.qr_code,
-          qrCodeBase64: pixData.qr_code_base64,
-          amount: total,
-          description: `Reposição de Apoio Mútuo`
+          qrCode: manualPix.key, // Chave PIX do admin
+          qrCodeBase64: '', // Sem QR code gerado - usuário copia manualmente
+          amount: manualPix.amount || total,
+          description: manualPix.description || `Reposição de Apoio Mútuo`
         });
+      } else if (useBalance) {
+        setShowSuccess({ isOpen: true, title: 'Pagamento OK!', message: 'Apoio quitado com seu saldo!' });
       } else {
-        setShowSuccess({ isOpen: true, title: 'Pagamento OK!', message: 'Apoio atualizado.' });
+        setShowSuccess({ isOpen: true, title: 'Solicitação Enviada!', message: 'Aguarde a confirmação do administrador.' });
       }
     } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
   };
@@ -355,17 +358,20 @@ export default function App() {
       const response = await repayInstallment(id, amount, useBalance, method);
       await refreshState();
 
-      if (response && (response.pixData || response.data?.pixData)) {
-        const pixData = response.pixData || response.data?.pixData;
+      // Verificar se retornou dados de PIX manual
+      if (response && (response.manualPix || response.data?.manualPix)) {
+        const manualPix = response.manualPix || response.data?.manualPix;
         setPixModalData({
           isOpen: true,
-          qrCode: pixData.qr_code,
-          qrCodeBase64: pixData.qr_code_base64,
-          amount: total,
-          description: `Pagamento de Parcela`
+          qrCode: manualPix.key, // Chave PIX do admin
+          qrCodeBase64: '', // Sem QR code gerado - usuário copia manualmente
+          amount: manualPix.amount || total,
+          description: manualPix.description || `Pagamento de Parcela`
         });
+      } else if (useBalance) {
+        setShowSuccess({ isOpen: true, title: 'Parcela Paga!', message: 'Reposição registrada com seu saldo!' });
       } else {
-        setShowSuccess({ isOpen: true, title: 'Parcela Paga!', message: 'Reposição registrada.' });
+        setShowSuccess({ isOpen: true, title: 'Solicitação Enviada!', message: 'Aguarde a confirmação do administrador.' });
       }
     } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
   };
