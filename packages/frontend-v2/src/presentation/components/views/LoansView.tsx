@@ -18,7 +18,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
     const [amount, setAmount] = useState(500);
     const [months, setMonths] = useState(3);
     const [payModalId, setPayModalId] = useState<string | null>(null);
-    const [payMethod] = useState<'pix'>('pix');
+
     const [viewDetailsId, setViewDetailsId] = useState<string | null>(null);
     const [installmentModalData, setInstallmentModalData] = useState<{ loanId: string, installmentAmount: number } | null>(null);
 
@@ -413,7 +413,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                 disabled={userBalance < selectedLoan.totalRepayment}
                                 className="w-full bg-primary-500 hover:bg-primary-600 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed text-black font-black py-4 rounded-xl mb-2 transition shadow-lg shadow-primary-500/20"
                             >
-                                {userBalance < selectedLoan.totalRepayment ? 'Saldo Insuficiente' : 'Abater com Saldo'}
+                                {userBalance < selectedLoan.totalRepayment ? 'Saldo Insuficiente' : 'Pagar com Saldo'}
                             </button>
 
                             <button
@@ -466,7 +466,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                 disabled={userBalance < installmentModalData.installmentAmount}
                                 className="w-full bg-primary-500 hover:bg-primary-600 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed text-black font-black py-4 rounded-xl mb-2 transition shadow-lg shadow-primary-500/20"
                             >
-                                {userBalance < installmentModalData.installmentAmount ? 'Saldo Insuficiente' : 'Abater com Saldo'}
+                                {userBalance < installmentModalData.installmentAmount ? 'Saldo Insuficiente' : 'Pagar com Saldo'}
                             </button>
 
                             <button
