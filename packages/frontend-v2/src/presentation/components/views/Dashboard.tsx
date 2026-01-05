@@ -16,6 +16,7 @@ interface DashboardProps {
     onGames: () => void;
     onLoans: () => void;
     onWithdraw: () => void;
+    onDeposit: () => void;
     onRefer: () => void;
     onSuccess: (title: string, message: string) => void;
     onError: (title: string, message: string) => void;
@@ -23,7 +24,7 @@ interface DashboardProps {
     onVoting: () => void;
 }
 
-export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onRefer, onSuccess, onError, onEducation, onVoting }: DashboardProps) => {
+export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onDeposit, onRefer, onSuccess, onError, onEducation, onVoting }: DashboardProps) => {
     const user = state?.currentUser;
 
     // Guard clause: prevent crash if state or user is not loaded yet
@@ -166,7 +167,6 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
     void totalDebt;
     void welcomeBenefit;
     void progressToNext;
-    void onLoans;
 
     return (
         <div className="space-y-6 pb-32">
@@ -311,18 +311,24 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                             {showValues ? formatCurrency(user.balance) : '••••••'}
                         </h2>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <button
+                                onClick={onDeposit}
+                                className="bg-white text-emerald-900 hover:scale-[1.02] transition-all text-[10px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl shadow-xl flex flex-col items-center justify-center gap-2 active:scale-95"
+                            >
+                                <ArrowDownLeft size={20} /> DEPOSITAR
+                            </button>
                             <button
                                 onClick={onWithdraw}
-                                className="bg-black/20 hover:bg-black/40 text-white text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-2xl backdrop-blur-md transition-all flex items-center justify-center gap-3 border border-white/10 active:scale-95"
+                                className="bg-black/20 hover:bg-black/40 text-white text-[10px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl backdrop-blur-md transition-all flex flex-col items-center justify-center gap-2 border border-white/10 active:scale-95"
                             >
-                                <ArrowUpFromLine size={20} /> SACAR AGORA
+                                <ArrowUpFromLine size={20} /> SACAR
                             </button>
                             <button
                                 onClick={onBuyQuota}
-                                className="bg-white text-emerald-900 hover:scale-[1.02] transition-all text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-2xl shadow-2xl flex items-center justify-center gap-3 active:scale-95"
+                                className="col-span-2 sm:col-span-1 bg-white/10 hover:bg-white/20 text-white text-[10px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl backdrop-blur-md transition-all flex flex-col sm:flex-col items-center justify-center gap-2 border border-white/10 active:scale-95"
                             >
-                                <TrendingUp size={20} /> NOVA LICENÇA
+                                <TrendingUp size={20} /> LICENÇAS
                             </button>
                         </div>
                     </div>
@@ -378,9 +384,10 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-10">
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-4 mb-10">
                         {[
                             { icon: Zap, label: 'Farm', sub: 'Views', act: () => navigate('/app/promo-videos/farm'), color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
+                            { icon: Wallet, label: 'Crédito', sub: 'Mútuo', act: onLoans, color: 'text-zinc-400', bg: 'bg-zinc-500/10' },
                             { icon: Gamepad2, label: 'Jogar', sub: 'Fun', act: onGames, color: 'text-purple-400', bg: 'bg-purple-500/10' },
                             { icon: BookOpen, label: 'Estudar', sub: 'Learn', act: onEducation, color: 'text-blue-400', bg: 'bg-blue-500/10' },
                             { icon: Users, label: 'Indicar', sub: 'Invite', act: onRefer, color: 'text-primary-400', bg: 'bg-primary-500/10' },
@@ -389,14 +396,14 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onR
                             <button
                                 key={idx}
                                 onClick={item.act}
-                                className="aspect-square glass glass-hover rounded-[2rem] flex flex-col items-center justify-center gap-3 group"
+                                className="aspect-square glass glass-hover rounded-[2rem] flex flex-col items-center justify-center gap-2 group"
                             >
-                                <div className={`w-14 h-14 ${item.bg} rounded-2xl flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform`}>
-                                    <item.icon size={28} />
+                                <div className={`w-12 h-12 ${item.bg} rounded-2xl flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform`}>
+                                    <item.icon size={24} />
                                 </div>
                                 <div className="text-center">
-                                    <p className="text-[11px] font-black text-white uppercase tracking-widest">{item.label}</p>
-                                    <p className="text-[8px] font-black opacity-40 uppercase tracking-[0.3em] mt-1">{item.sub}</p>
+                                    <p className="text-[10px] font-black text-white uppercase tracking-widest">{item.label}</p>
+                                    <p className="text-[7px] font-black opacity-40 uppercase tracking-[0.3em] mt-1">{item.sub}</p>
                                 </div>
                             </button>
                         ))}
