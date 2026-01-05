@@ -260,15 +260,21 @@ export default function App() {
     setDepositModalData(prev => ({ ...prev, isLoading: true }));
     try {
       const result = await requestDeposit(amount);
-      if (result) {
+      if (result && (result.pixData || result.data?.pixData || result.manualPix || result.data?.manualPix)) {
+        const pixData = result.pixData || result.data?.pixData || {};
+        const manualPix = result.manualPix || result.data?.manualPix || null;
+
         setPixModalData({
           isOpen: true,
-          qrCode: result.pixData?.qr_code || '',
-          qrCodeBase64: result.pixData?.qr_code_base64 || '',
+          qrCode: pixData.qr_code || '',
+          qrCodeBase64: pixData.qr_code_base64 || '',
           amount: amount,
           description: 'Depósito de Saldo Cred30',
-          manualData: result.manualPix
+          manualData: manualPix
         });
+        setDepositModalData({ isOpen: false, isLoading: false });
+      } else {
+        setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Solicitação registrada.' });
         setDepositModalData({ isOpen: false, isLoading: false });
       }
     } catch (err: any) {
@@ -379,14 +385,16 @@ export default function App() {
       const response = await repayLoan(loanId, useBalance, method);
       await refreshState();
 
-      if (response && (response.pixData || response.data?.pixData)) {
-        const pixData = response.pixData || response.data?.pixData;
+      if (response && (response.pixData || response.data?.pixData || response.manualPix || response.data?.manualPix)) {
+        const pixData = response.pixData || response.data?.pixData || {};
+        const manualPix = response.manualPix || response.data?.manualPix || null;
         setPixModalData({
           isOpen: true,
-          qrCode: pixData.qr_code,
-          qrCodeBase64: pixData.qr_code_base64,
+          qrCode: pixData.qr_code || '',
+          qrCodeBase64: pixData.qr_code_base64 || '',
           amount: total,
-          description: `Reposição de Apoio Mútuo`
+          description: `Reposição de Apoio Mútuo`,
+          manualData: manualPix
         });
       } else {
         setShowSuccess({ isOpen: true, title: 'Pagamento OK!', message: 'Apoio atualizado.' });
@@ -411,14 +419,16 @@ export default function App() {
       const response = await repayInstallment(id, amount, useBalance, method);
       await refreshState();
 
-      if (response && (response.pixData || response.data?.pixData)) {
-        const pixData = response.pixData || response.data?.pixData;
+      if (response && (response.pixData || response.data?.pixData || response.manualPix || response.data?.manualPix)) {
+        const pixData = response.pixData || response.data?.pixData || {};
+        const manualPix = response.manualPix || response.data?.manualPix || null;
         setPixModalData({
           isOpen: true,
-          qrCode: pixData.qr_code,
-          qrCodeBase64: pixData.qr_code_base64,
+          qrCode: pixData.qr_code || '',
+          qrCodeBase64: pixData.qr_code_base64 || '',
           amount: total,
-          description: `Pagamento de Parcela`
+          description: `Pagamento de Parcela`,
+          manualData: manualPix
         });
       } else {
         setShowSuccess({ isOpen: true, title: 'Parcela Paga!', message: 'Reposição registrada.' });
@@ -452,14 +462,16 @@ export default function App() {
       const response = await upgradePro(method);
       await refreshState();
 
-      if (response && (response.pixData || response.data?.pixData)) {
-        const pixData = response.pixData || response.data?.pixData;
+      if (response && (response.pixData || response.data?.pixData || response.manualPix || response.data?.manualPix)) {
+        const pixData = response.pixData || response.data?.pixData || {};
+        const manualPix = response.manualPix || response.data?.manualPix || null;
         setPixModalData({
           isOpen: true,
-          qrCode: pixData.qr_code,
-          qrCodeBase64: pixData.qr_code_base64,
+          qrCode: pixData.qr_code || '',
+          qrCodeBase64: pixData.qr_code_base64 || '',
           amount: total,
-          description: `Assinatura Cred30 PRO`
+          description: `Assinatura Cred30 PRO`,
+          manualData: manualPix
         });
       } else {
         setShowSuccess({ isOpen: true, title: 'Sucesso!', message: 'Você agora é PRO!' });
