@@ -360,7 +360,8 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
         quantity: result.data?.quantity,
         immediateApproval: result.data?.immediateApproval,
         pixData: result.data?.pixData,
-        cardData: result.data?.cardData
+        cardData: result.data?.cardData,
+        manualPix: result.data?.manualPix
       },
     });
   } catch (error) {
