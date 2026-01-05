@@ -55,8 +55,7 @@ class SyncService {
                         result = await apiService.buyQuotas(
                             action.payload.quantity,
                             action.payload.useBalance,
-                            action.payload.paymentMethod,
-                            action.payload.cardData
+                            action.payload.paymentMethod
                         );
                         break;
                     case 'REQUEST_LOAN':
@@ -69,8 +68,7 @@ class SyncService {
                         result = await apiService.repayLoan(
                             action.payload.loanId,
                             action.payload.useBalance,
-                            action.payload.paymentMethod,
-                            action.payload.cardData
+                            action.payload.paymentMethod
                         );
                         break;
                     case 'REPAY_INSTALLMENT':
@@ -78,8 +76,7 @@ class SyncService {
                             action.payload.loanId,
                             action.payload.amount,
                             action.payload.useBalance,
-                            action.payload.paymentMethod,
-                            action.payload.cardData
+                            action.payload.paymentMethod
                         );
                         break;
                     case 'CLAIM_AD_REWARD':
