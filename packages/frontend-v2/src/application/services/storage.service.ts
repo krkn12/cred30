@@ -278,6 +278,10 @@ export const distributeMonthlyDividends = async () => {
 
 // --- User Logic ---
 
+export const requestDeposit = async (amount: number): Promise<any> => {
+  return await apiService.requestDeposit(amount);
+};
+
 export const buyQuota = async (quantity: number, useBalance: boolean = false, paymentMethod?: 'pix'): Promise<any> => {
   if (!navigator.onLine) {
     return await syncService.enqueue('BUY_QUOTA', { quantity, useBalance, paymentMethod });
