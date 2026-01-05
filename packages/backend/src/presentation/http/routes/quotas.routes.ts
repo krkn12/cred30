@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { QUOTA_PRICE, VESTING_PERIOD_MS, PENALTY_RATE, QUOTA_SHARE_VALUE, QUOTA_ADM_FEE, QUOTA_FEE_TAX_SHARE, QUOTA_FEE_OPERATIONAL_SHARE, QUOTA_FEE_OWNER_SHARE, QUOTA_FEE_INVESTMENT_SHARE } from '../../../shared/constants/business.constants';
+import { QUOTA_PRICE, VESTING_PERIOD_MS, PENALTY_RATE, QUOTA_SHARE_VALUE, QUOTA_ADM_FEE, QUOTA_FEE_TAX_SHARE, QUOTA_FEE_OPERATIONAL_SHARE, QUOTA_FEE_OWNER_SHARE, QUOTA_FEE_INVESTMENT_SHARE, USE_ASAAS, ADMIN_PIX_KEY } from '../../../shared/constants/business.constants';
 import { Quota } from '../../../domain/entities/quota.entity';
 import { UserContext } from '../../../shared/types/hono.types';
 import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction } from '../../../domain/services/transaction.service';
@@ -249,35 +249,40 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
 
         let mpData = null;
         try {
-          if (paymentMethod === 'card' && body.creditCard) {
-            console.log('[QUOTAS] Calling createCardPayment...');
-            mpData = await createCardPayment({
-              amount: finalCost,
-              description: `Aquisição de ${quantity} participação(ões) no sistema Cred30`,
-              email: user.email,
-              external_reference,
-              installments: installments,
-              cpf: userCpf,
-              name: userFullName,
-              creditCard: body.creditCard,
-              creditCardHolderInfo: body.creditCardHolderInfo
-            });
-            console.log('[QUOTAS] createCardPayment success:', mpData?.id);
-          } else {
-            console.log('[QUOTAS] Calling createPixPayment...');
-            try {
-              mpData = await createPixPayment({
+          if (USE_ASAAS) {
+            if (paymentMethod === 'card' && body.creditCard) {
+              console.log('[QUOTAS] Calling createCardPayment...');
+              mpData = await createCardPayment({
                 amount: finalCost,
                 description: `Aquisição de ${quantity} participação(ões) no sistema Cred30`,
                 email: user.email,
                 external_reference,
+                installments: installments,
                 cpf: userCpf,
-                name: userFullName
+                name: userFullName,
+                creditCard: body.creditCard,
+                creditCardHolderInfo: body.creditCardHolderInfo
               });
-              console.log('[QUOTAS] createPixPayment success:', mpData?.id);
-            } catch (pixErr) {
-              console.error('Erro PIX (seguindo manual):', pixErr);
+              console.log('[QUOTAS] createCardPayment success:', mpData?.id);
+            } else {
+              console.log('[QUOTAS] Calling createPixPayment...');
+              try {
+                mpData = await createPixPayment({
+                  amount: finalCost,
+                  description: `Aquisição de ${quantity} participação(ões) no sistema Cred30`,
+                  email: user.email,
+                  external_reference,
+                  cpf: userCpf,
+                  name: userFullName
+                });
+                console.log('[QUOTAS] createPixPayment success:', mpData?.id);
+              } catch (pixErr) {
+                console.error('Erro PIX (seguindo manual):', pixErr);
+              }
             }
+          } else {
+            console.log('[QUOTAS] Manual mode active. Skipping Asaas.');
+            // No modo manual, mData continua nulo, o que acionará o texto "Aguardando Aprovação"
           }
         } catch (mpError) {
           console.error('Erro ao gerar cobrança Asaas:', mpError);
@@ -323,7 +328,12 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
           quantity,
           immediateApproval: false,
           pixData: mpData?.qr_code ? mpData : null,
-          cardData: paymentMethod === 'card' ? mpData : null
+          cardData: paymentMethod === 'card' ? mpData : null,
+          manualPix: !USE_ASAAS ? {
+            key: ADMIN_PIX_KEY,
+            owner: 'Admin Cred30',
+            description: `Transferir R$ ${finalCost.toFixed(2)} para ativar ${quantity} participações`
+          } : null
         };
       }
     });

@@ -185,7 +185,7 @@ export const createPixPayment = async (data: PaymentRequest): Promise<PaymentRes
         // Buscar QR Code do PIX
         const pixQrCode = await asaasRequest(`/payments/${payment.id}/pixQrCode`);
 
-        return {
+        const result = {
             id: payment.id,
             qr_code: pixQrCode.payload,
             qr_code_base64: pixQrCode.encodedImage,
@@ -196,8 +196,12 @@ export const createPixPayment = async (data: PaymentRequest): Promise<PaymentRes
             pixCopiaECola: pixQrCode.payload,
             expirationDate: pixQrCode.expirationDate,
         };
+
+        console.log('[ASAAS] PIX Response:', JSON.stringify(result, null, 2));
+        return result;
     } catch (error: any) {
-        console.error('Erro Asaas PIX:', error);
+        console.error('[ASAAS] Erro PIX completo:', error);
+        console.error('[ASAAS] Erro PIX message:', error.message);
         throw new Error(error.message || 'Falha ao processar pagamento PIX com Asaas');
     }
 };

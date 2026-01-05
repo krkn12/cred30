@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense, useMemo } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from '../components/layout/main-layout.component';
 import { UpdateNotification } from '../components/ui/update-notification.component';
-import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, repayInstallment, changePassword, upgradePro, claimAdReward, apiService } from '../../application/services/storage.service';
+import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, repayInstallment, changePassword, upgradePro, claimAdReward, apiService, requestDeposit } from '../../application/services/storage.service';
 import { syncService } from '../../application/services/sync.service';
 import { AppState } from '../../domain/types/common.types';
 import { QUOTA_PRICE } from '../../shared/constants/app.constants';
@@ -14,6 +14,7 @@ import { AuthScreen } from '../components/views/AuthScreen';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { ReviewModal } from '../components/ui/ReviewModal';
 import { BugReportModal } from '../components/ui/BugReportModal';
+import { DepositModal } from '../components/ui/deposit-modal.component';
 import { AIAssistant } from '../components/AIAssistant';
 import { OfflineNotice } from '../components/ui/offline-notice.component';
 import { useOnlineStatus } from '../hooks/use-online-status';
@@ -86,13 +87,14 @@ export default function App() {
   void showVip; void setShowVip;
 
   const [pixModalData, setPixModalData] = useState<{
-    isOpen: boolean,
-    qrCode: string,
-    qrCodeBase64: string,
-    amount: number,
-    description: string
+    isOpen: boolean;
+    qrCode: string;
+    qrCodeBase64: string;
+    amount: number;
+    description: string;
+    manualData?: { key: string; owner: string; description: string } | null;
   }>({
-    isOpen: false, qrCode: '', qrCodeBase64: '', amount: 0, description: ''
+    isOpen: false, qrCode: '', qrCodeBase64: '', amount: 0, description: '', manualData: null
   });
 
   const [cardModalData, setCardModalData] = useState<{
@@ -136,6 +138,11 @@ export default function App() {
   }>({ isOpen: false, transactionId: 0, amount: 0 });
 
   const [showBugReport, setShowBugReport] = useState(false);
+
+  const [depositModalData, setDepositModalData] = useState<{ isOpen: boolean; isLoading: boolean }>({
+    isOpen: false,
+    isLoading: false
+  });
 
   const isStaff = useMemo(() => {
     if (!state.currentUser) return false;
@@ -245,6 +252,30 @@ export default function App() {
     setState(prev => ({ ...prev, currentUser: null }));
     navigate('/');
   };
+  const handleDeposit = () => {
+    setDepositModalData({ isOpen: true, isLoading: false });
+  };
+
+  const executeDeposit = async (amount: number) => {
+    setDepositModalData(prev => ({ ...prev, isLoading: true }));
+    try {
+      const result = await requestDeposit(amount);
+      if (result) {
+        setPixModalData({
+          isOpen: true,
+          qrCode: result.pixData?.qr_code || '',
+          qrCodeBase64: result.pixData?.qr_code_base64 || '',
+          amount: amount,
+          description: 'Depósito de Saldo Cred30',
+          manualData: result.manualPix
+        });
+        setDepositModalData({ isOpen: false, isLoading: false });
+      }
+    } catch (err: any) {
+      setShowError({ isOpen: true, title: 'Erro', message: err.message || 'Falha na comunicação' });
+      setDepositModalData(prev => ({ ...prev, isLoading: false }));
+    }
+  };
 
   const handleBuyQuota = async (qty: number, method: 'PIX' | 'BALANCE' | 'CARD') => {
     try {
@@ -264,14 +295,17 @@ export default function App() {
       const response = await buyQuota(qty, method === 'BALANCE', pm !== 'balance' ? pm : undefined);
       await refreshState();
 
-      if (response && (response.pixData || response.data?.pixData)) {
-        const pixData = response.pixData || response.data?.pixData;
+      if (response && (response.pixData || response.data?.pixData || response.manualPix || response.data?.manualPix)) {
+        const pixData = response.pixData || response.data?.pixData || {};
+        const manualPix = response.manualPix || response.data?.manualPix || null;
+
         setPixModalData({
           isOpen: true,
-          qrCode: pixData.qr_code,
-          qrCodeBase64: pixData.qr_code_base64,
+          qrCode: pixData.qr_code || '',
+          qrCodeBase64: pixData.qr_code_base64 || '',
           amount: total,
-          description: `Aquisição de ${qty} licença(s)`
+          description: `Aquisição de ${qty} licença(s)`,
+          manualData: manualPix
         });
         return;
       }
@@ -502,6 +536,7 @@ export default function App() {
                       onError={(title, message) => setShowError({ isOpen: true, title, message })}
                       onEducation={() => navigate('/app/education')}
                       onVoting={() => navigate('/app/voting')}
+                      onDeposit={handleDeposit}
                     />
                   </Suspense>
                 } />
@@ -639,6 +674,14 @@ export default function App() {
                 qrCodeBase64={pixModalData.qrCodeBase64}
                 amount={pixModalData.amount}
                 description={pixModalData.description}
+                manualData={pixModalData.manualData}
+              />
+
+              <DepositModal
+                isOpen={depositModalData.isOpen}
+                onClose={() => setDepositModalData(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={executeDeposit}
+                isLoading={depositModalData.isLoading}
               />
 
               <CardModal

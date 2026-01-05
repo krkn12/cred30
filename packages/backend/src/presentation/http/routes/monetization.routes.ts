@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
 import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/asaas.service';
 import { updateScore } from '../../../application/services/score.service';
-import { VERIFIED_BADGE_PRICE, SCORE_BOOST_PRICE, SCORE_BOOST_POINTS, REPUTATION_CHECK_PRICE } from '../../../shared/constants/business.constants';
+import { VERIFIED_BADGE_PRICE, SCORE_BOOST_PRICE, SCORE_BOOST_POINTS, REPUTATION_CHECK_PRICE, USE_ASAAS, ADMIN_PIX_KEY } from '../../../shared/constants/business.constants';
 
 const monetizationRoutes = new Hono();
 
@@ -221,39 +221,42 @@ monetizationRoutes.post('/upgrade-pro', authMiddleware, async (c) => {
         const userCpf = userCheck.rows[0]?.cpf;
         const userName = userCheck.rows[0]?.name;
 
-        if (payMethod === 'pix') {
-            try {
-                paymentData = await createPixPayment({
-                    amount: finalAmount,
-                    description: `Upgrade PRO - ${userName?.split(' ')[0] || 'Usuário'}`,
-                    email: userCheck.rows[0].email,
-                    external_reference: user.id.toString(),
-                    cpf: userCpf,
-                    name: userName
-                });
-            } catch (pixErr) {
-                console.error('Erro PIX Monetization:', pixErr);
-                // PIX pode falhar e seguir manual (embora, para upgrade, talvez fosse melhor falhar também, mas manteremos o padrão)
-                paymentData = { id: null }; // Fallback para não quebrar a criação da transação
+        if (USE_ASAAS) {
+            if (payMethod === 'pix') {
+                try {
+                    paymentData = await createPixPayment({
+                        amount: finalAmount,
+                        description: `Upgrade PRO - ${userName?.split(' ')[0] || 'Usuário'}`,
+                        email: userCheck.rows[0].email,
+                        external_reference: user.id.toString(),
+                        cpf: userCpf,
+                        name: userName
+                    });
+                } catch (pixErr) {
+                    console.error('Erro PIX Monetization:', pixErr);
+                    paymentData = { id: null };
+                }
+            } else {
+                if (!body.creditCard) return c.json({ success: false, message: 'Dados do cartão são obrigatórios' }, 400);
+                try {
+                    paymentData = await createCardPayment({
+                        amount: finalAmount,
+                        description: `Upgrade PRO`,
+                        email: userCheck.rows[0].email,
+                        external_reference: user.id.toString(),
+                        installments: installments || 1,
+                        cpf: userCpf,
+                        name: userName,
+                        creditCard: body.creditCard,
+                        creditCardHolderInfo: body.creditCardHolderInfo
+                    });
+                } catch (cardErr) {
+                    console.error('Erro Cartão Monetization:', cardErr);
+                    throw cardErr;
+                }
             }
         } else {
-            if (!body.creditCard) return c.json({ success: false, message: 'Dados do cartão são obrigatórios' }, 400);
-            try {
-                paymentData = await createCardPayment({
-                    amount: finalAmount,
-                    description: `Upgrade PRO`,
-                    email: userCheck.rows[0].email,
-                    external_reference: user.id.toString(),
-                    installments: installments || 1,
-                    cpf: userCpf,
-                    name: userName,
-                    creditCard: body.creditCard,
-                    creditCardHolderInfo: body.creditCardHolderInfo
-                });
-            } catch (cardErr) {
-                console.error('Erro Cartão Monetization:', cardErr);
-                throw cardErr; // Cartão DEVE falhar
-            }
+            console.log('[MONETIZATION] Modo manual ativo. Pulando Asaas para Upgrade PRO.');
         }
 
         // 4. Criar transação pendente
@@ -280,9 +283,14 @@ monetizationRoutes.post('/upgrade-pro', authMiddleware, async (c) => {
             data: {
                 paymentId: paymentData.id,
                 transactionId: transResult.data?.transactionId,
-                pixData: payMethod === 'pix' ? {
+                pixData: (payMethod === 'pix' && USE_ASAAS) ? {
                     qr_code: paymentData.qr_code,
                     qr_code_base64: paymentData.qr_code_base64
+                } : null,
+                manualPix: (!USE_ASAAS && payMethod === 'pix') ? {
+                    key: ADMIN_PIX_KEY,
+                    owner: 'Admin Cred30',
+                    description: `Transferir R$ ${finalAmount.toFixed(2)} para ativar PRO`
                 } : null
             }
         });

@@ -620,6 +620,30 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
     }
   }
 
+  // DEPÓSITO DE SALDO
+  if (transaction.type === 'DEPOSIT') {
+    // 1. Aumentar saldo do usuário
+    await updateUserBalance(client, transaction.user_id, Math.abs(parseFloat(transaction.amount)), 'credit');
+
+    // 2. Aumentar caixa real do sistema (System Balance)
+    let gatewayCost = 0;
+    let metadata: any = transaction.metadata || {};
+    if (typeof metadata === 'string') {
+      try { metadata = JSON.parse(metadata); } catch { metadata = {}; }
+    }
+
+    if (metadata.asaas_id) {
+      gatewayCost = calculateGatewayCost(Math.abs(parseFloat(transaction.amount)), 'pix');
+    }
+
+    await client.query(
+      'UPDATE system_config SET system_balance = system_balance + $1 - $2, total_gateway_costs = total_gateway_costs + $2',
+      [Math.abs(parseFloat(transaction.amount)), gatewayCost]
+    );
+
+    console.log(`[DEPOSIT_APPROVED] R$ ${transaction.amount} adicionados ao usuário ${transaction.user_id}`);
+  }
+
   // SAQUE (Dedução real do caixa operacional)
   if (transaction.type === 'WITHDRAWAL') {
     let metadata: any = transaction.metadata || {};

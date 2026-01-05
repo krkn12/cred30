@@ -322,6 +322,10 @@ export const requestWithdrawal = async (amount: number, pixKey: string): Promise
   await apiService.requestWithdrawal(amount, pixKey);
 };
 
+export const requestDeposit = async (amount: number): Promise<any> => {
+  return await apiService.requestDeposit(amount);
+};
+
 export const claimAdReward = async (): Promise<any> => {
   if (!navigator.onLine) {
     return await syncService.enqueue('CLAIM_AD_REWARD', {});
