@@ -5,10 +5,8 @@ import { UserContext } from '../../../shared/types/hono.types';
 import { PoolClient } from 'pg';
 import { executeInTransaction, createTransaction } from '../../../domain/services/transaction.service';
 import { z } from 'zod';
-import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
-import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/asaas.service';
 import { updateScore } from '../../../application/services/score.service';
-import { VERIFIED_BADGE_PRICE, SCORE_BOOST_PRICE, SCORE_BOOST_POINTS, REPUTATION_CHECK_PRICE, USE_ASAAS, ADMIN_PIX_KEY } from '../../../shared/constants/business.constants';
+import { VERIFIED_BADGE_PRICE, SCORE_BOOST_PRICE, SCORE_BOOST_POINTS, REPUTATION_CHECK_PRICE } from '../../../shared/constants/business.constants';
 
 const monetizationRoutes = new Hono();
 
@@ -164,136 +162,57 @@ monetizationRoutes.post('/reward-video', authMiddleware, async (c) => {
 monetizationRoutes.post('/upgrade-pro', authMiddleware, async (c) => {
     try {
         const body = await c.req.json();
-        const { method, installments } = upgradeProSchema.parse(body);
+        const { method } = upgradeProSchema.parse(body);
 
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
 
         // 1. Verificar se já é PRO
-        const userCheck = await pool.query('SELECT membership_type, balance, email, name, cpf FROM users WHERE id = $1', [user.id]);
+        const userCheck = await pool.query('SELECT membership_type, balance FROM users WHERE id = $1', [user.id]);
         if (userCheck.rows[0].membership_type === 'PRO') {
             return c.json({ success: false, message: 'Você já é um membro PRO!' }, 400);
         }
 
-        // 2. Calcular valores com taxas
-        const payMethod = method as PaymentMethod;
-        const { total: finalAmount, fee } = calculateTotalToPay(PRO_UPGRADE_FEE, payMethod);
-
-        if (payMethod === 'balance') {
-            const result = await executeInTransaction(pool, async (client: PoolClient) => {
-                if (parseFloat(userCheck.rows[0].balance) < PRO_UPGRADE_FEE) {
-                    throw new Error('Saldo insuficiente para o upgrade PRO.');
-                }
-
-                // Cobrar taxa
-                await client.query('UPDATE users SET balance = balance - $1, membership_type = $2 WHERE id = $3', [PRO_UPGRADE_FEE, 'PRO', user.id]);
-
-                // Distribuir lucros (85% para cotistas / 15% Operacional)
-                const feeForProfit = PRO_UPGRADE_FEE * 0.85;
-                const feeForOperational = PRO_UPGRADE_FEE * 0.15;
-
-                await client.query(
-                    'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
-                    [feeForOperational, feeForProfit]
-                );
-
-                // Registrar transação
-                await createTransaction(
-                    client,
-                    user.id,
-                    'MEMBERSHIP_UPGRADE',
-                    -PRO_UPGRADE_FEE,
-                    'Upgrade para Plano Cred30 PRO (Saldo)',
-                    'APPROVED'
-                );
-
-                return { success: true };
-            });
-
-            if (!result.success) return c.json({ success: false, message: result.error }, 400);
-            return c.json({ success: true, message: 'Parabéns! Agora você é um MEMBRO PRO!' });
+        // Apenas pagamento via saldo é suportado (sem Asaas)
+        if (method !== 'balance') {
+            return c.json({
+                success: false,
+                message: 'Pagamentos PIX/Cartão externos estão temporariamente indisponíveis. Por favor, deposite saldo na sua conta e use o saldo para o upgrade PRO.'
+            }, 400);
         }
 
-        // 3. Pagamento Externo (PIX ou CARTÃO)
-        let paymentData: any;
-
-        // Buscar CPF do usuário para Asaas
-        const userCpf = userCheck.rows[0]?.cpf;
-        const userName = userCheck.rows[0]?.name;
-
-        if (USE_ASAAS) {
-            if (payMethod === 'pix') {
-                try {
-                    paymentData = await createPixPayment({
-                        amount: finalAmount,
-                        description: `Upgrade PRO - ${userName?.split(' ')[0] || 'Usuário'}`,
-                        email: userCheck.rows[0].email,
-                        external_reference: user.id.toString(),
-                        cpf: userCpf,
-                        name: userName
-                    });
-                } catch (pixErr) {
-                    console.error('Erro PIX Monetization:', pixErr);
-                    paymentData = { id: null };
-                }
-            } else {
-                if (!body.creditCard) return c.json({ success: false, message: 'Dados do cartão são obrigatórios' }, 400);
-                try {
-                    paymentData = await createCardPayment({
-                        amount: finalAmount,
-                        description: `Upgrade PRO`,
-                        email: userCheck.rows[0].email,
-                        external_reference: user.id.toString(),
-                        installments: installments || 1,
-                        cpf: userCpf,
-                        name: userName,
-                        creditCard: body.creditCard,
-                        creditCardHolderInfo: body.creditCardHolderInfo
-                    });
-                } catch (cardErr) {
-                    console.error('Erro Cartão Monetization:', cardErr);
-                    throw cardErr;
-                }
+        const result = await executeInTransaction(pool, async (client: PoolClient) => {
+            if (parseFloat(userCheck.rows[0].balance) < PRO_UPGRADE_FEE) {
+                throw new Error('Saldo insuficiente para o upgrade PRO.');
             }
-        } else {
-            console.log('[MONETIZATION] Modo manual ativo. Pulando Asaas para Upgrade PRO.');
-        }
 
-        // 4. Criar transação pendente
-        const transResult = await executeInTransaction(pool, async (client: PoolClient) => {
-            const trans = await createTransaction(
+            // Cobrar taxa
+            await client.query('UPDATE users SET balance = balance - $1, membership_type = $2 WHERE id = $3', [PRO_UPGRADE_FEE, 'PRO', user.id]);
+
+            // Distribuir lucros (85% para cotistas / 15% Operacional)
+            const feeForProfit = PRO_UPGRADE_FEE * 0.85;
+            const feeForOperational = PRO_UPGRADE_FEE * 0.15;
+
+            await client.query(
+                'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
+                [feeForOperational, feeForProfit]
+            );
+
+            // Registrar transação
+            await createTransaction(
                 client,
                 user.id,
                 'MEMBERSHIP_UPGRADE',
                 -PRO_UPGRADE_FEE,
-                `Upgrade PRO via ${payMethod.toUpperCase()}`,
-                'PENDING',
-                {
-                    external_id: paymentData.id,
-                    payment_method: payMethod,
-                    is_upgrade: true
-                }
+                'Upgrade para Plano Cred30 PRO (Saldo)',
+                'APPROVED'
             );
-            return trans;
+
+            return { success: true };
         });
 
-        return c.json({
-            success: true,
-            message: payMethod === 'pix' ? 'QR Code gerado com sucesso!' : 'Pagamento processado!',
-            data: {
-                paymentId: paymentData.id,
-                transactionId: transResult.data?.transactionId,
-                pixData: (payMethod === 'pix' && USE_ASAAS) ? {
-                    qr_code: paymentData.qr_code,
-                    qr_code_base64: paymentData.qr_code_base64
-                } : null,
-                manualPix: (!USE_ASAAS && payMethod === 'pix') ? {
-                    key: ADMIN_PIX_KEY,
-                    owner: 'Admin Cred30',
-                    description: `Transferir R$ ${finalAmount.toFixed(2)} para ativar PRO`
-                } : null
-            }
-        });
+        if (!result.success) return c.json({ success: false, message: result.error }, 400);
+        return c.json({ success: true, message: 'Parabéns! Agora você é um MEMBRO PRO!' });
 
     } catch (error: any) {
         return c.json({ success: false, message: error.message }, 500);

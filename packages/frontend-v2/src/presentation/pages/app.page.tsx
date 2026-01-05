@@ -2,19 +2,17 @@ import { useState, useEffect, lazy, Suspense, useMemo } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from '../components/layout/main-layout.component';
 import { UpdateNotification } from '../components/ui/update-notification.component';
-import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, repayInstallment, changePassword, upgradePro, claimAdReward, apiService, requestDeposit } from '../../application/services/storage.service';
+import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, repayInstallment, changePassword, upgradePro, claimAdReward, apiService } from '../../application/services/storage.service';
 import { syncService } from '../../application/services/sync.service';
 import { AppState } from '../../domain/types/common.types';
 import { QUOTA_PRICE } from '../../shared/constants/app.constants';
 import { calculateTotalToPay } from '../../shared/utils/financial.utils';
 import { Check, X as XIcon, RefreshCw, AlertTriangle, Users, Copy, TrendingUp } from 'lucide-react';
 import { PIXModal } from '../components/ui/pix-modal.component';
-import { CardModal } from '../components/ui/card-modal.component';
 import { AuthScreen } from '../components/views/AuthScreen';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { ReviewModal } from '../components/ui/ReviewModal';
 import { BugReportModal } from '../components/ui/BugReportModal';
-import { DepositModal } from '../components/ui/deposit-modal.component';
 import { AIAssistant } from '../components/AIAssistant';
 import { OfflineNotice } from '../components/ui/offline-notice.component';
 import { useOnlineStatus } from '../hooks/use-online-status';
@@ -87,24 +85,16 @@ export default function App() {
   void showVip; void setShowVip;
 
   const [pixModalData, setPixModalData] = useState<{
-    isOpen: boolean;
-    qrCode: string;
-    qrCodeBase64: string;
-    amount: number;
-    description: string;
-    manualData?: { key: string; owner: string; description: string } | null;
+    isOpen: boolean,
+    qrCode: string,
+    qrCodeBase64: string,
+    amount: number,
+    description: string
   }>({
-    isOpen: false, qrCode: '', qrCodeBase64: '', amount: 0, description: '', manualData: null
+    isOpen: false, qrCode: '', qrCodeBase64: '', amount: 0, description: ''
   });
 
-  const [cardModalData, setCardModalData] = useState<{
-    isOpen: boolean,
-    amount: number,
-    type: 'QUOTA' | 'LOAN' | 'INSTALLMENT' | 'PRO',
-    details: any
-  }>({
-    isOpen: false, amount: 0, type: 'QUOTA', details: {}
-  });
+
 
   const [showSuccess, setShowSuccess] = useState<{ isOpen: boolean, title: string, message: string }>({
     isOpen: false, title: '', message: ''
@@ -138,11 +128,6 @@ export default function App() {
   }>({ isOpen: false, transactionId: 0, amount: 0 });
 
   const [showBugReport, setShowBugReport] = useState(false);
-
-  const [depositModalData, setDepositModalData] = useState<{ isOpen: boolean; isLoading: boolean }>({
-    isOpen: false,
-    isLoading: false
-  });
 
   const isStaff = useMemo(() => {
     if (!state.currentUser) return false;
@@ -252,57 +237,23 @@ export default function App() {
     setState(prev => ({ ...prev, currentUser: null }));
     navigate('/');
   };
-  const handleDeposit = () => {
-    setDepositModalData({ isOpen: true, isLoading: false });
-  };
-
-  const executeDeposit = async (amount: number) => {
-    setDepositModalData(prev => ({ ...prev, isLoading: true }));
-    try {
-      const result = await requestDeposit(amount);
-      if (result && (result.pixData || result.data?.pixData || result.manualPix || result.data?.manualPix)) {
-        const pixData = result.pixData || result.data?.pixData || {};
-        const manualPix = result.manualPix || result.data?.manualPix || null;
-
-        setPixModalData({
-          isOpen: true,
-          qrCode: pixData.qr_code || '',
-          qrCodeBase64: pixData.qr_code_base64 || '',
-          amount: amount,
-          description: 'Depósito de Saldo Cred30',
-          manualData: manualPix
-        });
-        setDepositModalData({ isOpen: false, isLoading: false });
-      } else {
-        setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Solicitação registrada.' });
-        setDepositModalData({ isOpen: false, isLoading: false });
-      }
-    } catch (err: any) {
-      setShowError({ isOpen: true, title: 'Erro', message: err.message || 'Falha na comunicação' });
-      setDepositModalData(prev => ({ ...prev, isLoading: false }));
-    }
-  };
 
   const handleBuyQuota = async (qty: number, method: 'PIX' | 'BALANCE') => {
     try {
       const { total } = calculateTotalToPay(qty * QUOTA_PRICE, method.toLowerCase() as any);
 
-
       const pm = method.toLowerCase() as any;
       const response = await buyQuota(qty, method === 'BALANCE', pm !== 'balance' ? pm : undefined);
       await refreshState();
 
-      if (response && (response.pixData || response.data?.pixData || response.manualPix || response.data?.manualPix)) {
-        const pixData = response.pixData || response.data?.pixData || {};
-        const manualPix = response.manualPix || response.data?.manualPix || null;
-
+      if (response && (response.pixData || response.data?.pixData)) {
+        const pixData = response.pixData || response.data?.pixData;
         setPixModalData({
           isOpen: true,
-          qrCode: pixData.qr_code || '',
-          qrCodeBase64: pixData.qr_code_base64 || '',
+          qrCode: pixData.qr_code,
+          qrCodeBase64: pixData.qr_code_base64,
           amount: total,
-          description: `Aquisição de ${qty} licença(s)`,
-          manualData: manualPix
+          description: `Aquisição de ${qty} licença(s)`
         });
         return;
       }
@@ -363,20 +314,17 @@ export default function App() {
       if (!loan) return;
       const { total } = calculateTotalToPay(parseFloat(loan.totalRepayment as any), method || 'pix');
 
-
       const response = await repayLoan(loanId, useBalance, method);
       await refreshState();
 
-      if (response && (response.pixData || response.data?.pixData || response.manualPix || response.data?.manualPix)) {
-        const pixData = response.pixData || response.data?.pixData || {};
-        const manualPix = response.manualPix || response.data?.manualPix || null;
+      if (response && (response.pixData || response.data?.pixData)) {
+        const pixData = response.pixData || response.data?.pixData;
         setPixModalData({
           isOpen: true,
-          qrCode: pixData.qr_code || '',
-          qrCodeBase64: pixData.qr_code_base64 || '',
+          qrCode: pixData.qr_code,
+          qrCodeBase64: pixData.qr_code_base64,
           amount: total,
-          description: `Reposição de Apoio Mútuo`,
-          manualData: manualPix
+          description: `Reposição de Apoio Mútuo`
         });
       } else {
         setShowSuccess({ isOpen: true, title: 'Pagamento OK!', message: 'Apoio atualizado.' });
@@ -388,20 +336,17 @@ export default function App() {
     try {
       const { total } = calculateTotalToPay(amount, method || 'pix');
 
-
       const response = await repayInstallment(id, amount, useBalance, method);
       await refreshState();
 
-      if (response && (response.pixData || response.data?.pixData || response.manualPix || response.data?.manualPix)) {
-        const pixData = response.pixData || response.data?.pixData || {};
-        const manualPix = response.manualPix || response.data?.manualPix || null;
+      if (response && (response.pixData || response.data?.pixData)) {
+        const pixData = response.pixData || response.data?.pixData;
         setPixModalData({
           isOpen: true,
-          qrCode: pixData.qr_code || '',
-          qrCodeBase64: pixData.qr_code_base64 || '',
+          qrCode: pixData.qr_code,
+          qrCodeBase64: pixData.qr_code_base64,
           amount: total,
-          description: `Pagamento de Parcela`,
-          manualData: manualPix
+          description: `Pagamento de Parcela`
         });
       } else {
         setShowSuccess({ isOpen: true, title: 'Parcela Paga!', message: 'Reposição registrada.' });
@@ -418,24 +363,21 @@ export default function App() {
   };
   void handleClaimAdReward;
 
-  const handleUpgradeProClick = async (method: 'pix') => {
+  const handleUpgradeProClick = async () => {
     try {
-      const { total } = calculateTotalToPay(29.90, method);
+      const { total } = calculateTotalToPay(29.90, 'pix');
 
-
-      const response = await upgradePro(method);
+      const response = await upgradePro('pix');
       await refreshState();
 
-      if (response && (response.pixData || response.data?.pixData || response.manualPix || response.data?.manualPix)) {
-        const pixData = response.pixData || response.data?.pixData || {};
-        const manualPix = response.manualPix || response.data?.manualPix || null;
+      if (response && (response.pixData || response.data?.pixData)) {
+        const pixData = response.pixData || response.data?.pixData;
         setPixModalData({
           isOpen: true,
-          qrCode: pixData.qr_code || '',
-          qrCodeBase64: pixData.qr_code_base64 || '',
+          qrCode: pixData.qr_code,
+          qrCodeBase64: pixData.qr_code_base64,
           amount: total,
-          description: `Assinatura Cred30 PRO`,
-          manualData: manualPix
+          description: `Assinatura Cred30 PRO`
         });
       } else {
         setShowSuccess({ isOpen: true, title: 'Sucesso!', message: 'Você agora é PRO!' });
@@ -512,7 +454,6 @@ export default function App() {
                       onError={(title, message) => setShowError({ isOpen: true, title, message })}
                       onEducation={() => navigate('/app/education')}
                       onVoting={() => navigate('/app/voting')}
-                      onDeposit={handleDeposit}
                     />
                   </Suspense>
                 } />
@@ -650,41 +591,9 @@ export default function App() {
                 qrCodeBase64={pixModalData.qrCodeBase64}
                 amount={pixModalData.amount}
                 description={pixModalData.description}
-                manualData={pixModalData.manualData}
               />
 
-              <DepositModal
-                isOpen={depositModalData.isOpen}
-                onClose={() => setDepositModalData(prev => ({ ...prev, isOpen: false }))}
-                onConfirm={executeDeposit}
-                isLoading={depositModalData.isLoading}
-              />
 
-              <CardModal
-                isOpen={cardModalData.isOpen}
-                onClose={() => setCardModalData(prev => ({ ...prev, isOpen: false }))}
-                amount={cardModalData.amount}
-                userEmail={state.currentUser?.email || ''}
-                currentUser={state.currentUser}
-                onSubmit={async (formData) => {
-                  try {
-                    if (cardModalData.type === 'QUOTA') {
-                      await buyQuota(cardModalData.details.qty, false, 'card', formData);
-                    } else if (cardModalData.type === 'LOAN') {
-                      await repayLoan(cardModalData.details.loanId, false, 'card', formData);
-                    } else if (cardModalData.type === 'INSTALLMENT') {
-                      await repayInstallment(cardModalData.details.loanId, cardModalData.details.amount, false, 'card', formData);
-                    } else if (cardModalData.type === 'PRO') {
-                      await upgradePro('card', formData);
-                    }
-                    await refreshState();
-                    setCardModalData(prev => ({ ...prev, isOpen: false }));
-                    setShowSuccess({ isOpen: true, title: 'Processando...', message: 'Pagamento sendo analisado.' });
-                  } catch (e: any) {
-                    setShowError({ isOpen: true, title: 'Erro no Cartão', message: e.message });
-                  }
-                }}
-              />
 
               {showSuccess.isOpen && (
                 <div className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] sm:w-auto sm:min-w-[400px] z-[9999] animate-in slide-in-from-top-10 duration-500">

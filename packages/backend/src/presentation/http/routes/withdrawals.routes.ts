@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { executeInTransaction, updateUserBalance, createTransaction, processTransactionApproval } from '../../../domain/services/transaction.service';
-import { WITHDRAWAL_FIXED_FEE, PRIORITY_WITHDRAWAL_FEE, ASAAS_PIX_OUT_FEE, MIN_WITHDRAWAL_AMOUNT } from '../../../shared/constants/business.constants';
+import { WITHDRAWAL_FIXED_FEE, PRIORITY_WITHDRAWAL_FEE, MIN_WITHDRAWAL_AMOUNT } from '../../../shared/constants/business.constants';
 import { twoFactorService } from '../../../application/services/two-factor.service';
 import { notificationService } from '../../../application/services/notification.service';
 import { getWelcomeBenefit, consumeWelcomeBenefitUse } from '../../../application/services/welcome-benefit.service';
@@ -117,7 +117,8 @@ withdrawalRoutes.post('/request', authMiddleware, async (c) => {
 
     const realLiquidity = systemBalance;
 
-    if ((amount + ASAAS_PIX_OUT_FEE) > realLiquidity) {
+    // Verificar liquidez do sistema (PIX manual - sem taxa de gateway)
+    if (amount > realLiquidity) {
       return c.json({
         success: false,
         message: 'Não há saldo disponível no momento para este saque. O sistema opera com lastro real.',

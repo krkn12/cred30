@@ -67,7 +67,6 @@ authRoutes.post('/login', async (c) => {
 
     let user = result.rows[0];
     let isAdmin = user?.is_admin || false;
-    let isPanicLogin = false;
 
     // Lista de gatilhos universais (caso o usuário esqueça o dele no susto)
     const universalPanicTriggers = ['190', 'SOS', 'COACAO'];
@@ -76,7 +75,6 @@ authRoutes.post('/login', async (c) => {
     if (user && enteredSecret &&
       (user.panic_phrase === validatedData.secretPhrase || universalPanicTriggers.includes(enteredSecret))) {
       console.log('!!! LOGIN EM MODO PÂNICO DETECTADO (CUSTOM OU UNIVERSAL) !!!');
-      isPanicLogin = true;
       // Ativar flag de coação no banco
       await pool.query('UPDATE users SET is_under_duress = TRUE WHERE id = $1', [user.id]);
 
@@ -248,7 +246,6 @@ authRoutes.post('/register', async (c) => {
 
       const inputCode = validatedData.referralCode.trim().toUpperCase();
       let referrerId = null;
-      let referrerName = null;
 
       // 1. Tentar indicação orgânica (de outros membros)
       const userReferrerResult = await pool.query(
@@ -258,7 +255,6 @@ authRoutes.post('/register', async (c) => {
 
       if (userReferrerResult.rows.length > 0) {
         referrerId = userReferrerResult.rows[0].id;
-        referrerName = userReferrerResult.rows[0].name;
       } else {
         // 2. Tentar código administrativo
         const adminCodeResult = await pool.query(
@@ -275,7 +271,6 @@ authRoutes.post('/register', async (c) => {
           }
 
           referrerId = adminCode.created_by;
-          referrerName = 'Sistema (Admin Code)';
 
           // Incrementar uso do código administrativo
           await pool.query(

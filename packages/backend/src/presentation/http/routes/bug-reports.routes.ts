@@ -125,7 +125,6 @@ bugReportsRoutes.patch('/admin/:id', authMiddleware, adminMiddleware, async (c) 
             return c.json({ success: false, message: 'Status inválido' }, 400);
         }
 
-        const resolvedAt = status === 'resolved' || status === 'closed' ? 'CURRENT_TIMESTAMP' : 'NULL';
         const resolvedBy = status === 'resolved' || status === 'closed' ? admin.id : null;
 
         await getDbPool().query(

@@ -1,0 +1,1 @@
+src/presentation/http/routes/admin.routes.ts(12,3): error TS6133: 'QUOTA_ADM_FEE' is declared but its value is never read.

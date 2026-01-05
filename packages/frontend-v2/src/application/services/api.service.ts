@@ -317,16 +317,15 @@ class ApiService {
     return response.data!;
   }
 
-  // Método para comprar cotas
-  async buyQuotas(quantity: number, useBalance: boolean, paymentMethod?: 'pix' | 'card', cardData?: any): Promise<any> {
-    console.log('[FRONTEND] buyQuotas called with:', { quantity, useBalance, paymentMethod, cardData: cardData ? 'PRESENT' : 'ABSENT' });
+  // Método para comprar cotas (PIX manual ou saldo)
+  async buyQuotas(quantity: number, useBalance: boolean, paymentMethod?: 'pix'): Promise<any> {
+    console.log('[FRONTEND] buyQuotas called with:', { quantity, useBalance, paymentMethod });
     const response = await this.request<any>('/quotas/buy', {
       method: 'POST',
       body: JSON.stringify({
         quantity,
         useBalance,
-        paymentMethod,
-        ...cardData
+        paymentMethod
       }),
     });
     return response.data;
@@ -368,25 +367,24 @@ class ApiService {
     return response.data;
   }
 
-  // Método para pagar empréstimo
-  async repayLoan(loanId: string, useBalance: boolean, paymentMethod?: 'pix' | 'card', cardData?: any): Promise<any> {
+  // Método para pagar empréstimo (PIX manual ou saldo)
+  async repayLoan(loanId: string, useBalance: boolean, paymentMethod?: 'pix'): Promise<any> {
     const response = await this.request<any>('/loans/repay', {
       method: 'POST',
-      body: JSON.stringify({ loanId, useBalance, paymentMethod, ...cardData }),
+      body: JSON.stringify({ loanId, useBalance, paymentMethod }),
     });
     return response.data;
   }
 
-  // Método para pagar parcela de empréstimo
-  async repayInstallment(loanId: string, amount: number, useBalance: boolean, paymentMethod?: 'pix' | 'card', cardData?: any): Promise<any> {
+  // Método para pagar parcela de empréstimo (PIX manual ou saldo)
+  async repayInstallment(loanId: string, amount: number, useBalance: boolean, paymentMethod?: 'pix'): Promise<any> {
     const response = await this.request<any>('/loans/repay-installment', {
       method: 'POST',
       body: JSON.stringify({
         loanId,
         installmentAmount: amount,
         useBalance,
-        paymentMethod,
-        ...cardData
+        paymentMethod
       }),
     });
     return response.data;
@@ -404,15 +402,6 @@ class ApiService {
     return response; // Return full response to check requiresConfirmation
   }
 
-
-  // Método para solicitar depósito
-  async requestDeposit(amount: number): Promise<any> {
-    const response = await this.request<any>('/deposits/request', {
-      method: 'POST',
-      body: JSON.stringify({ amount }),
-    });
-    return response.data;
-  }
 
   // Método para excluir conta
   async deleteAccount(twoFactorCode?: string): Promise<any> {
@@ -1225,10 +1214,9 @@ class ApiService {
   }
 
   // Confirmar entrega realizada
-  async confirmDelivered(orderId: number, confirmationCode?: string): Promise<any> {
+  async confirmDelivered(orderId: number): Promise<any> {
     const response = await this.request<any>(`/logistics/delivered/${orderId}`, {
-      method: 'POST',
-      body: JSON.stringify({ confirmationCode })
+      method: 'POST'
     });
     return response;
   }
@@ -1260,48 +1248,6 @@ class ApiService {
   }> {
     const response = await this.request<any>('/logistics/stats');
     return response.data || { completedDeliveries: 0, inProgressDeliveries: 0, totalEarned: '0.00', avgEarningPerDelivery: '0.00' };
-  }
-
-  // --- ACADEMY ADMIN ---
-  async getAdminAcademyCourses(status?: string): Promise<any[]> {
-    const query = status ? `?status=${status}` : '';
-    const response = await this.request<any[]>(`/education/admin/courses${query}`);
-    return response.data || [];
-  }
-
-  async updateAcademyCourseStatus(id: number | string, status: 'APPROVED' | 'REJECTED'): Promise<any> {
-    const response = await this.request<any>(`/education/admin/courses/${id}/status`, {
-      method: 'POST',
-      body: JSON.stringify({ status })
-    });
-    return response;
-  }
-
-  // ==================== ADMIN UTILS ====================
-
-  // ==================== ADMIN ACTIONS ====================
-
-  // Listar transações pendentes de aprovação manual
-  async getPendingTransactions(): Promise<any[]> {
-    const response = await this.request<any[]>('/admin/pending-transactions');
-    return response.data || [];
-  }
-
-  // Processar ação administrativa genérica (aprovar/rejeitar)
-  async adminProcessAction(data: { id: string | number, type: 'TRANSACTION' | 'LOAN', action: 'APPROVE' | 'REJECT' }): Promise<any> {
-    const response = await this.request<any>('/admin/process-action', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-    return response;
-  }
-
-  // Popular dados de demonstração
-  async seedDemoData(): Promise<any> {
-    const response = await this.request<any>('/admin/seed-demo-data', {
-      method: 'POST'
-    });
-    return response;
   }
 }
 

@@ -6,8 +6,6 @@ import { Pool } from 'pg';
 
 // Configuração do pool de conexões PostgreSQL
 // Configuração do pool de conexões PostgreSQL
-const isProduction = process.env.NODE_ENV === 'production' || !!process.env.DATABASE_URL;
-
 const poolConfig: any = {
   max: 20,
   idleTimeoutMillis: 30000,
@@ -278,11 +276,6 @@ export const initializeDatabase = async () => {
         seller_address_state VARCHAR(255),
         seller_address_postal_code VARCHAR(255),
         seller_created_at TIMESTAMP,
-        is_courier BOOLEAN DEFAULT FALSE,
-        courier_vehicle_type VARCHAR(50),
-        courier_vehicle_model VARCHAR(100),
-        courier_vehicle_plate VARCHAR(20),
-        courier_photo_url TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -303,11 +296,6 @@ export const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_state VARCHAR(255);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_postal_code VARCHAR(255);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_created_at TIMESTAMP;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_courier BOOLEAN DEFAULT FALSE;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_vehicle_type VARCHAR(50);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_vehicle_model VARCHAR(100);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_vehicle_plate VARCHAR(20);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_photo_url TEXT;
     `);
 
     // Verificar o tipo da coluna id da tabela users para garantir integridade das chaves estrangeiras
@@ -775,14 +763,12 @@ export const initializeDatabase = async () => {
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS seller_rating INTEGER;
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS pickup_address TEXT;
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_status VARCHAR(30) DEFAULT 'NONE';
-      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_type VARCHAR(30) DEFAULT 'SELF_PICKUP';
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_fee DECIMAL(10, 2) DEFAULT 0;
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS courier_id INTEGER REFERENCES users(id);
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS pickup_code VARCHAR(10);
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(20);
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS picked_up_at TIMESTAMP;
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP;
-      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_confirmation_code VARCHAR(10);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
     `);
@@ -995,35 +981,6 @@ export const initializeDatabase = async () => {
     // --- SISTEMA DE GOVERNANÇA (VOTAÇÃO) ---
     console.log('Verificando tabelas de votação...');
     await client.query(`
-      -- Tabela de Propostas de Votação (Governance V2)
-      CREATE TABLE IF NOT EXISTS governance_proposals (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          title TEXT NOT NULL,
-          description TEXT NOT NULL,
-          creator_id ${userIdType} REFERENCES users(id),
-          status TEXT DEFAULT 'active' CHECK (status IN ('active', 'passed', 'rejected', 'executed')),
-          category TEXT DEFAULT 'general' CHECK (category IN ('general', 'financial', 'regulation', 'exclusion')),
-          yes_votes_power DECIMAL(20, 2) DEFAULT 0,
-          no_votes_power DECIMAL(20, 2) DEFAULT 0,
-          min_power_quorum DECIMAL(20, 2) DEFAULT 100,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          expires_at TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP + INTERVAL '7 days')
-      );
-
-      -- Tabela de Votos Individuais
-      CREATE TABLE IF NOT EXISTS governance_votes (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          proposal_id UUID REFERENCES governance_proposals(id) ON DELETE CASCADE,
-          user_id ${userIdType} REFERENCES users(id),
-          choice TEXT NOT NULL CHECK (choice IN ('yes', 'no')),
-          voting_power DECIMAL(20, 2) NOT NULL,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(proposal_id, user_id)
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_gov_votes_proposal ON governance_votes(proposal_id);
-      CREATE INDEX IF NOT EXISTS idx_gov_proposals_status ON governance_proposals(status);
-
       CREATE TABLE IF NOT EXISTS voting_proposals (
         id SERIAL PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
