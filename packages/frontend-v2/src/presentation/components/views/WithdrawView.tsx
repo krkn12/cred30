@@ -280,7 +280,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
 
             {/* Legal Disclaimer */}
             <div className="px-4 text-[10px] text-zinc-600 text-center leading-relaxed">
-                <p>O resgate será processado via PIX pelo gateway Asaas. O Cred30 não armazena dados bancários. O prazo de processamento pode variar em feriados ou fins de semana. Resgates acima de R$ 2.000,00 podem exigir comprovação de origem dos fundos conforme política anti-lavagem (AML).</p>
+                <p>O resgate será processado via PIX diretamente pela administração. O Cred30 não armazena dados bancários. O prazo de processamento pode variar em feriados ou fins de semana. Resgates acima de R$ 2.000,00 podem exigir comprovação de origem dos fundos conforme política anti-lavagem (AML).</p>
             </div>
 
             {/* Anúncio Intersticial Premium */}

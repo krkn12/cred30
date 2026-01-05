@@ -283,19 +283,10 @@ export default function App() {
     }
   };
 
-  const handleBuyQuota = async (qty: number, method: 'PIX' | 'BALANCE' | 'CARD') => {
+  const handleBuyQuota = async (qty: number, method: 'PIX' | 'BALANCE') => {
     try {
       const { total } = calculateTotalToPay(qty * QUOTA_PRICE, method.toLowerCase() as any);
 
-      if (method === 'CARD') {
-        setCardModalData({
-          isOpen: true,
-          amount: total,
-          type: 'QUOTA',
-          details: { qty }
-        });
-        return;
-      }
 
       const pm = method.toLowerCase() as any;
       const response = await buyQuota(qty, method === 'BALANCE', pm !== 'balance' ? pm : undefined);
@@ -366,21 +357,12 @@ export default function App() {
     } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
   };
 
-  const handlePayLoan = async (loanId: string, useBalance: boolean, method?: 'pix' | 'card') => {
+  const handlePayLoan = async (loanId: string, useBalance: boolean, method?: 'pix') => {
     try {
       const loan = state.loans.find(l => l.id === loanId);
       if (!loan) return;
       const { total } = calculateTotalToPay(parseFloat(loan.totalRepayment as any), method || 'pix');
 
-      if (method === 'card') {
-        setCardModalData({
-          isOpen: true,
-          amount: total,
-          type: 'LOAN',
-          details: { loanId }
-        });
-        return;
-      }
 
       const response = await repayLoan(loanId, useBalance, method);
       await refreshState();
@@ -402,19 +384,10 @@ export default function App() {
     } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
   };
 
-  const handlePayInstallment = async (id: string, amount: number, useBalance: boolean, method?: 'pix' | 'card') => {
+  const handlePayInstallment = async (id: string, amount: number, useBalance: boolean, method?: 'pix') => {
     try {
       const { total } = calculateTotalToPay(amount, method || 'pix');
 
-      if (method === 'card') {
-        setCardModalData({
-          isOpen: true,
-          amount: total,
-          type: 'INSTALLMENT',
-          details: { loanId: id, amount }
-        });
-        return;
-      }
 
       const response = await repayInstallment(id, amount, useBalance, method);
       await refreshState();
@@ -445,19 +418,10 @@ export default function App() {
   };
   void handleClaimAdReward;
 
-  const handleUpgradeProClick = async (method: 'pix' | 'card') => {
+  const handleUpgradeProClick = async (method: 'pix') => {
     try {
       const { total } = calculateTotalToPay(29.90, method);
 
-      if (method === 'card') {
-        setCardModalData({
-          isOpen: true,
-          amount: total,
-          type: 'PRO',
-          details: {}
-        });
-        return;
-      }
 
       const response = await upgradePro(method);
       await refreshState();

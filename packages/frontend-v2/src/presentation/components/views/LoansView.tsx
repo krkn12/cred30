@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, AlertTriangle, X as XIcon, Clock, TrendingUp, Download, FileText, QrCode, CreditCard, Wallet } from 'lucide-react';
+import { DollarSign, AlertTriangle, X as XIcon, Clock, TrendingUp, Download, FileText, QrCode, Wallet } from 'lucide-react';
 import { Loan, User } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 import { downloadLoanContract, createContractData } from '../../../application/services/contract.service';
@@ -8,8 +8,8 @@ import { downloadLoanContract, createContractData } from '../../../application/s
 interface LoansViewProps {
     loans: Loan[];
     onRequest: (amount: number, installments: number) => void;
-    onPay: (loanId: string, full: boolean, method?: 'pix' | 'card') => void;
-    onPayInstallment: (loanId: string, amount: number, full: boolean, method?: 'pix' | 'card') => void;
+    onPay: (loanId: string, full: boolean, method?: 'pix') => void;
+    onPayInstallment: (loanId: string, amount: number, full: boolean, method?: 'pix') => void;
     userBalance: number;
     currentUser: User | null;
 }
@@ -18,7 +18,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
     const [amount, setAmount] = useState(500);
     const [months, setMonths] = useState(3);
     const [payModalId, setPayModalId] = useState<string | null>(null);
-    const [payMethod, setPayMethod] = useState<'pix' | 'card'>('pix');
+    const [payMethod, setPayMethod] = useState<'pix'>('pix');
     const [viewDetailsId, setViewDetailsId] = useState<string | null>(null);
     const [installmentModalData, setInstallmentModalData] = useState<{ loanId: string, installmentAmount: number } | null>(null);
 
@@ -76,13 +76,6 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
                         <div>
                             <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1 block">Apoio Mútuo em Aberto</span>
-                            {/* This activeLoan variable is not defined in the current scope.
-                                Assuming it should be derived from 'loans' or 'activeLoans' if there's only one active loan to display here.
-                                For now, I'll use a placeholder or the first active loan if available.
-                                If there can be multiple active loans, this card structure might need to be iterated or adapted.
-                                For the purpose of this edit, I'll assume a single 'activeLoan' concept for this card.
-                                If no active loan, this card might not render or show a different state.
-                            */}
                             <h3 className="text-2xl sm:text-3xl font-black text-white">R$ {activeLoans.length > 0 ? activeLoans[0].amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}</h3>
                         </div>
                         <div className="bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 rounded-lg flex items-center gap-2 self-start sm:self-auto">
@@ -254,8 +247,6 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                             >
                                 {creditLimit?.totalLimit === 0 ? 'Ajuda Indisponível' : 'Solicitar Apoio Mútuo'}
                             </button>
-
-                            {/* AdBanner removido para limpeza de UI */}
                         </div>
                     </div>
                 </div>
@@ -393,20 +384,13 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                         </p>
 
                         <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-1 gap-2">
                                 <button
                                     onClick={() => setPayMethod('pix')}
                                     className={`py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${payMethod === 'pix' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-background border-surfaceHighlight text-zinc-500'}`}
                                 >
                                     <QrCode size={20} />
-                                    <span className="text-[10px] font-bold uppercase">PIX</span>
-                                </button>
-                                <button
-                                    onClick={() => setPayMethod('card')}
-                                    className={`py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${payMethod === 'card' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-background border-surfaceHighlight text-zinc-500'}`}
-                                >
-                                    <CreditCard size={20} />
-                                    <span className="text-[10px] font-bold uppercase">Cartão</span>
+                                    <span className="text-[10px] font-bold uppercase">PIX Manual</span>
                                 </button>
                             </div>
 
@@ -427,13 +411,13 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
 
                             <button
                                 onClick={() => { onPay(selectedLoan.id, false, payMethod); setPayModalId(null); }}
-                                className={`w-full font-black py-4 rounded-xl transition shadow-lg ${payMethod === 'pix' ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-blue-500 text-white shadow-blue-500/20'}`}
+                                className="w-full font-black py-4 rounded-xl transition shadow-lg bg-emerald-500 text-white shadow-emerald-500/20"
                             >
-                                {payMethod === 'pix' ? 'Gerar PIX de Reposição' : 'Pagar com Cartão'}
+                                Gerar PIX de Reposição
                             </button>
 
-                            <p className="text-[9px] text-zinc-600 text-center mt-4 leading-relaxed">
-                                Pagamento processado via gateway Asaas. O valor reposto retorna ao fundo de apoio mútuo para beneficiar outros membros.
+                            <p className="text-[9px] text-zinc-600 text-center mt-4 leading-relaxed uppercase tracking-widest font-bold">
+                                Sistema de Reposição Direta (Manual). Envie o PIX e aguarde a conferência.
                             </p>
                         </div>
                     </div>
@@ -452,20 +436,13 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                         </p>
 
                         <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-1 gap-2">
                                 <button
                                     onClick={() => setPayMethod('pix')}
                                     className={`py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${payMethod === 'pix' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-background border-surfaceHighlight text-zinc-500'}`}
                                 >
                                     <QrCode size={20} />
-                                    <span className="text-[10px] font-bold uppercase">PIX</span>
-                                </button>
-                                <button
-                                    onClick={() => setPayMethod('card')}
-                                    className={`py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${payMethod === 'card' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-background border-surfaceHighlight text-zinc-500'}`}
-                                >
-                                    <CreditCard size={20} />
-                                    <span className="text-[10px] font-bold uppercase">Cartão</span>
+                                    <span className="text-[10px] font-bold uppercase">PIX Manual</span>
                                 </button>
                             </div>
 
@@ -492,13 +469,13 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                     onPayInstallment(installmentModalData.loanId, installmentModalData.installmentAmount, false, payMethod);
                                     setInstallmentModalData(null);
                                 }}
-                                className={`w-full font-black py-4 rounded-xl transition shadow-lg ${payMethod === 'pix' ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-blue-500 text-white shadow-blue-500/20'}`}
+                                className="w-full font-black py-4 rounded-xl transition shadow-lg bg-emerald-500 text-white shadow-emerald-500/20"
                             >
-                                {payMethod === 'pix' ? 'Gerar PIX da Parcela' : 'Pagar Parcela com Cartão'}
+                                Gerar PIX da Parcela
                             </button>
 
-                            <p className="text-[9px] text-zinc-600 text-center mt-4 leading-relaxed">
-                                Pagamento processado via gateway Asaas. O valor reposto retorna ao fundo de apoio mútuo.
+                            <p className="text-[9px] text-zinc-600 text-center mt-4 leading-relaxed uppercase tracking-widest font-bold">
+                                Sistema de Reposição Direta (Manual).
                             </p>
                         </div>
                     </div>
