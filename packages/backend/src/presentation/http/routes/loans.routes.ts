@@ -8,7 +8,9 @@ import {
   PLATFORM_FEE_TAX_SHARE,
   PLATFORM_FEE_OPERATIONAL_SHARE,
   PLATFORM_FEE_OWNER_SHARE,
-  PLATFORM_FEE_INVESTMENT_SHARE
+  PLATFORM_FEE_INVESTMENT_SHARE,
+  USE_ASAAS,
+  ADMIN_PIX_KEY
 } from '../../../shared/constants/business.constants';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
 import { createPixPayment, createCardPayment } from '../../../infrastructure/gateways/asaas.service';
@@ -328,27 +330,31 @@ loanRoutes.post('/repay', authMiddleware, async (c) => {
 
     let mpData: any = null;
     if (!useBalance) {
-      if (paymentMethod === 'card' && body.creditCard) {
-        mpData = await createCardPayment({
-          amount: finalCost,
-          description: `Reposição total Cred30`,
-          email: user.email,
-          external_reference: `REPAY_${loanId}_${Date.now()}`,
-          installments: installments,
-          cpf: userCpf,
-          name: userName,
-          creditCard: body.creditCard,
-          creditCardHolderInfo: body.creditCardHolderInfo
-        });
+      if (USE_ASAAS) {
+        if (paymentMethod === 'card' && body.creditCard) {
+          mpData = await createCardPayment({
+            amount: finalCost,
+            description: `Reposição total Cred30`,
+            email: user.email,
+            external_reference: `REPAY_${loanId}_${Date.now()}`,
+            installments: installments,
+            cpf: userCpf,
+            name: userName,
+            creditCard: body.creditCard,
+            creditCardHolderInfo: body.creditCardHolderInfo
+          });
+        } else {
+          mpData = await createPixPayment({
+            amount: finalCost,
+            description: `Reposição total Cred30`,
+            email: user.email,
+            external_reference: `REPAY_${loanId}_${Date.now()}`,
+            cpf: userCpf,
+            name: userName
+          });
+        }
       } else {
-        mpData = await createPixPayment({
-          amount: finalCost,
-          description: `Reposição total Cred30`,
-          email: user.email,
-          external_reference: `REPAY_${loanId}_${Date.now()}`,
-          cpf: userCpf,
-          name: userName
-        });
+        console.log('[LOANS] Manual mode active. Skipping Asaas.');
       }
     }
 
@@ -362,7 +368,20 @@ loanRoutes.post('/repay', authMiddleware, async (c) => {
       ]
     );
 
-    return c.json({ success: true, message: 'Reposição enviada!', data: { transactionId: transaction.rows[0].id, finalCost, pixData: mpData } });
+    return c.json({
+      success: true,
+      message: 'Reposição enviada!',
+      data: {
+        transactionId: transaction.rows[0].id,
+        finalCost,
+        pixData: mpData,
+        manualPix: !USE_ASAAS ? {
+          key: ADMIN_PIX_KEY,
+          owner: 'Admin Cred30',
+          description: `Transferir R$ ${finalCost.toFixed(2)} para quitar apoio`
+        } : null
+      }
+    });
   } catch (error) {
     console.error('Erro ao pagar apoio:', error);
     return c.json({ success: false, message: 'Erro interno' }, 500);
@@ -397,27 +416,31 @@ loanRoutes.post('/repay-installment', authMiddleware, async (c) => {
 
     let mpData: any = null;
     if (!useBalance) {
-      if (paymentMethod === 'card' && body.creditCard) {
-        mpData = await createCardPayment({
-          amount: finalInstallmentCost,
-          description: `Parcela Cred30`,
-          email: user.email,
-          external_reference: `INST_${loanId}_${Date.now()}`,
-          installments: installments,
-          cpf: userCpf,
-          name: userName,
-          creditCard: body.creditCard,
-          creditCardHolderInfo: body.creditCardHolderInfo
-        });
+      if (USE_ASAAS) {
+        if (paymentMethod === 'card' && body.creditCard) {
+          mpData = await createCardPayment({
+            amount: finalInstallmentCost,
+            description: `Parcela Cred30`,
+            email: user.email,
+            external_reference: `INST_${loanId}_${Date.now()}`,
+            installments: installments,
+            cpf: userCpf,
+            name: userName,
+            creditCard: body.creditCard,
+            creditCardHolderInfo: body.creditCardHolderInfo
+          });
+        } else {
+          mpData = await createPixPayment({
+            amount: finalInstallmentCost,
+            description: `Parcela Cred30`,
+            email: user.email,
+            external_reference: `INST_${loanId}_${Date.now()}`,
+            cpf: userCpf,
+            name: userName
+          });
+        }
       } else {
-        mpData = await createPixPayment({
-          amount: finalInstallmentCost,
-          description: `Parcela Cred30`,
-          email: user.email,
-          external_reference: `INST_${loanId}_${Date.now()}`,
-          cpf: userCpf,
-          name: userName
-        });
+        console.log('[LOANS] Manual mode active. Skipping Asaas.');
       }
 
       await pool.query(
@@ -426,7 +449,19 @@ loanRoutes.post('/repay-installment', authMiddleware, async (c) => {
         [user.id, finalInstallmentCost, `Parcela (${paymentMethod})`, JSON.stringify({ loanId, installmentAmount, isInstallment: true, mp_id: mpData?.id, qr_code: mpData?.qr_code })]
       );
 
-      return c.json({ success: true, message: 'Código gerado!', data: { finalCost: finalInstallmentCost, pixData: mpData } });
+      return c.json({
+        success: true,
+        message: 'Código gerado!',
+        data: {
+          finalCost: finalInstallmentCost,
+          pixData: mpData,
+          manualPix: !USE_ASAAS ? {
+            key: ADMIN_PIX_KEY,
+            owner: 'Admin Cred30',
+            description: `Transferir R$ ${finalInstallmentCost.toFixed(2)} para pagar parcela`
+          } : null
+        }
+      });
     }
 
     if (user.balance < installmentAmount) return c.json({ success: false, message: 'Saldo insuficiente' }, 400);

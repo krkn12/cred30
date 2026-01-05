@@ -1,9 +1,17 @@
-// Estrutura de preço da cota (Total R$ 50,00)
+// =====================================================
+// ESTRUTURA DE PREÇO DA LICENÇA (Total R$ 50,00)
+// =====================================================
+// O sistema ABSORVE as taxas do gateway (Asaas)
+// Taxa PIX Asaas = R$ 1,99
+// Por isso a taxa admin é R$ 10 (para sobrar R$ 8 líquido)
+// =====================================================
 export const QUOTA_PRICE = 50.00; // Preço de aquisição total
-export const QUOTA_SHARE_VALUE = 42.00; // Valor que vai para o Capital Social (Resgatável)
-export const QUOTA_ADM_FEE = 8.00;   // Taxa de Manutenção Administrativa (Não resgatável)
+export const QUOTA_SHARE_VALUE = 40.00; // Valor que vai para o Capital Social (Resgatável)
+export const QUOTA_ADM_FEE = 10.00;   // Taxa de Manutenção Administrativa (Não resgatável)
+// Inclui: R$ 8 distribuição interna + ~R$ 2 para cobrir taxa Asaas
 
-// Distribuição da Taxa Administrativa (Soma = 100%)
+// Distribuição da Taxa Administrativa LÍQUIDA (após Asaas)
+// Base de cálculo: R$ 8 (R$ 10 - R$ 2 do Asaas)
 export const QUOTA_FEE_TAX_SHARE = 0.25;         // 25% = R$ 2,00 → Impostos
 export const QUOTA_FEE_OPERATIONAL_SHARE = 0.25; // 25% = R$ 2,00 → Servidores/APIs
 export const QUOTA_FEE_OWNER_SHARE = 0.25;       // 25% = R$ 2,00 → Pró-labore
@@ -93,6 +101,16 @@ export const PRIORITY_WITHDRAWAL_FEE = 5.00; // Taxa para saque expresso
 export const SCORE_BOOST_PRICE = 15.00; // Preço do pacote de +100 Score
 export const SCORE_BOOST_POINTS = 100; // Pontos ganhos no pacote
 export const REPUTATION_CHECK_PRICE = 35.00; // Preço da consulta de reputação (Serasa Standard)
+
+// =====================================================
+// CONFIGURAÇÃO DE GATEWAY (ASAAS)
+// =====================================================
+// true = Usa a API do Asaas (Automático)
+// false = Modo Manual (Você recebe PIX no seu CPF e aprova no app)
+export const USE_ASAAS = false;
+
+// Sua chave PIX para os usuários enviarem dinheiro (Modo Manual)
+export const ADMIN_PIX_KEY = "91980177874";
 
 // Taxas oficiais do Asaas (Gateway de Pagamento) - Atualizadas em 03/01/2026
 // ATENÇÃO: Nos primeiros 3 meses as taxas são promocionais (R$ 0,99)

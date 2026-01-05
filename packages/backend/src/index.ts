@@ -33,6 +33,7 @@ import { bugReportsRoutes } from './presentation/http/routes/bug-reports.routes'
 import { earnRoutes } from './presentation/http/routes/earn.routes';
 import { sellerRoutes } from './presentation/http/routes/seller.routes';
 import { logisticsRoutes } from './presentation/http/routes/logistics.routes';
+import { depositRoutes } from './presentation/http/routes/deposits.routes';
 import { initializeDatabase, pool } from './infrastructure/database/postgresql/connection/pool';
 
 const app = new Hono();
@@ -76,6 +77,7 @@ async function startServer() {
     app.route('/api/earn', earnRoutes);
     app.route('/api/seller', sellerRoutes);
     app.route('/api/logistics', logisticsRoutes);
+    app.route('/api/deposits', depositRoutes);
 
     // Rota raiz para evitar 404 em monitoramentos e pings de wakeup
     app.get('/', (c: Context) => c.json({

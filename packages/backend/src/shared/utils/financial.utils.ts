@@ -9,6 +9,13 @@ import {
 
 export type PaymentMethod = 'pix' | 'card' | 'balance' | 'boleto';
 
+// =====================================================
+// CONFIGURAÇÃO: ABSORVER TAXAS DO GATEWAY
+// =====================================================
+// true = Sistema absorve as taxas (usuário paga valor exato)
+// false = Usuário paga as taxas (valor + taxa)
+const ABSORB_GATEWAY_FEES = true;
+
 /**
  * Retorna as taxas adequadas para o método e parcelamento
  */
@@ -41,26 +48,44 @@ export const calculateGatewayCost = (amount: number, method: PaymentMethod = 'pi
 };
 
 /**
- * Calcula o valor total que o usuário deve pagar (Gross-up)
- * Total = (Valor + TaxaFixa) / (1 - TaxaPercentual)
+ * Calcula o valor total que o usuário deve pagar
+ * 
+ * Se ABSORB_GATEWAY_FEES = true:
+ *   → Usuário paga o valor exato (sistema absorve a taxa)
+ * 
+ * Se ABSORB_GATEWAY_FEES = false:
+ *   → Usuário paga valor + taxa (gross-up)
  */
 export const calculateTotalToPay = (amount: number, method: PaymentMethod = 'pix', installments: number = 1): {
     baseAmount: number;
     fee: number;
     total: number;
+    absorbedBySystem: boolean;
 } => {
     if (method === 'balance') {
-        return { baseAmount: amount, fee: 0, total: amount };
+        return { baseAmount: amount, fee: 0, total: amount, absorbedBySystem: false };
     }
 
     const { percent, fixed } = getFeesForMethod(method, installments);
 
-    const total = (amount + fixed) / (1 - percent);
-    const fee = total - amount;
-
-    return {
-        baseAmount: amount,
-        fee: Number(fee.toFixed(2)),
-        total: Number(total.toFixed(2))
-    };
+    if (ABSORB_GATEWAY_FEES) {
+        // Sistema absorve a taxa - usuário paga valor exato
+        const fee = (amount * percent) + fixed;
+        return {
+            baseAmount: amount,
+            fee: Number(fee.toFixed(2)),
+            total: amount, // Usuário paga só o valor base!
+            absorbedBySystem: true
+        };
+    } else {
+        // Usuário paga a taxa (gross-up)
+        const total = (amount + fixed) / (1 - percent);
+        const fee = total - amount;
+        return {
+            baseAmount: amount,
+            fee: Number(fee.toFixed(2)),
+            total: Number(total.toFixed(2)),
+            absorbedBySystem: false
+        };
+    }
 };
