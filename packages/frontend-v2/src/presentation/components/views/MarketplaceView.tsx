@@ -16,8 +16,6 @@ import {
     CheckCircle2,
     History as HistoryIcon,
     Package,
-    RefreshCw,
-    Wand2,
     X as XIcon,
     MapPin,
     Phone,
@@ -124,7 +122,6 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     });
 
     const categories = ['PARTICIPAÇÕES', 'ELETRÔNICOS', 'VEÍCULOS', 'IMÓVEIS', 'SERVIÇOS', 'MODA', 'OUTROS'];
-    const [aiLoading, setAiLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSaveOfflineSale = (sale: any) => {
@@ -250,25 +247,6 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         }
     };
 
-    const handleAIAssist = async () => {
-        if (!newListing.title) return;
-        setAiLoading(true);
-        try {
-            const response = await apiService.post<any>('/marketplace/ai-assist', { title: newListing.title });
-            if (response.success) {
-                setNewListing(prev => ({
-                    ...prev,
-                    description: response.data.description,
-                    category: response.data.category || prev.category
-                }));
-                onSuccess('IA Ativa', 'Descrição e categoria sugeridas com sucesso!');
-            }
-        } catch (error) {
-            console.error('Erro no assistente IA:', error);
-        } finally {
-            setAiLoading(false);
-        }
-    };
 
     const handleBoostListing = async (listing: any) => {
         setConfirmData({
@@ -638,23 +616,11 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 animate-in slide-in-from-bottom duration-300">
                     <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
                         O que você quer vender?
-                        <div className="bg-primary-500/10 text-primary-400 text-[9px] px-2 py-0.5 rounded-full border border-primary-500/20 flex items-center gap-1">
-                            <Sparkles size={10} /> ASSISTENTE IA ATIVO
-                        </div>
                     </h3>
                     <form onSubmit={handleCreateListing} className="space-y-4">
                         <div>
                             <div className="flex justify-between items-center mb-1">
                                 <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Título do Anúncio</label>
-                                <button
-                                    type="button"
-                                    onClick={handleAIAssist}
-                                    disabled={aiLoading || !newListing.title}
-                                    className="text-[9px] font-black text-primary-400 flex items-center gap-1 hover:text-white transition-colors disabled:opacity-30"
-                                >
-                                    {aiLoading ? <RefreshCw size={10} className="animate-spin" /> : <Wand2 size={10} />}
-                                    MELHORAR COM IA
-                                </button>
                             </div>
                             <input
                                 type="text"

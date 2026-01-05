@@ -13,7 +13,6 @@ import { AuthScreen } from '../components/views/AuthScreen';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { ReviewModal } from '../components/ui/ReviewModal';
 import { BugReportModal } from '../components/ui/BugReportModal';
-import { AIAssistant } from '../components/AIAssistant';
 import { OfflineNotice } from '../components/ui/offline-notice.component';
 import { useOnlineStatus } from '../hooks/use-online-status';
 
@@ -690,7 +689,6 @@ export default function App() {
                 onError={(t, m) => setShowError({ isOpen: true, title: t, message: m })}
               />
             )}
-            <AIAssistant />
           </>
         } />
       </Routes>
