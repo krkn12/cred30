@@ -3,6 +3,7 @@ export const QUOTA_PRICE = 50;
 export const QUOTA_SHARE_VALUE = 42;
 export const QUOTA_ADM_FEE = 8;
 export const VESTING_PERIOD_MS = 365 * 24 * 60 * 60 * 1000;
+export const ADMIN_PIX_KEY = (import.meta as any).env.VITE_ADMIN_PIX_KEY || 'pix@cred30.com.br';
 
 // API Constants
 export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';

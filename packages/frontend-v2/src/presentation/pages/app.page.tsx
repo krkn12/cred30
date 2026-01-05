@@ -2,10 +2,10 @@ import { useState, useEffect, lazy, Suspense, useMemo } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from '../components/layout/main-layout.component';
 import { UpdateNotification } from '../components/ui/update-notification.component';
-import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, repayInstallment, changePassword, upgradePro, claimAdReward, apiService } from '../../application/services/storage.service';
+import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, repayInstallment, changePassword, upgradePro, claimAdReward, apiService, requestDeposit } from '../../application/services/storage.service';
 import { syncService } from '../../application/services/sync.service';
 import { AppState } from '../../domain/types/common.types';
-import { QUOTA_PRICE } from '../../shared/constants/app.constants';
+import { QUOTA_PRICE, ADMIN_PIX_KEY } from '../../shared/constants/app.constants';
 import { calculateTotalToPay } from '../../shared/utils/financial.utils';
 import { Check, X as XIcon, RefreshCw, AlertTriangle, Users, Copy, TrendingUp } from 'lucide-react';
 import { PIXModal } from '../components/ui/pix-modal.component';
@@ -128,6 +128,31 @@ export default function App() {
   }>({ isOpen: false, transactionId: 0, amount: 0 });
 
   const [showBugReport, setShowBugReport] = useState(false);
+
+  const handleDeposit = async () => {
+    try {
+      const amountStr = prompt('Quanto você deseja depositar? (Mínimo R$ 10,00)', '50.00');
+      if (!amountStr) return;
+      const amount = parseFloat(amountStr.replace(',', '.'));
+      if (isNaN(amount) || amount < 10) {
+        setShowError({ isOpen: true, title: 'Valor Inválido', message: 'O valor mínimo para depósito é R$ 10,00' });
+        return;
+      }
+
+      await requestDeposit(amount);
+
+      setPixModalData({
+        isOpen: true,
+        qrCode: ADMIN_PIX_KEY,
+        qrCodeBase64: '',
+        amount,
+        description: `DEPÓSITO MANUAL - ${state.currentUser?.name.split(' ')[0].toUpperCase()}`
+      });
+
+    } catch (e: any) {
+      setShowError({ isOpen: true, title: 'Erro', message: e.message || 'Erro ao registrar depósito' });
+    }
+  };
 
   const isStaff = useMemo(() => {
     if (!state.currentUser) return false;
@@ -449,6 +474,7 @@ export default function App() {
                       onGames={() => navigate('/app/games')}
                       onLoans={() => navigate('/app/loans')}
                       onWithdraw={() => navigate('/app/withdraw')}
+                      onDeposit={handleDeposit}
                       onRefer={() => setShowReferral(true)}
                       onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
                       onError={(title, message) => setShowError({ isOpen: true, title, message })}

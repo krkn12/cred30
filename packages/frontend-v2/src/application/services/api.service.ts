@@ -305,6 +305,15 @@ class ApiService {
     return response;
   }
 
+  // Método para registrar intenção de depósito manual
+  async requestDeposit(amount: number): Promise<any> {
+    const response = await this.request<any>('/transactions/deposit', {
+      method: 'POST',
+      body: JSON.stringify({ amount }),
+    });
+    return response.data;
+  }
+
   // Método para obter cotas do usuário
   async getUserQuotas(): Promise<{ quotas: any[] }> {
     const response = await this.request<{ quotas: any[] }>('/quotas');

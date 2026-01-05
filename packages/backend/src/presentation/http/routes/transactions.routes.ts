@@ -264,7 +264,38 @@ transactionRoutes.get('/balance', authMiddleware, async (c) => {
   }
 });
 
-export { transactionRoutes };
+// Solicitar Depósito (Manual)
+transactionRoutes.post('/deposit', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user') as UserContext;
+    const pool = getDbPool(c);
+    const body = await c.req.json();
+    const { amount } = z.object({ amount: z.number().positive() }).parse(body);
+
+    const result = await createTransaction(
+      pool,
+      user.id,
+      'DEPOSIT',
+      amount,
+      'Depósito manual pendente de confirmação',
+      'PENDING',
+      { method: 'MANUAL_PIX' }
+    );
+
+    if (!result.success) throw new Error(result.error);
+
+    return c.json({
+      success: true,
+      message: 'Solicitação de depósito registrada. Prossiga com o pagamento PIX.',
+      data: { transactionId: result.transactionId }
+    });
+  } catch (error: any) {
+    return c.json({ success: false, message: error.message || 'Erro ao registrar depósito' }, 500);
+  }
+});
+
+
+
 
 // Schema de avaliação
 const reviewSchema = z.object({
@@ -405,3 +436,5 @@ transactionRoutes.get('/pending-reviews', authMiddleware, async (c) => {
     return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
   }
 });
+
+export { transactionRoutes };

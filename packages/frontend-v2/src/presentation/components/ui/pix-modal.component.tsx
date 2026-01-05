@@ -46,11 +46,18 @@ export const PIXModal: React.FC<PIXModalProps> = ({
                 </div>
 
                 <div className="bg-white p-4 rounded-2xl mb-6 shadow-xl max-w-[200px] mx-auto w-full">
-                    <img
-                        src={`data:image/png;base64,${qrCodeBase64}`}
-                        alt="QR Code PIX"
-                        className="w-full aspect-square rounded-lg"
-                    />
+                    {qrCodeBase64 ? (
+                        <img
+                            src={`data:image/png;base64,${qrCodeBase64}`}
+                            alt="QR Code PIX"
+                            className="w-full aspect-square rounded-lg"
+                        />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center p-8 bg-zinc-900/50 rounded-2xl border border-dashed border-zinc-700 gap-3">
+                            <QrCode className="text-zinc-600" size={48} />
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest text-center">Utilize a Chave PIX abaixo</p>
+                        </div>
+                    )}
                 </div>
 
                 <div className="space-y-4">
@@ -84,11 +91,11 @@ export const PIXModal: React.FC<PIXModalProps> = ({
                     </button>
 
                     <p className="text-[11px] text-zinc-500 text-center leading-relaxed bg-zinc-900/50 p-3 rounded-xl border border-zinc-800">
-                        O sistema identificará o pagamento automaticamente em instantes.
+                        Após pagar, o saldo será creditado assim que um administrador confirmar o recebimento.
                     </p>
 
-                    <p className="text-[9px] text-zinc-600 text-center leading-relaxed mt-2">
-                        Pagamento processado via gateway Asaas. O Cred30 não armazena dados bancários.
+                    <p className="text-[9px] text-zinc-600 text-center leading-relaxed mt-2 uppercase tracking-widest font-bold">
+                        Sistema de Pagamento Direto Cred30
                     </p>
 
                     <button
