@@ -9,13 +9,10 @@ import { getDbPool } from '../../../infrastructure/database/postgresql/connectio
 import {
   QUOTA_PRICE,
   QUOTA_SHARE_VALUE,
-  QUOTA_ADM_FEE,
-  USE_ASAAS
 } from '../../../shared/constants/business.constants';
 import { executeInTransaction, updateUserBalance, createTransaction, processTransactionApproval } from '../../../domain/services/transaction.service';
 import { distributeProfits } from '../../../application/services/profit-distribution.service';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
-import { createPayout, detectPixKeyType } from '../../../infrastructure/gateways/asaas.service';
 import { CacheService, addCacheHeaders } from '../../../infrastructure/cache/memory-cache.service';
 import { calculateGatewayCost } from '../../../shared/utils/financial.utils';
 import { updateTransactionStatus } from '../../../domain/services/transaction.service';
@@ -33,16 +30,6 @@ const adminRoutes = new Hono();
 // Aplicar middlewares a todas as rotas de admin
 adminRoutes.use('*', authMiddleware);
 adminRoutes.use('*', adminRateLimit);
-
-// Esquema de validação para atualização de saldo do sistema
-const updateBalanceSchema = z.object({
-  newBalance: z.number(),
-});
-
-// Esquema de validação para adição ao pool de lucros
-const updateProfitSchema = z.object({
-  amountToAdd: z.number(),
-});
 
 // Esquema de validação para aprovação/rejeição
 const actionSchema = z.object({
@@ -500,8 +487,6 @@ adminRoutes.post('/users/add-quota', adminMiddleware, auditMiddleware('MANUAL_AD
 
       // 3. Registrar a entrada de capital das cotas presenteadas (Admin aportando/capitalizando)
       const giftTotal = quantity * QUOTA_PRICE;
-      const giftShareValue = quantity * QUOTA_SHARE_VALUE;
-      const giftAdmFee = quantity * QUOTA_ADM_FEE;
 
       await client.query(
         'UPDATE system_config SET system_balance = system_balance + $1',
@@ -582,30 +567,6 @@ adminRoutes.post('/process-action', adminMiddleware, auditMiddleware('PROCESS_AC
   }
 });
 
-// Listar Transações Pendentes de Aprovação (Entradas de PIX Manual)
-adminRoutes.get('/pending-transactions', adminMiddleware, async (c) => {
-  try {
-    const pool = getDbPool(c);
-
-    const result = await pool.query(
-      `SELECT t.*, u.name as user_name, u.email as user_email, u.pix_key as user_pix
-       FROM transactions t
-       LEFT JOIN users u ON t.user_id = u.id
-       WHERE t.status = 'PENDING' 
-       AND t.type IN ('QUOTA_PURCHASE', 'LOAN_PAYMENT', 'UPGRADE_PRO', 'DEPOSIT', 'ADMIN_GIFT')
-       ORDER BY t.created_at DESC`
-    );
-
-    return c.json({
-      success: true,
-      data: result.rows
-    });
-  } catch (error) {
-    console.error('Erro ao buscar transações pendentes:', error);
-    return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
-  }
-});
-
 // Listar Fila de Pagamentos (Payout Queue)
 adminRoutes.get('/payout-queue', adminMiddleware, async (c) => {
   try {
@@ -636,9 +597,9 @@ adminRoutes.get('/payout-queue', adminMiddleware, async (c) => {
   }
 });
 
-// Confirmar Pagamento Efetuado (PIX enviado)
+// Confirmar Pagamento Efetuado (PIX Manual enviado pelo Admin)
 adminRoutes.post('/confirm-payout', adminMiddleware, auditMiddleware('CONFIRM_PAYOUT', 'TRANSACTION_LOAN'), async (c) => {
-  console.log('[CONFIRM-PAYOUT] Iniciando...');
+  console.log('[CONFIRM-PAYOUT] Iniciando confirmação manual...');
   try {
     const body = await c.req.json();
     console.log('[CONFIRM-PAYOUT] Body recebido:', body);
@@ -672,85 +633,49 @@ adminRoutes.post('/confirm-payout', adminMiddleware, auditMiddleware('CONFIRM_PA
           throw new Error('Usuário não possui chave PIX cadastrada');
         }
 
-        // Tentar enviar PIX automaticamente via Asaas (apenas se USE_ASAAS for true)
-        let payoutResult = null;
-        let payoutError = null;
-
-        if (USE_ASAAS) {
-          try {
-            const pixKeyType = detectPixKeyType(pixKeyToUse);
-            console.log('[CONFIRM-PAYOUT] Chamando createPayout...');
-            payoutResult = await createPayout({
-              pixKey: pixKeyToUse,
-              pixKeyType,
-              amount: netAmount,
-              description: `Saque Cred30 - ${name?.split(' ')[0] || 'Cliente'}`
-            });
-
-            console.log('[PAYOUT ASAAS] Sucesso:', payoutResult);
-          } catch (err: any) {
-            console.error('[PAYOUT ASAAS] Erro:', err);
-            payoutError = err.message;
-          }
-        } else {
-          console.log('[CONFIRM-PAYOUT] Modo manual ativo. Pulando Asaas e marcando como pago manualmente.');
-          // No modo manual, consideramos que o administrador já fez o PIX antes de clicar no botão
-          payoutResult = { id: 'MANUAL_' + Date.now(), status: 'CONFIRMED' };
-        }
-
-        // Atualizar status do pagamento
-        const payoutStatus = payoutResult ? 'PAID' : 'PENDING_MANUAL';
-        console.log('[CONFIRM-PAYOUT] Atualizando status para:', payoutStatus);
-
+        // PIX Manual - Admin confirma que já enviou o PIX manualmente
+        // Atualizar status do pagamento para PAID
         await client.query(
           `UPDATE transactions 
            SET payout_status = $1, 
                processed_at = $2, 
-               metadata = metadata || $3::jsonb 
-           WHERE id = $4`,
+               status = $3,
+               metadata = metadata || $4::jsonb 
+           WHERE id = $5`,
           [
-            payoutStatus,
+            'PAID',
             new Date(),
+            'APPROVED',
             JSON.stringify({
-              asaas_transfer_id: payoutResult?.id,
-              asaas_transfer_status: payoutResult?.status,
-              payout_error: payoutError,
-              payout_method: payoutResult ? 'AUTOMATIC' : 'MANUAL_PENDING'
+              payout_method: 'MANUAL_PIX',
+              confirmed_by_admin: true,
+              confirmed_at: new Date().toISOString()
             }),
             id
           ]
         );
 
-        console.log('[CONFIRM-PAYOUT] Transação atualizada com sucesso!');
+        console.log('[CONFIRM-PAYOUT] Transação atualizada para PAID!');
 
-        // Criar notificação
-        const notifMessage = payoutResult
-          ? `O valor de R$ ${netAmount.toFixed(2)} foi enviado para sua chave PIX automaticamente! Que tal avaliar sua experiência?`
-          : `Seu saque de R$ ${netAmount.toFixed(2)} está sendo processado manualmente. Em breve será enviado para sua chave PIX.`;
-
+        // Criar notificação para o usuário
         await client.query(
           `INSERT INTO notifications (user_id, title, message, type, metadata, created_at)
            VALUES ($1, $2, $3, $4, $5, $6)`,
           [
             user_id,
-            payoutResult ? '💸 Seu saque foi processado!' : '⏳ Saque em processamento',
-            notifMessage,
+            '💸 Seu saque foi processado!',
+            `O valor de R$ ${netAmount.toFixed(2)} foi enviado para sua chave PIX (${pixKeyToUse}). Confira sua conta!`,
             'PAYOUT_COMPLETED',
             JSON.stringify({
               transactionId: id,
               amount: netAmount,
-              requiresReview: !!payoutResult,
-              automatic: !!payoutResult
+              pixKey: pixKeyToUse
             }),
             new Date()
           ]
         );
 
-        if (payoutError) {
-          throw new Error(`Pagamento registrado mas falhou envio automático: ${payoutError}. Você pode tentar novamente ou fazer manualmente.`);
-        }
-
-        return { success: true };
+        return { success: true, netAmount, userName: name?.split(' ')[0] };
       } else {
         throw new Error('Tipo de confirmação não suportado');
       }
@@ -763,7 +688,10 @@ adminRoutes.post('/confirm-payout', adminMiddleware, auditMiddleware('CONFIRM_PA
       return c.json({ success: false, message: txResult.error || 'Erro ao processar pagamento' }, 500);
     }
 
-    return c.json({ success: true, message: 'Pagamento processado via PIX automático!' });
+    return c.json({
+      success: true,
+      message: `Pagamento de R$ ${txResult.data?.netAmount?.toFixed(2)} confirmado para ${txResult.data?.userName || 'usuário'}!`
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
@@ -968,9 +896,6 @@ adminRoutes.post('/approve-payment', adminMiddleware, auditMiddleware('APPROVE_P
         // Calcular proporção de principal e juros na parcela
         const principalPortion = installmentAmount * (principalAmount / totalRepayment);
         const interestPortion = installmentAmount - principalPortion;
-
-        // Enviar 100% dos juros da parcela para o pool
-        const interestForProfit = interestPortion;
 
         // Devolver parte do principal ao caixa operacional descontando o custo do gateway
         const paymentMethod = metadata.paymentMethod || 'pix';
@@ -1787,7 +1712,7 @@ adminRoutes.post('/marketplace/resolve-dispute', adminMiddleware, async (c) => {
     if (orderRes.rows.length === 0) return c.json({ success: false, message: 'Disputa não encontrada.' }, 404);
     const order = orderRes.rows[0];
 
-    const result = await executeInTransaction(pool, async (client) => {
+    await executeInTransaction(pool, async (client) => {
       if (resolution === 'REFUND_BUYER') {
         // Estornar Comprador (Igual ao cancelamento)
         await client.query('UPDATE marketplace_orders SET status = \'CANCELLED\', updated_at = NOW() WHERE id = $1', [orderId]);
@@ -1849,7 +1774,7 @@ adminRoutes.post('/run-liquidation', adminMiddleware, auditMiddleware('FORCE_LIQ
 adminRoutes.post('/manual-cost', adminMiddleware, auditMiddleware('RECORD_MANUAL_COST', 'SYSTEM_CONFIG'), async (c) => {
   try {
     const body = await c.req.json();
-    const { amount, description } = z.object({ amount: z.number().positive(), description: z.string() }).parse(body);
+    const { amount } = z.object({ amount: z.number().positive(), description: z.string() }).parse(body);
     const pool = getDbPool(c);
 
     await pool.query(
@@ -2372,8 +2297,7 @@ adminRoutes.post('/investments/:id/sell', adminMiddleware, auditMiddleware('SELL
 adminRoutes.post('/investments/reserve/add', adminMiddleware, auditMiddleware('MANUAL_INVESTMENT_DEPOSIT', 'INVESTMENT'), async (c) => {
   try {
     const body = await c.req.json();
-    const { amount, description } = body;
-    const user = c.get('user');
+    const { amount } = body;
 
     if (!amount || amount <= 0) {
       return c.json({ success: false, message: 'Valor inválido para aporte' }, 400);
@@ -2381,66 +2305,14 @@ adminRoutes.post('/investments/reserve/add', adminMiddleware, auditMiddleware('M
 
     const pool = getDbPool(c);
 
-    // Atualizar a reserva
     await pool.query(
       'UPDATE system_config SET investment_reserve = COALESCE(investment_reserve, 0) + $1, updated_at = NOW()',
       [amount]
     );
 
-    // Registrar no histórico de movimentações (admin_logs já captura via auditMiddleware)
-    // Também registrar em uma transaction para melhor rastreabilidade
-    await pool.query(`
-      INSERT INTO transactions (user_id, type, amount, description, status, metadata, created_at)
-      VALUES ($1, 'INVESTMENT_DEPOSIT', $2, $3, 'COMPLETED', $4, NOW())
-    `, [
-      user.id,
-      amount,
-      description || 'Aporte externo na reserva de investimentos',
-      JSON.stringify({ source: 'MANUAL_RESERVE_DEPOSIT', adminId: user.id, adminName: user.name })
-    ]);
-
     return c.json({
       success: true,
       message: `Aporte de R$ ${amount.toFixed(2)} registrado com sucesso na reserva!`
-    });
-  } catch (error: any) {
-    return c.json({ success: false, message: error.message }, 500);
-  }
-});
-
-// Histórico de movimentações da reserva de investimentos
-adminRoutes.get('/investments/reserve/history', adminMiddleware, async (c) => {
-  try {
-    const pool = getDbPool(c);
-
-    // Buscar transações de tipo INVESTMENT_DEPOSIT e vendas de investimentos
-    const result = await pool.query(`
-      SELECT 
-        t.id,
-        t.type,
-        t.amount,
-        t.description,
-        t.metadata,
-        t.created_at,
-        u.name as admin_name
-      FROM transactions t
-      LEFT JOIN users u ON u.id = t.user_id
-      WHERE t.type IN ('INVESTMENT_DEPOSIT', 'INVESTMENT_SALE', 'INVESTMENT_DIVIDEND')
-      ORDER BY t.created_at DESC
-      LIMIT 50
-    `);
-
-    return c.json({
-      success: true,
-      data: result.rows.map(r => ({
-        id: r.id,
-        type: r.type,
-        amount: parseFloat(r.amount),
-        description: r.description,
-        metadata: r.metadata,
-        adminName: r.admin_name,
-        createdAt: r.created_at
-      }))
     });
   } catch (error: any) {
     return c.json({ success: false, message: error.message }, 500);
@@ -2572,74 +2444,6 @@ adminRoutes.get('/marketplace/cleanup-stats', adminMiddleware, async (c: any) =>
       }
     });
   } catch (error: any) {
-    return c.json({ success: false, message: error.message }, 500);
-  }
-});
-
-// ==========================================
-// SEED: Popular dados de demonstração
-// ==========================================
-adminRoutes.post('/seed-demo-data', adminMiddleware, async (c: any) => {
-  try {
-    const pool = getDbPool(c);
-    const user = c.get('user');
-
-    // 1. Inserir Vídeos Promocionais
-    await pool.query(`
-      INSERT INTO promo_videos (user_id, title, description, video_url, thumbnail_url, platform, duration_seconds, price_per_view, min_watch_seconds, budget, status, is_active, is_approved, daily_limit, target_views, expires_at)
-      VALUES 
-        ($1, 'Como Economizar R$ 500 por Mês', 'Dicas práticas para organizar suas finanças.', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg', 'YOUTUBE', 180, 0.03, 30, 1000.00, 'ACTIVE', true, true, 500, 5000, CURRENT_TIMESTAMP + INTERVAL '30 days'),
-        ($1, 'O que é uma Cooperativa de Crédito?', 'Entenda como funcionam as cooperativas.', 'https://www.youtube.com/watch?v=2Z4m4lnjxkY', 'https://img.youtube.com/vi/2Z4m4lnjxkY/maxresdefault.jpg', 'YOUTUBE', 240, 0.03, 30, 500.00, 'ACTIVE', true, true, 300, 3000, CURRENT_TIMESTAMP + INTERVAL '30 days'),
-        ($1, 'Primeiros Passos nos Investimentos', 'Aprenda a investir com pouco dinheiro.', 'https://www.youtube.com/watch?v=J---aiyznGQ', 'https://img.youtube.com/vi/J---aiyznGQ/maxresdefault.jpg', 'YOUTUBE', 300, 0.03, 45, 750.00, 'ACTIVE', true, true, 400, 4000, CURRENT_TIMESTAMP + INTERVAL '30 days'),
-        ($1, 'Como Começar um Negócio com Pouco Dinheiro', 'Ideias de negócios para começar.', 'https://www.youtube.com/watch?v=9bZkp7q19f0', 'https://img.youtube.com/vi/9bZkp7q19f0/maxresdefault.jpg', 'YOUTUBE', 420, 0.03, 60, 600.00, 'ACTIVE', true, true, 350, 3500, CURRENT_TIMESTAMP + INTERVAL '30 days'),
-        ($1, 'Saia das Dívidas em 6 Meses', 'Método comprovado para quitar dívidas.', 'https://www.youtube.com/watch?v=kJQP7kiw5Fk', 'https://img.youtube.com/vi/kJQP7kiw5Fk/maxresdefault.jpg', 'YOUTUBE', 360, 0.03, 45, 800.00, 'ACTIVE', true, true, 400, 4000, CURRENT_TIMESTAMP + INTERVAL '30 days')
-      ON CONFLICT DO NOTHING
-    `, [user.id]);
-
-    // 2. Inserir Propostas de Governança
-    await pool.query(`
-      INSERT INTO governance_proposals (title, description, creator_id, status, category, min_power_quorum, expires_at)
-      VALUES 
-        ('Redução da Taxa de Saque de 3% para 2%', 'Proposta para reduzir a taxa cobrada em saques via PIX de 3% para 2%.', $1, 'active', 'financial', 50.00, CURRENT_TIMESTAMP + INTERVAL '7 days'),
-        ('Criação do Programa de Mentoria Financeira', 'Implementar um programa onde membros com alta reputação possam mentorar novos associados.', $1, 'active', 'general', 30.00, CURRENT_TIMESTAMP + INTERVAL '14 days'),
-        ('Aumento do Bônus de Indicação para R$ 10', 'Aumentar o bônus que o indicador recebe de R$ 5 para R$ 10.', $1, 'active', 'financial', 40.00, CURRENT_TIMESTAMP + INTERVAL '10 days')
-      ON CONFLICT DO NOTHING
-    `, [user.id]);
-
-    // 3. Inserir Cursos da Academy
-    await pool.query(`
-      INSERT INTO academy_courses (author_id, title, description, price, video_url, thumbnail_url, category, status)
-      VALUES
-        ($1, 'Fundamentos de Educação Financeira', 'Aprenda os conceitos básicos de finanças pessoais.', 0.00, 'https://www.youtube.com/watch?v=example1', 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=600', 'Finanças', 'APPROVED'),
-        ($1, 'Investindo do Zero ao Avançado', 'Curso completo sobre investimentos.', 29.90, 'https://www.youtube.com/watch?v=example2', 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600', 'Investimentos', 'APPROVED'),
-        ($1, 'Empreendedorismo Digital', 'Como criar um negócio online lucrativo.', 49.90, 'https://www.youtube.com/watch?v=example3', 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600', 'Negócios', 'APPROVED'),
-        ($1, 'Marketing para Pequenos Negócios', 'Estratégias de marketing de baixo custo.', 19.90, 'https://www.youtube.com/watch?v=example4', 'https://images.unsplash.com/photo-1533750349088-cd871a92f312?w=600', 'Marketing', 'APPROVED')
-      ON CONFLICT DO NOTHING
-    `, [user.id]);
-
-    // 4. Inserir Produtos Afiliados
-    await pool.query(`
-      INSERT INTO products (title, description, image_url, affiliate_url, price, category, active)
-      VALUES
-        ('Cartão de Crédito Nubank', 'Cartão sem anuidade, aplicativo completo.', 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600', 'https://nubank.com.br/convite', 0.00, 'Financeiro', true),
-        ('Conta Digital Inter', 'Conta 100% gratuita com cartão de débito e crédito.', 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=600', 'https://inter.co/convite', 0.00, 'Financeiro', true),
-        ('Curso de Excel Avançado', 'Domine o Excel e aumente suas chances no mercado.', 'https://images.unsplash.com/photo-1537432376149-e84978e88917?w=600', 'https://hotmart.com/excel', 97.00, 'Cursos', true),
-        ('Empréstimo FGTS Caixa', 'Antecipe seu FGTS com as menores taxas.', 'https://images.unsplash.com/photo-1554224155-16974a4005d1?w=600', 'https://caixa.gov.br/fgts', 0.00, 'Financeiro', true)
-      ON CONFLICT DO NOTHING
-    `);
-
-    return c.json({
-      success: true,
-      message: 'Dados de demonstração inseridos com sucesso!',
-      data: {
-        videos: 5,
-        proposals: 3,
-        courses: 4,
-        products: 4
-      }
-    });
-  } catch (error: any) {
-    console.error('[SEED] Erro ao inserir dados demo:', error);
     return c.json({ success: false, message: error.message }, 500);
   }
 });

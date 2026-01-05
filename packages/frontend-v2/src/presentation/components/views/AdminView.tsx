@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import packageJson from '../../../../package.json';
 import {
-    ShieldCheck, RefreshCw, LogOut, Send, MessageSquare, PieChart, Activity, Settings as SettingsIcon, UserPlus, ShoppingBag as ShoppingBagIcon, Vote, Bug, TrendingUp, Truck, GraduationCap, ArrowDownLeft
+    ShieldCheck, RefreshCw, LogOut, Send, MessageSquare, PieChart, Activity, Settings as SettingsIcon, UserPlus, ShoppingBag as ShoppingBagIcon, Vote, Bug, TrendingUp, Truck
 } from 'lucide-react';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { AppState } from '../../../domain/types/common.types';
@@ -20,8 +20,6 @@ import { AdminReviews } from '../features/admin/tabs/AdminReviews';
 import { AdminBugs } from '../features/admin/tabs/AdminBugs';
 import { AdminInvestments } from '../features/admin/tabs/AdminInvestments';
 import { AdminLogistics } from '../features/admin/tabs/AdminLogistics';
-import { AdminAcademy } from '../features/admin/tabs/AdminAcademy';
-import { AdminPendingTransactions } from '../features/admin/tabs/AdminPendingTransactions';
 
 // Existing Shared Components
 import { AdminStoreManager } from '../features/store/admin-store.component';
@@ -35,7 +33,7 @@ interface AdminViewProps {
     onError: (title: string, message: string) => void;
 }
 
-type TabType = 'overview' | 'payouts' | 'pending-transactions' | 'system' | 'investments' | 'store' | 'referrals' | 'support' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics' | 'academy';
+type TabType = 'overview' | 'payouts' | 'system' | 'investments' | 'store' | 'referrals' | 'support' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics';
 
 export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: AdminViewProps) => {
     const [isLoading, setIsLoading] = useState(false);
@@ -48,28 +46,22 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
 
     const [pendingChatsCount, setPendingChatsCount] = useState(0);
     const [pendingPayoutsCount, setPendingPayoutsCount] = useState(0);
-    const [pendingTransactionsCount, setPendingTransactionsCount] = useState(0);
     const [pendingReviewsCount, setPendingReviewsCount] = useState(0);
     const [pendingBugsCount, setPendingBugsCount] = useState(0);
-    const [pendingAcademyCount, setPendingAcademyCount] = useState(0);
 
     const fetchCounts = useCallback(async () => {
         try {
-            const [supportRes, payoutRes, pendingTransRes, reviewsRes, bugsRes, academyRes] = await Promise.all([
+            const [supportRes, payoutRes, reviewsRes, bugsRes] = await Promise.all([
                 apiService.getPendingSupportChats(),
                 apiService.getPayoutQueue(),
-                apiService.getPendingTransactions(),
                 apiService.getAdminReviews(),
-                apiService.get<any>('/bugs/admin?status=open'),
-                apiService.getAdminAcademyCourses('PENDING')
+                apiService.get<any>('/bugs/admin?status=open')
             ]);
 
             setPendingChatsCount(supportRes.chats?.filter((c: any) => c.status === 'PENDING_HUMAN').length || 0);
             setPendingPayoutsCount(payoutRes.transactions?.length || 0);
-            setPendingTransactionsCount(pendingTransRes?.length || 0);
             setPendingReviewsCount(reviewsRes.data?.filter((r: any) => r.is_public && !r.is_approved).length || 0);
             setPendingBugsCount(bugsRes.data?.length || 0);
-            setPendingAcademyCount(academyRes?.length || 0);
         } catch (e) {
             console.error('Error fetching admin counts:', e);
         }
@@ -112,7 +104,6 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
 
     const tabs = [
         { id: 'overview', name: 'Resumo', icon: PieChart, roles: ['ADMIN'] },
-        { id: 'pending-transactions', name: 'Entradas', icon: ArrowDownLeft, count: pendingTransactionsCount, roles: ['ADMIN'] },
         { id: 'payouts', name: 'Resgates', icon: Send, count: pendingPayoutsCount, roles: ['ADMIN'] },
         { id: 'metrics', name: 'Monitoramento', icon: Activity, roles: ['ADMIN', 'ATTENDANT'] },
         { id: 'system', name: 'Financeiro', icon: SettingsIcon, roles: ['ADMIN'] },
@@ -122,7 +113,6 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         { id: 'investments', name: 'Gestão de Capital', icon: TrendingUp, roles: ['ADMIN'] },
         { id: 'governance', name: 'Governança', icon: Vote, roles: ['ADMIN'] },
         { id: 'reviews', name: 'Depoimentos', icon: MessageSquare, count: pendingReviewsCount, roles: ['ADMIN'] },
-        { id: 'academy', name: 'Academia', icon: GraduationCap, count: pendingAcademyCount, roles: ['ADMIN'] },
         { id: 'bugs', name: 'Bugs', icon: Bug, count: pendingBugsCount, roles: ['ADMIN'] },
         { id: 'logistics', name: 'Logística', icon: Truck, roles: ['ADMIN'] },
         { id: 'support', name: 'Suporte', icon: MessageSquare, count: pendingChatsCount, roles: ['ADMIN', 'ATTENDANT'] },
@@ -196,7 +186,6 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
             {/* Tab Content */}
             <div className="min-h-[600px]">
                 {activeTab === 'overview' && <AdminOverview state={state} />}
-                {activeTab === 'pending-transactions' && <AdminPendingTransactions onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'payouts' && <AdminPayouts onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'metrics' && <AdminMetrics />}
                 {activeTab === 'system' && <AdminSystem state={state} onRefresh={onRefresh} onSuccess={onSuccess} onError={onError} />}
@@ -206,7 +195,6 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                 {activeTab === 'investments' && <AdminInvestments onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'governance' && <AdminGovernance onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'reviews' && <AdminReviews onSuccess={onSuccess} onError={onError} />}
-                {activeTab === 'academy' && <AdminAcademy />}
                 {activeTab === 'bugs' && <AdminBugs onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'logistics' && <AdminLogistics />}
                 {activeTab === 'support' && <SupportAdminView />}

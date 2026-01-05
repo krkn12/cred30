@@ -278,11 +278,11 @@ export const distributeMonthlyDividends = async () => {
 
 // --- User Logic ---
 
-export const buyQuota = async (quantity: number, useBalance: boolean = false, paymentMethod?: 'pix' | 'card', cardData?: any): Promise<any> => {
+export const buyQuota = async (quantity: number, useBalance: boolean = false, paymentMethod?: 'pix'): Promise<any> => {
   if (!navigator.onLine) {
-    return await syncService.enqueue('BUY_QUOTA', { quantity, useBalance, paymentMethod, cardData });
+    return await syncService.enqueue('BUY_QUOTA', { quantity, useBalance, paymentMethod });
   }
-  return await apiService.buyQuotas(quantity, useBalance, paymentMethod, cardData);
+  return await apiService.buyQuotas(quantity, useBalance, paymentMethod);
 };
 
 export const sellQuota = async (quotaId: string): Promise<void> => {
@@ -304,26 +304,22 @@ export const requestLoan = async (
   return await apiService.requestLoan(amount, installments);
 };
 
-export const repayLoan = async (loanId: string, useBalance: boolean, paymentMethod?: 'pix' | 'card', cardData?: any): Promise<any> => {
+export const repayLoan = async (loanId: string, useBalance: boolean, paymentMethod?: 'pix'): Promise<any> => {
   if (!navigator.onLine) {
-    return await syncService.enqueue('REPAY_LOAN', { loanId, useBalance, paymentMethod, cardData });
+    return await syncService.enqueue('REPAY_LOAN', { loanId, useBalance, paymentMethod });
   }
-  return await apiService.repayLoan(loanId, useBalance, paymentMethod, cardData);
+  return await apiService.repayLoan(loanId, useBalance, paymentMethod);
 };
 
-export const repayInstallment = async (loanId: string, amount: number, useBalance: boolean, paymentMethod?: 'pix' | 'card', cardData?: any): Promise<any> => {
+export const repayInstallment = async (loanId: string, amount: number, useBalance: boolean, paymentMethod?: 'pix'): Promise<any> => {
   if (!navigator.onLine) {
-    return await syncService.enqueue('REPAY_INSTALLMENT', { loanId, amount, useBalance, paymentMethod, cardData });
+    return await syncService.enqueue('REPAY_INSTALLMENT', { loanId, amount, useBalance, paymentMethod });
   }
-  return await apiService.repayInstallment(loanId, amount, useBalance, paymentMethod, cardData);
+  return await apiService.repayInstallment(loanId, amount, useBalance, paymentMethod);
 };
 
 export const requestWithdrawal = async (amount: number, pixKey: string): Promise<void> => {
   await apiService.requestWithdrawal(amount, pixKey);
-};
-
-export const requestDeposit = async (amount: number): Promise<any> => {
-  return await apiService.requestDeposit(amount);
 };
 
 export const claimAdReward = async (): Promise<any> => {
@@ -333,8 +329,8 @@ export const claimAdReward = async (): Promise<any> => {
   return await apiService.claimAdReward();
 };
 
-export const upgradePro = async (method: 'pix' | 'card' | 'balance', cardData?: any): Promise<any> => {
-  return await apiService.post<any>('/monetization/upgrade-pro', { method, ...cardData });
+export const upgradePro = async (method: 'pix' | 'balance'): Promise<any> => {
+  return await apiService.post<any>('/monetization/upgrade-pro', { method });
 };
 
 export const fastForwardTime = async (_months: number): Promise<void> => {

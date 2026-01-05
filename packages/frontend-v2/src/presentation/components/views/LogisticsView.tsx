@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import {
     Truck, Package, Phone, Clock, CheckCircle, XCircle,
-    Loader2, DollarSign, Star, AlertCircle, RefreshCw,
-    Navigation, User, Store, Map as MapIcon
+    ArrowRight, Loader2, DollarSign, Star, AlertCircle, RefreshCw,
+    Navigation, User, Store
 } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
-import { OrderTrackingMap } from '../features/marketplace/OrderTrackingMap';
 
 interface Delivery {
     orderId: number;
@@ -35,7 +34,7 @@ interface DeliveryStats {
     avgEarningPerDelivery: string;
 }
 
-type Tab = 'available' | 'active' | 'history' | 'profile';
+type Tab = 'available' | 'active' | 'history';
 
 export const LogisticsView = () => {
     const [activeTab, setActiveTab] = useState<Tab>('available');
@@ -46,16 +45,10 @@ export const LogisticsView = () => {
     const [actionLoading, setActionLoading] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
-    const [showTerms, setShowTerms] = useState(false);
-    const [isAgreed, setIsAgreed] = useState(localStorage.getItem('logistics_terms_agreed') === 'true');
-    const [trackingOrder, setTrackingOrder] = useState<any>(null);
 
     useEffect(() => {
-        if (!isAgreed && activeTab === 'available') {
-            setShowTerms(true);
-        }
         loadData();
-    }, [activeTab, isAgreed]);
+    }, [activeTab]);
 
     const loadData = async () => {
         setLoading(true);
@@ -97,13 +90,10 @@ export const LogisticsView = () => {
     };
 
     const handlePickup = async (orderId: number) => {
-        const code = prompt('Digite o CÓDIGO DE COLETA fornecido pelo vendedor:');
-        if (!code) return;
-
         setActionLoading(orderId);
         setError(null);
         try {
-            const result = await apiService.confirmPickup(orderId, code);
+            const result = await apiService.confirmPickup(orderId);
             if (result.success) {
                 setSuccess('Coleta confirmada! Agora leve até o comprador.');
                 loadData();
@@ -118,15 +108,12 @@ export const LogisticsView = () => {
     };
 
     const handleDelivered = async (orderId: number) => {
-        const code = prompt('Digite o CÓDIGO DE CONFIRMAÇÃO fornecido pelo comprador:');
-        if (!code) return;
-
         setActionLoading(orderId);
         setError(null);
         try {
-            const result = await apiService.confirmDelivered(orderId, code);
+            const result = await apiService.confirmDelivered(orderId);
             if (result.success) {
-                setSuccess('Entrega marcada como concluída! Saldo liberado.');
+                setSuccess('Entrega marcada como concluída! Aguardando confirmação do comprador.');
                 loadData();
             } else {
                 setError(result.message || 'Erro ao marcar entrega');
@@ -155,12 +142,6 @@ export const LogisticsView = () => {
         } finally {
             setActionLoading(null);
         }
-    };
-
-    const handleAgreeTerms = () => {
-        localStorage.setItem('logistics_terms_agreed', 'true');
-        setIsAgreed(true);
-        setShowTerms(false);
     };
 
     const getStatusBadge = (status: string) => {
@@ -247,7 +228,6 @@ export const LogisticsView = () => {
                     { id: 'available' as Tab, label: 'Disponíveis', icon: Package },
                     { id: 'active' as Tab, label: 'Minhas Ativas', icon: Truck },
                     { id: 'history' as Tab, label: 'Histórico', icon: Clock },
-                    { id: 'profile' as Tab, label: 'Meu Perfil', icon: User },
                 ].map(tab => (
                     <button
                         key={tab.id}
@@ -328,133 +308,27 @@ export const LogisticsView = () => {
                                     <div>
                                         <p className="text-xs text-zinc-500">Você ganha</p>
                                         <p className="text-xl font-bold text-emerald-400">{formatCurrency(delivery.courierEarnings)}</p>
-                                        <p className="text-[10px] text-zinc-600">Taxa: {(100 - ((delivery as any).courierFeeRate * 100))}% p/ você</p>
+                                        <p className="text-[10px] text-zinc-600">Taxa: {formatCurrency(delivery.deliveryFee)} (90% p/ você)</p>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setTrackingOrder(delivery)}
-                                            className="bg-zinc-800 hover:bg-zinc-700 text-white p-3 rounded-xl transition-all"
-                                            title="Ver no Mapa"
-                                        >
-                                            <MapIcon size={18} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleAccept(delivery.orderId)}
-                                            disabled={actionLoading === delivery.orderId}
-                                            className="bg-primary-500 hover:bg-primary-400 text-black font-bold py-3 px-6 rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
-                                        >
-                                            {actionLoading === delivery.orderId ? (
-                                                <Loader2 size={18} className="animate-spin" />
-                                            ) : (
-                                                <>
-                                                    <CheckCircle size={18} />
-                                                    Aceitar
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
+                                    <button
+                                        onClick={() => handleAccept(delivery.orderId)}
+                                        disabled={actionLoading === delivery.orderId}
+                                        className="bg-primary-500 hover:bg-primary-400 text-black font-bold py-3 px-6 rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+                                    >
+                                        {actionLoading === delivery.orderId ? (
+                                            <Loader2 size={18} className="animate-spin" />
+                                        ) : (
+                                            <>
+                                                Aceitar
+                                                <ArrowRight size={18} />
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
                             </div>
                         ))}
                     </div>
                 )
-            ) : activeTab === 'profile' ? (
-                <div className="animate-in fade-in duration-300">
-                    <div className="glass p-6 rounded-3xl">
-                        <h3 className="text-xl font-bold text-white mb-6">Identificação do Entregador</h3>
-                        <p className="text-zinc-400 text-sm mb-8">
-                            Complete seu perfil para que vendedores e compradores possam te identificar facilmente.
-                            Isso aumenta sua credibilidade e segurança.
-                        </p>
-
-                        <form onSubmit={async (e) => {
-                            e.preventDefault();
-                            const formData = new FormData(e.currentTarget);
-                            const data = {
-                                vehicleType: formData.get('vehicleType'),
-                                vehicleModel: formData.get('vehicleModel'),
-                                vehiclePlate: formData.get('vehiclePlate'),
-                                photoUrl: (e.currentTarget as any).photoPreview || ''
-                            };
-
-                            try {
-                                setActionLoading(999);
-                                await apiService.put('/logistics/profile', data);
-                                setSuccess('Perfil atualizado com sucesso!');
-                                loadData();
-                            } catch (err: any) {
-                                setError(err.message || 'Erro ao atualizar perfil');
-                            } finally {
-                                setActionLoading(null);
-                            }
-                        }} className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1 block mb-1">Tipo de Veículo</label>
-                                    <select
-                                        name="vehicleType"
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary-500/50"
-                                        required
-                                    >
-                                        <option value="BICYCLE">Bicicleta</option>
-                                        <option value="MOTORCYCLE">Moto</option>
-                                        <option value="CAR">Carro</option>
-                                        <option value="VAN">Van</option>
-                                        <option value="TRUCK">Caminhão</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1 block mb-1">Modelo / Cor</label>
-                                    <input
-                                        name="vehicleModel"
-                                        type="text"
-                                        placeholder="Ex: Honda CG 160 Vermelha"
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary-500/50"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1 block mb-1">Placa (Opcional)</label>
-                                    <input
-                                        name="vehiclePlate"
-                                        type="text"
-                                        placeholder="ABC-1234"
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary-500/50 uppercase"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1 block mb-1">Foto de Perfil</label>
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file) {
-                                                const reader = new FileReader();
-                                                reader.onload = (ev) => {
-                                                    const form = (e.target as any).closest('form');
-                                                    form.photoPreview = ev.target?.result;
-                                                };
-                                                reader.readAsDataURL(file);
-                                            }
-                                        }}
-                                        className="w-full text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-semibold file:bg-primary-500/10 file:text-primary-400 hover:file:bg-primary-500/20"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="pt-4">
-                                <button
-                                    type="submit"
-                                    disabled={actionLoading === 999}
-                                    className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition shadow-lg shadow-primary-500/20 uppercase tracking-widest text-[11px] disabled:opacity-50"
-                                >
-                                    {actionLoading === 999 ? 'Salvando...' : 'Salvar Dados do Entregador'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
             ) : (
                 myDeliveries.length === 0 ? (
                     <div className="text-center py-20">
@@ -497,13 +371,6 @@ export const LogisticsView = () => {
                                 <div className="flex items-center justify-between">
                                     <p className="text-emerald-400 font-bold">{formatCurrency(delivery.courierEarnings)}</p>
                                     <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setTrackingOrder(delivery)}
-                                            className="bg-indigo-500/10 text-indigo-400 p-2 rounded-lg border border-indigo-500/20"
-                                            title="Ver no Mapa"
-                                        >
-                                            <MapIcon size={16} />
-                                        </button>
                                         {delivery.deliveryStatus === 'ACCEPTED' && (
                                             <>
                                                 <button
@@ -573,61 +440,10 @@ export const LogisticsView = () => {
                     </li>
                     <li className="flex items-start gap-2">
                         <span className="text-primary-400 font-bold">4.</span>
-                        Quando o comprador confirmar, você recebe até <span className="text-emerald-400 font-bold">96%</span> do valor do frete
-                    </li>
-                    <li className="flex items-start gap-2 bg-primary-500/5 p-2 rounded-lg border border-primary-500/10 mt-2">
-                        <Star size={16} className="text-primary-400 shrink-0 mt-0.5" />
-                        <span className="text-[10px] text-zinc-300">
-                            <strong>Níveis de Ganhos:</strong> Comece ganhando 90%. Após 10 entregas, ganhe 93%. Após 50 entregas, você fica com 96% do frete!
-                        </span>
+                        Quando o comprador confirmar, você recebe <span className="text-emerald-400 font-bold">90%</span> do valor do frete
                     </li>
                 </ul>
             </div>
-            {/* Modal de Blindagem Jurídica */}
-            {showTerms && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-zinc-900 border border-zinc-800 w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl space-y-6">
-                        <div className="w-20 h-20 bg-primary-500/10 rounded-3xl flex items-center justify-center mx-auto text-primary-400">
-                            <CheckCircle size={48} />
-                        </div>
-
-                        <div className="text-center space-y-2">
-                            <h2 className="text-2xl font-black text-white">Termo de Adesão ao Ato Cooperativo</h2>
-                            <p className="text-zinc-400 text-sm">Para continuar, você precisa aceitar os termos da nossa comunidade.</p>
-                        </div>
-
-                        <div className="bg-black/40 rounded-2xl p-4 text-xs text-zinc-500 leading-relaxed max-h-48 overflow-y-auto space-y-4 border border-zinc-800">
-                            <p>
-                                Ao aceitar este termo, você declara estar ciente de que a atividade de entrega no ecossistema Cred30 é um <strong>Ato Cooperativo (Lei 5.764/71)</strong>, realizado de forma voluntária entre membros da associação.
-                            </p>
-                            <p>
-                                📍 <strong>Sem Vínculo Empregatício:</strong> Você tem total autonomia sobre seus horários, sem subordinação e sem obrigatoriedade de frequência.
-                            </p>
-                            <p>
-                                💰 <strong>Ajuda de Custo:</strong> O valor recebido é uma ajuda de custo pela tarefa realizada, e como membro, você também participa dos excedentes do sistema através das suas cotas.
-                            </p>
-                            <p>
-                                🤝 <strong>Natureza Associativa:</strong> Esta é uma plataforma de colaboração mútua, não uma empresa de logística tradicional.
-                            </p>
-                        </div>
-
-                        <button
-                            onClick={handleAgreeTerms}
-                            className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition-all shadow-lg shadow-primary-500/20"
-                        >
-                            Compreendo e Aceito
-                        </button>
-                    </div>
-                </div>
-            )}
-            {/* Modal de Rastreio */}
-            {trackingOrder && (
-                <OrderTrackingMap
-                    orderId={trackingOrder.orderId}
-                    onClose={() => setTrackingOrder(null)}
-                    userRole="courier"
-                />
-            )}
         </div>
     );
 };

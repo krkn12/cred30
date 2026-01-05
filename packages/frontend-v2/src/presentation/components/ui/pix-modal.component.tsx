@@ -9,11 +9,6 @@ interface PIXModalProps {
     qrCodeBase64: string;
     amount: number;
     description: string;
-    manualData?: {
-        key: string;
-        owner: string;
-        description: string;
-    } | null;
 }
 
 export const PIXModal: React.FC<PIXModalProps> = ({
@@ -22,15 +17,14 @@ export const PIXModal: React.FC<PIXModalProps> = ({
     qrCode,
     qrCodeBase64,
     amount,
-    description,
-    manualData
+    description
 }) => {
     const [copied, setCopied] = React.useState(false);
 
     if (!isOpen) return null;
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(manualData ? manualData.key : qrCode);
+        navigator.clipboard.writeText(qrCode);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
@@ -51,25 +45,13 @@ export const PIXModal: React.FC<PIXModalProps> = ({
                     <p className="text-zinc-400 text-sm mt-1">{description}</p>
                 </div>
 
-                {manualData ? (
-                    <div className="bg-zinc-900 border border-primary-500/30 p-6 rounded-2xl mb-6 text-center">
-                        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-2">Chave PIX (CPF/Manual)</p>
-                        <p className="text-white font-mono text-xl font-black tracking-wider break-all mb-4 selection:bg-primary-500 selection:text-black">
-                            {manualData.key}
-                        </p>
-                        <div className="bg-primary-500/5 border border-primary-500/10 rounded-xl p-3">
-                            <p className="text-[10px] text-zinc-400 font-medium">Titular: <span className="text-white font-bold">{manualData.owner}</span></p>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="bg-white p-4 rounded-2xl mb-6 shadow-xl max-w-[200px] mx-auto w-full">
-                        <img
-                            src={`data:image/png;base64,${qrCodeBase64}`}
-                            alt="QR Code PIX"
-                            className="w-full aspect-square rounded-lg"
-                        />
-                    </div>
-                )}
+                <div className="bg-white p-4 rounded-2xl mb-6 shadow-xl max-w-[200px] mx-auto w-full">
+                    <img
+                        src={`data:image/png;base64,${qrCodeBase64}`}
+                        alt="QR Code PIX"
+                        className="w-full aspect-square rounded-lg"
+                    />
+                </div>
 
                 <div className="space-y-4">
                     <div className="bg-background border border-surfaceHighlight rounded-xl p-4">
@@ -102,15 +84,11 @@ export const PIXModal: React.FC<PIXModalProps> = ({
                     </button>
 
                     <p className="text-[11px] text-zinc-500 text-center leading-relaxed bg-zinc-900/50 p-3 rounded-xl border border-zinc-800">
-                        {manualData
-                            ? "Após transferir, o administrador validará seu aporte manualmente em instantes."
-                            : "O sistema identificará o pagamento automaticamente em instantes."}
+                        O sistema identificará o pagamento automaticamente em instantes.
                     </p>
 
                     <p className="text-[9px] text-zinc-600 text-center leading-relaxed mt-2">
-                        {manualData
-                            ? "Transferência direta entre cooperados. O Cred30 segue normas de mútua privada."
-                            : "Pagamento processado via gateway Asaas. O Cred30 não armazena dados bancários."}
+                        Pagamento processado via gateway Asaas. O Cred30 não armazena dados bancários.
                     </p>
 
                     <button

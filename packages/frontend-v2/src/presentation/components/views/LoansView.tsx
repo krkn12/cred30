@@ -18,7 +18,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
     const [amount, setAmount] = useState(500);
     const [months, setMonths] = useState(3);
     const [payModalId, setPayModalId] = useState<string | null>(null);
-    const [payMethod, setPayMethod] = useState<'pix'>('pix');
+    const [payMethod] = useState<'pix'>('pix');
     const [viewDetailsId, setViewDetailsId] = useState<string | null>(null);
     const [installmentModalData, setInstallmentModalData] = useState<{ loanId: string, installmentAmount: number } | null>(null);
 
@@ -76,6 +76,13 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
                         <div>
                             <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1 block">Apoio Mútuo em Aberto</span>
+                            {/* This activeLoan variable is not defined in the current scope.
+                                Assuming it should be derived from 'loans' or 'activeLoans' if there's only one active loan to display here.
+                                For now, I'll use a placeholder or the first active loan if available.
+                                If there can be multiple active loans, this card structure might need to be iterated or adapted.
+                                For the purpose of this edit, I'll assume a single 'activeLoan' concept for this card.
+                                If no active loan, this card might not render or show a different state.
+                            */}
                             <h3 className="text-2xl sm:text-3xl font-black text-white">R$ {activeLoans.length > 0 ? activeLoans[0].amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}</h3>
                         </div>
                         <div className="bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 rounded-lg flex items-center gap-2 self-start sm:self-auto">
@@ -247,6 +254,8 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                             >
                                 {creditLimit?.totalLimit === 0 ? 'Ajuda Indisponível' : 'Solicitar Apoio Mútuo'}
                             </button>
+
+                            {/* AdBanner removido para limpeza de UI */}
                         </div>
                     </div>
                 </div>
@@ -384,14 +393,12 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                         </p>
 
                         <div className="space-y-4">
-                            <div className="grid grid-cols-1 gap-2">
-                                <button
-                                    onClick={() => setPayMethod('pix')}
-                                    className={`py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${payMethod === 'pix' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-background border-surfaceHighlight text-zinc-500'}`}
-                                >
-                                    <QrCode size={20} />
-                                    <span className="text-[10px] font-bold uppercase">PIX Manual</span>
-                                </button>
+                            <div className="bg-primary-500/10 border border-primary-500/20 rounded-xl p-3 flex items-center gap-3">
+                                <QrCode size={20} className="text-primary-400" />
+                                <div>
+                                    <p className="text-xs font-bold text-primary-400">Pagamento via PIX Manual</p>
+                                    <p className="text-[10px] text-zinc-500">Transferência para chave PIX do administrador</p>
+                                </div>
                             </div>
 
                             <div className="bg-background p-3 rounded-xl border border-surfaceHighlight">
@@ -410,14 +417,14 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                             </button>
 
                             <button
-                                onClick={() => { onPay(selectedLoan.id, false, payMethod); setPayModalId(null); }}
+                                onClick={() => { onPay(selectedLoan.id, false, 'pix'); setPayModalId(null); }}
                                 className="w-full font-black py-4 rounded-xl transition shadow-lg bg-emerald-500 text-white shadow-emerald-500/20"
                             >
                                 Gerar PIX de Reposição
                             </button>
 
-                            <p className="text-[9px] text-zinc-600 text-center mt-4 leading-relaxed uppercase tracking-widest font-bold">
-                                Sistema de Reposição Direta (Manual). Envie o PIX e aguarde a conferência.
+                            <p className="text-[9px] text-zinc-600 text-center mt-4 leading-relaxed">
+                                O valor será transferido via PIX para o administrador. Após confirmação, o saldo será atualizado automaticamente.
                             </p>
                         </div>
                     </div>
@@ -436,14 +443,12 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                         </p>
 
                         <div className="space-y-4">
-                            <div className="grid grid-cols-1 gap-2">
-                                <button
-                                    onClick={() => setPayMethod('pix')}
-                                    className={`py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${payMethod === 'pix' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-background border-surfaceHighlight text-zinc-500'}`}
-                                >
-                                    <QrCode size={20} />
-                                    <span className="text-[10px] font-bold uppercase">PIX Manual</span>
-                                </button>
+                            <div className="bg-primary-500/10 border border-primary-500/20 rounded-xl p-3 flex items-center gap-3">
+                                <QrCode size={20} className="text-primary-400" />
+                                <div>
+                                    <p className="text-xs font-bold text-primary-400">Pagamento via PIX Manual</p>
+                                    <p className="text-[10px] text-zinc-500">Transferência para chave PIX do administrador</p>
+                                </div>
                             </div>
 
                             <div className="bg-background p-3 rounded-xl border border-surfaceHighlight">
@@ -466,7 +471,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
 
                             <button
                                 onClick={() => {
-                                    onPayInstallment(installmentModalData.loanId, installmentModalData.installmentAmount, false, payMethod);
+                                    onPayInstallment(installmentModalData.loanId, installmentModalData.installmentAmount, false, 'pix');
                                     setInstallmentModalData(null);
                                 }}
                                 className="w-full font-black py-4 rounded-xl transition shadow-lg bg-emerald-500 text-white shadow-emerald-500/20"
@@ -474,8 +479,8 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                 Gerar PIX da Parcela
                             </button>
 
-                            <p className="text-[9px] text-zinc-600 text-center mt-4 leading-relaxed uppercase tracking-widest font-bold">
-                                Sistema de Reposição Direta (Manual).
+                            <p className="text-[9px] text-zinc-600 text-center mt-4 leading-relaxed">
+                                O valor será transferido via PIX para o administrador. Após confirmação, seu compromisso será atualizado.
                             </p>
                         </div>
                     </div>

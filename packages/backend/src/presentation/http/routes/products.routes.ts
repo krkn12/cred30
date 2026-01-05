@@ -20,7 +20,7 @@ const productSchema = z.object({
 productsRoutes.get('/', authMiddleware, async (c) => {
     try {
         const pool = getDbPool(c);
-        const { category, showAll } = c.req.query();
+        const { category } = c.req.query();
 
         // Se não for admin e pedir showAll, forçar apenas ativos
         // (Na verdade, simplificando: listar ativos para todos)

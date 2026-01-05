@@ -19,14 +19,7 @@ import { UserContext } from '../../../shared/types/hono.types';
 import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction, lockSystemConfig } from '../../../domain/services/transaction.service';
 import { calculateUserLoanLimit } from '../../../application/services/credit-analysis.service';
 import { updateScore } from '../../../application/services/score.service';
-import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
-import {
-    createPixPayment,
-    createCardPayment,
-    createSplitPixPayment,
-    createSplitCardPayment,
-    calculateSellerAmount
-} from '../../../infrastructure/gateways/asaas.service';
+
 import { getWelcomeBenefit, consumeWelcomeBenefitUse } from '../../../application/services/welcome-benefit.service';
 
 const marketplaceRoutes = new Hono();
@@ -53,7 +46,7 @@ const buyListingSchema = z.object({
     contactPhone: z.string().min(8, 'Telefone inválido').optional(),
     offlineToken: z.string().optional(),
     payerCpfCnpj: z.string().optional(),
-    deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST', 'EXTERNAL_SHIPPING']).optional().default('SELF_PICKUP'),
+    deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST']).optional().default('SELF_PICKUP'),
     offeredDeliveryFee: z.number().min(0).optional().default(0),
     pickupAddress: z.string().optional(),
     paymentMethod: z.enum(['BALANCE', 'PIX', 'CARD']).default('BALANCE'),
@@ -72,7 +65,7 @@ const buyOnCreditSchema = z.object({
     installments: z.number().int().min(1).max(MARKET_CREDIT_MAX_INSTALLMENTS),
     deliveryAddress: z.string().min(10, 'Endereço muito curto').optional(),
     contactPhone: z.string().min(8, 'Telefone inválido').optional(),
-    deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST', 'EXTERNAL_SHIPPING']).optional().default('SELF_PICKUP'),
+    deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST']).optional().default('SELF_PICKUP'),
     offeredDeliveryFee: z.number().min(0).optional().default(0),
     pickupAddress: z.string().optional(),
 });
@@ -319,7 +312,6 @@ marketplaceRoutes.post('/buy-on-credit', authMiddleware, async (c: Context) => {
         console.log(`[MARKETPLACE CREDIT] Vendedor ${isVerified ? 'VERIFICADO' : 'NÃO VERIFICADO'}. Comprador ${user.id} - Benefício: ${welcomeBenefit.hasDiscount ? 'ATIVO' : 'INATIVO'}, Taxa Escrow Final: ${(effectiveEscrowRate * 100).toFixed(1)}%`);
 
         const totalInterestRate = MARKET_CREDIT_INTEREST_RATE * installments;
-        const totalAmountWithInterest = price * (1 + totalInterestRate);
 
         const result = await executeInTransaction(pool, async (client) => {
             const systemConfig = await lockSystemConfig(client);
@@ -329,7 +321,6 @@ marketplaceRoutes.post('/buy-on-credit', authMiddleware, async (c: Context) => {
 
             const deliveryStatus = buyOnCreditSchema.parse(body).deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE';
             const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-            const confirmationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
             // Note: For credit, we don't charge the fee upfront from balance because it's financed, 
             // BUT usually delivery fee is paid upfront or included in loan used. 
             // For simplicity here: we include fee in the loan amount if requested.
@@ -344,9 +335,9 @@ marketplaceRoutes.post('/buy-on-credit', authMiddleware, async (c: Context) => {
             const sellerAmount = price - escrowFee;
 
             const orderResult = await client.query(
-                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, delivery_status, delivery_type, delivery_fee, pickup_code, delivery_confirmation_code)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
-                [listingId, user.id, listing.seller_id, totalWithFee, escrowFee, sellerAmount, 'WAITING_SHIPPING', 'CRED30_CREDIT', deliveryAddress, finalPickupAddress, contactPhone, deliveryStatus, buyOnCreditSchema.parse(body).deliveryType, fee, pickupCode, confirmationCode]
+                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, delivery_status, delivery_fee, pickup_code)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
+                [listingId, user.id, listing.seller_id, totalWithFee, escrowFee, sellerAmount, 'WAITING_SHIPPING', 'CRED30_CREDIT', deliveryAddress, finalPickupAddress, contactPhone, deliveryStatus, fee, pickupCode]
             );
             const orderId = orderResult.rows[0].id;
 
@@ -427,12 +418,11 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c: Context) => {
 
                 const deliveryStatus = deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE';
                 const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-                const confirmationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
                 const orderResult = await client.query(
-                    `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, offline_token, delivery_status, delivery_type, delivery_fee, pickup_code, delivery_confirmation_code)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id`,
-                    [listingId, user.id, listing.seller_id, price, fee, sellerAmount, 'WAITING_SHIPPING', 'BALANCE', deliveryAddress, finalPickupAddress, contactPhone, offlineToken, deliveryStatus, deliveryType, offeredDeliveryFee, pickupCode, confirmationCode]
+                    `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, offline_token, delivery_status, delivery_fee, pickup_code)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
+                    [listingId, user.id, listing.seller_id, price, fee, sellerAmount, 'WAITING_SHIPPING', 'BALANCE', deliveryAddress, finalPickupAddress, contactPhone, offlineToken, deliveryStatus, offeredDeliveryFee, pickupCode]
                 );
                 const orderId = orderResult.rows[0].id;
 
@@ -455,150 +445,13 @@ marketplaceRoutes.post('/buy', authMiddleware, async (c: Context) => {
             return c.json({ success: true, message: successMessage, orderId: result.data?.orderId, welcomeBenefitApplied: result.data?.welcomeBenefitApplied });
         }
 
-        // Pagamento Externo (PIX ou CARTÃO) com repasse de taxa
-        const method = paymentMethod === 'PIX' ? 'pix' : 'card';
-        const paymentCalc = calculateTotalToPay(baseAmountToCharge, method as PaymentMethod);
-        const finalCost = paymentCalc.total;
-        const external_reference = `MARKET_BUY_${user.id}_${listingId}_${Date.now()}`;
-
-        // Verificar se o vendedor tem subconta Asaas para usar split payment
-        const sellerWalletResult = await pool.query(
-            'SELECT asaas_wallet_id, seller_company_name FROM users WHERE id = $1 AND is_seller = TRUE',
-            [listing.seller_id]
-        );
-        const sellerWalletId = sellerWalletResult.rows[0]?.asaas_wallet_id;
-        const useSplitPayment = !!sellerWalletId;
-
-        // Determinar taxa base (Verificado 5% vs Não Verificado 26%)
-        const baseFeeRate = useSplitPayment ? MARKETPLACE_ESCROW_FEE_RATE : MARKETPLACE_NON_VERIFIED_FEE_RATE;
-
-        // Aplicar benefício de boas-vindas do COMPRADOR (se houver)
-        const welcomeBenefit = await getWelcomeBenefit(pool, user.id);
-        const effectiveEscrowRate = welcomeBenefit.hasDiscount ? baseFeeRate * 0.5 : baseFeeRate;
-
-        let mpData = null;
-        try {
-            // Calcular valor para o vendedor (valor líquido após taxa da plataforma)
-            const sellerAmountForSplit = calculateSellerAmount(price, effectiveEscrowRate);
-
-            if (useSplitPayment) {
-                console.log(`[MARKETPLACE SPLIT] Pagamento com split para vendedor wallet: ${sellerWalletId}, valor vendedor: R$ ${sellerAmountForSplit}`);
-
-                // Usar funções de split payment
-                if (paymentMethod === 'CARD' && body.creditCard) {
-                    mpData = await createSplitCardPayment({
-                        amount: finalCost,
-                        description: `Compra no Mercado Cred30: ${listing.title}`,
-                        email: user.email,
-                        external_reference,
-                        installments: 1,
-                        cpf: body.creditCard.cpf || body.payerCpfCnpj || user.cpf || '',
-                        name: body.creditCard.holderName,
-                        creditCard: body.creditCard,
-                        split: [{
-                            walletId: sellerWalletId,
-                            fixedValue: sellerAmountForSplit
-                        }]
-                    });
-                } else {
-                    // PIX com split
-                    mpData = await createSplitPixPayment({
-                        amount: finalCost,
-                        description: `Compra no Mercado Cred30: ${listing.title}`,
-                        email: user.email,
-                        external_reference,
-                        cpf: body.payerCpfCnpj || user.cpf || '',
-                        name: user.name,
-                        split: [{
-                            walletId: sellerWalletId,
-                            fixedValue: sellerAmountForSplit
-                        }]
-                    });
-                }
-            } else {
-                // Vendedor não tem subconta - usar fluxo tradicional (sem split)
-                console.log(`[MARKETPLACE] Pagamento tradicional (vendedor sem subconta Asaas)`);
-
-                if (paymentMethod === 'CARD' && body.creditCard) {
-                    mpData = await createCardPayment({
-                        amount: finalCost,
-                        description: `Compra no Mercado Cred30: ${listing.title}`,
-                        email: user.email,
-                        external_reference,
-                        installments: 1,
-                        cpf: body.creditCard.cpf || body.payerCpfCnpj || user.cpf || '',
-                        name: body.creditCard.holderName,
-                        creditCard: body.creditCard
-                    });
-                } else {
-                    // Default to PIX
-                    mpData = await createPixPayment({
-                        amount: finalCost,
-                        description: `Compra no Mercado Cred30: ${listing.title}`,
-                        email: user.email,
-                        external_reference,
-                        cpf: body.payerCpfCnpj || user.cpf || '',
-                        name: user.name
-                    });
-                }
-            }
-        } catch (mpError: any) {
-            console.error('Erro ao gerar cobrança Asaas no Marketplace:', mpError);
-            return c.json({ success: false, message: mpError.message || 'Erro ao processar pagamento externo' }, 400);
-        }
-
-        // Criar Pedido PENDENTE e Reservar Item
-        // Nota: Reservamos o item colocando como 'SOLD' ou um novo status 'PENDING_PAYMENT' 
-        // para evitar que outro compre enquanto o PIX está aberto.
-        const orderId = await executeInTransaction(pool, async (client) => {
-            // Reservar o item
-            await client.query('UPDATE marketplace_listings SET status = $1 WHERE id = $2', ['SOLD', listingId]);
-
-            const deliveryStatus = deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE';
-            const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-            const confirmationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-            // Taxas do Marketplace (Baseado na situação do vendedor e benefício do comprador)
-            const sellerCheck = await client.query('SELECT asaas_wallet_id FROM users WHERE id = $1', [listing.seller_id]);
-            const isVerified = !!sellerCheck.rows[0]?.asaas_wallet_id;
-            const baseFeeRate = isVerified ? MARKETPLACE_ESCROW_FEE_RATE : MARKETPLACE_NON_VERIFIED_FEE_RATE;
-
-            const welcomeBenefit = await getWelcomeBenefit(client, user.id);
-            const effectiveEscrowRate = welcomeBenefit.hasDiscount ? baseFeeRate * 0.5 : baseFeeRate;
-
-            const escrowFee = price * effectiveEscrowRate;
-            const sellerAmount = price - escrowFee;
-
-            const orderResult = await client.query(
-                `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, offline_token, delivery_status, delivery_type, delivery_fee, pickup_code, delivery_confirmation_code)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id`,
-                [listingId, user.id, listing.seller_id, price, escrowFee, sellerAmount, 'WAITING_PAYMENT', paymentMethod, deliveryAddress, finalPickupAddress, contactPhone, offlineToken, deliveryStatus, deliveryType, offeredDeliveryFee, pickupCode, confirmationCode]
-            );
-
-            const oId = orderResult.rows[0].id;
-
-            // Criar Transação Pendente
-            await createTransaction(client, user.id, 'MARKET_PURCHASE', price, `Compra Reservada: ${listing.title}`, 'PENDING', {
-                orderId: oId,
-                listingId,
-                external_reference: external_reference,
-                asaas_id: mpData.id,
-                gatewayFee: paymentCalc.fee
-            });
-
-            return oId;
-        });
-
+        // Pagamento Externo (PIX ou CARTÃO) - Temporariamente desativado
+        // Sem gateway Asaas, pagamentos externos não estão disponíveis
+        // O usuário deve depositar saldo primeiro via PIX manual
         return c.json({
-            success: true,
-            message: 'Pagamento gerado! Finalize para concluir a compra.',
-            data: {
-                orderId,
-                payment: mpData,
-                totalWithFees: finalCost,
-                gatewayFee: paymentCalc.fee
-            }
-        });
+            success: false,
+            message: 'Pagamentos PIX/Cartão externos estão temporariamente indisponíveis. Por favor, deposite saldo na sua conta e use o saldo para comprar.'
+        }, 400);
 
     } catch (error) {
         console.error('Buy Route Error:', error);
@@ -920,10 +773,6 @@ marketplaceRoutes.get('/my-orders', authMiddleware, async (c: Context) => {
               us.name as seller_name,
               uc.name as courier_name,
               COALESCE(uc.phone, uc.pix_key) as courier_phone,
-              uc.courier_vehicle_type,
-              uc.courier_vehicle_model,
-              uc.courier_vehicle_plate,
-              uc.courier_photo_url,
               ln.installments, ln.interest_rate, ln.total_repayment
        FROM marketplace_orders o
        JOIN marketplace_listings l ON o.listing_id = l.id
@@ -960,7 +809,7 @@ marketplaceRoutes.post('/boost', authMiddleware, async (c: Context) => {
         const user = c.get('user') as UserContext;
         const pool = getDbPool(c);
         const body = await c.req.json();
-        const { listingId, paymentMethod = 'BALANCE', creditCard } = body;
+        const { listingId, paymentMethod = 'BALANCE' } = body;
         const BOOST_FEE = 5.00; // R$ 5,00 para impulsionar por 7 dias
 
         // 1. Buscar anúncio
@@ -1012,59 +861,11 @@ marketplaceRoutes.post('/boost', authMiddleware, async (c: Context) => {
             return c.json({ success: true, message: 'Seu anúncio foi impulsionado!' });
         }
 
-        // PAGAMENTO EXTERNO (PIX/CARTÃO)
-        const method = paymentMethod === 'PIX' ? 'pix' : 'card';
-        const paymentCalc = calculateTotalToPay(BOOST_FEE, method as PaymentMethod);
-        const finalCost = paymentCalc.total;
-        const external_reference = `MARKET_BOOST_${user.id}_${listingId}_${Date.now()}`;
-
-        let mpData = null;
-        try {
-            if (paymentMethod === 'CARD' && creditCard) {
-                mpData = await createCardPayment({
-                    amount: finalCost,
-                    description: `Impulsionamento de Anúncio: ${listing.title}`,
-                    email: user.email,
-                    external_reference,
-                    installments: 1,
-                    cpf: creditCard.cpf,
-                    name: creditCard.holderName,
-                    creditCard: creditCard
-                });
-            } else {
-                mpData = await createPixPayment({
-                    amount: finalCost,
-                    description: `Impulsionamento de Anúncio: ${listing.title}`,
-                    email: user.email,
-                    external_reference,
-                    cpf: user.cpf || '',
-                    name: user.name
-                });
-            }
-        } catch (mpError: any) {
-            return c.json({ success: false, message: mpError.message || 'Erro ao processar pagamento externo' }, 400);
-        }
-
-        // Criar Transação Pendente
-        await executeInTransaction(pool, async (client) => {
-            await createTransaction(client, user.id, 'MARKET_BOOST', BOOST_FEE, `Impulsionamento Reservado: ${listing.title}`, 'PENDING', {
-                listingId,
-                external_reference: external_reference,
-                asaas_id: mpData.id,
-                gatewayFee: paymentCalc.fee,
-                paymentMethod
-            });
-        });
-
+        // PAGAMENTO EXTERNO (PIX/CARTÃO) - Temporariamente desativado
         return c.json({
-            success: true,
-            message: 'Pagamento de impulsionamento gerado!',
-            data: {
-                payment: mpData,
-                totalWithFees: finalCost,
-                gatewayFee: paymentCalc.fee
-            }
-        });
+            success: false,
+            message: 'Pagamentos PIX/Cartão externos estão temporariamente indisponíveis. Por favor, deposite saldo na sua conta e use o saldo para impulsionar.'
+        }, 400);
 
     } catch (error: any) {
         console.error('Error boosting listing:', error);
@@ -1121,7 +922,7 @@ marketplaceRoutes.post('/logistic/mission/:id/accept', authMiddleware, async (c:
         return c.json({
             success: true,
             message: 'Missão aceita! Dirija-se ao vendedor.',
-            data: { orderId }
+            pickupCode: result.rows[0].pickup_code
         });
     } catch (error) {
         return c.json({ success: false, message: 'Erro ao aceitar missão' }, 500);
@@ -1147,35 +948,6 @@ marketplaceRoutes.post('/logistic/mission/:id/pickup', authMiddleware, async (c:
         return c.json({ success: true, message: 'Coleta confirmada! Inicie o trajeto.' });
     } catch (error) {
         return c.json({ success: false, message: 'Erro ao confirmar coleta' }, 500);
-    }
-});
-
-/**
- * Informar Código de Rastreamento (Para entregas por Correios/Transportadora)
- */
-marketplaceRoutes.post('/order/:id/ship', authMiddleware, async (c: Context) => {
-    try {
-        const user = c.get('user') as UserContext;
-        const pool = getDbPool(c);
-        const orderId = c.req.param('id');
-        const { trackingCode } = await c.req.json();
-
-        if (!trackingCode) return c.json({ success: false, message: 'Código de rastreio é obrigatório' }, 400);
-
-        const result = await pool.query(
-            `UPDATE marketplace_orders 
-             SET tracking_code = $1, status = 'IN_TRANSIT', delivery_status = 'SHIPPED', updated_at = NOW()
-             WHERE id = $2 AND seller_id = $3 AND status = 'WAITING_SHIPPING'`,
-            [trackingCode, orderId, user.id]
-        );
-
-        if (result.rowCount === 0) {
-            return c.json({ success: false, message: 'Pedido não encontrado ou já enviado.' }, 404);
-        }
-
-        return c.json({ success: true, message: 'Código de rastreio registrado com sucesso!' });
-    } catch (error) {
-        return c.json({ success: false, message: 'Erro ao registrar envio' }, 500);
     }
 });
 
@@ -1258,55 +1030,6 @@ marketplaceRoutes.post('/offline/sync', authMiddleware, async (c: Context) => {
 });
 
 /**
- * Confirmar Recebimento (Libera o dinheiro do Escrow para o vendedor)
- */
-marketplaceRoutes.post('/order/:id/confirm-receipt', authMiddleware, async (c: Context) => {
-    try {
-        const user = c.get('user') as UserContext;
-        const pool = getDbPool(c);
-        const orderId = c.req.param('id');
-
-        const result = await executeInTransaction(pool, async (client) => {
-            // 1. Buscar o pedido e garantir que o usuário é o comprador
-            const orderRes = await client.query(
-                `SELECT * FROM marketplace_orders WHERE id = $1 AND buyer_id = $2 AND status = 'IN_TRANSIT'`,
-                [orderId, user.id]
-            );
-
-            if (orderRes.rows.length === 0) {
-                return { success: false, message: 'Pedido não encontrado ou não está em trânsito.' };
-            }
-
-            const order = orderRes.rows[0];
-
-            // 2. Atualizar status do pedido
-            await client.query(
-                `UPDATE marketplace_orders SET status = 'COMPLETED', delivery_status = 'DELIVERED', updated_at = NOW(), delivered_at = NOW() WHERE id = $1`,
-                [orderId]
-            );
-
-            // 3. Liberar saldo para o vendedor
-            await updateUserBalance(client, order.seller_id, order.seller_amount, 'credit');
-            await createTransaction(client, order.seller_id, 'MARKET_SALE', order.seller_amount, `Venda Concluída: Pedido #${orderId}`, 'APPROVED', { orderId });
-
-            // 4. Se houver entregador, liberar a taxa dele (TODO: Implementar lógica de pagamento do courier se necessário)
-
-            return { success: true };
-        });
-
-        if (!result.success) return c.json(result, 400);
-
-        // Atualizar pontuação do comprador por confirmar
-        await updateScore(pool, user.id, 5, `Confirmação de recebimento #${orderId}`);
-
-        return c.json({ success: true, message: 'Recebimento confirmado! Saldo liberado para o vendedor.' });
-    } catch (error) {
-        console.error('Error confirming receipt:', error);
-        return c.json({ success: false, message: 'Erro ao confirmar recebimento' }, 500);
-    }
-});
-
-/**
  * Atualizar localização GPS do Entregador (Rastreio em Tempo Real)
  */
 marketplaceRoutes.post('/logistic/mission/:id/location', authMiddleware, async (c: Context) => {
@@ -1351,8 +1074,7 @@ marketplaceRoutes.get('/order/:id/tracking', authMiddleware, async (c: Context) 
         const result = await pool.query(
             `SELECT o.id, o.status, o.courier_id, o.courier_lat, o.courier_lng, 
                     o.delivery_address, o.pickup_address,
-                    u.name as courier_name, u.phone as courier_phone,
-                    u.courier_vehicle_type
+                    u.name as courier_name, u.phone as courier_phone
              FROM marketplace_orders o
              LEFT JOIN users u ON o.courier_id = u.id
              WHERE o.id = $1 AND (o.buyer_id = $2 OR o.courier_id = $2 OR o.seller_id = $2)`,

@@ -2,7 +2,6 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { User } from '../../../domain/entities/user.entity';
 import { UserContext } from '../../../shared/types/hono.types';
 import bcrypt from 'bcrypt';
 import { twoFactorService } from '../../../application/services/two-factor.service';
@@ -557,7 +556,7 @@ userRoutes.get('/title-eligibility', authMiddleware, async (c) => {
 
     // 1. Verificar se já baixou
     const userRes = await pool.query('SELECT title_downloaded, created_at FROM users WHERE id = $1', [user.id]);
-    const { title_downloaded, created_at } = userRes.rows[0];
+    const { title_downloaded } = userRes.rows[0];
 
     if (title_downloaded) {
       return c.json({

@@ -2,31 +2,22 @@ import { Hono, Context } from 'hono';
 import { z } from 'zod';
 import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middleware';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { createPixPayment, createCardPayment, checkPaymentStatus, getPaymentDetails } from '../../../infrastructure/gateways/asaas.service';
 import { executeInTransaction } from '../../../domain/services/transaction.service';
 import { getYouTubeFullStats } from '../../../infrastructure/gateways/youtube.service';
 import {
-    ASAAS_PIX_FIXED_FEE,
-    ASAAS_CARD_FEE_PERCENT,
-    ASAAS_CARD_FIXED_FEE,
     VIDEO_VIEWER_SHARE as VIEWER_SHARE,
     VIDEO_QUOTA_HOLDERS_SHARE as QUOTA_HOLDERS_SHARE,
     VIDEO_SERVICE_FEE_SHARE as SERVICE_FEE_SHARE,
     PLATFORM_FEE_TAX_SHARE,
     PLATFORM_FEE_OPERATIONAL_SHARE,
     PLATFORM_FEE_OWNER_SHARE,
-    PLATFORM_FEE_INVESTMENT_SHARE
+    PLATFORM_FEE_INVESTMENT_SHARE,
+    ADMIN_PIX_KEY
 } from '../../../shared/constants/business.constants';
 
 // Constantes de conversão
 const POINTS_PER_REAL = 100;      // R$ 1,00 = 100 pontos
 const MIN_CONVERSION_POINTS = 100; // Mínimo para converter
-
-// Funções para calcular valor com taxa (cliente paga a taxa do gateway)
-const calculatePixTotal = (budget: number) => budget + ASAAS_PIX_FIXED_FEE;
-const calculateCardTotal = (budget: number) => {
-    return (budget + ASAAS_CARD_FIXED_FEE) / (1 - ASAAS_CARD_FEE_PERCENT);
-};
 
 const promoVideosRoutes = new Hono();
 
@@ -36,7 +27,7 @@ promoVideosRoutes.use('/*', authMiddleware);
 // Tags disponíveis para categorização
 const VIDEO_TAGS = ['ENTRETENIMENTO', 'MUSICA', 'EDUCACAO', 'GAMES', 'LIFESTYLE', 'TECNOLOGIA', 'NEGOCIOS', 'SAUDE', 'HUMOR', 'OUTROS'] as const;
 
-// Schema de validação
+// Schema de validação (apenas BALANCE ou PIX manual agora)
 const createVideoSchema = z.object({
     title: z.string().min(5).max(200),
     description: z.string().max(1000).optional(),
@@ -53,16 +44,7 @@ const createVideoSchema = z.object({
     requireSubscribe: z.boolean().default(false),
     minScoreRequired: z.number().min(0).max(1000).default(0),
     verifiedOnly: z.boolean().default(false),
-    paymentMethod: z.enum(['BALANCE', 'PIX', 'CARD']).default('BALANCE'),
-    payerCpfCnpj: z.string().optional(),
-    cardData: z.object({
-        holderName: z.string(),
-        number: z.string(),
-        expiryMonth: z.string(),
-        expiryYear: z.string(),
-        ccv: z.string(),
-        cpf: z.string(),
-    }).optional(),
+    paymentMethod: z.enum(['BALANCE', 'PIX']).default('BALANCE'), // Apenas BALANCE ou PIX manual
 });
 
 // Listar tags disponíveis
@@ -217,7 +199,7 @@ promoVideosRoutes.post('/create', async (c: Context) => {
             const userBalance = parseFloat(user.balance);
             if (userBalance < data.budget) return c.json({ success: false, message: 'Saldo insuficiente.' }, 400);
 
-            const result = await executeInTransaction(pool, async (client) => {
+            await executeInTransaction(pool, async (client) => {
                 await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [data.budget, userPayload.id]);
 
                 const quotaShare = data.budget * QUOTA_HOLDERS_SHARE;
@@ -277,81 +259,40 @@ promoVideosRoutes.post('/create', async (c: Context) => {
             });
         }
 
+        // PIX Manual - Campanha criada como PENDING aguardando transferência PIX
         if (data.paymentMethod === 'PIX') {
-            const pixTotal = calculatePixTotal(data.budget);
-            const paymentData = await createPixPayment({
-                amount: pixTotal,
-                description: `Promoção: ${data.title}`,
-                external_reference: `PROMO_${userPayload.id}_${Date.now()}`,
-                email: user.email,
-                name: user.name,
-                cpf: data.payerCpfCnpj || user.cpf,
-            });
-
             await pool.query(`
                 INSERT INTO promo_videos (
                     user_id, title, description, video_url, thumbnail_url, platform, tag,
-                    duration_seconds, price_per_view, min_watch_seconds, budget, budget_gross, spent, target_views, status, is_active, payment_id,
+                    duration_seconds, price_per_view, min_watch_seconds, budget, budget_gross, spent, target_views, status, is_active,
                     require_like, require_comment, require_subscribe,
                     min_score_required, verified_only,
                     external_initial_likes, external_current_likes,
                     external_initial_comments, external_current_comments,
                     external_initial_subscribers, external_current_subscribers
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 0, $13, 'PENDING', FALSE, $14, $15, $16, $17, $18, $19, $20, $20, $21, $21, $22, $22)
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 0, $13, 'PENDING', FALSE, $14, $15, $16, $17, $18, $19, $19, $20, $20, $21, $21)
             `, [
                 userPayload.id, data.title, data.description, data.videoUrl, data.thumbnailUrl, data.platform, data.tag || 'OUTROS',
-                data.durationSeconds, grossPPV, data.minWatchSeconds || 20, viewerPool, data.budget, targetViews, paymentData.id,
+                data.durationSeconds, grossPPV, data.minWatchSeconds || 20, viewerPool, data.budget, targetViews,
                 data.requireLike, data.requireComment, data.requireSubscribe,
                 data.minScoreRequired, data.verifiedOnly,
                 initialStats.likes, initialStats.comments, initialStats.subscribers
             ]);
 
-            return c.json({ success: true, message: 'PIX gerado!', data: paymentData });
-        }
-
-        if (data.paymentMethod === 'CARD' && data.cardData) {
-            const cardTotal = calculateCardTotal(data.budget);
-            const paymentData = await createCardPayment({
-                amount: cardTotal,
-                description: `Promoção: ${data.title}`,
-                external_reference: `PROMO_${userPayload.id}_${Date.now()}`,
-                email: user.email,
-                name: user.name,
-                cpf: data.cardData.cpf || data.payerCpfCnpj || user.cpf,
-                creditCard: data.cardData,
-                creditCardHolderInfo: {
-                    name: data.cardData.holderName,
-                    email: user.email,
-                    cpfCnpj: data.cardData.cpf || data.payerCpfCnpj || user.cpf || '',
-                    postalCode: '00000000',
-                    addressNumber: '0',
-                    phone: '00000000000',
+            return c.json({
+                success: true,
+                message: 'Campanha criada! Realize a transferência PIX para ativar.',
+                data: {
+                    manualPix: {
+                        key: ADMIN_PIX_KEY,
+                        owner: 'Cred30',
+                        amount: data.budget,
+                        description: `Transferência para campanha: ${data.title}`
+                    },
+                    targetViews,
+                    viewerEarningPoints: Math.floor(grossPPV * VIEWER_SHARE * POINTS_PER_REAL)
                 }
             });
-
-            if (paymentData.status === 'CONFIRMED' || paymentData.status === 'RECEIVED') {
-                // Ativar imediatamente se aprovado
-                await pool.query(`
-                    INSERT INTO promo_videos (
-                        user_id, title, description, video_url, thumbnail_url, platform, tag,
-                        duration_seconds, price_per_view, min_watch_seconds, budget, budget_gross, spent, target_views, status, is_active, is_approved, payment_id,
-                        require_like, require_comment, require_subscribe,
-                        min_score_required, verified_only,
-                        external_initial_likes, external_current_likes,
-                        external_initial_comments, external_current_comments,
-                        external_initial_subscribers, external_current_subscribers
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 0, $13, 'ACTIVE', TRUE, TRUE, $14, $15, $16, $17, $18, $19, $20, $20, $21, $21, $22, $22)
-                `, [
-                    userPayload.id, data.title, data.description, data.videoUrl, data.thumbnailUrl, data.platform, data.tag || 'OUTROS',
-                    data.durationSeconds, grossPPV, data.minWatchSeconds || 20, viewerPool, data.budget, targetViews, paymentData.id,
-                    data.requireLike, data.requireComment, data.requireSubscribe,
-                    data.minScoreRequired, data.verifiedOnly,
-                    initialStats.likes, initialStats.comments, initialStats.subscribers
-                ]);
-
-                return c.json({ success: true, message: 'Pago e ativado!' });
-            }
-            return c.json({ success: false, message: 'Cartão recusado.' }, 400);
         }
 
         return c.json({ success: false, message: 'Opção inválida' }, 400);
@@ -360,7 +301,7 @@ promoVideosRoutes.post('/create', async (c: Context) => {
     }
 });
 
-// Buscar dados de pagamento de uma campanha PENDING
+// Buscar dados de pagamento de uma campanha PENDING (PIX Manual)
 promoVideosRoutes.get('/:id/payment', async (c: Context) => {
     try {
         const userPayload = c.get('user');
@@ -378,23 +319,18 @@ promoVideosRoutes.get('/:id/payment', async (c: Context) => {
 
         const video = videoResult.rows[0];
 
-        if (!video.payment_id) {
-            return c.json({ success: false, message: 'Pagamento não vinculado. Recrie a campanha.' }, 404);
-        }
-
-        // Buscar detalhes completos do pagamento no Asaas (incluindo QR Code se PIX)
-        const paymentDetails = await getPaymentDetails(video.payment_id);
-
+        // Retornar instruções de PIX Manual
         return c.json({
             success: true,
             data: {
-                paymentId: paymentDetails.id,
-                status: paymentDetails.status,
-                invoiceUrl: paymentDetails.invoiceUrl,
-                pixCopiaECola: paymentDetails.pixCopiaECola,
-                qrCodeBase64: paymentDetails.qr_code_base64,
-                expirationDate: paymentDetails.expirationDate,
+                status: video.status,
                 budgetGross: parseFloat(video.budget_gross),
+                manualPix: {
+                    key: ADMIN_PIX_KEY,
+                    owner: 'Cred30',
+                    amount: parseFloat(video.budget_gross),
+                    description: `Transferência para campanha: ${video.title}`
+                }
             }
         });
 
