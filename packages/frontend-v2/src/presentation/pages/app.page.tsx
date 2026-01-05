@@ -388,11 +388,16 @@ export default function App() {
   };
   void handleClaimAdReward;
 
-  const handleUpgradeProClick = async () => {
+  const handleUpgradeProClick = async (method: 'pix' | 'balance' = 'balance') => {
     try {
-      const { total } = calculateTotalToPay(29.90, 'pix');
+      const { total } = calculateTotalToPay(29.90, method);
 
-      const response = await upgradePro('pix');
+      if (method === 'balance' && state.currentUser && state.currentUser.balance < 29.90) {
+        setShowError({ isOpen: true, title: 'Saldo Insuficiente', message: 'Você precisa de pelo menos R$ 29,90 para ativar o PRO com seu saldo.' });
+        return;
+      }
+
+      const response = await upgradePro(method);
       await refreshState();
 
       if (response && (response.pixData || response.data?.pixData)) {
@@ -494,7 +499,7 @@ export default function App() {
                     />
                   </Suspense>
                 } />
-                <Route path="invest" element={<Suspense fallback={null}><InvestView onBuy={handleBuyQuota} isPro={state.currentUser?.membership_type === 'PRO'} /></Suspense>} />
+                <Route path="invest" element={<Suspense fallback={null}><InvestView onBuy={handleBuyQuota} isPro={state.currentUser?.membership_type === 'PRO'} userBalance={state.currentUser?.balance} /></Suspense>} />
                 <Route path="portfolio" element={
                   <Suspense fallback={null}>
                     <PortfolioView

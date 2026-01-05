@@ -112,7 +112,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const [confirmData, setConfirmData] = useState<any>(null);
     const [offlineVoucher, setOfflineVoucher] = useState<{ code: string, amount: number, item: string } | null>(null);
     const [redeemCode, setRedeemCode] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState<'BALANCE' | 'PIX' | 'CARD'>('BALANCE');
+    const [paymentMethod, setPaymentMethod] = useState<'BALANCE' | 'PIX'>('BALANCE');
     const [cardData, setCardData] = useState({
         holderName: '',
         number: '',
@@ -1140,7 +1140,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     <div className="space-y-2">
                                         <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Método de Pagamento</p>
                                         <div className="grid grid-cols-3 gap-2">
-                                            {['BALANCE', 'PIX', 'CARD'].map(m => (
+                                            {['BALANCE', 'PIX'].map(m => (
                                                 <button
                                                     key={m}
                                                     onClick={() => setPaymentMethod(m as any)}
@@ -1152,42 +1152,6 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                         </div>
                                     </div>
 
-                                    {paymentMethod === 'CARD' && (
-                                        <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-2">
-                                            <input
-                                                placeholder="Nº do Cartão"
-                                                className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
-                                                value={cardData.number}
-                                                onChange={e => setCardData({ ...cardData, number: e.target.value.replace(/\s/g, '').slice(0, 16) })}
-                                            />
-                                            <input
-                                                placeholder="MM/AA"
-                                                className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
-                                                onChange={e => {
-                                                    const [m, a] = e.target.value.split('/');
-                                                    setCardData({ ...cardData, expiryMonth: m || '', expiryYear: a ? '20' + a : '' });
-                                                }}
-                                            />
-                                            <input
-                                                placeholder="CVV"
-                                                className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
-                                                value={cardData.ccv}
-                                                onChange={e => setCardData({ ...cardData, ccv: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-                                            />
-                                            <input
-                                                placeholder="Nome"
-                                                className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
-                                                value={cardData.holderName}
-                                                onChange={e => setCardData({ ...cardData, holderName: e.target.value })}
-                                            />
-                                            <input
-                                                placeholder="CPF Titular"
-                                                className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
-                                                value={cardData.cpf}
-                                                onChange={e => setCardData({ ...cardData, cpf: e.target.value.replace(/\D/g, '').slice(0, 11) })}
-                                            />
-                                        </div>
-                                    )}
 
                                     <div className="flex justify-between items-end">
                                         <div>
@@ -1196,7 +1160,6 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                 {(() => {
                                                     const base = parseFloat(selectedItem.price) + (deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee || '0') : deliveryOption === 'EXTERNAL_SHIPPING' ? 35.00 : 0);
                                                     if (paymentMethod === 'PIX') return formatCurrency(base + 0.99);
-                                                    if (paymentMethod === 'CARD') return formatCurrency((base + 0.49) / (1 - 0.0299));
                                                     return formatCurrency(base);
                                                 })()}
                                             </p>
@@ -1238,7 +1201,6 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                         contactPhone: (state.currentUser as any)?.phone || '000000000',
                                                         paymentMethod: paymentMethod,
                                                         payerCpfCnpj: paymentMethod !== 'BALANCE' ? cardData.cpf : undefined,
-                                                        creditCard: paymentMethod === 'CARD' ? cardData : undefined
                                                     });
                                                     if (res.success) {
                                                         if (paymentMethod !== 'BALANCE') {
@@ -1391,7 +1353,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                     onClose={() => setConfirmData(null)}
                     onConfirm={() => {
                         if (confirmData.showPaymentMethods) {
-                            confirmData.onConfirm(paymentMethod, paymentMethod === 'CARD' ? cardData : undefined);
+                            confirmData.onConfirm(paymentMethod);
                         } else {
                             confirmData.onConfirm();
                         }
@@ -1406,7 +1368,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                             <div className="space-y-2">
                                 <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Método de Pagamento</p>
                                 <div className="grid grid-cols-3 gap-2">
-                                    {['BALANCE', 'PIX', 'CARD'].map(m => (
+                                    {['BALANCE', 'PIX'].map(m => (
                                         <button
                                             key={m}
                                             onClick={() => setPaymentMethod(m as any)}
@@ -1434,42 +1396,6 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 </div>
                             )}
 
-                            {paymentMethod === 'CARD' && (
-                                <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-2 mt-2">
-                                    <input
-                                        placeholder="CPF/CNPJ do Titular"
-                                        className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-700"
-                                        value={cardData.cpf}
-                                        onChange={e => setCardData({ ...cardData, cpf: e.target.value.replace(/[^0-9./-]/g, '') })}
-                                    />
-                                    <input
-                                        placeholder="Nº do Cartão"
-                                        className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-700"
-                                        value={cardData.number}
-                                        onChange={e => setCardData({ ...cardData, number: e.target.value.replace(/\s/g, '').slice(0, 16) })}
-                                    />
-                                    <input
-                                        placeholder="MM/AA"
-                                        className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-700"
-                                        onChange={e => {
-                                            const [m, a] = e.target.value.split('/');
-                                            setCardData({ ...cardData, expiryMonth: m || '', expiryYear: a ? '20' + a : '' });
-                                        }}
-                                    />
-                                    <input
-                                        placeholder="CVV"
-                                        className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-700"
-                                        value={cardData.ccv}
-                                        onChange={e => setCardData({ ...cardData, ccv: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-                                    />
-                                    <input
-                                        placeholder="Nome no Cartão"
-                                        className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-700"
-                                        value={cardData.holderName}
-                                        onChange={e => setCardData({ ...cardData, holderName: e.target.value })}
-                                    />
-                                </div>
-                            )}
 
                             <div className="pt-2 border-t border-zinc-800">
                                 <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Total a Pagar</p>
@@ -1477,7 +1403,6 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     {(() => {
                                         const base = confirmData.title.includes('Impulsionar') ? 5.00 : parseFloat(selectedItem?.price || '0');
                                         if (paymentMethod === 'PIX') return formatCurrency(base + 0.99);
-                                        if (paymentMethod === 'CARD') return formatCurrency((base + 0.49) / (1 - 0.0299));
                                         return formatCurrency(base);
                                     })()}
                                 </p>

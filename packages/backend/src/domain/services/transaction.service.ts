@@ -619,6 +619,22 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
     });
   }
 
+  // DEPÓSITO (Crédito real no saldo do usuário)
+  if (transaction.type === 'DEPOSIT') {
+    const depositAmount = parseFloat(transaction.amount);
+
+    // 1. Creditar saldo no usuário
+    await updateUserBalance(client, transaction.user_id, depositAmount, 'credit');
+
+    // 2. Adicionar ao saldo real do sistema
+    await client.query(
+      'UPDATE system_config SET system_balance = system_balance + $1',
+      [depositAmount]
+    );
+
+    console.log(`[DEPOSIT_APPROVED] R$ ${depositAmount} creditados ao usuário ${transaction.user_id}`);
+  }
+
   await client.query(
     'UPDATE transactions SET status = $1, processed_at = $2, payout_status = $3 WHERE id = $4',
     ['APPROVED', new Date(), transaction.type === 'WITHDRAWAL' ? 'PENDING_PAYMENT' : 'NONE', id]
