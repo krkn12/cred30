@@ -4,14 +4,14 @@ import { QUOTA_PRICE, QUOTA_SHARE_VALUE, QUOTA_ADM_FEE } from '../../../shared/c
 import { calculateTotalToPay } from '../../../shared/utils/financial.utils';
 
 interface InvestViewProps {
-    onBuy: (qty: number, method: 'PIX' | 'BALANCE' | 'CARD') => void;
+    onBuy: (qty: number, method: 'PIX' | 'BALANCE') => void;
     isPro?: boolean;
 }
 
 export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
     void isPro;
     const [qty, setQty] = useState(1);
-    const [method, setMethod] = useState<'PIX' | 'BALANCE' | 'CARD'>('PIX');
+    const [method, setMethod] = useState<'PIX' | 'BALANCE'>('PIX');
     const [showConfirm, setShowConfirm] = useState(false);
     const [acceptedTerms, setAcceptedTerms] = useState(false);
     const [showTermsModal, setShowTermsModal] = useState(false);
@@ -110,16 +110,11 @@ export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
 
                                 <div>
                                     <p className="text-xs font-black uppercase tracking-widest text-zinc-500 mb-4">Método de Integralização</p>
-                                    <div className="grid grid-cols-3 gap-2 bg-black/40 p-1.5 rounded-2xl border border-white/5">
+                                    <div className="grid grid-cols-2 gap-2 bg-black/40 p-1.5 rounded-2xl border border-white/5">
                                         <MethodButton
                                             active={method === 'PIX'}
                                             onClick={() => setMethod('PIX')}
                                             label="PIX"
-                                        />
-                                        <MethodButton
-                                            active={method === 'CARD'}
-                                            onClick={() => setMethod('CARD')}
-                                            label="CARTÃO"
                                         />
                                         <MethodButton
                                             active={method === 'BALANCE'}
@@ -304,7 +299,7 @@ export const InvestView = ({ onBuy, isPro }: InvestViewProps) => {
                                 onClick={handlePurchase}
                                 className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black uppercase tracking-[0.2em] py-5 rounded-2xl transition-all shadow-xl shadow-primary-500/20 active:scale-[0.98] text-xs flex items-center justify-center gap-3"
                             >
-                                {method === 'BALANCE' ? 'PAGAR COM MEU SALDO' : method === 'PIX' ? 'GERAR PAGAMENTO PIX' : 'PAGAR COM CARTÃO'}
+                                {method === 'BALANCE' ? 'PAGAR COM MEU SALDO' : 'GERAR PAGAMENTO PIX'}
                                 <ArrowRight size={18} />
                             </button>
                             <button
