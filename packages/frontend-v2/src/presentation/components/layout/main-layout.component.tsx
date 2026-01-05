@@ -22,6 +22,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
 
   const navItems = [
     { id: 'dashboard', label: 'Início', icon: Home },
+    { id: 'deposit', label: 'Depositar', icon: DollarSign },
     { id: 'marketplace', label: 'Clube', icon: ShoppingBag },
     { id: 'promo-videos', label: 'Views', icon: Play },
     { id: 'invest', label: 'Ativação', icon: TrendingUp },
