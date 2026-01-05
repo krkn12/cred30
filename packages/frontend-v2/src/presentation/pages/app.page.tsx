@@ -61,6 +61,7 @@ const ViewFarmView = lazyWithRetry(() => import('../components/views/ViewFarmVie
 const SellerRegistrationView = lazyWithRetry(() => import('../components/views/SellerRegistrationView'));
 const MyBugReportsView = lazyWithRetry(() => import('../components/views/MyBugReportsView').then(m => ({ default: m.MyBugReportsView })));
 const LogisticsView = lazyWithRetry(() => import('../components/views/LogisticsView'));
+const DepositView = lazyWithRetry(() => import('../components/views/DepositView').then(m => ({ default: m.DepositView })));
 
 export default function App() {
   const [state, setState] = useState<AppState>({
@@ -129,26 +130,17 @@ export default function App() {
 
   const [showBugReport, setShowBugReport] = useState(false);
 
-  const handleDeposit = async () => {
+  const handleDeposit = async (amount?: number) => {
+    if (amount === undefined) {
+      navigate('/app/deposit');
+      return;
+    }
+
     try {
-      const amountStr = prompt('Quanto você deseja depositar? (Mínimo R$ 10,00)', '50.00');
-      if (!amountStr) return;
-      const amount = parseFloat(amountStr.replace(',', '.'));
-      if (isNaN(amount) || amount < 10) {
-        setShowError({ isOpen: true, title: 'Valor Inválido', message: 'O valor mínimo para depósito é R$ 10,00' });
-        return;
-      }
-
       await requestDeposit(amount);
-
-      setPixModalData({
-        isOpen: true,
-        qrCode: ADMIN_PIX_KEY,
-        qrCodeBase64: '',
-        amount,
-        description: `DEPÓSITO MANUAL - ${state.currentUser?.name.split(' ')[0].toUpperCase()}`
-      });
-
+      setShowSuccess({ isOpen: true, title: 'Depósito Registrado', message: 'Aguardando confirmação do administrador.' });
+      navigate('/app/dashboard');
+      refreshState();
     } catch (e: any) {
       setShowError({ isOpen: true, title: 'Erro', message: e.message || 'Erro ao registrar depósito' });
     }
@@ -263,7 +255,7 @@ export default function App() {
     navigate('/');
   };
 
-  const handleBuyQuota = async (qty: number, method: 'PIX' | 'BALANCE') => {
+  const handleBuyQuota = async (qty: number, method: 'PIX' | 'BALANCE' = 'BALANCE') => {
     try {
       const { total } = calculateTotalToPay(qty * QUOTA_PRICE, method.toLowerCase() as any);
 
@@ -485,6 +477,14 @@ export default function App() {
                       onError={(title, message) => setShowError({ isOpen: true, title, message })}
                       onEducation={() => navigate('/app/education')}
                       onVoting={() => navigate('/app/voting')}
+                    />
+                  </Suspense>
+                } />
+                <Route path="deposit" element={
+                  <Suspense fallback={null}>
+                    <DepositView
+                      onDeposit={(amt) => handleDeposit(amt)}
+                      onBack={() => navigate('/app/dashboard')}
                     />
                   </Suspense>
                 } />
