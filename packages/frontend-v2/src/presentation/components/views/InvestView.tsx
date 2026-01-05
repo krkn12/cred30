@@ -4,7 +4,7 @@ import { QUOTA_PRICE, QUOTA_SHARE_VALUE, QUOTA_ADM_FEE } from '../../../shared/c
 import { calculateTotalToPay } from '../../../shared/utils/financial.utils';
 
 interface InvestViewProps {
-    onBuy: (qty: number, method: 'PIX' | 'BALANCE') => void;
+    onBuy: (qty: number) => void;
     isPro?: boolean;
     userBalance?: number;
 }
@@ -12,7 +12,7 @@ interface InvestViewProps {
 export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) => {
     void isPro;
     const [qty, setQty] = useState(1);
-    const [method, setMethod] = useState<'PIX' | 'BALANCE'>('PIX');
+    const [method] = useState<'BALANCE'>('BALANCE');
     const [showConfirm, setShowConfirm] = useState(false);
     const [acceptedTerms, setAcceptedTerms] = useState(false);
     const [showTermsModal, setShowTermsModal] = useState(false);
@@ -22,7 +22,7 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
 
     const handlePurchase = () => {
         if (!acceptedTerms) return;
-        onBuy(qty, method);
+        onBuy(qty);
         setShowConfirm(false);
     };
 
@@ -109,20 +109,12 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
                                     </div>
                                 </div>
 
-                                <div>
-                                    <p className="text-xs font-black uppercase tracking-widest text-zinc-500 mb-4">Método de Integralização</p>
-                                    <div className="grid grid-cols-2 gap-2 bg-black/40 p-1.5 rounded-2xl border border-white/5">
-                                        <MethodButton
-                                            active={method === 'PIX'}
-                                            onClick={() => setMethod('PIX')}
-                                            label="PIX"
-                                        />
-                                        <MethodButton
-                                            active={method === 'BALANCE'}
-                                            onClick={() => setMethod('BALANCE')}
-                                            label="SALDO"
-                                            sublabel={userBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                        />
+                                <div className="bg-black/40 p-1.5 rounded-2xl border border-white/5">
+                                    <div className="flex-1 py-3.5 rounded-xl text-[10px] font-black tracking-widest bg-primary-500 text-black shadow-lg shadow-primary-500/20 flex flex-col items-center justify-center">
+                                        <span>SALDO INTERNO</span>
+                                        <span className="text-[8px] mt-0.5 opacity-70 text-black">
+                                            Disponível: {userBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -297,19 +289,22 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
                         </div>
 
                         <div className="space-y-4">
-                            <button
-                                onClick={handlePurchase}
-                                disabled={method === 'BALANCE' && userBalance < total}
-                                className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl ${method === 'BALANCE' && userBalance < total
-                                    ? 'bg-zinc-800 text-zinc-600 opacity-50 cursor-not-allowed'
-                                    : 'bg-primary-500 text-black hover:bg-primary-400 shadow-primary-500/20 active:scale-[0.98]'
-                                    }`}
-                            >
-                                {method === 'BALANCE'
-                                    ? (userBalance < total ? 'SALDO INSUFICIENTE' : 'PAGAR COM MEU SALDO')
-                                    : 'GERAR PAGAMENTO PIX'}
-                                <ArrowRight size={18} />
-                            </button>
+                            {userBalance < total ? (
+                                <button
+                                    onClick={() => window.location.href = '/app/dashboard'} // Ou redirecionar para depósito
+                                    className="w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] bg-zinc-800 text-zinc-600 cursor-not-allowed shadow-none"
+                                >
+                                    SALDO INSUFICIENTE
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handlePurchase}
+                                    className="w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl bg-primary-500 text-black hover:bg-primary-400 shadow-primary-500/20 active:scale-[0.98]"
+                                >
+                                    PAGAR COM MEU SALDO
+                                    <ArrowRight size={18} />
+                                </button>
+                            )}
                             <button
                                 onClick={() => setShowConfirm(false)}
                                 className="w-full py-4 text-zinc-700 hover:text-zinc-400 text-[10px] font-black uppercase tracking-[0.3em] transition-all"
