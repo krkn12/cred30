@@ -61,7 +61,7 @@ const convertApiQuotaToQuota = (apiQuota: any): Quota => {
 
   return {
     id: apiQuota.id,
-    userId: apiQuota.userId || apiQuota.user_id || '',
+    userId: String(apiQuota.userId || apiQuota.user_id || ''),
     purchasePrice: purchasePrice,
     purchaseDate: apiQuota.purchaseDate || apiQuota.purchase_date,
     currentValue: currentValue,
@@ -90,7 +90,7 @@ const convertApiLoanToLoan = (apiLoan: any): Loan => {
 
   return {
     id: apiLoan.id,
-    userId: apiLoan.userId,
+    userId: String(apiLoan.userId || apiLoan.user_id || ''),
     amount: amount || 0,
     totalRepayment: totalRepayment || 0,
     installments: apiLoan.installments || 1,
@@ -114,7 +114,7 @@ const convertApiTransactionToTransaction = (apiTransaction: any): Transaction =>
 
   return {
     id: apiTransaction.id,
-    userId: apiTransaction.userId || apiTransaction.user_id || '',
+    userId: String(apiTransaction.userId || apiTransaction.user_id || ''),
     type: apiTransaction.type,
     amount: amount || 0,
     date: apiTransaction.date || apiTransaction.created_at,

@@ -446,16 +446,7 @@ export default function App() {
     );
   }
 
-  if (isStaff) {
-    return (
-      <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><RefreshCw className="animate-spin text-primary-500" /></div>}>
-        <Routes>
-          <Route path="/admin" element={<AdminView state={state} onRefresh={refreshState} onLogout={handleLogout} onSuccess={(title, msg) => { setShowSuccess({ isOpen: true, title, message: msg }); }} onError={(title, msg) => { setShowError({ isOpen: true, title, message: msg }); }} />} />
-          <Route path="*" element={<Navigate to="/admin" replace />} />
-        </Routes>
-      </Suspense>
-    )
-  }
+  // Removido bloqueio exclusivo de Staff para permitir acesso ao app regular
 
   return (
     <>
@@ -550,6 +541,17 @@ export default function App() {
                 <Route path="history" element={<Suspense fallback={null}><HistoryView transactions={state.transactions.filter(t => t.userId === state.currentUser!.id)} isPro={state.currentUser?.membership_type === 'PRO'} /></Suspense>} />
                 <Route path="seller" element={<Suspense fallback={null}><SellerRegistrationView /></Suspense>} />
                 <Route path="logistics" element={<Suspense fallback={null}><LogisticsView /></Suspense>} />
+                <Route path="admin" element={
+                  <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><RefreshCw className="animate-spin text-primary-500" /></div>}>
+                    <AdminView
+                      state={state}
+                      onRefresh={refreshState}
+                      onLogout={handleLogout}
+                      onSuccess={(title, msg) => { setShowSuccess({ isOpen: true, title, message: msg }); }}
+                      onError={(title, msg) => { setShowError({ isOpen: true, title, message: msg }); }}
+                    />
+                  </Suspense>
+                } />
                 <Route path="bug-reports" element={<Suspense fallback={null}><MyBugReportsView onBack={() => navigate('/app/settings')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} /></Suspense>} />
                 <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
               </Routes>

@@ -1,4 +1,4 @@
-import { LogOut, Home, PieChart, DollarSign, Settings, TrendingUp, ArrowUpFromLine, Gamepad2, ShoppingBag, HelpCircle, Play } from 'lucide-react';
+import { LogOut, Home, PieChart, DollarSign, Settings, TrendingUp, ArrowUpFromLine, Gamepad2, ShoppingBag, HelpCircle, Play, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../../../domain/types/common.types';
 
@@ -32,6 +32,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
     { id: 'withdraw', label: 'Resgatar', icon: ArrowUpFromLine },
     { id: 'faq', label: 'Dúvidas', icon: HelpCircle },
   ];
+
+  // Adicionar Admin ao menu se for staff
+  if (user.isAdmin || user.role === 'ADMIN' || user.role === 'ATTENDANT') {
+    navItems.splice(1, 0, { id: 'admin', label: 'Admin', icon: ShieldCheck });
+  }
 
   return (
     <div className="min-h-screen bg-background text-zinc-100 flex flex-col md:flex-row font-sans">
