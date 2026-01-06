@@ -102,7 +102,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         }
     };
 
-    const tabs = [
+    const tabs = useMemo(() => [
         { id: 'overview', name: 'Resumo', icon: PieChart, roles: ['ADMIN'] },
         { id: 'approvals', name: 'Pendentes', icon: ShieldCheck, count: pendingApprovalsCount, roles: ['ADMIN', 'ATTENDANT'] },
         { id: 'payouts', name: 'Resgates', icon: Send, count: pendingPayoutsCount, roles: ['ADMIN'] },
@@ -116,9 +116,8 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         { id: 'reviews', name: 'Depoimentos', icon: MessageSquare, count: pendingReviewsCount, roles: ['ADMIN'] },
         { id: 'bugs', name: 'Bugs', icon: Bug, count: pendingBugsCount, roles: ['ADMIN'] },
         { id: 'logistics', name: 'Logística', icon: Truck, roles: ['ADMIN'] },
-    ].filter(tab => tab.roles.includes(userRole));
+    ].filter(tab => tab.roles.includes(userRole)), [userRole, pendingApprovalsCount, pendingPayoutsCount, pendingReviewsCount, pendingBugsCount]);
 
-    console.log('[AdminView] Rendering for role:', userRole, 'Tabs count:', tabs.length, 'ActiveTab:', activeTab);
 
     return (
         <div className="space-y-6 sm:space-y-8 pb-32 max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-8 min-h-screen bg-black">

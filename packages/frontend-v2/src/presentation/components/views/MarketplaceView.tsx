@@ -64,13 +64,13 @@ const AdBanner = memo(({ type, title, description, actionText }: any) => (
 ));
 AdBanner.displayName = 'AdBanner';
 
-const NativeAdCard = ({ title, price, category, img }: any) => (
+const NativeAdCard = memo(({ title, price, category, img }: any) => (
     <div className="bg-zinc-900/40 border border-zinc-800/50 rounded-2xl overflow-hidden group hover:border-amber-500/30 transition-all flex flex-col relative">
         <div className="absolute top-2 left-2 z-10">
             <span className="text-[8px] font-black bg-amber-500 text-black px-1.5 py-0.5 rounded shadow-lg uppercase">OFERTA PARCEIRA</span>
         </div>
         <div className="aspect-square bg-zinc-950 flex items-center justify-center overflow-hidden">
-            <img src={img} alt={title} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" />
+            <img src={img} alt={title} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" loading="lazy" />
         </div>
         <div className="p-4 flex-1 flex flex-col">
             <h3 className="font-bold text-white text-sm line-clamp-1 mb-1 uppercase tracking-tight">{title}</h3>
@@ -83,7 +83,77 @@ const NativeAdCard = ({ title, price, category, img }: any) => (
             </div>
         </div>
     </div>
-);
+));
+NativeAdCard.displayName = 'NativeAdCard';
+
+const ListingCard = memo(({ item, currentUserId, formatCurrency, onBoost, onDetails }: any) => {
+    const isOwner = item.seller_id === currentUserId;
+    const isAffiliate = item.type === 'AFFILIATE';
+
+    return (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden group hover:border-primary-500/30 transition-all flex flex-col h-full animate-in fade-in duration-500">
+            <div className="aspect-square bg-zinc-950 flex items-center justify-center relative overflow-hidden">
+                {item.image_url ? (
+                    <img
+                        src={item.image_url.includes('cloudinary') ? item.image_url.replace('/upload/', '/upload/w_600,c_fill,g_auto,q_auto,f_auto/') : item.image_url}
+                        alt={item.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        loading="lazy"
+                    />
+                ) : (
+                    <ImageIcon size={40} className="text-zinc-800" />
+                )}
+                <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[10px] text-zinc-300 font-bold uppercase border border-white/5">
+                    {item.category}
+                </div>
+            </div>
+            <div className="p-4 flex-1 flex flex-col">
+                <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-bold text-white text-base line-clamp-1 uppercase tracking-tight">{item.title}</h3>
+                    {isAffiliate ? (
+                        <div className="bg-amber-500/20 text-amber-400 text-[8px] px-1.5 py-0.5 rounded border border-amber-500/20 flex items-center gap-1 font-black">
+                            <Sparkles size={8} /> PARCEIRO
+                        </div>
+                    ) : item.is_boosted ? (
+                        <div className="bg-primary-500/10 text-primary-400 text-[8px] px-1.5 py-0.5 rounded border border-primary-500/20 flex items-center gap-1 font-black">
+                            <Zap size={8} /> DESTAQUE
+                        </div>
+                    ) : item.asaas_wallet_id && (
+                        <div className="bg-emerald-500/20 text-emerald-400 text-[8px] px-1.5 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1 font-black">
+                            <ShieldCheck size={8} /> VERIFICADO
+                        </div>
+                    )}
+                </div>
+                <p className="text-xs text-zinc-500 mb-6 line-clamp-2 h-8 leading-relaxed">{item.description}</p>
+
+                <div className="mt-auto pt-4 border-t border-zinc-800/50 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                        <span className="text-lg font-black text-primary-400 tabular-nums">
+                            {item.price > 0 ? formatCurrency(parseFloat(item.price)) : 'Ver Preço'}
+                        </span>
+                        {isOwner ? (
+                            <button
+                                onClick={() => onBoost(item)}
+                                disabled={item.is_boosted}
+                                className={`text-[9px] font-black px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${item.is_boosted ? 'bg-zinc-800 text-zinc-500' : 'bg-primary-500/10 text-primary-400 hover:bg-primary-500 hover:text-black hover:shadow-lg hover:shadow-primary-500/20'}`}
+                            >
+                                <Zap size={12} className={item.is_boosted ? '' : 'animate-pulse'} /> {item.is_boosted ? 'IMPULSIONADO' : 'IMPULSIONAR'}
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => onDetails(item)}
+                                className={`${isAffiliate ? 'bg-amber-500 hover:bg-amber-400' : 'bg-primary-600 hover:bg-primary-500'} text-black px-4 py-2 rounded-lg text-xs font-black transition-all active:scale-95 shadow-lg flex items-center gap-2 uppercase tracking-wider`}
+                            >
+                                {isAffiliate ? 'VER OFERTA' : 'COMPRAR AGORA'}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+});
+ListingCard.displayName = 'ListingCard';
 
 export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: MarketplaceViewProps) => {
     const navigate = useNavigate();
@@ -499,69 +569,16 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
                                 {listings.map((item, index) => (
                                     <React.Fragment key={item.id}>
-                                        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden group hover:border-primary-500/30 transition-all flex flex-col">
-                                            <div className="aspect-square bg-zinc-950 flex items-center justify-center relative">
-                                                {item.image_url ? (
-                                                    <img
-                                                        src={item.image_url.includes('cloudinary') ? item.image_url.replace('/upload/', '/upload/w_600,c_fill,g_auto,q_auto,f_auto/') : item.image_url}
-                                                        alt={item.title}
-                                                        className="w-full h-full object-cover"
-                                                        loading="lazy"
-                                                    />
-                                                ) : (
-                                                    <ImageIcon size={40} className="text-zinc-800" />
-                                                )}
-                                                <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[10px] text-zinc-300 font-bold uppercase">
-                                                    {item.category}
-                                                </div>
-                                            </div>
-                                            <div className="p-4 flex-1 flex flex-col">
-                                                <div className="flex justify-between items-start mb-1">
-                                                    <h3 className="font-bold text-white text-base line-clamp-1">{item.title}</h3>
-                                                    {item.type === 'AFFILIATE' ? (
-                                                        <div className="bg-amber-500/20 text-amber-400 text-[8px] px-1.5 py-0.5 rounded border border-amber-500/20 flex items-center gap-1 font-black">
-                                                            <Sparkles size={8} /> PARCEIRO
-                                                        </div>
-                                                    ) : item.is_boosted ? (
-                                                        <div className="bg-primary-500/10 text-primary-400 text-[8px] px-1.5 py-0.5 rounded border border-primary-500/20 flex items-center gap-1 font-black">
-                                                            <Zap size={8} /> DESTAQUE
-                                                        </div>
-                                                    ) : item.asaas_wallet_id && (
-                                                        <div className="bg-emerald-500/20 text-emerald-400 text-[8px] px-1.5 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1 font-black">
-                                                            <ShieldCheck size={8} /> VERIFICADO
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <p className="text-xs text-zinc-500 mb-4 line-clamp-2 h-8">{item.description}</p>
-
-                                                <div className="mt-auto pt-4 border-t border-zinc-800 flex flex-col gap-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-lg font-black text-primary-400">
-                                                            {item.price > 0 ? formatCurrency(parseFloat(item.price)) : 'Ver Preço'}
-                                                        </span>
-                                                        {item.seller_id === state.currentUser?.id ? (
-                                                            <button
-                                                                onClick={() => handleBoostListing(item)}
-                                                                disabled={item.is_boosted}
-                                                                className={`text-[9px] font-black px-3 py-1.5 rounded-lg flex items-center gap-1 transition ${item.is_boosted ? 'bg-zinc-800 text-zinc-500' : 'bg-primary-500/10 text-primary-400 hover:bg-primary-500 hover:text-black'}`}
-                                                            >
-                                                                <Zap size={10} /> {item.is_boosted ? 'IMPULSIONADO' : 'IMPULSIONAR'}
-                                                            </button>
-                                                        ) : (
-                                                            <button
-                                                                onClick={() => {
-                                                                    setSelectedItem(item);
-                                                                    setView('details');
-                                                                }}
-                                                                className={`${item.type === 'AFFILIATE' ? 'bg-amber-500 hover:bg-amber-400 transition-all active:scale-95' : 'bg-primary-600 hover:bg-primary-500 transition-all active:scale-95'} text-black px-4 py-2 rounded-lg text-xs font-black flex items-center gap-2`}
-                                                            >
-                                                                {item.type === 'AFFILIATE' ? 'VER OFERTA' : 'COMPRAR AGORA'}
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <ListingCard
+                                            item={item}
+                                            currentUserId={state.currentUser?.id}
+                                            formatCurrency={formatCurrency}
+                                            onBoost={handleBoostListing}
+                                            onDetails={(it: any) => {
+                                                setSelectedItem(it);
+                                                setView('details');
+                                            }}
+                                        />
 
                                         {(index + 1) % 3 === 0 && (
                                             <NativeAdCard
