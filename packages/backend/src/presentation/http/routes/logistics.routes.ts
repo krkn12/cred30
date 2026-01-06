@@ -62,7 +62,7 @@ logisticsRoutes.get('/available', authMiddleware, async (c: Context) => {
         });
     } catch (error: any) {
         console.error('[LOGISTICS] Erro ao listar entregas:', error);
-        return c.json({ success: false, message: 'Erro ao buscar entregas disponíveis', error: error.message }, 500);
+        return c.json({ success: false, message: `Erro ao buscar entregas: ${error.message}` }, 500);
     }
 });
 
@@ -344,7 +344,7 @@ logisticsRoutes.get('/my-deliveries', authMiddleware, async (c: Context) => {
         });
     } catch (error: any) {
         console.error('[LOGISTICS] Erro ao listar minhas entregas:', error);
-        return c.json({ success: false, message: 'Erro ao buscar suas entregas', error: error.message }, 500);
+        return c.json({ success: false, message: `Erro ao buscar suas entregas: ${error.message}` }, 500);
     }
 });
 
@@ -378,9 +378,9 @@ logisticsRoutes.get('/stats', authMiddleware, async (c: Context) => {
                 avgEarningPerDelivery: parseFloat(stats.avg_earning).toFixed(2),
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('[LOGISTICS] Erro ao buscar estatísticas:', error);
-        return c.json({ success: false, message: 'Erro ao buscar estatísticas' }, 500);
+        return c.json({ success: false, message: `Erro ao buscar estatísticas: ${error.message}` }, 500);
     }
 });
 
