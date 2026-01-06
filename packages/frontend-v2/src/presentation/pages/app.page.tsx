@@ -154,7 +154,6 @@ export default function App() {
   // Redirecionamento automático do Admin para sua área de trabalho
   useEffect(() => {
     if (state.currentUser && isStaff && location.pathname === '/app/dashboard') {
-      console.log('[App] Auto-redirecting staff to admin area');
       navigate('/app/admin');
     }
   }, [state.currentUser, isStaff, location.pathname, navigate]);

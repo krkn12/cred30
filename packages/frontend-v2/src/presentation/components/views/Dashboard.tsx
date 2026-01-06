@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect, useCallback, memo } from 'react';
 import {
     Users, Gamepad2, TrendingUp, ArrowUpFromLine, BookOpen,
     Crown, Clock, ArrowDownLeft, ArrowUpRight,
@@ -24,6 +24,42 @@ interface DashboardProps {
     onVoting: () => void;
 }
 
+const TransactionRow = memo(({ t, formatCurrency, isPositive, showValues }: any) => (
+    <div key={t.id} className="group glass glass-hover p-6 rounded-[2rem] flex items-center justify-between">
+        <div className="flex items-center gap-6">
+            <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-2xl shadow-black transition-transform group-hover:scale-110 duration-500 ${isPositive(t.type) ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                }`}>
+                {isPositive(t.type) ? <ArrowDownLeft size={28} /> : <ArrowUpRight size={28} />}
+            </div>
+            <div>
+                <h4 className="text-sm sm:text-base font-black text-white uppercase tracking-tight mb-1 group-hover:text-primary-400 transition-colors">
+                    {t.description || t.type}
+                </h4>
+                <div className="flex items-center gap-2">
+                    <Clock size={10} className="text-zinc-500" />
+                    <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">
+                        {new Date(t.created_at || t.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace(' de ', ' ')}
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div className="text-right">
+            <p className={`text-lg sm:text-xl font-black tabular-nums tracking-tighter mb-1 ${isPositive(t.type) ? 'text-emerald-400' : 'text-zinc-500'
+                }`}>
+                {showValues ? (
+                    <>
+                        {isPositive(t.type) ? '+' : '-'} {formatCurrency(t.amount)}
+                    </>
+                ) : '••••••'}
+            </p>
+            <div className={`text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-lg inline-block border ${t.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' : 'bg-zinc-900 text-zinc-600 border-white/5'
+                }`}>
+                {t.status === 'PENDING' ? 'Em Validação' : 'Processado'}
+            </div>
+        </div>
+    </div>
+));
+TransactionRow.displayName = 'TransactionRow';
 export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onDeposit, onRefer, onSuccess, onError, onEducation, onVoting }: DashboardProps) => {
     const user = state?.currentUser;
 
@@ -89,36 +125,31 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onD
     }, [state.transactions, user.id]);
 
 
-    const handleOpenChest = async () => {
+    const handleOpenChest = useCallback(async () => {
         if (chestsRemaining <= 0 || chestCountdown > 0 || isOpeningChest) return;
 
-        // Abrir link do anúncio (Faturamento para o dono)
         window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
-
         setIsOpeningChest(true);
 
-        // Aguardar 5 segundos (tempo do anúncio) e depois chamar API
         setTimeout(async () => {
             try {
-                // R$ 0,01 a R$ 0,03 (Lucro garantido: CPM de R$ 0,04 - R$ 0,06)
                 const reward = (Math.random() * (0.03 - 0.01) + 0.01).toFixed(2);
                 const response = await apiService.post('/earn/chest-reward', { amount: parseFloat(reward) }) as any;
 
                 if (response.success) {
                     onSuccess("Baú Aberto!", response.message || `Você recebeu R$ ${reward}!`);
                     setChestsRemaining(response.chestsRemaining ?? chestsRemaining - 1);
-                    setChestCountdown(3600); // 1 hora de intervalo
+                    setChestCountdown(3600);
                 } else {
                     onError("Erro", response.message || "Não foi possível abrir o baú");
                 }
             } catch (error: any) {
-                console.error(error);
                 onError("Erro", error.message || "Erro ao abrir o baú");
             } finally {
                 setIsOpeningChest(false);
             }
         }, 5000);
-    };
+    }, [chestsRemaining, chestCountdown, isOpeningChest, onSuccess, onError]);
 
     // Timer para countdown
     useEffect(() => {
@@ -473,34 +504,13 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onD
                 <div className="space-y-4">
                     {recentTransactions.length > 0 ? (
                         recentTransactions.map((t: Transaction) => (
-                            <div key={t.id} className="group glass glass-hover p-6 rounded-[2rem] flex items-center justify-between">
-                                <div className="flex items-center gap-6">
-                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-2xl shadow-black ${isPositive(t.type) ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                                        }`}>
-                                        {isPositive(t.type) ? <ArrowDownLeft size={32} /> : <ArrowUpRight size={32} />}
-                                    </div>
-                                    <div>
-                                        <h4 className="text-base font-black text-white uppercase tracking-tight mb-1 group-hover:text-primary-400 transition-colors">{t.description}</h4>
-                                        <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">
-                                            {new Date(t.created_at || t.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace(' de ', ' ')}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className={`text-xl font-black tabular-nums tracking-tighter mb-1 ${isPositive(t.type) ? 'text-emerald-400' : 'text-zinc-500'
-                                        }`}>
-                                        {showValues ? (
-                                            <>
-                                                {isPositive(t.type) ? '+' : '-'} {formatCurrency(t.amount)}
-                                            </>
-                                        ) : '••••••'}
-                                    </p>
-                                    <div className={`text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-lg inline-block border ${t.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' : 'bg-zinc-900 text-zinc-600 border-white/5'
-                                        }`}>
-                                        {t.status === 'PENDING' ? 'Em Validação' : 'Processado'}
-                                    </div>
-                                </div>
-                            </div>
+                            <TransactionRow
+                                key={t.id}
+                                t={t}
+                                formatCurrency={formatCurrency}
+                                isPositive={isPositive}
+                                showValues={showValues}
+                            />
                         ))
                     ) : (
                         <div className="flex flex-col items-center justify-center py-20 text-center bg-zinc-900/10 rounded-[3rem] border border-dashed border-zinc-800">
