@@ -39,7 +39,14 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const [isLoading, setIsLoading] = useState(false);
     const [confirmMP, setConfirmMP] = useState<{ id: string, tid: string } | null>(null);
 
-    const userRole = (state.currentUser?.role || (state.currentUser?.isAdmin ? 'ADMIN' : 'MEMBER')).toUpperCase();
+    // Lógica robusta para determinar o papel do usuário
+    const userRole = (() => {
+        if (state.currentUser?.isAdmin) return 'ADMIN';
+        const role = state.currentUser?.role?.toUpperCase() || 'MEMBER';
+        if (role === 'ROOT' || role === 'MANAGER') return 'ADMIN';
+        return role;
+    })();
+
     const [activeTab, setActiveTab] = useState<TabType>(
         userRole === 'ATTENDANT' ? 'approvals' : 'overview'
     );
@@ -137,7 +144,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                                 </span>
-                                <p className="text-xs text-zinc-400 font-bold uppercase tracking-[0.2em]">Servidor Ativo • v{packageJson.version}</p>
+                                <p className="text-xs text-zinc-400 font-bold uppercase tracking-[0.2em]">Servidor Ativo • v{packageJson.version} • Role: {userRole}</p>
                             </div>
                         </div>
                     </div>
