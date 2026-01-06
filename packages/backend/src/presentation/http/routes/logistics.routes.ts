@@ -29,36 +29,40 @@ logisticsRoutes.get('/available', authMiddleware, async (c: Context) => {
                 seller.name as seller_name,
                 seller.id as seller_id,
                 buyer.name as buyer_name,
-                buyer.id as buyer_id,
-                (mo.delivery_fee * (1 - $1)) as courier_earnings
+                buyer.id as buyer_id
             FROM marketplace_orders mo
-            JOIN marketplace_listings ml ON mo.listing_id = ml.id
-            JOIN users seller ON mo.seller_id = seller.id
-            JOIN users buyer ON mo.buyer_id = buyer.id
+            LEFT JOIN marketplace_listings ml ON mo.listing_id = ml.id
+            LEFT JOIN users seller ON mo.seller_id = seller.id
+            LEFT JOIN users buyer ON mo.buyer_id = buyer.id
             WHERE mo.delivery_status = 'AVAILABLE'
               AND mo.status = 'WAITING_SHIPPING'
             ORDER BY mo.delivery_fee DESC, mo.created_at ASC
             LIMIT 50
-        `, [LOGISTICS_SUSTAINABILITY_FEE_RATE]);
+        `);
 
         return c.json({
             success: true,
-            data: result.rows.map(row => ({
-                orderId: row.order_id,
-                itemTitle: row.item_title,
-                itemPrice: parseFloat(row.item_price),
-                imageUrl: row.image_url,
-                deliveryFee: parseFloat(row.delivery_fee),
-                courierEarnings: parseFloat(row.courier_earnings).toFixed(2),
-                deliveryAddress: row.delivery_address,
-                pickupAddress: row.pickup_address,
-                contactPhone: row.contact_phone,
-                sellerName: row.seller_name,
-                sellerId: row.seller_id,
-                buyerName: row.buyer_name,
-                buyerId: row.buyer_id,
-                createdAt: row.created_at,
-            }))
+            data: result.rows.map(row => {
+                const deliveryFee = parseFloat(row.delivery_fee || '0');
+                const courierEarnings = deliveryFee * (1 - LOGISTICS_SUSTAINABILITY_FEE_RATE);
+
+                return {
+                    orderId: row.order_id,
+                    itemTitle: row.item_title,
+                    itemPrice: parseFloat(row.item_price || '0'),
+                    imageUrl: row.image_url,
+                    deliveryFee: deliveryFee,
+                    courierEarnings: courierEarnings.toFixed(2),
+                    deliveryAddress: row.delivery_address,
+                    pickupAddress: row.pickup_address,
+                    contactPhone: row.contact_phone,
+                    sellerName: row.seller_name,
+                    sellerId: row.seller_id,
+                    buyerName: row.buyer_name,
+                    buyerId: row.buyer_id,
+                    createdAt: row.created_at,
+                };
+            })
         });
     } catch (error: any) {
         console.error('[LOGISTICS] Erro ao listar entregas:', error);
@@ -295,47 +299,51 @@ logisticsRoutes.get('/my-deliveries', authMiddleware, async (c: Context) => {
                 ml.title as item_title,
                 ml.image_url,
                 seller.name as seller_name,
-                buyer.name as buyer_name,
-                (mo.delivery_fee * (1 - $2)) as courier_earnings
+                buyer.name as buyer_name
             FROM marketplace_orders mo
-            JOIN marketplace_listings ml ON mo.listing_id = ml.id
-            JOIN users seller ON mo.seller_id = seller.id
-            JOIN users buyer ON mo.buyer_id = buyer.id
+            LEFT JOIN marketplace_listings ml ON mo.listing_id = ml.id
+            LEFT JOIN users seller ON mo.seller_id = seller.id
+            LEFT JOIN users buyer ON mo.buyer_id = buyer.id
             ${whereClause}
             ORDER BY mo.created_at DESC
             LIMIT 100
-        `, [user.id, LOGISTICS_SUSTAINABILITY_FEE_RATE]);
+        `, [parseInt(user.id.toString())]);
 
         // Calcular totais
         const totalResult = await pool.query(`
             SELECT 
                 COUNT(*) as total_deliveries,
-                COALESCE(SUM(delivery_fee * (1 - $2)), 0) as total_earnings
+                COALESCE(SUM(CAST(delivery_fee AS NUMERIC) * (1.0 - CAST($2 AS NUMERIC))), 0) as total_earnings
             FROM marketplace_orders
             WHERE courier_id = $1 AND status = 'COMPLETED'
-        `, [user.id, LOGISTICS_SUSTAINABILITY_FEE_RATE]);
+        `, [parseInt(user.id.toString()), LOGISTICS_SUSTAINABILITY_FEE_RATE]);
 
         const totals = totalResult.rows[0];
 
         return c.json({
             success: true,
             data: {
-                deliveries: result.rows.map(row => ({
-                    orderId: row.order_id,
-                    itemTitle: row.item_title,
-                    imageUrl: row.image_url,
-                    deliveryFee: parseFloat(row.delivery_fee),
-                    courierEarnings: parseFloat(row.courier_earnings).toFixed(2),
-                    deliveryAddress: row.delivery_address,
-                    pickupAddress: row.pickup_address,
-                    deliveryStatus: row.delivery_status,
-                    orderStatus: row.order_status,
-                    sellerName: row.seller_name,
-                    buyerName: row.buyer_name,
-                    createdAt: row.created_at,
-                    pickedUpAt: row.picked_up_at,
-                    deliveredAt: row.delivered_at,
-                })),
+                deliveries: result.rows.map(row => {
+                    const deliveryFee = parseFloat(row.delivery_fee || '0');
+                    const courierEarnings = deliveryFee * (1 - LOGISTICS_SUSTAINABILITY_FEE_RATE);
+
+                    return {
+                        orderId: row.order_id,
+                        itemTitle: row.item_title,
+                        imageUrl: row.image_url,
+                        deliveryFee: deliveryFee,
+                        courierEarnings: courierEarnings.toFixed(2),
+                        deliveryAddress: row.delivery_address,
+                        pickupAddress: row.pickup_address,
+                        deliveryStatus: row.delivery_status,
+                        orderStatus: row.order_status,
+                        sellerName: row.seller_name,
+                        buyerName: row.buyer_name,
+                        createdAt: row.created_at,
+                        pickedUpAt: row.picked_up_at,
+                        deliveredAt: row.delivered_at,
+                    };
+                }),
                 stats: {
                     totalDeliveries: parseInt(totals.total_deliveries),
                     totalEarnings: parseFloat(totals.total_earnings).toFixed(2),
@@ -361,11 +369,11 @@ logisticsRoutes.get('/stats', authMiddleware, async (c: Context) => {
             SELECT 
                 COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed,
                 COUNT(*) FILTER (WHERE delivery_status IN ('ACCEPTED', 'IN_TRANSIT', 'DELIVERED')) as in_progress,
-                COALESCE(SUM(delivery_fee * (1 - $2)) FILTER (WHERE status = 'COMPLETED'), 0) as total_earned,
-                COALESCE(AVG(delivery_fee * (1 - $2)) FILTER (WHERE status = 'COMPLETED'), 0) as avg_earning
+                COALESCE(SUM(CAST(delivery_fee AS NUMERIC) * (1.0 - CAST($2 AS NUMERIC))) FILTER (WHERE status = 'COMPLETED'), 0) as total_earned,
+                COALESCE(AVG(CAST(delivery_fee AS NUMERIC) * (1.0 - CAST($2 AS NUMERIC))) FILTER (WHERE status = 'COMPLETED'), 0) as avg_earning
             FROM marketplace_orders
             WHERE courier_id = $1
-        `, [user.id, LOGISTICS_SUSTAINABILITY_FEE_RATE]);
+        `, [parseInt(user.id.toString()), LOGISTICS_SUSTAINABILITY_FEE_RATE]);
 
         const stats = result.rows[0];
 
