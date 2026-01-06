@@ -60,6 +60,12 @@ const convertApiLoanToLoan = (apiLoan: any): Loan => {
   const interestRate = typeof apiLoan.interestRate === 'string'
     ? parseFloat(apiLoan.interestRate)
     : apiLoan.interestRate;
+  const totalPaid = typeof apiLoan.totalPaid === 'string'
+    ? parseFloat(apiLoan.totalPaid)
+    : (apiLoan.totalPaid || 0);
+  const remainingAmount = typeof apiLoan.remainingAmount === 'string'
+    ? parseFloat(apiLoan.remainingAmount)
+    : (apiLoan.remainingAmount || totalRepayment);
 
   return {
     id: apiLoan.id,
@@ -71,7 +77,11 @@ const convertApiLoanToLoan = (apiLoan: any): Loan => {
     requestDate: apiLoan.requestDate,
     status: apiLoan.status,
     dueDate: apiLoan.dueDate,
-    createdAt: apiLoan.createdAt || apiLoan.created_at || new Date().toISOString(), // Map createdAt
+    createdAt: apiLoan.createdAt || apiLoan.created_at || new Date().toISOString(),
+    totalPaid: totalPaid,
+    remainingAmount: remainingAmount,
+    paidInstallmentsCount: apiLoan.paidInstallmentsCount || 0,
+    isFullyPaid: apiLoan.isFullyPaid || false,
   };
 };
 
