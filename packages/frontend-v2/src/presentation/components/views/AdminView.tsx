@@ -118,6 +118,8 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         { id: 'logistics', name: 'Logística', icon: Truck, roles: ['ADMIN'] },
     ].filter(tab => tab.roles.includes(userRole));
 
+    console.log('[AdminView] Rendering for role:', userRole, 'Tabs count:', tabs.length, 'ActiveTab:', activeTab);
+
     return (
         <div className="space-y-6 sm:space-y-8 pb-32 max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-8 min-h-screen bg-black">
             {/* Header Modernizado */}
