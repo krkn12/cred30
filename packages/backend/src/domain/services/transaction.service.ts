@@ -408,11 +408,13 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
 
         await client.query('UPDATE system_config SET profit_pool = profit_pool + $1', [interestPortion]);
 
-        if (metadata.paymentType === 'full_payment' || (metadata.paymentType === 'installment' && (metadata.remainingAmount || 0) <= 0)) {
-          await client.query('UPDATE loans SET status = $1 WHERE id = $2', ['PAID', metadata.loanId]);
-        }
+        const isInstallment = metadata.paymentType === 'installment' || metadata.isInstallment === true;
+        const isFullPayment = metadata.paymentType === 'full_payment' || (!isInstallment && loan.status === 'PAYMENT_PENDING');
 
-        if (metadata.paymentType === 'installment') {
+        if (isFullPayment) {
+          await client.query('UPDATE loans SET status = $1 WHERE id = $2', ['PAID', metadata.loanId]);
+          console.log(`[LOAN_PAYMENT] Empréstimo ${metadata.loanId} quitado integralmente.`);
+        } else if (isInstallment) {
           await client.query(
             'INSERT INTO loan_installments (loan_id, amount, use_balance, created_at) VALUES ($1, $2, $3, $4)',
             [metadata.loanId, actualPaymentAmount, metadata.useBalance || false, new Date()]
@@ -423,6 +425,22 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
             'UPDATE loans SET total_repayment = total_repayment - $1, amount = amount - $2 WHERE id = $3',
             [actualPaymentAmount, principalPortion, metadata.loanId]
           );
+
+          // Verificar se completou o pagamento
+          const paidInstallmentsResult = await client.query(
+            'SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) as paid_amount FROM loan_installments WHERE loan_id = $1',
+            [metadata.loanId]
+          );
+          const totalPaid = parseFloat(paidInstallmentsResult.rows[0].paid_amount);
+
+          if (totalPaid >= loanTotal - 0.01) { // Margem para erro de arredondamento
+            await client.query('UPDATE loans SET status = $1 WHERE id = $2', ['PAID', metadata.loanId]);
+            console.log(`[LOAN_PAYMENT] Empréstimo ${metadata.loanId} quitado via parcelas.`);
+          } else {
+            // Garantir que o status volte para APPROVED se estava PENDING
+            await client.query('UPDATE loans SET status = $1 WHERE id = $2', ['APPROVED', metadata.loanId]);
+            console.log(`[LOAN_PAYMENT] Parcela de R$ ${actualPaymentAmount} registrada para Empréstimo ${metadata.loanId}.`);
+          }
         }
 
         await updateScore(client, transaction.user_id, SCORE_REWARDS.LOAN_PAYMENT_ON_TIME, 'Pagamento de empréstimo');
