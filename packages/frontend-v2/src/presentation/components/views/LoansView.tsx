@@ -43,13 +43,13 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
             }
         };
         fetchLimit();
-    }, []);
+    }, [loans, userBalance]);
 
     const interestRate = 0.20; // 20%
     const totalRepay = amount * (1 + interestRate);
     const monthlyPayment = totalRepay / months;
 
-    const activeLoans = loans.filter(l => l.status === 'APPROVED' || l.status === 'PENDING' || l.status === 'PAYMENT_PENDING' || l.status === 'REJECTED');
+    const activeLoans = loans.filter(l => l.status === 'APPROVED' || l.status === 'PENDING' || l.status === 'PAYMENT_PENDING');
     const selectedLoan = activeLoans.find(l => l.id === payModalId);
 
     // Helper: Calculate remaining installments

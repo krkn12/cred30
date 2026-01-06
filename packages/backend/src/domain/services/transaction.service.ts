@@ -416,8 +416,13 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
         const isFullPayment = metadata.paymentType === 'full_payment' || (!isInstallment && loan.status === 'PAYMENT_PENDING');
 
         if (isFullPayment) {
+          // Registrar o pagamento completo como uma entrada de installment para auditoria
+          await client.query(
+            'INSERT INTO loan_installments (loan_id, amount, use_balance, created_at) VALUES ($1, $2, $3, $4)',
+            [metadata.loanId, actualPaymentAmount, metadata.useBalance || false, new Date()]
+          );
           await client.query('UPDATE loans SET status = $1 WHERE id = $2', ['PAID', metadata.loanId]);
-          console.log(`[LOAN_PAYMENT] Empréstimo ${metadata.loanId} quitado integralmente.`);
+          console.log(`[LOAN_PAYMENT] Empréstimo ${metadata.loanId} quitado integralmente. Registro de pagamento criado.`);
         } else if (isInstallment) {
           await client.query(
             'INSERT INTO loan_installments (loan_id, amount, use_balance, created_at) VALUES ($1, $2, $3, $4)',
