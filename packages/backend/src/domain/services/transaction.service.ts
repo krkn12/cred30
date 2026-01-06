@@ -57,7 +57,7 @@ export async function executeInTransaction<T>(
  * Verifica e bloqueia saldo do usuário para operação
  */
 export async function lockUserBalance(
-  client: PoolClient,
+  client: Pool | PoolClient,
   userId: string,
   amount: number
 ): Promise<{ success: boolean; currentBalance?: number; error?: string }> {
@@ -93,7 +93,7 @@ export async function lockUserBalance(
 /**
  * Bloqueia e retorna as configurações globais do sistema para atualização atômica
  */
-export async function lockSystemConfig(client: PoolClient) {
+export async function lockSystemConfig(client: Pool | PoolClient) {
   const result = await client.query('SELECT * FROM system_config FOR UPDATE');
   return result.rows[0];
 }
@@ -102,7 +102,7 @@ export async function lockSystemConfig(client: PoolClient) {
  * Atualiza saldo do usuário de forma segura
  */
 export async function updateUserBalance(
-  client: PoolClient,
+  client: Pool | PoolClient,
   userId: string,
   amount: number,
   operation: 'debit' | 'credit' = 'debit'
@@ -137,7 +137,7 @@ export async function updateUserBalance(
  * Cria registro de transação com validação
  */
 export async function createTransaction(
-  client: PoolClient,
+  client: Pool | PoolClient,
   userId: string,
   type: string,
   amount: number,
@@ -169,7 +169,7 @@ export async function createTransaction(
  * Atualiza status de transação com validação de concorrência
  */
 export async function updateTransactionStatus(
-  client: PoolClient,
+  client: Pool | PoolClient,
   transactionId: string | number,
   currentStatus: string,
   newStatus: string
@@ -399,12 +399,16 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
         const principalPortion = actualPaymentAmount * (loanPrincipal / loanTotal);
         const interestPortion = actualPaymentAmount - principalPortion;
 
-        // O saldo do sistema sobe pelo valor principal pago.
-        // Taxas são repassadas.
-        await client.query(
-          'UPDATE system_config SET system_balance = system_balance + $1',
-          [principalPortion]
-        );
+        // CORREÇÃO: Todo o dinheiro que entra (Principal + Juros) deve aumentar o system_balance
+        // se for um pagamento externo (PIX). Se for via saldo, o system_balance não muda
+        // pois o dinheiro já estava lá (apenas muda de 'dono').
+        if (!metadata.useBalance) {
+          await client.query(
+            'UPDATE system_config SET system_balance = system_balance + $1',
+            [actualPaymentAmount]
+          );
+          console.log(`[LOAN_PAYMENT] Saldo do sistema aumentado em R$ ${actualPaymentAmount} (Principal + Juros)`);
+        }
 
         await client.query('UPDATE system_config SET profit_pool = profit_pool + $1', [interestPortion]);
 
@@ -461,16 +465,19 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
         total_tax_reserve = total_tax_reserve + $1,
         total_operational_reserve = total_operational_reserve + $2,
         total_owner_profit = total_owner_profit + $3,
-        investment_reserve = investment_reserve + $4,
-        system_balance = system_balance + $5`,
+        investment_reserve = investment_reserve + $4`,
       [
         upgradeFee * PLATFORM_FEE_TAX_SHARE,
         upgradeFee * PLATFORM_FEE_OPERATIONAL_SHARE,
         upgradeFee * PLATFORM_FEE_OWNER_SHARE,
-        upgradeFee * PLATFORM_FEE_INVESTMENT_SHARE,
-        upgradeFee
+        upgradeFee * PLATFORM_FEE_INVESTMENT_SHARE
       ]
     );
+
+    // Só aumenta o saldo do sistema se houver entrada real de dinheiro (não useBalance)
+    if (transaction.metadata && !(typeof transaction.metadata === 'object' ? transaction.metadata : JSON.parse(transaction.metadata)).useBalance) {
+      await client.query('UPDATE system_config SET system_balance = system_balance + $1', [upgradeFee]);
+    }
 
     // 3. Bônus de Score por se tornar PRO
     await updateScore(client, transaction.user_id, 100, 'Upgrade para Plano Cred30 PRO');
@@ -558,16 +565,19 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
           total_tax_reserve = total_tax_reserve + $1,
           total_operational_reserve = total_operational_reserve + $2,
           total_owner_profit = total_owner_profit + $3,
-          investment_reserve = investment_reserve + $4,
-          system_balance = system_balance + $5`,
+          investment_reserve = investment_reserve + $4`,
         [
           netBoostFee * PLATFORM_FEE_TAX_SHARE,
           netBoostFee * PLATFORM_FEE_OPERATIONAL_SHARE,
           netBoostFee * PLATFORM_FEE_OWNER_SHARE,
-          netBoostFee * PLATFORM_FEE_INVESTMENT_SHARE,
-          netBoostFee
+          netBoostFee * PLATFORM_FEE_INVESTMENT_SHARE
         ]
       );
+
+      // Aumentar saldo do sistema apenas pelo valor bruto que entrou via gateway
+      if (metadata.asaas_id || metadata.external_reference) {
+        await client.query('UPDATE system_config SET system_balance = system_balance + $1', [boostFee]);
+      }
 
       console.log(`[MARKET_BOOST] Anúncio ${metadata.listingId} impulsionado via transação ${id}`);
     }
@@ -618,18 +628,19 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
           total_tax_reserve = total_tax_reserve + $1,
           total_operational_reserve = total_operational_reserve + $2,
           total_owner_profit = total_owner_profit + $3,
-          investment_reserve = investment_reserve + $4,
-          system_balance = system_balance + $5`,
+          investment_reserve = investment_reserve + $4`,
         [
           feeAmount * PLATFORM_FEE_TAX_SHARE,
           feeAmount * PLATFORM_FEE_OPERATIONAL_SHARE,
           feeAmount * PLATFORM_FEE_OWNER_SHARE,
-          feeAmount * PLATFORM_FEE_INVESTMENT_SHARE,
-          feeAmount
+          feeAmount * PLATFORM_FEE_INVESTMENT_SHARE
         ]
       );
     }
 
+    // CORREÇÃO: O system_balance foi debitado pelo netAmount acima. 
+    // A taxa (feeAmount) nunca saiu do caixa, então não precisamos adicioná-la de volta.
+    // Ela já está no system_balance remanescente.
     console.log('DEBUG - Saque processado contabilmente (PIX Manual):', {
       netAmount,
       feeAmount,
@@ -771,16 +782,18 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
       total_tax_reserve = total_tax_reserve + $1,
       total_operational_reserve = total_operational_reserve + $2,
       total_owner_profit = total_owner_profit + $3,
-      investment_reserve = investment_reserve + $4,
-      system_balance = system_balance + $5`,
+      investment_reserve = investment_reserve + $4`,
     [
       originationFee * PLATFORM_FEE_TAX_SHARE,
       originationFee * PLATFORM_FEE_OPERATIONAL_SHARE,
       originationFee * PLATFORM_FEE_OWNER_SHARE,
-      originationFee * PLATFORM_FEE_INVESTMENT_SHARE,
-      originationFee  // A taxa de originação entra como receita
+      originationFee * PLATFORM_FEE_INVESTMENT_SHARE
     ]
   );
+
+  // CORREÇÃO: A originationFee nunca saiu do caixa do sistema.
+  // Já descontamos o netAmount do system_balance acima (linha 742).
+  // Portanto, não há nada a adicionar ao system_balance aqui.
 
   // O dinheiro já foi reservado/debitado do caixa acima
 

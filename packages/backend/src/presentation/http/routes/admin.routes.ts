@@ -892,15 +892,27 @@ adminRoutes.post('/approve-payment', adminMiddleware, auditMiddleware('APPROVE_P
         // Se for PIX, o sistema absorve (diminui system_balance).
         // Se for CARTÃO, o usuário pagou extra (transaction.amount > baseAmount).
 
-        await client.query(
-          'UPDATE system_config SET system_balance = system_balance + $1 - $2',
-          [principalAmount, metadata.useBalance ? 0 : gatewayCost]
-        );
+        // CORREÇÃO: Adicionar 100% do valor (Principal + Juros) ao saldo do sistema se for externo.
+        // Se for saldo, não muda o saldo bruto do banco.
+        if (!metadata.useBalance) {
+          await client.query(
+            'UPDATE system_config SET system_balance = system_balance + $1',
+            [principalAmount + totalInterest]
+          );
+        }
 
-        // Adicionar juros ao pool de lucros
+        // Distribuir Lucro: 85% para os cotistas (profit_pool) e 15% para as Reservas (taxas)
+        const feeForProfit = totalInterest * 0.85;
+        const feeForReserves = totalInterest * 0.15;
+
         await client.query(
-          'UPDATE system_config SET profit_pool = profit_pool + $1',
-          [totalInterest]
+          `UPDATE system_config SET 
+            profit_pool = profit_pool + $1,
+            total_tax_reserve = total_tax_reserve + $2,
+            total_operational_reserve = total_operational_reserve + $3,
+            total_owner_profit = total_owner_profit + $4,
+            investment_reserve = investment_reserve + $5`,
+          [feeForProfit, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25]
         );
 
         // Marcar empréstimo como PAGO
@@ -935,9 +947,26 @@ adminRoutes.post('/approve-payment', adminMiddleware, auditMiddleware('APPROVE_P
         );
 
         // Subtrair do caixa operacional e registrar custo total
+        // CORREÇÃO: Adicionar valor total da parcela ao saldo do sistema (entrada de dinheiro)
+        if (!metadata.useBalance) {
+          await client.query(
+            'UPDATE system_config SET system_balance = system_balance + $1',
+            [installmentAmount]
+          );
+        }
+
+        // Distribuir Lucro da parcela: 85% Cotistas / 15% Reservas
+        const feeForProfit = interestPortion * 0.85;
+        const feeForReserves = interestPortion * 0.15;
+
         await client.query(
-          'UPDATE system_config SET system_balance = system_balance + $1 - $2, total_gateway_costs = total_gateway_costs + $2',
-          [principalPortion, gatewayCost]
+          `UPDATE system_config SET 
+            profit_pool = profit_pool + $1,
+            total_tax_reserve = total_tax_reserve + $2,
+            total_operational_reserve = total_operational_reserve + $3,
+            total_owner_profit = total_owner_profit + $4,
+            investment_reserve = investment_reserve + $5`,
+          [feeForProfit, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25]
         );
 
         console.log('DEBUG - Parcela processada:', {
@@ -1281,27 +1310,27 @@ adminRoutes.post('/approve-withdrawal', adminMiddleware, auditMiddleware('APPROV
         [netAmount]
       );
 
-      // Aplicar nova regra: 85% da taxa para o caixa operacional e 15% para o lucro de juros
-      const feeForOperational = feeAmount * 0.85; // 85% da taxa vai para o caixa operacional
-      const feeForProfit = feeAmount * 0.15; // 15% da taxa vai para o lucro de juros
+      // CORREÇÃO: O saldo já foi debitado pelo netAmount (o que saiu do banco)
+      // A taxa (feeAmount) nunca saiu, então não se adiciona de volta ao system_balance.
+      // Distribuímos a taxa apenas contabilmente nas reservas.
+      const feeForProfit = feeAmount * 0.15; // 15% para lucro dos cotistas
+      const feeForReserves = feeAmount * 0.85; // 85% para manter o sistema operacional/impostos
 
-      // Adicionar 85% da taxa ao caixa operacional
       await client.query(
-        'UPDATE system_config SET system_balance = system_balance + $1',
-        [feeForOperational]
-      );
-
-      // Adicionar 15% da taxa ao lucro de juros
-      await client.query(
-        'UPDATE system_config SET profit_pool = profit_pool + $1',
-        [feeForProfit]
+        `UPDATE system_config SET 
+            profit_pool = profit_pool + $1,
+            total_tax_reserve = total_tax_reserve + $2,
+            total_operational_reserve = total_operational_reserve + $3,
+            total_owner_profit = total_owner_profit + $4,
+            investment_reserve = investment_reserve + $5`,
+        [feeForProfit, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25]
       );
 
       console.log('DEBUG - Distribuição de taxa de saque (nova regra 85/15):', {
         transactionId,
         withdrawalAmount,
         feeAmount,
-        feeForOperational,
+        feeForReserves,
         feeForProfit,
         netAmount,
         totalWithdrawal: withdrawalAmount,
@@ -1322,10 +1351,10 @@ adminRoutes.post('/approve-withdrawal', adminMiddleware, auditMiddleware('APPROV
           JSON.stringify({
             withdrawalAmount,
             feeAmount,
-            feeForOperational,
+            feeForReserves,
             feeForProfit,
             netAmount,
-            distributionRule: '85% operational, 15% profit'
+            distributionRule: '15% profit, 85% reserves (25/25/25/25)'
           }),
           c.get('user')?.id,
           new Date()

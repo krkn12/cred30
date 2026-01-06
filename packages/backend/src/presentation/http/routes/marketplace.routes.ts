@@ -760,12 +760,19 @@ marketplaceRoutes.post('/boost', authMiddleware, async (c: Context) => {
                     [expiresAt, listingId]
                 );
 
-                const feeForProfit = BOOST_FEE * 0.85;
-                const feeForOperational = BOOST_FEE * 0.15;
+                const taxPart = BOOST_FEE * 0.25;
+                const operPart = BOOST_FEE * 0.25;
+                const ownerPart = BOOST_FEE * 0.25;
+                const investPart = BOOST_FEE * 0.25;
 
                 await client.query(
-                    'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
-                    [feeForOperational, feeForProfit]
+                    `UPDATE system_config SET 
+                        total_tax_reserve = total_tax_reserve + $1,
+                        total_operational_reserve = total_operational_reserve + $2,
+                        total_owner_profit = total_owner_profit + $3,
+                        investment_reserve = investment_reserve + $4,
+                        profit_pool = profit_pool + $5`,
+                    [taxPart, operPart, ownerPart, investPart, 0]
                 );
 
                 await createTransaction(
