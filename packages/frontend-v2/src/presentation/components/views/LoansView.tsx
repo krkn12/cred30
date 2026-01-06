@@ -204,18 +204,29 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                             </div>
 
                             <div>
-                                <label className="text-xs text-zinc-400 font-medium mb-2 block">Em quantas vezes?</label>
-                                <div className="grid grid-cols-4 gap-2">
-                                    {[1, 2, 3, 6].map(m => (
+                                <label className="text-xs text-zinc-400 font-medium mb-2 block">Deseja parcelar em quantas vezes?</label>
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="36"
+                                        value={months}
+                                        onChange={(e) => setMonths(Math.max(1, Number(e.target.value)))}
+                                        className="w-full bg-background border border-surfaceHighlight rounded-xl py-4 px-4 text-white text-lg font-bold focus:border-primary-500 outline-none transition"
+                                        placeholder="Meses"
+                                    />
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 font-medium">meses</span>
+                                </div>
+                                <div className="flex gap-2 mt-2">
+                                    {[1, 3, 6, 12, 24].map(val => (
                                         <button
-                                            key={m}
-                                            onClick={() => setMonths(m)}
-                                            className={`py-3 rounded-xl text-sm font-bold border transition ${months === m
-                                                ? 'bg-primary-500 text-black border-primary-500'
-                                                : 'bg-background border-surfaceHighlight text-zinc-400 hover:border-zinc-600'
-                                                }`}
+                                            key={val}
+                                            onClick={() => setMonths(val)}
+                                            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${months === val
+                                                ? 'bg-primary-500 text-black border border-primary-400'
+                                                : 'bg-zinc-900 border border-white/5 text-zinc-500 hover:bg-zinc-800 hover:text-white'}`}
                                         >
-                                            {m}x
+                                            {val}X
                                         </button>
                                     ))}
                                 </div>
