@@ -6,15 +6,24 @@ export interface UserContext {
   balance: number;
   joinedAt: number; // Timestamp em milissegundos
   referralCode: string;
+  referredBy?: string; // Código do referidor
   isAdmin: boolean;
   role: 'MEMBER' | 'ATTENDANT' | 'ADMIN';
   status: 'ACTIVE' | 'BLOCKED';
   score: number;
-  pixKey?: string; // Adicionado para compatibilidade
+  pixKey?: string;
   twoFactorEnabled?: boolean;
-  cpf?: string | null; // CPF do usuário (opcional, obrigatório para saque)
+  cpf?: string | null;
+  phone?: string | null;
   securityLockUntil?: number; // Timestamp em milissegundos
   membership_type?: string;
+  is_verified?: boolean;
+  is_seller?: boolean;
+  video_points?: number;
+  ad_points?: number;
+  address?: string;
+  total_dividends_earned?: number;
+  last_login_at?: string;
 }
 
 // Estender o tipo de variáveis do Hono
