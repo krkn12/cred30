@@ -915,13 +915,19 @@ adminRoutes.post('/approve-payment', adminMiddleware, auditMiddleware('APPROVE_P
           [feeForProfit, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25]
         );
 
+        // Registrar o pagamento completo como uma entrada de installment para auditoria
+        await client.query(
+          'INSERT INTO loan_installments (loan_id, amount, use_balance, created_at) VALUES ($1, $2, $3, $4)',
+          [metadata.loanId, principalAmount + totalInterest, metadata.useBalance || false, new Date()]
+        );
+
         // Marcar empréstimo como PAGO
         await client.query(
           'UPDATE loans SET status = $1 WHERE id = $2',
           ['PAID', metadata.loanId]
         );
 
-        console.log('DEBUG - Pagamento completo processado (100% juros para pool):', {
+        console.log('DEBUG - Pagamento completo processado (100% juros para pool). Installment registrado:', {
           principalReturned: principalAmount,
           totalInterest,
           totalToProfit: totalInterest
