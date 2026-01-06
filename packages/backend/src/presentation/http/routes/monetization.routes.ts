@@ -189,13 +189,21 @@ monetizationRoutes.post('/upgrade-pro', authMiddleware, async (c) => {
             // Cobrar taxa
             await client.query('UPDATE users SET balance = balance - $1, membership_type = $2 WHERE id = $3', [PRO_UPGRADE_FEE, 'PRO', user.id]);
 
-            // Distribuir lucros (85% para cotistas / 15% Operacional)
-            const feeForProfit = PRO_UPGRADE_FEE * 0.85;
-            const feeForOperational = PRO_UPGRADE_FEE * 0.15;
+            const taxShare = PRO_UPGRADE_FEE * 0.25;
+            const opShare = PRO_UPGRADE_FEE * 0.25;
+            const ownerShare = PRO_UPGRADE_FEE * 0.25;
+            const investShare = PRO_UPGRADE_FEE * 0.25;
 
+            // Para pagamentos internos via saldo, NÃO aumentamos o system_balance
+            // apenas redistribuímos o que já está no caixa para as reservas.
             await client.query(
-                'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
-                [feeForOperational, feeForProfit]
+                `UPDATE system_config SET 
+                    total_tax_reserve = total_tax_reserve + $1,
+                    total_operational_reserve = total_operational_reserve + $2,
+                    total_owner_profit = total_owner_profit + $3,
+                    investment_reserve = investment_reserve + $4,
+                    profit_pool = profit_pool + $5`,
+                [taxShare, opShare, ownerShare, investShare, 0] // No modelo PRO, 100% vai para reservas
             );
 
             // Registrar transação
@@ -244,12 +252,18 @@ monetizationRoutes.post('/buy-verified-badge', authMiddleware, async (c) => {
             // Dar Score Bônus pela Confiança (+100)
             await updateScore(client, user.id, 100, 'Compra de Selo de Verificado (Confiança)');
 
-            // Distribuir Lucro (100% Margem) -> 85% Profit Pool / 15% Operacional
+            // Distribuir Lucro -> 85% Profit Pool / 15% Reservas Operacionais (25/25/25/25 do 15%)
             const feeForProfit = VERIFIED_BADGE_PRICE * 0.85;
-            const feeForOperational = VERIFIED_BADGE_PRICE * 0.15;
+            const feeForReserves = VERIFIED_BADGE_PRICE * 0.15;
+
             await client.query(
-                'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
-                [feeForOperational, feeForProfit]
+                `UPDATE system_config SET 
+                    profit_pool = profit_pool + $1,
+                    total_tax_reserve = total_tax_reserve + $2,
+                    total_operational_reserve = total_operational_reserve + $3,
+                    total_owner_profit = total_owner_profit + $4,
+                    investment_reserve = investment_reserve + $5`,
+                [feeForProfit, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25]
             );
 
             // Registrar Transação
@@ -293,12 +307,18 @@ monetizationRoutes.post('/buy-score-boost', authMiddleware, async (c) => {
             // Dar Boost
             await updateScore(client, user.id, SCORE_BOOST_POINTS, 'Compra de Pacote Score Boost');
 
-            // Distribuir Lucro -> 85% Profit Pool / 15% Operacional
+            // Distribuir Lucro -> 85% Profit Pool / 15% Reservas
             const feeForProfit = SCORE_BOOST_PRICE * 0.85;
-            const feeForOperational = SCORE_BOOST_PRICE * 0.15;
+            const feeForReserves = SCORE_BOOST_PRICE * 0.15;
+
             await client.query(
-                'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
-                [feeForOperational, feeForProfit]
+                `UPDATE system_config SET 
+                    profit_pool = profit_pool + $1,
+                    total_tax_reserve = total_tax_reserve + $2,
+                    total_operational_reserve = total_operational_reserve + $3,
+                    total_owner_profit = total_owner_profit + $4,
+                    investment_reserve = investment_reserve + $5`,
+                [feeForProfit, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25]
             );
 
             // Registrar Transação
@@ -413,15 +433,18 @@ monetizationRoutes.get('/reputation-check/:email', authMiddleware, async (c) => 
 
             const target = targetRes.rows[0];
 
-            // 3. Cobrar a taxa (Revenue 85/15)
-            await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [REPUTATION_CHECK_PRICE, user.id]);
-
+            // Cobrar a taxa (Revenue 85/15)
             const feeForProfit = REPUTATION_CHECK_PRICE * 0.85;
-            const feeForOperational = REPUTATION_CHECK_PRICE * 0.15;
+            const feeForReserves = REPUTATION_CHECK_PRICE * 0.15;
 
             await client.query(
-                'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
-                [feeForOperational, feeForProfit]
+                `UPDATE system_config SET 
+                    profit_pool = profit_pool + $1,
+                    total_tax_reserve = total_tax_reserve + $2,
+                    total_operational_reserve = total_operational_reserve + $3,
+                    total_owner_profit = total_owner_profit + $4,
+                    investment_reserve = investment_reserve + $5`,
+                [feeForProfit, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25]
             );
 
             // 4. Registrar transação
