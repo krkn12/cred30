@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import packageJson from '../../../../package.json';
 import {
     ShieldCheck, RefreshCw, LogOut, Send, MessageSquare, PieChart, Activity, Settings as SettingsIcon, UserPlus, ShoppingBag as ShoppingBagIcon, Vote, Bug, TrendingUp, Truck
