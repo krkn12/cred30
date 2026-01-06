@@ -60,9 +60,9 @@ logisticsRoutes.get('/available', authMiddleware, async (c: Context) => {
                 createdAt: row.created_at,
             }))
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('[LOGISTICS] Erro ao listar entregas:', error);
-        return c.json({ success: false, message: 'Erro ao buscar entregas disponíveis' }, 500);
+        return c.json({ success: false, message: 'Erro ao buscar entregas disponíveis', error: error.message }, 500);
     }
 });
 
@@ -342,9 +342,9 @@ logisticsRoutes.get('/my-deliveries', authMiddleware, async (c: Context) => {
                 }
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('[LOGISTICS] Erro ao listar minhas entregas:', error);
-        return c.json({ success: false, message: 'Erro ao buscar suas entregas' }, 500);
+        return c.json({ success: false, message: 'Erro ao buscar suas entregas', error: error.message }, 500);
     }
 });
 
