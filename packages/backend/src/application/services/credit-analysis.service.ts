@@ -80,7 +80,7 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
                 (SELECT COUNT(*) FROM marketplace_orders mo JOIN marketplace_listings ml ON mo.listing_id = ml.id WHERE ml.user_id = $1 AND mo.status = 'COMPLETED') as sales,
                 (SELECT COUNT(*) FROM loans WHERE user_id = $1 AND status = 'APPROVED' AND due_date < NOW()) as overdue_loans,
                 -- Total gasto (sem cotas)
-                COALESCE((SELECT SUM(total_price) FROM marketplace_orders WHERE buyer_id = $1 AND status = 'COMPLETED'), 0) as marketplace_spent,
+                COALESCE((SELECT SUM(amount) FROM marketplace_orders WHERE buyer_id = $1 AND status = 'COMPLETED'), 0) as marketplace_spent,
                 COALESCE((SELECT SUM(budget_gross) FROM promo_videos WHERE user_id = $1), 0) as campaign_spent,
                 COALESCE((SELECT SUM(ABS(amount)) FROM transactions 
                     WHERE user_id = $1 AND status = 'APPROVED' 
@@ -139,9 +139,9 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         }
 
         return { eligible: true, details };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Erro ao verificar elegibilidade:', error);
-        return { eligible: false, reason: 'Erro ao verificar', details: { score: 0, quotasCount: 0, quotasValue: 0, marketplaceTransactions: 0, accountAgeDays: 0, hasOverdue: false, totalSpent: 0, maxLoanAmount: 0 } };
+        return { eligible: false, reason: `Erro técnico na análise: ${error.message}`, details: { score: 0, quotasCount: 0, quotasValue: 0, marketplaceTransactions: 0, accountAgeDays: 0, hasOverdue: false, totalSpent: 0, maxLoanAmount: 0 } };
     }
 };
 
