@@ -193,14 +193,16 @@ quotaRoutes.post('/buy', authMiddleware, async (c) => {
         const ownerAmount = totalAdmFee * QUOTA_FEE_OWNER_SHARE;
         const investmentAmount = totalAdmFee * QUOTA_FEE_INVESTMENT_SHARE;
 
+        // CORREÇÃO: NÃO incrementar system_balance aqui pois é compra com saldo interno.
+        // O dinheiro já está no sistema (veio do depósito anterior).
+        // Apenas redistribuir para as reservas.
         await client.query(`
           UPDATE system_config SET 
             total_tax_reserve = total_tax_reserve + $1,
             total_operational_reserve = total_operational_reserve + $2,
             total_owner_profit = total_owner_profit + $3,
-            investment_reserve = COALESCE(investment_reserve, 0) + $4,
-            system_balance = system_balance + $5
-        `, [taxAmount, operationalAmount, ownerAmount, investmentAmount, totalAdmFee]);
+            investment_reserve = COALESCE(investment_reserve, 0) + $4
+        `, [taxAmount, operationalAmount, ownerAmount, investmentAmount]);
 
         console.log(`[QUOTAS] Fee distribution: Tax R$${taxAmount.toFixed(2)}, Operational R$${operationalAmount.toFixed(2)}, Owner R$${ownerAmount.toFixed(2)}, Investment R$${investmentAmount.toFixed(2)}`);
 
