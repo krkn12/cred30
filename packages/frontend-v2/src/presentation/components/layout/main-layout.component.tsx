@@ -56,7 +56,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
                 {user.balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </span>
             </div>
-            <button onClick={onLogout} className="text-zinc-400 p-1" title="Sair"><LogOut size={20} /></button>
+            <button onClick={() => {
+              const aside = document.querySelector('aside');
+              if (aside) aside.classList.toggle('hidden');
+            }} className="text-zinc-400 p-1" title="Menu"><Settings size={20} /></button>
           </div>
         )}
       </div>
