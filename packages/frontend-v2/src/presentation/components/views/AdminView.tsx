@@ -39,7 +39,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const [isLoading, setIsLoading] = useState(false);
     const [confirmMP, setConfirmMP] = useState<{ id: string, tid: string } | null>(null);
 
-    const userRole = state.currentUser?.role || (state.currentUser?.isAdmin ? 'ADMIN' : 'MEMBER');
+    const userRole = (state.currentUser?.role || (state.currentUser?.isAdmin ? 'ADMIN' : 'MEMBER')).toUpperCase();
     const [activeTab, setActiveTab] = useState<TabType>(
         userRole === 'ATTENDANT' ? 'approvals' : 'overview'
     );
@@ -119,7 +119,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     ].filter(tab => tab.roles.includes(userRole));
 
     return (
-        <div className="space-y-6 sm:space-y-8 pb-32 max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-8">
+        <div className="space-y-6 sm:space-y-8 pb-32 max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-8 min-h-screen bg-black">
             {/* Header Modernizado */}
             <div className="bg-gradient-to-br from-zinc-900 to-black rounded-3xl p-6 sm:p-8 border border-zinc-800 shadow-2xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
@@ -160,28 +160,35 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
             </div>
 
             {/* Abas com Scroll Otimizado */}
-            <div className="flex items-center gap-1.5 p-1.5 bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 rounded-[2rem] overflow-x-auto no-scrollbar shadow-xl sticky top-4 z-50 touch-pan-x">
-                {tabs.map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id as TabType)}
-                        className={`
-                            relative flex items-center gap-3 px-6 sm:px-8 py-3.5 sm:py-4 rounded-[1.5rem] text-xs sm:text-sm font-bold transition-all duration-500 whitespace-nowrap
-                            ${activeTab === tab.id
-                                ? 'bg-zinc-800 text-white shadow-2xl border border-zinc-700/50 scale-[1.02]'
-                                : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/30'}
-                        `}
-                    >
-                        <tab.icon size={20} className={activeTab === tab.id ? "text-primary-400" : ""} />
-                        {tab.name}
-                        {tab.count !== undefined && tab.count > 0 && (
-                            <span className="flex h-5 w-5 items-center justify-center bg-primary-500 text-zinc-900 text-[10px] font-black rounded-full shadow-[0_0_15px_rgba(6,182,212,0.4)]">
-                                {tab.count}
-                            </span>
-                        )}
-                    </button>
-                ))}
-            </div>
+            {tabs.length === 0 ? (
+                <div className="bg-red-500/10 border border-red-500/20 p-8 rounded-3xl text-center">
+                    <p className="text-red-500 font-bold text-lg">Acesso Restrito</p>
+                    <p className="text-zinc-400 text-sm mt-2">Nenhuma opção de gerenciamento disponível para seu perfil ({userRole}).</p>
+                </div>
+            ) : (
+                <div className="flex items-center gap-1.5 p-1.5 bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 rounded-[2rem] overflow-x-auto no-scrollbar shadow-xl sticky top-4 z-50 touch-pan-x">
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id as TabType)}
+                            className={`
+                                relative flex items-center gap-3 px-6 sm:px-8 py-3.5 sm:py-4 rounded-[1.5rem] text-xs sm:text-sm font-bold transition-all duration-500 whitespace-nowrap
+                                ${activeTab === tab.id
+                                    ? 'bg-zinc-800 text-white shadow-2xl border border-zinc-700/50 scale-[1.02]'
+                                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/30'}
+                            `}
+                        >
+                            <tab.icon size={20} className={activeTab === tab.id ? "text-primary-400" : ""} />
+                            {tab.name}
+                            {tab.count !== undefined && tab.count > 0 && (
+                                <span className="flex h-5 w-5 items-center justify-center bg-primary-500 text-zinc-900 text-[10px] font-black rounded-full shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+                                    {tab.count}
+                                </span>
+                            )}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {/* Tab Content */}
             <div className="min-h-[600px]">
