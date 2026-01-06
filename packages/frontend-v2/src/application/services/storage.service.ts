@@ -32,20 +32,41 @@ const convertApiUserToUser = (apiUser: any): User => {
     isAdmin: apiUser.isAdmin || apiUser.is_admin || apiUser.role === 'ADMIN' || false,
     score: apiUser.score ?? 0,
     twoFactorEnabled: apiUser.twoFactorEnabled || apiUser.two_factor_enabled || false,
-    cpf: apiUser.cpf || null, // CPF do usuário (obrigatório para saque)
+    cpf: apiUser.cpf || null,
     phone: apiUser.phone || null,
+    // Campos adicionais que o backend retorna
+    membership_type: apiUser.membership_type || 'FREE',
+    is_verified: apiUser.is_verified || false,
+    video_points: apiUser.video_points || 0,
+    ad_points: apiUser.ad_points || 0,
+    role: apiUser.role || 'MEMBER',
+    status: apiUser.status || 'ACTIVE',
+    securityLockUntil: apiUser.security_lock_until ? new Date(apiUser.security_lock_until).getTime() : undefined,
+    is_seller: apiUser.is_seller || false,
+    total_dividends_earned: apiUser.total_dividends_earned || 0,
+    last_login_at: apiUser.last_login_at,
   };
 };
 
 const convertApiQuotaToQuota = (apiQuota: any): Quota => {
+  const purchasePrice = typeof apiQuota.purchasePrice === 'string'
+    ? parseFloat(apiQuota.purchasePrice)
+    : (apiQuota.purchasePrice || 0);
+  const currentValue = typeof apiQuota.currentValue === 'string'
+    ? parseFloat(apiQuota.currentValue)
+    : (apiQuota.currentValue || 0);
+  const yieldRate = typeof apiQuota.yieldRate === 'string'
+    ? parseFloat(apiQuota.yieldRate)
+    : (apiQuota.yieldRate || 0);
+
   return {
     id: apiQuota.id,
-    userId: apiQuota.userId,
-    purchasePrice: apiQuota.purchasePrice,
-    purchaseDate: apiQuota.purchaseDate,
-    currentValue: apiQuota.currentValue,
-    yieldRate: apiQuota.yieldRate,
-    status: apiQuota.status || 'ACTIVE', // Default status if missing
+    userId: apiQuota.userId || apiQuota.user_id || '',
+    purchasePrice: purchasePrice,
+    purchaseDate: apiQuota.purchaseDate || apiQuota.purchase_date,
+    currentValue: currentValue,
+    yieldRate: yieldRate,
+    status: apiQuota.status || 'ACTIVE',
   };
 };
 
@@ -93,13 +114,14 @@ const convertApiTransactionToTransaction = (apiTransaction: any): Transaction =>
 
   return {
     id: apiTransaction.id,
-    userId: apiTransaction.userId,
+    userId: apiTransaction.userId || apiTransaction.user_id || '',
     type: apiTransaction.type,
     amount: amount || 0,
-    date: apiTransaction.date,
+    date: apiTransaction.date || apiTransaction.created_at,
     description: apiTransaction.description,
     status: apiTransaction.status,
     metadata: apiTransaction.metadata,
+    created_at: apiTransaction.created_at,
   };
 };
 
