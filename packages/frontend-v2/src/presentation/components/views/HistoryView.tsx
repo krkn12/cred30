@@ -109,7 +109,7 @@ export const HistoryView = ({ transactions: initialTransactions, isPro }: Histor
     const groupedTransactions = useMemo(() => {
         const groups: Record<string, Transaction[]> = {};
         filteredTransactions.forEach(t => {
-            const date = new Date(t.date).toLocaleDateString('pt-BR');
+            const date = new Date(t.date || t.created_at || new Date()).toLocaleDateString('pt-BR');
             if (!groups[date]) groups[date] = [];
             groups[date].push(t);
         });
