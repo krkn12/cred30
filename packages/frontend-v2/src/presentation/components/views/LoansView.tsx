@@ -26,7 +26,12 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
     const isPro = currentUser?.membership_type === 'PRO';
 
     // Limite de Apoio Mútuo (Nubank Style)
-    const [creditLimit, setCreditLimit] = useState<{ totalLimit: number; activeDebt: number; remainingLimit: number } | null>(null);
+    const [creditLimit, setCreditLimit] = useState<{
+        totalLimit: number;
+        activeDebt: number;
+        remainingLimit: number;
+        analysis?: { eligible: boolean; reason: string; details: any }
+    } | null>(null);
 
     useEffect(() => {
         const fetchLimit = async () => {
@@ -139,21 +144,21 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
 
                     {/* Limite de Crédito Card (Nubank Style) */}
                     {creditLimit && (
-                        <div className={`border rounded-2xl p-4 mb-6 ${creditLimit.totalLimit === 0 ? 'bg-orange-500/10 border-orange-500/30' : 'bg-gradient-to-r from-emerald-500/10 to-primary-500/10 border-emerald-500/30'}`}>
+                        <div className={`border rounded-2xl p-4 mb-6 ${(!creditLimit.analysis?.eligible || creditLimit.totalLimit === 0) ? 'bg-orange-500/10 border-orange-500/30' : 'bg-gradient-to-r from-emerald-500/10 to-primary-500/10 border-emerald-500/30'}`}>
                             <div className="flex items-center gap-2 mb-2">
-                                {creditLimit.totalLimit === 0 ? (
+                                {(!creditLimit.analysis?.eligible || creditLimit.totalLimit === 0) ? (
                                     <AlertTriangle className="text-orange-400" size={18} />
                                 ) : (
                                     <TrendingUp className="text-emerald-400" size={18} />
                                 )}
-                                <span className={`text-sm font-medium ${creditLimit.totalLimit === 0 ? 'text-orange-400' : 'text-emerald-400'}`}>
-                                    {creditLimit.totalLimit === 0 ? 'Atenção: Ajuda Indisponível' : 'Seu Limite de Ajuda Mútua'}
+                                <span className={`text-sm font-medium ${(!creditLimit.analysis?.eligible || creditLimit.totalLimit === 0) ? 'text-orange-400' : 'text-emerald-400'}`}>
+                                    {(!creditLimit.analysis?.eligible || creditLimit.totalLimit === 0) ? 'Atenção: Ajuda Indisponível' : 'Seu Limite de Ajuda Mútua'}
                                 </span>
                             </div>
 
-                            {creditLimit.totalLimit === 0 ? (
+                            {!creditLimit.analysis?.eligible || creditLimit.totalLimit === 0 ? (
                                 <p className="text-sm text-zinc-300">
-                                    Para liberar o apoio mútuo, você precisa ter no mínimo <strong className="text-white">1 participação ativa</strong> no clube.
+                                    {creditLimit.analysis?.reason || 'Para liberar o apoio mútuo, você precisa ter no mínimo 1 participação ativa no clube e score de crédito saudável.'}
                                 </p>
                             ) : (
                                 <>
