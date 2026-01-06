@@ -19,11 +19,13 @@ import { Pool, PoolClient } from 'pg';
  */
 
 // Constantes
-const MIN_SCORE_FOR_LOAN = 850;
-const MIN_MARKETPLACE_TRANSACTIONS = 3;
-const MIN_ACCOUNT_AGE_DAYS = 30;
+// Constantes de Meritocracia Flexível
+const MIN_SCORE_FOR_LOAN = 0; // Removido bloqueio por score - garantia real via cotas é suficiente
+const MIN_MARKETPLACE_TRANSACTIONS = 0; // Se tem cota, já é parceiro
+const MIN_ACCOUNT_AGE_DAYS = 0;  // Liberação imediata para detentores de cotas
 const SYSTEM_LIQUIDITY_RESERVE = 0.30;
-const LIMIT_PERCENTAGE = 0.80; // 80% do total gasto
+const LIMIT_PERCENTAGE_OF_SPENT = 0.80; // 80% do que "sumiu" (gastou/taxas)
+const LIMIT_PERCENTAGE_OF_QUOTAS = 0.50; // 50% do capital social (cotas)
 
 // Tabela de juros baseada na garantia
 const INTEREST_RATES: { [key: number]: number } = {
@@ -83,7 +85,8 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
                 COALESCE((SELECT SUM(ABS(amount)) FROM transactions 
                     WHERE user_id = $1 AND status = 'APPROVED' 
                     AND type IN ('MEMBERSHIP_UPGRADE', 'BUY_VERIFIED_BADGE', 'BUY_SCORE_PACKAGE', 'MARKET_BOOST')
-                ), 0) as platform_spent
+                ), 0) as platform_spent,
+                (SELECT COUNT(*) FROM transactions WHERE user_id = $1 AND type = 'QUOTA_PURCHASE' AND status = 'PENDING') as pending_quotas
             FROM users u
             WHERE u.id = $1
         `, [userId]);
@@ -100,13 +103,14 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         const accountAgeDays = Math.floor((Date.now() - new Date(userData.created_at).getTime()) / (1000 * 60 * 60 * 24));
         const hasOverdue = parseInt(userData.overdue_loans) > 0;
 
-        // Total gasto (sem cotas)
+        // Total gasto (sem cotas resgatáveis) + Taxa Adm das Cotas (que é gasto)
         const totalSpent = parseFloat(userData.marketplace_spent || 0) +
             parseFloat(userData.campaign_spent || 0) +
-            parseFloat(userData.platform_spent || 0);
+            parseFloat(userData.platform_spent || 0) +
+            (quotasCount * 8.0); // 8,00 por cota é taxa de manutenção (gasto)
 
-        // Limite máximo = 80% do total gasto
-        const maxLoanAmount = Math.floor(totalSpent * LIMIT_PERCENTAGE);
+        // Limite = 80% do gasto + 50% do valor das cotas
+        const maxLoanAmount = Math.floor((totalSpent * LIMIT_PERCENTAGE_OF_SPENT) + (quotasValue * LIMIT_PERCENTAGE_OF_QUOTAS));
 
         const details = { score, quotasCount, quotasValue, marketplaceTransactions, accountAgeDays, hasOverdue, totalSpent, maxLoanAmount };
 
@@ -118,16 +122,20 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
             return { eligible: false, reason: `Score mínimo de ${MIN_SCORE_FOR_LOAN} necessário. Seu: ${score}`, details };
         }
         if (quotasCount < 1) {
-            return { eligible: false, reason: 'Você precisa ter pelo menos 1 cota ativa.', details };
+            const pendingQuotas = parseInt(userData.pending_quotas || 0);
+            if (pendingQuotas > 0) {
+                return { eligible: false, reason: 'Sua participação está aguardando aprovação bancária. O limite será liberado assim que confirmarmos seu PIX.', details };
+            }
+            return { eligible: false, reason: 'Você precisa ter pelo menos 1 participação ativa no Clube para liberar o Apoio Mútuo.', details };
         }
         if (marketplaceTransactions < MIN_MARKETPLACE_TRANSACTIONS) {
-            return { eligible: false, reason: `Mínimo ${MIN_MARKETPLACE_TRANSACTIONS} transações no Marketplace.`, details };
+            return { eligible: false, reason: `Você precisa de pelo menos ${MIN_MARKETPLACE_TRANSACTIONS} transações concluídas no Marketplace.`, details };
         }
         if (accountAgeDays < MIN_ACCOUNT_AGE_DAYS) {
-            return { eligible: false, reason: `Conta precisa ter ${MIN_ACCOUNT_AGE_DAYS}+ dias.`, details };
+            return { eligible: false, reason: `Seu perfil está em análise de segurança. Disponível em ${MIN_ACCOUNT_AGE_DAYS - accountAgeDays} dias.`, details };
         }
-        if (totalSpent <= 0) {
-            return { eligible: false, reason: 'Você precisa ter gastos na plataforma (marketplace, campanhas, assinatura).', details };
+        if (totalSpent <= 0 && quotasCount <= 0) {
+            return { eligible: false, reason: 'É necessário ter movimentação na plataforma ou capital social (cotas) para gerar limite.', details };
         }
 
         return { eligible: true, details };
@@ -173,7 +181,7 @@ export const calculateLoanOffer = async (
 
         // Verificar se o valor solicitado está dentro do limite
         if (requestedAmount > maxLoanAmount) {
-            return { approved: false, reason: `Valor máximo disponível: R$ ${maxLoanAmount.toFixed(2)} (80% do seu gasto na plataforma)` };
+            return { approved: false, reason: `Valor máximo disponível: R$ ${maxLoanAmount.toFixed(2)} (Baseado no seu gasto anterior e capital acumulado)` };
         }
 
         // Calcular garantia em R$

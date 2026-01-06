@@ -550,7 +550,7 @@ class ApiService {
 
 
   // Obter limite de crédito disponível (Estilo Nubank)
-  async getAvailableLimit(): Promise<{ totalLimit: number; activeDebt: number; remainingLimit: number }> {
+  async getAvailableLimit(): Promise<{ totalLimit: number; activeDebt: number; remainingLimit: number; analysis?: any }> {
     const response = await this.request<any>('/loans/available-limit', {
       method: 'GET',
     });
