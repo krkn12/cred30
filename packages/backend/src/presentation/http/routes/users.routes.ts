@@ -223,8 +223,21 @@ userRoutes.get('/sync', authMiddleware, async (c) => {
       ),
       active_loans AS (
         SELECT json_agg(l) FROM (
-          SELECT id, user_id as "userId", amount, total_repayment as "totalRepayment", installments, interest_rate as "interestRate", status, created_at as "createdAt", due_date as "dueDate"
-          FROM loans WHERE user_id = $1 ORDER BY created_at DESC
+          SELECT 
+            ln.id, 
+            ln.user_id as "userId", 
+            ln.amount::float as amount, 
+            ln.total_repayment::float as "totalRepayment", 
+            ln.installments, 
+            ln.interest_rate::float as "interestRate", 
+            ln.status, 
+            ln.created_at as "createdAt", 
+            ln.due_date as "dueDate",
+            COALESCE((SELECT SUM(li.amount::float) FROM loan_installments li WHERE li.loan_id = ln.id), 0) as "totalPaid",
+            ln.total_repayment::float - COALESCE((SELECT SUM(li.amount::float) FROM loan_installments li WHERE li.loan_id = ln.id), 0) as "remainingAmount",
+            (SELECT COUNT(*) FROM loan_installments li WHERE li.loan_id = ln.id)::int as "paidInstallmentsCount",
+            CASE WHEN COALESCE((SELECT SUM(li.amount::float) FROM loan_installments li WHERE li.loan_id = ln.id), 0) >= ln.total_repayment::float THEN true ELSE false END as "isFullyPaid"
+          FROM loans ln WHERE ln.user_id = $1 ORDER BY ln.created_at DESC
         ) l
       )
       SELECT 
