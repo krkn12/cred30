@@ -202,9 +202,15 @@ userRoutes.get('/sync', authMiddleware, async (c) => {
           u.score,
           u.membership_type,
           u.is_verified,
+          u.is_seller,
           u.security_lock_until,
           u.video_points,
           COALESCE(u.ad_points, 0) as ad_points,
+          u.phone,
+          u.address,
+          u.referred_by,
+          COALESCE(u.total_dividends_earned, 0) as total_dividends_earned,
+          u.last_login_at,
           (SELECT COUNT(*) FROM quotas WHERE user_id = u.id AND status = 'ACTIVE') as quota_count,
           (SELECT COALESCE(SUM(total_repayment), 0) FROM loans WHERE user_id = u.id AND status IN ('APPROVED', 'PAYMENT_PENDING')) as debt_total
         FROM users u WHERE u.id = $1
@@ -265,11 +271,17 @@ userRoutes.get('/sync', authMiddleware, async (c) => {
           ...user,
           balance: parseFloat(stats.balance || '0'),
           score: stats.score || 0,
-          membership_type: stats.membership_type || 'MEMBER',
+          membership_type: stats.membership_type || 'FREE',
           is_verified: stats.is_verified || false,
+          is_seller: stats.is_seller || false,
           security_lock_until: stats.security_lock_until,
           video_points: stats.video_points || 0,
-          ad_points: parseInt(stats.ad_points || '0')
+          ad_points: parseInt(stats.ad_points || '0'),
+          phone: stats.phone || null,
+          address: stats.address || null,
+          referred_by: stats.referred_by || null,
+          total_dividends_earned: parseFloat(stats.total_dividends_earned || '0'),
+          last_login_at: stats.last_login_at
         },
         stats: {
           activeQuotas: parseInt(stats.quota_count || '0'),

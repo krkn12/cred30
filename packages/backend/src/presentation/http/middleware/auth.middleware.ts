@@ -52,7 +52,11 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
     // Buscar usuário no banco de dados para obter informações atualizadas
     const pool = getDbPool(c);
     const result = await pool.query(
-      'SELECT id, name, email, balance, referral_code, is_admin, role, status, score, created_at, pix_key, two_factor_enabled, cpf, security_lock_until, membership_type FROM users WHERE id = $1',
+      `SELECT id, name, email, balance, referral_code, referred_by, is_admin, role, status, score, 
+       created_at, pix_key, two_factor_enabled, cpf, phone, security_lock_until, membership_type,
+       is_verified, is_seller, video_points, COALESCE(ad_points, 0) as ad_points, address,
+       total_dividends_earned, last_login_at
+       FROM users WHERE id = $1`,
       [decoded.userId]
     );
 
@@ -77,21 +81,30 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
 
     // Adicionar usuário ao contexto da requisição
     const userContext: UserContext = {
-      id: user.id, // Manter como UUID string
+      id: user.id,
       name: user.name,
       email: user.email,
       balance: parseFloat(user.balance),
       joinedAt: new Date(user.created_at).getTime(),
       referralCode: user.referral_code,
-      isAdmin: Boolean(user.is_admin), // Garantir que seja booleano
+      referredBy: user.referred_by || undefined,
+      isAdmin: Boolean(user.is_admin),
       role: user.role || 'MEMBER',
       status: user.status || 'ACTIVE',
       score: user.score || 0,
       pixKey: user.pix_key,
       twoFactorEnabled: Boolean(user.two_factor_enabled),
       cpf: user.cpf || null,
+      phone: user.phone || null,
       securityLockUntil: user.security_lock_until ? new Date(user.security_lock_until).getTime() : undefined,
-      membership_type: user.membership_type || 'FREE'
+      membership_type: user.membership_type || 'FREE',
+      is_verified: Boolean(user.is_verified),
+      is_seller: Boolean(user.is_seller),
+      video_points: parseInt(user.video_points || '0'),
+      ad_points: parseInt(user.ad_points || '0'),
+      address: user.address || undefined,
+      total_dividends_earned: parseFloat(user.total_dividends_earned || '0'),
+      last_login_at: user.last_login_at || undefined
     };
 
     // Log para depuração
