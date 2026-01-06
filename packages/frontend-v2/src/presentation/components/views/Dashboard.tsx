@@ -209,14 +209,18 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onD
 
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-6">
-                        <div className="px-4 py-1.5 rounded-full bg-primary-500/10 border border-primary-500/20 flex items-center gap-2">
-                            <Crown size={14} className="text-primary-400" fill="currentColor" />
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-400">Associado Fundador</span>
+                        {/* Selo de nível baseado em cotas */}
+                        <div className={`px-4 py-1.5 rounded-full flex items-center gap-2 ${vipLevel.color}`}>
+                            <Crown size={14} fill="currentColor" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">{vipLevel.name}</span>
                         </div>
-                        <div className="flex items-center gap-2 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider">Verificado</span>
-                        </div>
+                        {/* Selo verificado só aparece se user.is_verified = true */}
+                        {user.is_verified && (
+                            <div className="flex items-center gap-2 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider">Verificado</span>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">

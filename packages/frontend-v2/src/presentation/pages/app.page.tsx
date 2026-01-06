@@ -14,6 +14,7 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { ReviewModal } from '../components/ui/ReviewModal';
 import { BugReportModal } from '../components/ui/BugReportModal';
 import { OfflineNotice } from '../components/ui/offline-notice.component';
+import { CompleteProfileModal } from '../components/ui/CompleteProfileModal';
 import { useOnlineStatus } from '../hooks/use-online-status';
 
 // Helper para lidar com erro de carregamento de chunks (comum após deploys)
@@ -128,6 +129,33 @@ export default function App() {
   }>({ isOpen: false, transactionId: 0, amount: 0 });
 
   const [showBugReport, setShowBugReport] = useState(false);
+  const [showCompleteProfile, setShowCompleteProfile] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+
+  // Verifica se o perfil está completo (CPF, PIX, Telefone)
+  const isProfileComplete = useMemo(() => {
+    const user = state.currentUser;
+    return !!(user?.cpf && user?.pixKey && user?.phone);
+  }, [state.currentUser]);
+
+  // Função para verificar perfil antes de ação financeira
+  const requireCompleteProfile = (action: () => void) => {
+    if (isProfileComplete) {
+      action();
+    } else {
+      setPendingAction(() => action);
+      setShowCompleteProfile(true);
+    }
+  };
+
+  const handleProfileCompleted = async () => {
+    setShowCompleteProfile(false);
+    await refreshState();
+    if (pendingAction) {
+      pendingAction();
+      setPendingAction(null);
+    }
+  };
 
   const handleDeposit = async (amount?: number) => {
     if (amount === undefined) {
@@ -504,7 +532,7 @@ export default function App() {
                     />
                   </Suspense>
                 } />
-                <Route path="invest" element={<Suspense fallback={null}><InvestView onBuy={handleBuyQuota} isPro={state.currentUser?.membership_type === 'PRO'} userBalance={state.currentUser?.balance} /></Suspense>} />
+                <Route path="invest" element={<Suspense fallback={null}><InvestView onBuy={(qty, method) => requireCompleteProfile(() => handleBuyQuota(qty, method))} isPro={state.currentUser?.membership_type === 'PRO'} userBalance={state.currentUser?.balance} /></Suspense>} />
                 <Route path="portfolio" element={
                   <Suspense fallback={null}>
                     <PortfolioView
@@ -519,7 +547,7 @@ export default function App() {
                   <Suspense fallback={null}>
                     <LoansView
                       loans={state.loans}
-                      onRequest={handleRequestLoan}
+                      onRequest={(amount, installments) => requireCompleteProfile(() => handleRequestLoan(amount, installments))}
                       onPay={handlePayLoan}
                       onPayInstallment={handlePayInstallment}
                       userBalance={state.currentUser.balance}
@@ -704,6 +732,18 @@ export default function App() {
                 onClose={() => setShowBugReport(false)}
                 onSuccess={(t, m) => { setShowBugReport(false); setShowSuccess({ isOpen: true, title: t, message: m }); }}
                 onError={(t, m) => setShowError({ isOpen: true, title: t, message: m })}
+              />
+            )}
+            {state.currentUser && (
+              <CompleteProfileModal
+                isOpen={showCompleteProfile}
+                onClose={() => { setShowCompleteProfile(false); setPendingAction(null); }}
+                onComplete={handleProfileCompleted}
+                currentUser={{
+                  cpf: state.currentUser.cpf,
+                  pixKey: state.currentUser.pixKey,
+                  phone: state.currentUser.phone
+                }}
               />
             )}
           </>

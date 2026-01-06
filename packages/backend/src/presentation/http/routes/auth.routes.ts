@@ -28,10 +28,10 @@ const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   secretPhrase: z.string().min(3),
-  pixKey: z.string().min(5),
-  phone: z.string().min(10).max(15),
+  pixKey: z.string().optional(), // Opcional no cadastro, exigido para operações financeiras
+  phone: z.string().optional(),  // Opcional no cadastro
   referralCode: z.string().optional(),
-  cpf: z.string().min(11).max(14).optional(), // CPF opcional no cadastro
+  cpf: z.string().min(11).max(14).optional(),
 });
 
 const resetPasswordSchema = z.object({
@@ -219,14 +219,16 @@ authRoutes.post('/register', async (c) => {
       return c.json({ success: false, message: 'Email já cadastrado' }, 409);
     }
 
-    // Verificar se chave PIX já existe
-    const existingPix = await pool.query(
-      'SELECT id FROM users WHERE pix_key = $1',
-      [validatedData.pixKey]
-    );
+    // Verificar se chave PIX já existe (só se foi informada)
+    if (validatedData.pixKey) {
+      const existingPix = await pool.query(
+        'SELECT id FROM users WHERE pix_key = $1',
+        [validatedData.pixKey]
+      );
 
-    if (existingPix.rows.length > 0) {
-      return c.json({ success: false, message: 'Esta chave PIX já está vinculada a outra conta' }, 409);
+      if (existingPix.rows.length > 0) {
+        return c.json({ success: false, message: 'Esta chave PIX já está vinculada a outra conta' }, 409);
+      }
     }
 
     // Verificar se o email sendo registrado é o do administrador definido no .env
@@ -307,12 +309,12 @@ authRoutes.post('/register', async (c) => {
         userEmail,
         hashedPassword,
         validatedData.secretPhrase,
-        validatedData.pixKey,
+        validatedData.pixKey || null,
         referralCode,
         isAdminEmail,
         tfaSecret,
         validatedData.cpf || null,
-        validatedData.phone
+        validatedData.phone || null
       ]
     );
 

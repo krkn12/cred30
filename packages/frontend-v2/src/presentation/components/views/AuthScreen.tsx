@@ -73,8 +73,9 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
         }
 
         if (isRegister) {
-            // Validar campos básicos antes de mostrar os termos
-            if (!name || !email || !password || !pixKey || !secretPhrase || !phone) {
+            // Validar apenas campos básicos para cadastro rápido
+            // CPF, PIX e Telefone serão pedidos depois para verificação
+            if (!name || !email || !password || !secretPhrase) {
                 setError("Por favor, preencha todos os campos obrigatórios.");
                 return;
             }
@@ -413,52 +414,21 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
 
                                     {isRegister && (
                                         <>
-                                            <div className="relative group animate-in slide-in-from-left-2 duration-300 delay-75">
-                                                <ShieldCheck className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={18} />
-                                                <input
-                                                    type="text"
-                                                    placeholder="CPF (apenas números)"
-                                                    value={cpf}
-                                                    onChange={e => setCpf(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                                                    className="w-full glass border-white/5 rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition-all group-focus-within:bg-white/10"
-                                                    required
-                                                />
-                                            </div>
-
-                                            <div className="relative group animate-in slide-in-from-left-2 duration-300 delay-100">
-                                                <QrCode className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={18} />
-                                                <input
-                                                    type="text"
-                                                    placeholder="Chave Pix"
-                                                    value={pixKey}
-                                                    onChange={e => setPixKey(e.target.value)}
-                                                    className="w-full glass border-white/5 rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition-all group-focus-within:bg-white/10"
-                                                    required
-                                                />
-                                            </div>
-
-                                            <div className="relative group animate-in slide-in-from-left-2 duration-300 delay-[125ms]">
-                                                <PhoneIcon className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={18} />
-                                                <input
-                                                    type="tel"
-                                                    placeholder="Telefone / WhatsApp"
-                                                    value={phone}
-                                                    onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
-                                                    className="w-full glass border-white/5 rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition-all group-focus-within:bg-white/10"
-                                                    required
-                                                />
-                                            </div>
-
+                                            {/* Código de Indicação - opcional */}
                                             <div className="relative group animate-in slide-in-from-left-2 duration-300 delay-150">
                                                 <Repeat className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={18} />
                                                 <input
                                                     type="text"
-                                                    placeholder="Código de Indicação (Recomendado)"
+                                                    placeholder="Código de Indicação (Opcional)"
                                                     value={referralCode}
                                                     onChange={e => setReferralCode(e.target.value.toUpperCase())}
                                                     className="w-full glass border-primary-500/30 rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition-all bg-primary-500/5 group-focus-within:bg-primary-500/10 placeholder:text-primary-500/30"
                                                 />
                                             </div>
+
+                                            <p className="text-[10px] text-zinc-500 text-center px-4 leading-relaxed">
+                                                CPF, PIX e Telefone serão solicitados quando você quiser comprar cotas ou solicitar empréstimo.
+                                            </p>
                                         </>
                                     )}
 
