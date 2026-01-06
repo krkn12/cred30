@@ -168,6 +168,63 @@ userRoutes.put('/profile', authMiddleware, async (c) => {
   }
 });
 
+// Completar perfil (CPF, PIX, Telefone) - Necessário para operações financeiras
+const completeProfileSchema = z.object({
+  cpf: z.string().length(11, 'CPF deve ter 11 dígitos'),
+  pixKey: z.string().min(5, 'Chave PIX inválida'),
+  phone: z.string().min(10, 'Telefone deve ter pelo menos 10 dígitos'),
+});
+
+userRoutes.post('/complete-profile', authMiddleware, async (c) => {
+  try {
+    const body = await c.req.json();
+    const data = completeProfileSchema.parse(body);
+
+    const user = c.get('user') as UserContext;
+    const pool = getDbPool(c);
+
+    // Verificar se CPF já está em uso
+    const existingCpf = await pool.query(
+      'SELECT id FROM users WHERE cpf = $1 AND id != $2',
+      [data.cpf, user.id]
+    );
+
+    if (existingCpf.rows.length > 0) {
+      return c.json({ success: false, message: 'Este CPF já está vinculado a outra conta' }, 409);
+    }
+
+    // Verificar se PIX já está em uso
+    const existingPix = await pool.query(
+      'SELECT id FROM users WHERE pix_key = $1 AND id != $2',
+      [data.pixKey, user.id]
+    );
+
+    if (existingPix.rows.length > 0) {
+      return c.json({ success: false, message: 'Esta chave PIX já está vinculada a outra conta' }, 409);
+    }
+
+    // Atualizar perfil
+    await pool.query(
+      'UPDATE users SET cpf = $1, pix_key = $2, phone = $3, is_verified = TRUE WHERE id = $4',
+      [data.cpf, data.pixKey, data.phone, user.id]
+    );
+
+    console.log(`[PROFILE] Usuário ${user.id} completou perfil (CPF, PIX, Tel)`);
+
+    return c.json({
+      success: true,
+      message: 'Perfil verificado com sucesso! Agora você pode realizar operações financeiras.'
+    });
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return c.json({ success: false, message: error.errors[0].message }, 400);
+    }
+    console.error('Erro ao completar perfil:', error);
+    return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
+  }
+});
+
 // Obter saldo do usuário
 userRoutes.get('/balance', authMiddleware, async (c) => {
   try {
@@ -207,6 +264,8 @@ userRoutes.get('/sync', authMiddleware, async (c) => {
           u.video_points,
           COALESCE(u.ad_points, 0) as ad_points,
           u.phone,
+          u.cpf,
+          u.pix_key,
           u.address,
           u.referred_by,
           COALESCE(u.total_dividends_earned, 0) as total_dividends_earned,
@@ -278,6 +337,8 @@ userRoutes.get('/sync', authMiddleware, async (c) => {
           video_points: stats.video_points || 0,
           ad_points: parseInt(stats.ad_points || '0'),
           phone: stats.phone || null,
+          cpf: stats.cpf || null,
+          pixKey: stats.pix_key || null,
           address: stats.address || null,
           referred_by: stats.referred_by || null,
           total_dividends_earned: parseFloat(stats.total_dividends_earned || '0'),
