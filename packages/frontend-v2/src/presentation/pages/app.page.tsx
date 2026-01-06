@@ -147,8 +147,17 @@ export default function App() {
 
   const isStaff = useMemo(() => {
     if (!state.currentUser) return false;
-    return state.currentUser.isAdmin || state.currentUser.role === 'ADMIN' || state.currentUser.role === 'ATTENDANT';
-  }, [state.currentUser?.isAdmin, state.currentUser?.role]);
+    const role = (state.currentUser.role || (state.currentUser.isAdmin ? 'ADMIN' : 'MEMBER')).toUpperCase();
+    return role === 'ADMIN' || role === 'ATTENDANT' || state.currentUser.isAdmin;
+  }, [state.currentUser]);
+
+  // Redirecionamento automático do Admin para sua área de trabalho
+  useEffect(() => {
+    if (state.currentUser && isStaff && location.pathname === '/app/dashboard') {
+      console.log('[App] Auto-redirecting staff to admin area');
+      navigate('/app/admin');
+    }
+  }, [state.currentUser, isStaff, location.pathname, navigate]);
 
   const totalQuotaValue = useMemo(() => {
     if (!state.currentUser) return 0;
@@ -440,6 +449,7 @@ export default function App() {
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/security" element={<SecurityPage />} />
+          <Route path="/admin" element={<Navigate to="/app/admin" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

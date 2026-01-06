@@ -34,7 +34,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
   ];
 
   // Adicionar Admin ao menu se for staff
-  if (user.isAdmin || user.role === 'ADMIN' || user.role === 'ATTENDANT') {
+  const isAdmin = user.isAdmin || user.role?.toUpperCase() === 'ADMIN' || user.role?.toUpperCase() === 'ATTENDANT';
+  if (isAdmin) {
     navItems.splice(1, 0, { id: 'admin', label: 'Admin', icon: ShieldCheck });
   }
 
