@@ -77,7 +77,7 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
                 (SELECT COUNT(*) FROM quotas WHERE user_id = $1 AND status = 'ACTIVE') as quotas_count,
                 (SELECT COALESCE(SUM(current_value), 0) FROM quotas WHERE user_id = $1 AND status = 'ACTIVE') as total_quotas_value,
                 (SELECT COUNT(*) FROM marketplace_orders WHERE buyer_id = $1 AND status = 'COMPLETED') as purchases,
-                (SELECT COUNT(*) FROM marketplace_orders mo JOIN marketplace_listings ml ON mo.listing_id = ml.id WHERE ml.user_id = $1 AND mo.status = 'COMPLETED') as sales,
+                (SELECT COUNT(*) FROM marketplace_orders mo JOIN marketplace_listings ml ON mo.listing_id = ml.id WHERE ml.seller_id = $1 AND mo.status = 'COMPLETED') as sales,
                 (SELECT COUNT(*) FROM loans WHERE user_id = $1 AND status = 'APPROVED' AND due_date < NOW()) as overdue_loans,
                 -- Total gasto (sem cotas)
                 COALESCE((SELECT SUM(amount) FROM marketplace_orders WHERE buyer_id = $1 AND status = 'COMPLETED'), 0) as marketplace_spent,
