@@ -9,6 +9,7 @@ import {
 import { AppState, Transaction, Quota, Loan } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 import { LoadingScreen } from '../ui/LoadingScreen';
+import { NotificationBell } from '../ui/NotificationBell';
 
 interface DashboardProps {
     state: AppState;
@@ -236,6 +237,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onD
                         </div>
 
                         <div className="flex items-center gap-4">
+                            <NotificationBell />
                             <div className="text-right">
                                 <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-1">Impacto Democrático</p>
                                 <div
@@ -421,6 +423,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onD
 
                     <div className="grid grid-cols-3 sm:grid-cols-6 gap-4 mb-10">
                         {[
+                            { icon: Crown, label: 'Loja', sub: 'VIP', act: () => navigate('/app/services'), color: 'text-pink-400', bg: 'bg-pink-500/10' },
                             { icon: Zap, label: 'Farm', sub: 'Views', act: () => navigate('/app/promo-videos/farm'), color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
                             { icon: Wallet, label: 'Crédito', sub: 'Mútuo', act: onLoans, color: 'text-zinc-400', bg: 'bg-zinc-500/10' },
                             { icon: Gamepad2, label: 'Jogar', sub: 'Fun', act: onGames, color: 'text-purple-400', bg: 'bg-purple-500/10' },
