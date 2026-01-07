@@ -128,7 +128,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
             });
 
             if (res.success) {
-                onSuccess('Investimento Registrado', res.message);
+                onSuccess('Aporte Registrado', res.message);
                 setShowAddModal(false);
                 setNewInvestment({ assetName: '', assetType: 'STOCK', quantity: '', unitPrice: '', totalInvested: '', broker: '', notes: '', investedAt: new Date().toISOString().split('T')[0] });
                 fetchInvestments();
@@ -149,7 +149,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
             });
 
             if (res.success) {
-                onSuccess('Dividendo Registrado', res.message);
+                onSuccess('Excedente Registrado', res.message);
                 setShowDividendModal(null);
                 setDividendData({ amount: '', reinvest: false });
                 fetchInvestments();
@@ -284,7 +284,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                         <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center">
                             <Coins size={18} className="text-amber-400" />
                         </div>
-                        <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Dividendos</span>
+                        <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Excedentes</span>
                     </div>
                     <p className="text-xl sm:text-2xl font-black text-white">
                         R$ {summary?.totalDividends.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
@@ -350,7 +350,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                                         <p className="text-sm font-bold text-zinc-300">{inv.quantity.toLocaleString('pt-BR')}</p>
                                     </div>
                                     <div>
-                                        <p className="text-[9px] text-zinc-500 uppercase font-black mb-1">Dividendos</p>
+                                        <p className="text-[9px] text-zinc-500 uppercase font-black mb-1">Excedentes</p>
                                         <p className="text-sm font-bold text-amber-400">R$ {inv.dividendsReceived.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                                     </div>
                                 </div>
@@ -366,13 +366,13 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                                         onClick={() => setShowDividendModal(inv)}
                                         className="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 py-2.5 rounded-xl text-[10px] font-black uppercase transition-colors"
                                     >
-                                        Dividendos
+                                        Excedentes
                                     </button>
                                     <button
                                         onClick={() => setShowSellModal(inv)}
                                         className="flex-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 py-2.5 rounded-xl text-[10px] font-black uppercase transition-colors"
                                     >
-                                        Vender
+                                        Liquidar
                                     </button>
                                 </div>
                             </div>
@@ -427,7 +427,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
 
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6">
                     <p className="text-center text-zinc-500 text-sm">
-                        Os aportes externos são registrados automaticamente quando você adiciona fundos à reserva de investimentos.
+                        Os aportes externos são registrados automaticamente quando você adiciona fundos à reserva de licenças.
                         <br />
                         <span className="text-xs text-zinc-600">Acesse "Logs do Sistema" para ver o histórico completo.</span>
                     </p>
@@ -444,7 +444,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                                     <Plus size={28} className="text-primary-400" />
                                 </div>
                                 <div>
-                                    <h3 className="text-2xl font-black text-white tracking-tight">Nova Alocação</h3>
+                                    <h3 className="text-2xl font-black text-white tracking-tight">Nova Estratégia de Reserva</h3>
                                     <p className="text-sm text-zinc-500 font-medium">Registre a compra de um novo ativo estratégico</p>
                                 </div>
                             </div>
@@ -465,7 +465,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                                 </h4>
 
                                 <div>
-                                    <label className="text-[10px] text-zinc-500 font-black uppercase mb-2 block ml-1">Tikcer / Nome</label>
+                                    <label className="text-[10px] text-zinc-500 font-black uppercase mb-2 block ml-1">Ativo / Nome</label>
                                     <input
                                         type="text"
                                         placeholder="Ex: ITSA4, BTC, Tesouro..."
@@ -646,8 +646,8 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                                         : 'text-red-500'
                                         }`}>
                                         {parseFloat(sellData.saleValue) >= showSellModal.totalInvested
-                                            ? '✓ LUCRO NA OPERAÇÃO'
-                                            : '✗ PREJUÍZO NA OPERAÇÃO'}
+                                            ? '✓ EXCEDENTE NA OPERAÇÃO'
+                                            : '✗ DÉFICIT NA OPERAÇÃO'}
                                     </p>
                                 </div>
                             )}
@@ -670,7 +670,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
             {showDividendModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4" onClick={() => setShowDividendModal(null)}>
                     <div className="bg-zinc-900 border border-zinc-800 rounded-[2rem] p-8 w-full max-w-sm" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-xl font-black text-white text-center mb-6">Registrar Dividendos</h3>
+                        <h3 className="text-xl font-black text-white text-center mb-6">Registrar Excedentes</h3>
                         <div className="space-y-4">
                             <div>
                                 <label className="text-[10px] text-zinc-400 font-black uppercase mb-2 block text-center">Valor (R$)</label>
@@ -740,7 +740,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                             </div>
                         </div>
                         <h3 className="text-xl font-black text-white text-center mb-2">Aporte de Capital</h3>
-                        <p className="text-zinc-500 text-xs text-center mb-8">Adicionar fundos "de fora" para a reserva de investimentos</p>
+                        <p className="text-zinc-500 text-xs text-center mb-8">Adicionar fundos "de fora" para a reserva de ativos</p>
 
                         <div className="space-y-6">
                             <div>
@@ -759,7 +759,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                                 <label className="text-[10px] text-zinc-400 font-black uppercase mb-2 block">Descrição / Origem (Opcional)</label>
                                 <input
                                     type="text"
-                                    placeholder="Ex: Lucro de venda externa"
+                                    placeholder="Ex: Receita de venda externa"
                                     value={reserveData.description}
                                     onChange={e => setReserveData({ ...reserveData, description: e.target.value })}
                                     className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white focus:border-primary-500 focus:outline-none"

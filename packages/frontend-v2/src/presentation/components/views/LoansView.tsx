@@ -45,7 +45,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
         fetchLimit();
     }, [loans, userBalance]);
 
-    // Tabela de juros baseada na garantia (Conforme Backend)
+    // Tabela de taxas baseada na garantia (Conforme Backend)
     const getInterestRate = (pct: number) => {
         if (pct <= 50) return 0.35;
         if (pct <= 60) return 0.28;
@@ -205,7 +205,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                             </div>
 
                             <div>
-                                <label className="text-xs text-zinc-400 font-medium mb-2 block">Cotas em Garantia (Menos Garantia = Mais Juros)</label>
+                                <label className="text-xs text-zinc-400 font-medium mb-2 block">Cotas em Garantia (Menos Garantia = Maior Taxa)</label>
                                 <div className="grid grid-cols-3 gap-2">
                                     {[50, 60, 70, 80, 90, 100].map(pct => (
                                         <button
@@ -216,7 +216,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                                 : 'bg-zinc-900 border-white/5 text-zinc-500 hover:text-white'}`}
                                         >
                                             {pct}% Gar.
-                                            <div className="text-[9px] opacity-70">Juros: {(getInterestRate(pct) * 100).toFixed(0)}%</div>
+                                            <div className="text-[9px] opacity-70">Taxa: {(getInterestRate(pct) * 100).toFixed(0)}%</div>
                                         </button>
                                     ))}
                                 </div>

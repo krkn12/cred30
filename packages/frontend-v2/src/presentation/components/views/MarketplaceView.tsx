@@ -156,7 +156,7 @@ const ListingCard = memo(({ item, currentUserId, formatCurrency, onBoost, onDeta
                             {item.price > 0 ? formatCurrency(parseFloat(item.price)) : 'Ver Preço'}
                         </p>
                         {item.category === 'PARTICIPAÇÕES' && (
-                            <p className="text-[9px] text-primary-400 font-bold uppercase mt-0.5">Retorno Cooperativo Estimado</p>
+                            <p className="text-[9px] text-primary-400 font-bold uppercase mt-0.5">Excedente Cooperativo Estimado</p>
                         )}
                     </div>
 
@@ -625,7 +625,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
                                         {(index + 1) % 3 === 0 && (
                                             <NativeAdCard
-                                                title={index === 2 ? "Novo Cartão Black Sem Anuidade" : "Empréstimo FGTS Cai na Hora"}
+                                                title={index === 2 ? "Novo Cartão Black Sem Anuidade" : "Apoio Financeiro Parceiro"}
                                                 price={index === 2 ? "GRÁTIS" : "SIMULAR"}
                                                 category="OFERTA"
                                                 img={index === 2 ? "https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=600&q=80" : "https://images.unsplash.com/photo-1554224155-16974a4005d1?auto=format&fit=crop&w=600&q=80"}

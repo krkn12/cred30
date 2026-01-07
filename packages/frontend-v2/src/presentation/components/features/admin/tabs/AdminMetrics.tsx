@@ -109,7 +109,7 @@ export const AdminMetrics = () => {
                                 <p className="text-xl font-bold text-white">{healthMetrics?.database?.total_quotas ?? 0}</p>
                             </div>
                             <div className="p-4 bg-black/20 rounded-2xl border border-zinc-800">
-                                <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Apoios (Empréstimos)</p>
+                                <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Apoios Mútuos</p>
                                 <p className="text-xl font-bold text-white">{healthMetrics?.database?.total_loans ?? 0}</p>
                             </div>
                             <div className="p-4 bg-black/20 rounded-2xl border border-zinc-800">

@@ -47,8 +47,8 @@ export const FaqView: React.FC = () => {
         },
         {
             icon: <DollarSign size={18} />,
-            question: "Quando posso sacar meu dinheiro?",
-            answer: "Os bônus de participação podem ser sacados assim que atingirem o valor mínimo. Já o Capital Social das participações possui um período de carência (vesting) para garantir a estabilidade do fundo comum. Consulte a aba 'Carteira' para ver seus prazos de resgate."
+            question: "Quando posso resgatar meus bônus?",
+            answer: "Os bônus de participação podem ser resgatados assim que atingirem o valor mínimo. Já o Capital Social das participações possui um período de carência (vesting) para garantir a estabilidade do fundo comum. Consulte a aba 'Carteira' para ver seus prazos de resgate."
         },
         {
             icon: <Users size={18} />,
@@ -58,7 +58,7 @@ export const FaqView: React.FC = () => {
         {
             icon: <MessageCircle size={18} />,
             question: "Como funciona o bônus de indicação?",
-            answer: "Você ganha uma participação sobre cada nova licença adquirida por membros que entrarem com seu código de convite. Esse valor cai direto no seu saldo disponível para saque ou reinvestimento."
+            answer: "Você ganha uma participação sobre cada nova licença adquirida por membros que entrarem com seu código de convite. Esse valor cai direto no seu saldo disponível para resgate ou reinvestimento."
         }
     ];
 

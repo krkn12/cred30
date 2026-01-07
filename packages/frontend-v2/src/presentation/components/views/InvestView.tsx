@@ -239,10 +239,10 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
                             <p className="text-black font-black bg-emerald-500 p-4 rounded-2xl text-center shadow-lg shadow-emerald-500/20 uppercase tracking-tighter">Economia Circular Cooperativa</p>
 
                             <TermItem num="01" text="Natureza Associativa: O Cred30 é um sistema de suporte mútuo privado. Você não está comprando um 'investimento', mas sim integralizando capital em uma Sociedade Cooperativa Digital." />
-                            <TermItem num="02" text="Sustentabilidade Real: A receita da plataforma provém de serviços reais de marketing (vídeos), taxas de marketplace e juros de empréstimos sociais. Não depende da entrada de novos membros para pagar os antigos." highlight />
+                            <TermItem num="02" text="Sustentabilidade Real: A receita da plataforma provém de serviços reais de marketing (vídeos), taxas de marketplace e contribuições de apoio social. Não depende da entrada de novos membros para pagar os antigos." highlight />
                             <TermItem num="03" text="Rentabilidade Variável: A distribuição de lucros (excedentes) é variável e depende exclusivamente do faturamento real da comunidade. Não existe qualquer promessa de rendimento fixo ou garantido." highlight />
-                            <TermItem num="04" text="Circulação de Valor: Para o crescimento do grupo, o capital social é utilizado para fomentar o crédito interno entre associados, gerando riqueza que volta para você na forma de bônus e dividendos." />
-                            <TermItem num="05" text="Carência e Segurança: O resgate integral (100%) é liberado após 365 dias da primeira cota. Se resgatado antes, a multa de 40% é revertida inteiramente para o lucro dos outros associados ativos." />
+                            <TermItem num="04" text="Circulação de Valor: Para o crescimento do grupo, o capital social é utilizado para fomentar o apoio interno entre associados, gerando riqueza que volta para você na forma de bônus e excedentes." />
+                            <TermItem num="05" text="Carência e Segurança: O resgate integral (100%) é liberado após 365 dias da primeira cota. Se resgatado antes, a multa de 40% é revertida inteiramente para o excedente dos outros associados ativos." />
                             <TermItem num="06" text="Anti-Fraude: Tentativas de burlar missões sociais ou criar contas falsas resultam em perda imediata do bônus pendente e suspensão do selo de confiança." />
                         </div>
 

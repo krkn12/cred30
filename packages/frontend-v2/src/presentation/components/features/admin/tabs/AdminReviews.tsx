@@ -30,7 +30,7 @@ export const AdminReviews: React.FC<AdminReviewsProps> = ({ onSuccess, onError }
             <div className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800">
                 <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-3">
                     <MessageSquare size={20} className="text-amber-400" />
-                    Avaliações de Saques
+                    Avaliações de Resgates
                 </h3>
 
                 {reviews.length === 0 ? (
@@ -61,7 +61,7 @@ export const AdminReviews: React.FC<AdminReviewsProps> = ({ onSuccess, onError }
                                 <div className="flex items-center justify-between text-xs">
                                     <div className="flex items-center gap-3">
                                         <span className="text-zinc-500">
-                                            Saque: <span className="text-white font-medium">R$ {review.transaction_amount?.toFixed(2)}</span>
+                                            Resgate: <span className="text-white font-medium">R$ {review.transaction_amount?.toFixed(2)}</span>
                                         </span>
                                         {review.is_public && (
                                             <span className={`px-2 py-0.5 rounded-full ${review.is_approved ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>

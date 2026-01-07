@@ -20,7 +20,7 @@ export const Layout: React.FC<LayoutProps> = ({
     { id: 'invest', label: 'Participar', icon: '🤝' },
     { id: 'portfolio', label: 'Participação', icon: '💼' },
     { id: 'loans', label: 'Apoio Mútuo', icon: '💸' },
-    { id: 'withdraw', label: 'Saques', icon: '💳' },
+    { id: 'withdraw', label: 'Resgates', icon: '💳' },
     { id: 'settings', label: 'Configurações', icon: '⚙️' },
   ];
 

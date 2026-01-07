@@ -69,7 +69,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                             <CheckCircle2 className="text-emerald-400" size={24} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-white">Saque Processado!</h2>
+                            <h2 className="text-xl font-bold text-white">Resgate Processado!</h2>
                             <p className="text-emerald-400 font-medium">{formatCurrency(amount)}</p>
                         </div>
                     </div>
@@ -126,7 +126,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                             <textarea
                                 value={comment}
                                 onChange={(e) => setComment(e.target.value)}
-                                placeholder="Conte como foi sua experiência com o saque..."
+                                placeholder="Conte como foi sua experiência com o resgate..."
                                 className="w-full bg-zinc-800 border border-zinc-700 rounded-xl p-4 text-white placeholder-zinc-500 text-sm resize-none focus:border-primary-500 focus:outline-none transition-colors"
                                 rows={3}
                                 maxLength={500}

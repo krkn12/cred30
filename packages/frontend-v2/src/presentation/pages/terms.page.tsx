@@ -161,7 +161,7 @@ const TermsPage = () => {
                                 ⚠️ VOCÊ PODE PERDER TODO O CAPITAL APORTADO.
                             </p>
                             <p className="text-zinc-400 text-sm leading-relaxed">
-                                O sistema de apoio mútuo <strong className="text-white">NÃO GARANTE</strong> retorno do investimento.
+                                O sistema de apoio mútuo <strong className="text-white">NÃO GARANTE</strong> retorno do capital aportado.
                                 Os rendimentos passados não garantem rendimentos futuros.
                                 Não invista recursos que você não pode perder.
                             </p>

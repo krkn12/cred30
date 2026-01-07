@@ -54,7 +54,7 @@ export const AdminApprovals: React.FC<AdminApprovalsProps> = ({ onSuccess, onErr
             case 'DEPOSIT': return 'DEPÓSITO (PIX)';
             case 'BUY_QUOTA': return 'COMPRA DE COTA';
             case 'LOAN_PAYMENT': return 'PAGAMENTO DE APOIO';
-            case 'WITHDRAWAL': return 'SAQUE (SOLICITAÇÃO)';
+            case 'WITHDRAWAL': return 'RESGATE (SOLICITAÇÃO)';
             default: return type.replace('_', ' ');
         }
     };
@@ -142,7 +142,7 @@ export const AdminApprovals: React.FC<AdminApprovalsProps> = ({ onSuccess, onErr
                                                 className="flex-2 sm:flex-none p-4 bg-emerald-500/10 text-emerald-400 rounded-2xl hover:bg-emerald-500 hover:text-black transition-all flex items-center justify-center gap-2 sm:min-w-[140px]"
                                             >
                                                 <Check size={20} />
-                                                <span className="text-[10px] font-black uppercase">Aprovar Crédito</span>
+                                                <span className="text-[10px] font-black uppercase">Aprovar Lançamento</span>
                                             </button>
                                         </div>
                                     </div>

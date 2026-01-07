@@ -101,7 +101,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
                             type="text"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Ex: Botão de saque não funciona"
+                            placeholder="Ex: Botão de resgate não funciona"
                             className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white placeholder-zinc-600 focus:border-primary-500 outline-none transition"
                         />
                     </div>

@@ -9,7 +9,7 @@ export const EducationView = ({ onBack }: EducationViewProps) => {
     const courses = [
         {
             id: 1,
-            title: 'Introdução ao Crédito Cooperativo',
+            title: 'Introdução ao Apoio Mútuo',
             description: 'Aprenda os fundamentos do sistema de cooperativa de crédito Cred30.',
             duration: '30 min',
             progress: 0,
@@ -29,8 +29,8 @@ export const EducationView = ({ onBack }: EducationViewProps) => {
         },
         {
             id: 3,
-            title: 'Investimentos para Iniciantes',
-            description: 'Primeiros passos no mundo dos investimentos.',
+            title: 'Estratégias de Capital para Iniciantes',
+            description: 'Primeiros passos no mundo do associativismo.',
             duration: '60 min',
             progress: 0,
             totalLessons: 10,

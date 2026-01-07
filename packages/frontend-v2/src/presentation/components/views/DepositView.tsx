@@ -46,13 +46,13 @@ export const DepositView: React.FC<DepositViewProps> = ({ onDeposit, onBack }) =
                             <div className="w-20 h-20 bg-primary-500/10 rounded-3xl flex items-center justify-center text-primary-400 mx-auto mb-6 border border-primary-500/20 shadow-xl shadow-primary-900/20">
                                 <ArrowDownLeft size={40} strokeWidth={2.5} />
                             </div>
-                            <h2 className="text-3xl font-black text-white tracking-tight">Depositar</h2>
-                            <p className="text-zinc-500 text-sm font-medium mt-2">Adicione saldo para ativar licenças ou investir no marketplace.</p>
+                            <h2 className="text-3xl font-black text-white tracking-tight">Adesão Social</h2>
+                            <p className="text-zinc-500 text-sm font-medium mt-2">Adicione saldo para ativar licenças ou apoiar o marketplace.</p>
                         </div>
 
                         <div className="space-y-6">
                             <div>
-                                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-4 mb-2 block">Quanto deseja depositar?</label>
+                                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-4 mb-2 block">Quanto deseja aportar?</label>
                                 <div className="relative group">
                                     <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-zinc-600 group-focus-within:text-primary-400 transition-colors">R$</span>
                                     <input

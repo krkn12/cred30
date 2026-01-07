@@ -241,7 +241,7 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
 
                     <div className="grid grid-cols-1 gap-3 mb-8">
                         {[
-                            { icon: <Zap size={14} />, text: "Aprovação de Crédito Prioritária" },
+                            { icon: <Zap size={14} />, text: "Aprovação de Apoio Prioritária" },
                             { icon: <TrendingUp size={14} />, text: "Taxas de Administração 20% Menores" },
                             { icon: <ShieldCheck size={14} />, text: "Selo de Membro Verificado PRO" },
                             { icon: <Users size={14} />, text: "Contribui para os Excedentes Mútuos" }
@@ -359,7 +359,7 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                         </div>
                         <div className="flex-1">
                             <h4 className="text-lg font-bold text-white mb-1">Score Boost</h4>
-                            <p className="text-sm text-zinc-500 mb-3">Aumente seu limite de crédito instantaneamente com +100 pontos de Score.</p>
+                            <p className="text-sm text-zinc-500 mb-3">Aumente seu limite de ajuda mútua instantaneamente com +100 pontos de Score.</p>
                             <div className="flex items-center gap-2">
                                 <span className="text-primary-400 font-bold">R$ 15,00</span>
                                 <span className="text-zinc-600">•</span>
@@ -486,7 +486,7 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                         <div className="bg-emerald-500 h-full w-[65%]" />
                     </div>
                     <p className="text-[10px] text-zinc-500 italic leading-relaxed">
-                        Dica: Quanto mais membros usarem o Mercado e assistirem vídeos, maior será a distribuição proporcional por Participação adquirida.
+                        Dica: Quanto mais membros usarem o Mercado e assistirem vídeos, maior será a distribuição proporcional por Licença adquirida.
                     </p>
                 </div>
             </div>

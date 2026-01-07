@@ -129,7 +129,7 @@ export const SellerRegistrationView = () => {
                         <Store className="w-7 h-7 text-primary-400" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-white">Tornar-se Vendedor Verificado</h1>
+                        <h1 className="text-2xl font-bold text-white">Tornar-se Lojista Verificado</h1>
                         <p className="text-zinc-400 text-sm">Receba pagamentos direto na sua conta com taxa reduzida</p>
                     </div>
                 </div>
@@ -185,7 +185,7 @@ export const SellerRegistrationView = () => {
                     </li>
                     <li className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-emerald-500" />
-                        Saque direto para sua conta bancária
+                        Resgate para sua conta pessoal
                     </li>
                 </ul>
             </div>
