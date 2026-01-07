@@ -297,7 +297,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const [selectedUF, setSelectedUF] = useState<string>('');
     const [selectedCity, setSelectedCity] = useState<string>('');
     const [selectedNeighborhood, setSelectedNeighborhood] = useState<string>('');
-    const debouncedNeighborhood = useDebounce(selectedNeighborhood, 500);
+    const debouncedNeighborhood = useDebounce(selectedNeighborhood, 1000);
     const [showFilters, setShowFilters] = useState(false);
 
     // Effect to load cities when UF changes
