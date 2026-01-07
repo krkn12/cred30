@@ -7,6 +7,10 @@ import { authRateLimit } from '../middleware/rate-limit.middleware';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { twoFactorService } from '../../../application/services/two-factor.service';
 import { notificationService } from '../../../application/services/notification.service';
+import { firebaseAdmin, initializeFirebaseAdmin } from '../../../infrastructure/firebase/admin-config';
+
+// Inicializar Firebase Admin
+initializeFirebaseAdmin();
 
 const authRoutes = new Hono();
 
@@ -349,7 +353,6 @@ authRoutes.post('/register', async (c) => {
         token,
       },
     }, 201);
-
   } catch (error) {
     if (error instanceof z.ZodError) {
       const firstError = error.errors[0]?.message || 'Dados de registro inválidos';
@@ -430,7 +433,7 @@ authRoutes.post('/verify-2fa', async (c) => {
     lockDate.setHours(lockDate.getHours() + 48);
 
     await pool.query(
-      'UPDATE users SET two_factor_enabled = TRUE, security_lock_until = $1 WHERE id = $2',
+      `UPDATE users SET two_factor_enabled = TRUE, security_lock_until = $1 WHERE id = $2`,
       [lockDate, id]
     );
 
@@ -707,7 +710,6 @@ authRoutes.post('/recover-2fa', async (c) => {
         }
       }
     });
-
   } catch (error) {
     if (error instanceof z.ZodError) {
       return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
@@ -760,7 +762,6 @@ authRoutes.post('/admin/disable-2fa', authMiddleware, async (c) => {
       success: true,
       message: `2FA desabilitado para ${result.rows[0].email}`
     });
-
   } catch (error) {
     console.error('Erro ao desabilitar 2FA:', error);
     return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
@@ -831,10 +832,104 @@ authRoutes.post('/admin/reset-user-security', authMiddleware, async (c) => {
       message: `Segurança atualizada para ${result.rows[0].email}. Conta em modo de segurança por 48h.`,
       lockUntil: lockDate.getTime()
     });
-
   } catch (error) {
     console.error('Erro no reset de segurança admin:', error);
     return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
+  }
+});
+
+// Rota de autenticação via Google (Firebase)
+authRoutes.post('/google', async (c) => {
+  try {
+    const { idToken } = await c.req.json();
+    if (!idToken) {
+      return c.json({ success: false, message: 'Token de identificação não fornecido' }, 400);
+    }
+
+    // Verificar token no Firebase
+    const decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
+    const email = decodedToken.email?.toLowerCase();
+    const name = decodedToken.name || decodedToken.email?.split('@')[0] || 'Usuário Google';
+
+    if (!email) {
+      return c.json({ success: false, message: 'Email não encontrado no token do Google' }, 400);
+    }
+
+    const pool = getDbPool(c);
+
+    // Buscar usuário pelo email
+    const result = await pool.query(
+      'SELECT id, name, email, pix_key, referral_code, is_admin, balance, score, created_at, two_factor_enabled, status, role FROM users WHERE email = $1',
+      [email]
+    );
+
+    let user = result.rows[0];
+    let isNewUser = false;
+
+    if (!user) {
+      console.log('Criando novo usuário via Google:', email);
+      isNewUser = true;
+      const referralCode = generateReferralCode();
+      const randomPass = await bcrypt.hash(Math.random().toString(36), 10);
+      const randomSecret = Math.random().toString(36).substring(2, 10).toUpperCase();
+
+      const insertResult = await pool.query(
+        `INSERT INTO users (name, email, password_hash, secret_phrase, pix_key, balance, referral_code, is_admin, score, is_email_verified)
+         VALUES ($1, $2, $3, $4, $5, 0, $6, FALSE, 0, TRUE)
+         RETURNING id, name, email, pix_key, balance, score, created_at, referral_code, is_admin, role, status`,
+        [name, email, randomPass, randomSecret, 'pendente', referralCode]
+      );
+      user = insertResult.rows[0];
+    }
+
+    // Verificar se o usuário está bloqueado
+    if (user.status && user.status !== 'ACTIVE') {
+      return c.json({
+        success: false,
+        message: 'Esta conta está suspensa ou bloqueada. Entre em contato com o suporte.'
+      }, 403);
+    }
+
+    // Gerar token JWT do App (independente do Firebase)
+    const token = sign(
+      { userId: user.id, isAdmin: user.is_admin || false },
+      process.env.JWT_SECRET as string,
+      { expiresIn: '7d' }
+    );
+
+    // Registrar IP e data do login
+    const ip = c.req.header('x-forwarded-for') || '127.0.0.1';
+    pool.query('UPDATE users SET last_ip = $1, last_login_at = NOW() WHERE id = $2', [ip, user.id]);
+
+    return c.json({
+      success: true,
+      message: isNewUser ? 'Conta criada via Google com sucesso!' : 'Login via Google realizado!',
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          pixKey: user.pix_key,
+          balance: parseFloat(user.balance || 0),
+          joinedAt: user.created_at,
+          referralCode: user.referral_code,
+          isAdmin: user.is_admin || false,
+          score: user.score,
+          role: user.role || 'MEMBER',
+          status: user.status || 'ACTIVE',
+          twoFactorEnabled: user.two_factor_enabled || false
+        },
+        token,
+        isNewUser
+      },
+    });
+  } catch (error: any) {
+    console.error('Erro na autenticação Google:', error);
+    return c.json({
+      success: false,
+      message: 'Erro ao validar conta Google',
+      debug: error.message
+    }, 500);
   }
 });
 
