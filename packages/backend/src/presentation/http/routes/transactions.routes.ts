@@ -4,6 +4,7 @@ import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middl
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { UserContext } from '../../../shared/types/hono.types';
 import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction } from '../../../domain/services/transaction.service';
+import { checkLiquidity } from '../../../application/services/liquidity.service';
 import { financialRateLimit } from '../middleware/rate-limit.middleware';
 
 const transactionRoutes = new Hono();
@@ -149,6 +150,12 @@ transactionRoutes.post('/withdraw', authMiddleware, securityLockMiddleware, asyn
       const balanceCheck = await lockUserBalance(client, user.id, amount);
       if (!balanceCheck.success) {
         throw new Error(balanceCheck.error);
+      }
+
+      // VERIFICAÇÃO DE LIQUIDEZ - Evita quebra de caixa
+      const liquidityCheck = await checkLiquidity(client, netAmount);
+      if (!liquidityCheck.isLiquid) {
+        throw new Error(liquidityCheck.message || 'Liquidez temporariamente insuficiente. Tente novamente mais tarde.');
       }
 
       // Deduzir saldo do usuário

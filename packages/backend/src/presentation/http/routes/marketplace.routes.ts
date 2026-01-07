@@ -100,7 +100,7 @@ marketplaceRoutes.get('/listings', authMiddleware, async (c: Context) => {
             SELECT * FROM (
                 (SELECT l.id::text, l.title, l.description, l.price::float, l.image_url, l.category, 
                         u.name as seller_name, l.seller_id::text, l.is_boosted, l.created_at, l.status, 'P2P' as type,
-                        NULL as affiliate_url, l.quota_id, u.asaas_wallet_id
+                        NULL as affiliate_url, l.quota_id, u.asaas_wallet_id, u.address as seller_address
                  FROM marketplace_listings l 
                  JOIN users u ON l.seller_id = u.id 
                  WHERE l.status = 'ACTIVE'
@@ -109,7 +109,7 @@ marketplaceRoutes.get('/listings', authMiddleware, async (c: Context) => {
                 UNION ALL
                 (SELECT p.id::text, p.title, p.description, p.price::float, p.image_url, p.category, 
                         'Cred30 Parceiros' as seller_name, '0' as seller_id, true as is_boosted, p.created_at, 'ACTIVE' as status, 'AFFILIATE' as type,
-                        p.affiliate_url, NULL as quota_id, NULL as asaas_wallet_id
+                        p.affiliate_url, NULL as quota_id, NULL as asaas_wallet_id, 'Brasil' as seller_address
                  FROM products p
                  WHERE p.active = true
                  AND ($3::text IS NULL OR $3 = 'TODOS' OR p.category = $3)
@@ -174,6 +174,108 @@ marketplaceRoutes.post('/create', authMiddleware, async (c: Context) => {
     }
 });
 
+/**
+ * Contato P2P Direto - SEM intermediação
+ * Retorna dados do vendedor para negociação direta via WhatsApp
+ * Sem taxas, mas também sem proteção da plataforma
+ */
+marketplaceRoutes.get('/contact/:listingId', authMiddleware, async (c: Context) => {
+    try {
+        const user = c.get('user') as UserContext;
+        const pool = getDbPool(c);
+        const listingId = c.req.param('listingId');
+
+        // Buscar anúncio e dados do vendedor
+        const result = await pool.query(`
+            SELECT 
+                l.id, l.title, l.price, l.description, l.image_url, l.seller_id,
+                u.name as seller_name, u.phone as seller_phone, u.address as seller_address,
+                u.is_verified as seller_verified
+            FROM marketplace_listings l
+            JOIN users u ON l.seller_id = u.id
+            WHERE l.id = $1 AND l.status = 'ACTIVE'
+        `, [listingId]);
+
+        if (result.rows.length === 0) {
+            return c.json({ success: false, message: 'Anúncio não encontrado ou já vendido.' }, 404);
+        }
+
+        const listing = result.rows[0];
+
+        // Não pode contatar a si mesmo
+        if (listing.seller_id === user.id) {
+            return c.json({ success: false, message: 'Este é seu próprio anúncio.' }, 400);
+        }
+
+        // --- LÓGICA DE CONSUMO DE PONTOS (FARM) ---
+        // Verificamos se o usuário já desbloqueou este contato antes para não cobrar duas vezes
+        const alreadyContacted = await pool.query(
+            'SELECT 1 FROM marketplace_contacts WHERE listing_id = $1 AND buyer_id = $2',
+            [listingId, user.id]
+        );
+
+        const POINT_COST = 3;
+
+        if (alreadyContacted.rows.length === 0) {
+            // Verificar se tem pontos suficientes (ad_points)
+            const userPointsRes = await pool.query('SELECT ad_points FROM users WHERE id = $1', [user.id]);
+            const currentPoints = userPointsRes.rows[0]?.ad_points || 0;
+
+            if (currentPoints < POINT_COST) {
+                return c.json({
+                    success: false,
+                    message: `Saldo insuficiente. Você precisa de ${POINT_COST} pontos de farm para ver o contato. Faça check-in diário ou assista vídeos para ganhar mais!`,
+                    data: { currentPoints, required: POINT_COST }
+                }, 403);
+            }
+
+            // Deduzir pontos
+            await pool.query(
+                'UPDATE users SET ad_points = ad_points - $1 WHERE id = $2',
+                [POINT_COST, user.id]
+            );
+
+            // Registrar interesse (para não cobrar novamente e analytics)
+            await pool.query(
+                'INSERT INTO marketplace_contacts (listing_id, buyer_id, points_spent, created_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT DO NOTHING',
+                [listingId, user.id, POINT_COST]
+            ).catch(() => {
+                // Caso a coluna points_spent não exista ainda, tentamos sem ela
+                pool.query('INSERT INTO marketplace_contacts (listing_id, buyer_id, created_at) VALUES ($1, $2, NOW()) ON CONFLICT DO NOTHING', [listingId, user.id]);
+            });
+        }
+
+        // Formatar telefone para link do WhatsApp
+        const phoneClean = listing.seller_phone?.replace(/\D/g, '') || '';
+        const whatsappLink = phoneClean ? `https://wa.me/55${phoneClean}?text=Olá! Vi seu anúncio "${listing.title}" no Cred30 por R$ ${parseFloat(listing.price).toFixed(2)}. Ainda está disponível?` : null;
+
+        return c.json({
+            success: true,
+            data: {
+                listing: {
+                    id: listing.id,
+                    title: listing.title,
+                    price: parseFloat(listing.price),
+                    description: listing.description,
+                    image: listing.image_url
+                },
+                seller: {
+                    name: listing.seller_name,
+                    phone: listing.seller_phone,
+                    address: listing.seller_address,
+                    isVerified: listing.seller_verified || false
+                },
+                whatsapp: whatsappLink,
+                disclaimer: '⚠️ Esta é uma negociação P2P direta. A Cred30 não intermedia esta transação e não oferece garantias. Combine pagamento e entrega diretamente com o vendedor.'
+            }
+        });
+
+    } catch (error) {
+        console.error('Contact Route Error:', error);
+        return c.json({ success: false, message: 'Erro ao obter contato' }, 500);
+    }
+});
+
 marketplaceRoutes.post('/buy-on-credit', authMiddleware, async (c: Context) => {
     try {
         const user = c.get('user') as UserContext;
@@ -199,6 +301,22 @@ marketplaceRoutes.post('/buy-on-credit', authMiddleware, async (c: Context) => {
 
         if (quotaCount < MARKET_CREDIT_MIN_QUOTAS) {
             return c.json({ success: false, message: `Você precisa ter pelo menos ${MARKET_CREDIT_MIN_QUOTAS} cota ativa para comprar parcelado. Isso garante a segurança da comunidade.` }, 403);
+        }
+
+        // VERIFICAÇÃO DE PERFIL COMPLETO PARA COMPRAS PARCELADAS
+        // Compras parceladas exigem CPF, PIX e Telefone verificados para proteção do vendedor
+        const verificationCheck = await pool.query(
+            'SELECT is_verified, cpf, pix_key, phone FROM users WHERE id = $1',
+            [user.id]
+        );
+        const userVerification = verificationCheck.rows[0];
+
+        if (!userVerification?.is_verified || !userVerification?.cpf || !userVerification?.pix_key) {
+            return c.json({
+                success: false,
+                message: 'Para comprar parcelado, você precisa completar a verificação do seu perfil (CPF, PIX e Telefone). Isso protege você e o vendedor.',
+                data: { requiresVerification: true }
+            }, 403);
         }
 
         // Verificação de Limite de Crédito Dinâmico

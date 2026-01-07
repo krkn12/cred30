@@ -2,15 +2,12 @@ import React, { useState, useEffect, memo, useCallback } from 'react';
 import {
     Search,
     Tag,
-    ShoppingBag,
-    PlusCircle,
     Image as ImageIcon,
     Zap,
     Sparkles,
     ChevronRight,
     ArrowLeft,
     ShieldCheck,
-    Heart,
     Share2,
     Truck,
     CheckCircle2,
@@ -23,7 +20,10 @@ import {
     Loader2,
     ChevronDown,
     Store,
-    CheckCircle
+    CheckCircle,
+    Plus,
+    Clock,
+    User
 } from 'lucide-react';
 
 import { useNavigate } from 'react-router-dom';
@@ -88,66 +88,99 @@ NativeAdCard.displayName = 'NativeAdCard';
 
 const ListingCard = memo(({ item, currentUserId, formatCurrency, onBoost, onDetails }: any) => {
     const isOwner = item.seller_id === currentUserId;
-    const isAffiliate = item.type === 'AFFILIATE';
+
+    // Formatação da data (ex: Hoje, 14:30 ou 05 Jan)
+    const formatDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) return `Hoje, ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+        if (diffDays === 1) return `Ontem, ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    };
 
     return (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden group hover:border-primary-500/30 transition-all flex flex-col h-full animate-in fade-in duration-500">
-            <div className="aspect-square bg-zinc-950 flex items-center justify-center relative overflow-hidden">
+        <div
+            onClick={() => onDetails(item)}
+            className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden group hover:border-primary-500/50 transition-all cursor-pointer flex flex-col h-full animate-in fade-in duration-500 hover:shadow-2xl hover:shadow-primary-500/5"
+        >
+            {/* Imagem com Badges */}
+            <div className="aspect-[4/3] bg-zinc-950 flex items-center justify-center relative overflow-hidden">
                 {item.image_url ? (
                     <img
                         src={item.image_url.includes('cloudinary') ? item.image_url.replace('/upload/', '/upload/w_600,c_fill,g_auto,q_auto,f_auto/') : item.image_url}
                         alt={item.title}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         loading="lazy"
                     />
                 ) : (
-                    <ImageIcon size={40} className="text-zinc-800" />
+                    <div className="flex flex-col items-center gap-2 text-zinc-800">
+                        <ImageIcon size={40} />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Sem Foto</span>
+                    </div>
                 )}
-                <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[10px] text-zinc-300 font-bold uppercase border border-white/5">
-                    {item.category}
+
+                {/* Badge Superior Esquerdo (Categoria) */}
+                <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-2 py-1 rounded-lg text-[9px] text-white font-black uppercase border border-white/10 tracking-widest">
+                    {item.category === 'PARTICIPAÇÕES' ? '🎫 COTA' : item.category}
                 </div>
-            </div>
-            <div className="p-4 flex-1 flex flex-col">
-                <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold text-white text-base line-clamp-1 uppercase tracking-tight">{item.title}</h3>
-                    {isAffiliate ? (
-                        <div className="bg-amber-500/20 text-amber-400 text-[8px] px-1.5 py-0.5 rounded border border-amber-500/20 flex items-center gap-1 font-black">
-                            <Sparkles size={8} /> PARCEIRO
+
+                {/* Badge Superior Direito (Destaque/Verificado) */}
+                <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end">
+                    {item.is_boosted && (
+                        <div className="bg-primary-500 text-black text-[8px] px-2 py-1 rounded-full font-black flex items-center gap-1 shadow-lg shadow-primary-500/20 animate-pulse">
+                            <Zap size={10} /> DESTAQUE
                         </div>
-                    ) : item.is_boosted ? (
-                        <div className="bg-primary-500/10 text-primary-400 text-[8px] px-1.5 py-0.5 rounded border border-primary-500/20 flex items-center gap-1 font-black">
-                            <Zap size={8} /> DESTAQUE
-                        </div>
-                    ) : item.asaas_wallet_id && (
-                        <div className="bg-emerald-500/20 text-emerald-400 text-[8px] px-1.5 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1 font-black">
-                            <ShieldCheck size={8} /> VERIFICADO
+                    )}
+                    {item.asaas_wallet_id && (
+                        <div className="bg-emerald-500 text-white text-[8px] px-2 py-1 rounded-full font-black flex items-center gap-1 shadow-lg shadow-emerald-500/20">
+                            <ShieldCheck size={10} /> VERIFICADO
                         </div>
                     )}
                 </div>
-                <p className="text-xs text-zinc-500 mb-6 line-clamp-2 h-8 leading-relaxed">{item.description}</p>
+            </div>
 
-                <div className="mt-auto pt-4 border-t border-zinc-800/50 flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                        <span className="text-lg font-black text-primary-400 tabular-nums">
+            {/* Informações */}
+            <div className="p-4 flex-1 flex flex-col">
+                <div className="mb-2">
+                    <h3 className="font-bold text-white text-sm line-clamp-2 leading-tight min-h-[2.5rem] group-hover:text-primary-400 transition-colors">
+                        {item.title}
+                    </h3>
+                </div>
+
+                <div className="mt-auto space-y-3">
+                    {/* Preço de Destaque */}
+                    <div>
+                        <p className="text-xl font-black text-white tabular-nums">
                             {item.price > 0 ? formatCurrency(parseFloat(item.price)) : 'Ver Preço'}
-                        </span>
-                        {isOwner ? (
-                            <button
-                                onClick={() => onBoost(item)}
-                                disabled={item.is_boosted}
-                                className={`text-[9px] font-black px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${item.is_boosted ? 'bg-zinc-800 text-zinc-500' : 'bg-primary-500/10 text-primary-400 hover:bg-primary-500 hover:text-black hover:shadow-lg hover:shadow-primary-500/20'}`}
-                            >
-                                <Zap size={12} className={item.is_boosted ? '' : 'animate-pulse'} /> {item.is_boosted ? 'IMPULSIONADO' : 'IMPULSIONAR'}
-                            </button>
-                        ) : (
-                            <button
-                                onClick={() => onDetails(item)}
-                                className={`${isAffiliate ? 'bg-amber-500 hover:bg-amber-400' : 'bg-primary-600 hover:bg-primary-500'} text-black px-4 py-2 rounded-lg text-xs font-black transition-all active:scale-95 shadow-lg flex items-center gap-2 uppercase tracking-wider`}
-                            >
-                                {isAffiliate ? 'VER OFERTA' : 'COMPRAR AGORA'}
-                            </button>
+                        </p>
+                        {item.category === 'PARTICIPAÇÕES' && (
+                            <p className="text-[9px] text-primary-400 font-bold uppercase mt-0.5">Retorno Cooperativo Estimado</p>
                         )}
                     </div>
+
+                    {/* Rodapé do Card (Localização e Data) */}
+                    <div className="pt-3 border-t border-zinc-800/50 flex items-center justify-between">
+                        <div className="flex items-center gap-1 text-zinc-500">
+                            <MapPin size={10} />
+                            <span className="text-[10px] font-medium">{item.seller_address ? item.seller_address.split('-')[0].trim() : 'Brasil'}</span>
+                        </div>
+                        <span className="text-[10px] text-zinc-600 font-medium">
+                            {formatDate(item.created_at)}
+                        </span>
+                    </div>
+
+                    {/* Botão de Ação para Dono */}
+                    {isOwner && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onBoost(item); }}
+                            disabled={item.is_boosted}
+                            className={`w-full text-[9px] font-black py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all ${item.is_boosted ? 'bg-zinc-800 text-zinc-500' : 'bg-primary-500/10 text-primary-400 hover:bg-primary-500 hover:text-black border border-primary-500/20'}`}
+                        >
+                            <Zap size={12} /> {item.is_boosted ? 'ANÚNCIO IMPULSIONADO' : 'IMPULSIONAR AGORA'}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
@@ -388,59 +421,51 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
     return (
         <div className="space-y-6 pb-12">
-            {/* Header / Barra de Ação */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary-500/10 rounded-xl flex items-center justify-center border border-primary-500/20">
-                        <ShoppingBag className="text-primary-400" size={20} />
-                    </div>
-                    <div>
-                        <h2 className="text-xl font-bold text-white tracking-tight">Mercado Cred30</h2>
-                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Compre e venda com segurança</p>
-                    </div>
+            {/* Header de Ação Superior (Estilo App Marketplace) */}
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                    <h2 className="text-2xl font-black text-white tracking-tighter">MERCADO</h2>
+                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest flex items-center gap-1">
+                        <MapPin size={10} className="text-primary-500" />
+                        Brasil • {listings.length} anúncios ativos
+                    </p>
                 </div>
 
-                {view === 'browse' && (
+                {view !== 'details' && (
                     <button
                         onClick={() => setView('create')}
-                        className="bg-primary-500 hover:bg-primary-400 text-black px-4 py-2.5 rounded-xl text-xs font-black transition active:scale-95 flex items-center gap-2 shadow-lg shadow-primary-500/20"
+                        className="bg-primary-500 hover:bg-primary-400 text-black px-6 py-3 rounded-2xl font-black text-xs transition-all shadow-xl shadow-primary-500/20 active:scale-95 flex items-center gap-2 uppercase tracking-widest"
                     >
-                        <PlusCircle size={16} /> ANUNCIAR
+                        <Plus size={18} /> ANUNCIAR
                     </button>
                 )}
             </div>
 
-            {/* View Tabs */}
-            <div className="flex gap-2 bg-zinc-900/50 p-1 rounded-xl border border-zinc-800">
+            {/* Abas de Navegação Secundária */}
+            <div className="flex bg-zinc-900/50 p-1 rounded-xl border border-white/5">
                 <button
                     onClick={() => setView('browse')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${view === 'browse' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
+                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition ${view === 'browse' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
                 >
                     Explorar
                 </button>
                 <button
                     onClick={() => setView('my-orders')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${view === 'my-orders' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
+                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition ${view === 'my-orders' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
                 >
                     Meus Pedidos
                 </button>
                 <button
                     onClick={() => navigate('/app/logistics')}
-                    className="flex-1 py-2 text-xs font-bold rounded-lg transition text-zinc-500 hover:bg-zinc-800 hover:text-white"
+                    className="flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition text-zinc-500 hover:bg-zinc-800 hover:text-white"
                 >
-                    <div className="flex items-center justify-center gap-1">
-                        <Truck size={10} className="text-zinc-500" />
-                        Ser Entregador
-                    </div>
+                    Entregas
                 </button>
                 <button
                     onClick={() => setView('offline')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${view === 'offline' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
+                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition ${view === 'offline' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
                 >
-                    <div className="flex items-center justify-center gap-1">
-                        <Zap size={10} className={view === 'offline' ? 'text-primary-400' : 'text-zinc-500'} />
-                        Modo Offline
-                    </div>
+                    Offline
                 </button>
             </div>
 
@@ -481,26 +506,29 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 </div>
             )}
 
-            {/* Search and Filters */}
+            {/* Search and Filters - ESTILO OLX */}
             {view === 'browse' && (
                 <div className="space-y-4">
-                    <div className="relative group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-primary-400 transition-colors" size={18} />
-                        <input
-                            type="text"
-                            placeholder="O que você está procurando hoje?"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-zinc-900/40 border border-zinc-800 rounded-2xl pl-12 pr-12 py-4 text-sm text-white focus:outline-none focus:border-primary-500/50 transition-all shadow-xl"
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
-                            >
-                                <XIcon size={18} />
-                            </button>
-                        )}
+                    {/* Barra de Busca Principal */}
+                    <div className="bg-gradient-to-r from-primary-600 to-primary-500 rounded-2xl p-4 shadow-xl shadow-primary-500/10">
+                        <div className="relative">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-black/50" size={20} />
+                            <input
+                                type="text"
+                                placeholder="O que você está procurando?"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full bg-white rounded-xl pl-12 pr-12 py-4 text-base text-black font-medium focus:outline-none focus:ring-2 focus:ring-primary-300 placeholder:text-zinc-400"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
+                                >
+                                    <XIcon size={18} />
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
@@ -509,15 +537,30 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 key={cat}
                                 onClick={() => setSelectedCategory(cat)}
                                 className={`
-                                    px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap border
+                                    px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap
                                     ${selectedCategory === cat
-                                        ? 'bg-primary-500 text-black border-primary-500 shadow-lg shadow-primary-500/20'
-                                        : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700'}
+                                        ? 'bg-primary-500 text-black shadow-lg shadow-primary-500/30'
+                                        : 'bg-zinc-900/80 text-zinc-400 hover:bg-zinc-800 hover:text-white border border-zinc-800'}
                                 `}
                             >
-                                {cat}
+                                {cat === 'PARTICIPAÇÕES' ? '🎫 Cotas' :
+                                    cat === 'ELETRÔNICOS' ? '📱 Eletrônicos' :
+                                        cat === 'VEÍCULOS' ? '🚗 Veículos' :
+                                            cat === 'IMÓVEIS' ? '🏠 Imóveis' :
+                                                cat === 'SERVIÇOS' ? '🔧 Serviços' :
+                                                    cat === 'MODA' ? '👕 Moda' :
+                                                        cat === 'OUTROS' ? '📦 Outros' :
+                                                            cat === 'TODOS' ? '🔥 Todos' : cat}
                             </button>
                         ))}
+                    </div>
+
+                    {/* Banner Informativo Compacto */}
+                    <div className="flex items-center gap-3 bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-3">
+                        <ShieldCheck size={16} className="text-emerald-400 flex-shrink-0" />
+                        <p className="text-[11px] text-zinc-400">
+                            <span className="text-emerald-400 font-bold">Compra Segura:</span> Parcele em até 24x ou negocie direto pelo WhatsApp
+                        </p>
                     </div>
                 </div>
             )}
@@ -994,53 +1037,152 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
             {view === 'details' && selectedItem && (
                 <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl animate-in fade-in duration-300 overflow-y-auto">
                     <div className="max-w-xl mx-auto min-h-screen bg-zinc-950 flex flex-col">
-                        <div className="sticky top-0 z-10 p-4 flex items-center justify-between bg-zinc-950/80 backdrop-blur-md">
-                            <button onClick={() => setView('browse')} className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition">
-                                <ArrowLeft size={24} />
+                        {/* Header Fixo de Detalhes */}
+                        <div className="sticky top-0 z-10 p-4 flex items-center justify-between bg-zinc-950/80 backdrop-blur-md border-b border-white/5">
+                            <button onClick={() => setView('browse')} className="p-2 bg-zinc-900 rounded-xl text-zinc-400 hover:text-white transition">
+                                <ArrowLeft size={20} />
                             </button>
+                            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Detalhes do Anúncio</span>
                             <div className="flex gap-2">
-                                <button className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition"><Share2 size={20} /></button>
-                                <button className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition"><Heart size={20} /></button>
+                                <button className="p-2 bg-zinc-900 rounded-xl text-zinc-400 hover:text-white transition"><Share2 size={18} /></button>
                             </div>
                         </div>
 
-                        <div className="aspect-[4/3] bg-zinc-900 relative">
+                        {/* Galeria de Imagem (Estilo OLX) */}
+                        <div className="aspect-square bg-zinc-900 relative">
                             {selectedItem.image_url ? (
                                 <img src={selectedItem.image_url} alt={selectedItem.title} className="w-full h-full object-cover" />
                             ) : (
-                                <ImageIcon size={64} className="text-zinc-800 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-800">
+                                    <ImageIcon size={64} />
+                                    <span className="text-xs font-bold uppercase mt-2">Sem imagem disponível</span>
+                                </div>
                             )}
+                            {/* Overlay de Preço na Imagem */}
+                            <div className="absolute bottom-6 left-6 right-6">
+                                <div className="bg-black/60 backdrop-blur-xl p-4 rounded-2xl border border-white/10 inline-block">
+                                    <p className="text-2xl font-black text-primary-400 tabular-nums">
+                                        {formatCurrency(parseFloat(selectedItem.price))}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="p-6 space-y-8">
+                        <div className="p-6 space-y-8 pb-32">
+                            {/* Título e Tags */}
                             <div>
-                                <div className="flex justify-between items-start mb-2">
-                                    <span className="text-[10px] font-black bg-primary-500/10 text-primary-400 px-2 py-0.5 rounded uppercase tracking-widest">{selectedItem.category}</span>
-                                    {selectedItem.is_boosted && <span className="text-[10px] font-black bg-primary-400 text-black px-2 py-0.5 rounded animate-pulse">DESTAQUE</span>}
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    <span className="text-[9px] font-black bg-primary-500/10 text-primary-400 px-2 py-1 rounded-lg border border-primary-500/20 uppercase tracking-widest leading-none">
+                                        {selectedItem.category}
+                                    </span>
+                                    {selectedItem.is_boosted && (
+                                        <span className="text-[9px] font-black bg-indigo-500/10 text-indigo-400 px-2 py-1 rounded-lg border border-indigo-500/20 uppercase tracking-widest leading-none flex items-center gap-1">
+                                            <Zap size={10} /> Destaque
+                                        </span>
+                                    )}
                                 </div>
-                                <h1 className="text-3xl font-black text-white tracking-tight leading-none mb-1">{selectedItem.title}</h1>
-                                <div className="flex items-center justify-between">
-                                    <p className="text-2xl font-black text-primary-400">{formatCurrency(parseFloat(selectedItem.price))}</p>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[10px] text-zinc-500 font-bold uppercase">Vendedor:</span>
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="text-xs font-bold text-white">{selectedItem.seller_name}</span>
-                                            {selectedItem.asaas_wallet_id && (
-                                                <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
-                                                    <ShieldCheck size={10} /> Verificado
-                                                </span>
-                                            )}
-                                        </div>
+                                <h1 className="text-2xl font-black text-white tracking-tight leading-tight">{selectedItem.title}</h1>
+
+                                {/* Info de Localização e Data */}
+                                <div className="flex items-center gap-4 mt-3 text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+                                    <div className="flex items-center gap-1.5">
+                                        <MapPin size={12} className="text-primary-500" />
+                                        {selectedItem.seller_address || 'Brasil'}
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <Clock size={12} className="text-zinc-600" />
+                                        Publicado {new Date(selectedItem.created_at).toLocaleDateString()}
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6 space-y-4">
+                            {/* Cartão do Vendedor (Estilo Profissional) */}
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center border border-white/5 relative">
+                                        <User size={24} className="text-zinc-600" />
+                                        {selectedItem.asaas_wallet_id && (
+                                            <div className="absolute -top-1 -right-1 bg-emerald-500 p-1 rounded-full border-2 border-zinc-900">
+                                                <ShieldCheck size={10} className="text-white" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black text-white">{selectedItem.seller_name}</h4>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <div className="flex items-center gap-0.5">
+                                                {[1, 2, 3, 4, 5].map(i => (
+                                                    <Sparkles key={i} size={8} className={i <= 4 ? "text-primary-400" : "text-zinc-800"} />
+                                                ))}
+                                            </div>
+                                            <span className="text-[9px] text-zinc-500 font-bold uppercase">Membro desde 2024</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button className="text-[10px] font-black text-primary-400 hover:text-white transition uppercase tracking-widest">Ver Perfil</button>
+                            </div>
+
+                            {/* Descrição */}
+                            <div className="space-y-4">
                                 <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                                    <Package size={14} className="text-primary-400" /> Descrição do Item
+                                    <Package size={14} className="text-primary-400" /> Descrição Completa
                                 </h4>
                                 <p className="text-sm text-zinc-400 leading-relaxed whitespace-pre-wrap">{selectedItem.description}</p>
                             </div>
+
+                            {/* Contato P2P Direto via WhatsApp */}
+                            {selectedItem.seller_id !== state.currentUser?.id && selectedItem.type !== 'AFFILIATE' && (
+                                <div className="bg-gradient-to-br from-emerald-900/30 to-emerald-950/40 border border-emerald-500/20 rounded-3xl p-5 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Phone size={16} className="text-emerald-400" />
+                                            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Negociação Direta</span>
+                                        </div>
+                                        <span className="text-[9px] text-zinc-500 bg-zinc-800/50 px-2 py-0.5 rounded uppercase">Sem taxas</span>
+                                    </div>
+                                    <p className="text-[10px] text-zinc-400 leading-relaxed">
+                                        Converse diretamente com o vendedor via WhatsApp. Combinem pagamento e entrega entre vocês.
+                                    </p>
+                                    <button
+                                        onClick={async () => {
+                                            setConfirmData({
+                                                isOpen: true,
+                                                title: 'Liberar WhatsApp?',
+                                                message: 'Deseja usar 3 pontos de farm para ver o contato do vendedor e negociar direto?',
+                                                confirmText: 'LIBERAR POR 3 PTS',
+                                                type: 'success',
+                                                onConfirm: async () => {
+                                                    try {
+                                                        const res = await apiService.get<any>(`/marketplace/contact/${selectedItem.id}`);
+                                                        if (res.success && res.data.whatsapp) {
+                                                            window.open(res.data.whatsapp, '_blank');
+                                                            onSuccess('Chat Aberto', 'O WhatsApp do vendedor foi aberto. Negocie diretamente!');
+                                                            onRefresh(); // Atualizar saldo de pontos
+                                                            setConfirmData(null);
+                                                        } else {
+                                                            onError('Indisponível', 'O vendedor não informou telefone de contato.');
+                                                        }
+                                                    } catch (err: any) {
+                                                        onError('Erro', err.message);
+                                                    }
+                                                }
+                                            });
+                                        }}
+                                        className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-3 uppercase text-xs tracking-widest"
+                                    >
+                                        <div className="flex flex-col items-center">
+                                            <div className="flex items-center gap-2">
+                                                <Phone size={18} />
+                                                <span>Liberar WhatsApp</span>
+                                            </div>
+                                            <span className="text-[8px] opacity-70 mt-1">Custo: 3 Pontos de Farm</span>
+                                        </div>
+                                    </button>
+                                    <p className="text-[8px] text-zinc-600 text-center">
+                                        ⚠️ Transação P2P sem garantias da plataforma
+                                    </p>
+                                </div>
+                            )}
 
                             <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6 space-y-4">
                                 <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
