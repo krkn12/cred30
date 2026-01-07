@@ -297,6 +297,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const [selectedUF, setSelectedUF] = useState<string>('');
     const [selectedCity, setSelectedCity] = useState<string>('');
     const [selectedNeighborhood, setSelectedNeighborhood] = useState<string>('');
+    const debouncedNeighborhood = useDebounce(selectedNeighborhood, 500);
     const [showFilters, setShowFilters] = useState(false);
 
     // Effect to load cities when UF changes
@@ -364,7 +365,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 search: debouncedSearchQuery,
                 uf: selectedUF,
                 city: selectedCity,
-                neighborhood: selectedNeighborhood
+                neighborhood: debouncedNeighborhood
             }).toString();
 
             const response = await apiService.get<any>(`/marketplace/listings?${query}`);
@@ -380,7 +381,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
             setIsLoading(false);
             setIsLoadingMore(false);
         }
-    }, [offset, selectedCategory, debouncedSearchQuery, selectedUF, selectedCity, selectedNeighborhood]);
+    }, [offset, selectedCategory, debouncedSearchQuery, selectedUF, selectedCity, debouncedNeighborhood]);
 
     const fetchData = useCallback(async () => {
         if (view === 'browse') {
@@ -411,7 +412,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
     useEffect(() => {
         fetchData();
-    }, [view, selectedCategory, debouncedSearchQuery, selectedUF, selectedCity, selectedNeighborhood]); // Removi fetchData da dependência para evitar loops se não for browse
+    }, [view, selectedCategory, debouncedSearchQuery, selectedUF, selectedCity, debouncedNeighborhood]); // Removi fetchData da dependência para evitar loops se não for browse
 
     const handleCreateListing = async (e: React.FormEvent) => {
         e.preventDefault();
