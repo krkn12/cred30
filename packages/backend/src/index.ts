@@ -22,6 +22,7 @@ import { marketplaceRoutes } from './presentation/http/routes/marketplace.routes
 import { educationRoutes } from './presentation/http/routes/education.routes';
 import { votingRoutes } from './presentation/http/routes/voting.routes';
 import { initializeScheduler } from './scheduler';
+import { initializeFirebaseAdmin } from './infrastructure/firebase/admin-config'; // Importação adicionada
 
 import { logger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
@@ -49,6 +50,9 @@ async function startServer() {
     // Inicialização do Banco de Dados e Tabelas
     console.log('--- Iniciando Cred30 Backend ---');
     await initializeDatabase();
+
+    // Inicializar Firebase Admin
+    initializeFirebaseAdmin();
 
     // Inicialização do Agendador (Scheduler)
     initializeScheduler(pool);
