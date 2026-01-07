@@ -129,27 +129,23 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onD
     const handleOpenChest = useCallback(async () => {
         if (chestsRemaining <= 0 || chestCountdown > 0 || isOpeningChest) return;
 
-        window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
         setIsOpeningChest(true);
 
-        setTimeout(async () => {
-            try {
-                const reward = (Math.random() * (0.03 - 0.01) + 0.01).toFixed(2);
-                const response = await apiService.post('/earn/chest-reward', { amount: parseFloat(reward) }) as any;
+        try {
+            const response = await apiService.post('/earn/chest-reward', {}) as any;
 
-                if (response.success) {
-                    onSuccess("Baú Aberto!", response.message || `Você recebeu R$ ${reward}!`);
-                    setChestsRemaining(response.chestsRemaining ?? chestsRemaining - 1);
-                    setChestCountdown(3600);
-                } else {
-                    onError("Erro", response.message || "Não foi possível abrir o baú");
-                }
-            } catch (error: any) {
-                onError("Erro", error.message || "Erro ao abrir o baú");
-            } finally {
-                setIsOpeningChest(false);
+            if (response.success) {
+                onSuccess("Baú Aberto!", response.message || `+${response.points || 100} pontos farm!`);
+                setChestsRemaining(response.chestsRemaining ?? chestsRemaining - 1);
+                setChestCountdown(3600);
+            } else {
+                onError("Erro", response.message || "Não foi possível abrir o baú");
             }
-        }, 5000);
+        } catch (error: any) {
+            onError("Erro", error.message || "Erro ao abrir o baú");
+        } finally {
+            setIsOpeningChest(false);
+        }
     }, [chestsRemaining, chestCountdown, isOpeningChest, onSuccess, onError]);
 
     // Timer para countdown
@@ -424,6 +420,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onD
                     <div className="grid grid-cols-3 sm:grid-cols-6 gap-4 mb-10">
                         {[
                             { icon: Crown, label: 'Shopping', sub: 'VIP', act: () => navigate('/app/services'), color: 'text-pink-400', bg: 'bg-pink-500/10' },
+                            { icon: Gift, label: 'Prêmios', sub: 'Resgatar', act: () => navigate('/app/rewards-shop'), color: 'text-amber-400', bg: 'bg-amber-500/10' },
                             { icon: Zap, label: 'Tarefas', sub: 'Ganhar', act: () => navigate('/app/promo-videos/farm'), color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
                             { icon: Wallet, label: 'Apoio', sub: 'Mútuo', act: onLoans, color: 'text-zinc-400', bg: 'bg-zinc-500/10' },
                             { icon: Gamepad2, label: 'Jogar', sub: 'Fun', act: onGames, color: 'text-purple-400', bg: 'bg-purple-500/10' },
@@ -465,8 +462,8 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onD
 
                             {/* Conteúdo */}
                             <div className="flex-1 min-w-0">
-                                <h4 className="text-base sm:text-lg font-bold text-white mb-1">Baú de Excedentes Diários</h4>
-                                <p className="text-xs text-zinc-400 mb-3">Assista conteúdo e receba saldo imediato</p>
+                                <h4 className="text-base sm:text-lg font-bold text-white mb-1">Baú de Pontos Diários</h4>
+                                <p className="text-xs text-zinc-400 mb-3">Ganhe pontos Farm para trocar por prêmios</p>
 
                                 <div className="flex flex-wrap items-center gap-2">
                                     <span className="px-3 py-1.5 bg-black/50 rounded-lg border border-white/5 text-[10px] font-bold text-zinc-400 uppercase">

@@ -299,69 +299,85 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                 <p>O resgate será processado via PIX pelo administrador do Cred30. O Cred30 não armazena dados financeiros. O prazo de processamento pode variar em feriados ou fins de semana. Resgates acima de R$ 2.000,00 podem exigir comprovação de origem dos fundos conforme política anti-lavagem (AML).</p>
             </div>
 
-            {/* Anúncio Intersticial Premium */}
+            {/* Anúncio Intersticial - Abre AdsTerra antes do saque */}
             {showAd && (
                 <div className="fixed inset-0 bg-black/95 z-[600] flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 backdrop-blur-2xl">
-                    <div className="w-full max-w-md relative flex flex-col h-[80vh] sm:h-auto">
+                    <div className="w-full max-w-md relative flex flex-col">
                         {/* Status Bar */}
                         <div className="flex justify-between items-center mb-8 px-2 animate-in slide-in-from-top-4 duration-700">
                             <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 bg-primary-500 rounded-full animate-pulse" />
-                                <span className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em]">Resgate Seguro Cred30</span>
+                                <span className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em]">Processando Resgate</span>
                             </div>
 
                             {adTimer > 0 ? (
                                 <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-full backdrop-blur-md">
-                                    <span className="text-[10px] text-zinc-400 font-bold">Pular em <span className="text-primary-400 font-black">{adTimer}s</span></span>
+                                    <span className="text-[10px] text-zinc-400 font-bold">Aguarde <span className="text-primary-400 font-black">{adTimer}s</span></span>
                                 </div>
                             ) : (
                                 <button
                                     onClick={processWithdrawal}
                                     className="bg-primary-500 text-black px-6 py-2.5 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all shadow-[0_0_30px_rgba(6,182,212,0.5)] active:scale-95"
                                 >
-                                    PULAR <ArrowUpFromLine size={14} />
+                                    CONTINUAR <ArrowUpFromLine size={14} />
                                 </button>
                             )}
                         </div>
 
-                        {/* Ad Card */}
-                        <div className="bg-[#0A0A0A] border border-white/5 rounded-[3rem] overflow-hidden shadow-2xl flex-1 flex flex-col animate-in zoom-in-95 duration-500">
-                            <div className="relative flex-1 overflow-hidden group">
-                                <img
-                                    src="/ad-banner.png"
-                                    alt="Oferta Especial"
-                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/20 to-transparent"></div>
+                        {/* Card de Patrocinador */}
+                        <div className="bg-[#0A0A0A] border border-white/5 rounded-[2rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-500">
+                            <div className="p-8 text-center">
+                                <div className="w-20 h-20 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-3xl flex items-center justify-center mx-auto mb-6 ring-2 ring-amber-500/30">
+                                    <TrendingUp size={40} className="text-amber-500" />
+                                </div>
 
-                                <div className="absolute bottom-8 left-8 right-8">
-                                    <span className="bg-primary-500 text-black text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest mb-4 inline-block shadow-lg">Oferta VIP</span>
-                                    <h4 className="text-3xl font-black text-white leading-tight tracking-tighter">Multiplique seus ganhos com o VIP!</h4>
-                                    <p className="text-zinc-400 text-sm mt-3 font-medium leading-relaxed">Membros do clube aproveitam taxas zero em todos os resgates acima de R$ 50,00.</p>
+                                <span className="bg-amber-500 text-black text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest mb-4 inline-block">
+                                    Patrocinador Oficial
+                                </span>
+
+                                <h4 className="text-2xl font-black text-white leading-tight tracking-tighter mt-4">
+                                    Seu resgate está sendo preparado
+                                </h4>
+                                <p className="text-zinc-400 text-sm mt-3 font-medium leading-relaxed">
+                                    Enquanto processamos, confira uma oferta especial dos nossos parceiros.
+                                </p>
+
+                                {/* Iframe do AdsTerra ou botão */}
+                                <div className="mt-6 p-4 bg-zinc-900/50 rounded-2xl border border-zinc-800">
+                                    <a
+                                        href="https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black py-4 rounded-xl transition-all text-sm uppercase tracking-widest"
+                                        onClick={() => {
+                                            // Garante que o anúncio foi clicado
+                                            setTimeout(() => setAdTimer(0), 500);
+                                        }}
+                                    >
+                                        🎁 Ver Oferta Especial
+                                    </a>
+                                    <p className="text-[9px] text-zinc-600 mt-3 italic">
+                                        Clique para ver ofertas exclusivas dos nossos parceiros
+                                    </p>
                                 </div>
                             </div>
 
-                            <div className="p-8 bg-zinc-900/30 flex items-center justify-between border-t border-white/5">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 bg-primary-500/10 rounded-2xl flex items-center justify-center text-primary-400 ring-1 ring-primary-500/20">
-                                        <TrendingUp size={28} />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-black text-white uppercase tracking-tight">Clube Cred30</p>
-                                        <p className="text-xs text-zinc-500 font-bold">Aproveite agora</p>
-                                    </div>
+                            <div className="p-6 bg-zinc-900/30 border-t border-white/5">
+                                <div className="flex items-center justify-center gap-2">
+                                    {adTimer > 0 ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                                            <span className="text-xs text-zinc-400">Preparando seu resgate...</span>
+                                        </>
+                                    ) : (
+                                        <span className="text-xs text-emerald-400 font-bold">✓ Pronto! Clique em continuar</span>
+                                    )}
                                 </div>
-                                <button
-                                    onClick={() => window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank')}
-                                    className="bg-white/10 hover:bg-white/20 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all"
-                                >
-                                    CONHECER
-                                </button>
                             </div>
                         </div>
 
-                        <div className="mt-8 text-center animate-in fade-in duration-1000 delay-500">
-                            <p className="text-[9px] text-zinc-600 uppercase font-black tracking-[0.3em]">Patrocinado por Cred30 Network</p>
+                        <div className="mt-6 text-center animate-in fade-in duration-1000 delay-500">
+                            <p className="text-[9px] text-zinc-600 uppercase font-black tracking-[0.3em]">Powered by Cred30 Network</p>
                         </div>
                     </div>
                 </div>

@@ -41,14 +41,11 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
     const handleAdRewardClaim = async () => {
         setLoading(true);
         try {
-            // Abrir Smart Link (Anúncio Real)
-            window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
-
-            // Creditar Recompensa
+            // Creditar Recompensa (apenas pontos, sem abrir anúncio)
             const response = await apiService.post<any>('/monetization/reward-video', {});
 
             if (response.success) {
-                onSuccess('Bônus Recebido!', response.message);
+                onSuccess('Pontos Recebidos!', response.message);
                 await onRefresh();
             } else {
                 onError('Aguarde', response.message);
@@ -64,9 +61,7 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
     const handleDailyCheckin = async () => {
         setLoading(true);
         try {
-            // Abrir o link de anúncio ANTES de validar no backend para garantir a receita
-            window.open('https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa', '_blank');
-
+            // Check-in direto sem anúncio
             const response = await apiService.post<any>('/monetization/daily-checkin', {});
             if (response.success) {
                 onSuccess('Check-in Realizado!', response.message);
@@ -195,14 +190,14 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                         </div>
                         <span className="text-xs font-black text-primary-400 uppercase">Vídeo Premiado</span>
                     </div>
-                    <h3 className="text-xl font-bold text-white mb-2">Bônus em Segundos</h3>
+                    <h3 className="text-xl font-bold text-white mb-2">Pontos em Segundos</h3>
                     <p className="text-sm text-zinc-400 mb-6 leading-relaxed">
-                        Assista a um breve vídeo informativo de nossos parceiros e receba bônus de saldo e pontos de Score imediatamente.
+                        Assista um breve vídeo e receba pontos Farm para trocar por Gift Cards, cupons e muito mais!
                     </p>
                     <div className="bg-background/50 rounded-2xl p-4 border border-surfaceHighlight mb-6 flex items-center justify-between">
                         <div className="flex flex-col">
                             <span className="text-[10px] text-zinc-500 uppercase font-black">Recompensa</span>
-                            <span className="text-lg font-black text-white">+ R$ 0,002 / +5 Score</span>
+                            <span className="text-lg font-black text-white">+30 Pontos Farm</span>
                         </div>
                         <PlayCircle size={32} className="text-primary-400" />
                     </div>
@@ -295,11 +290,11 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                     </div>
                     <div>
                         <h4 className="text-xl font-bold text-white">Check-in Diário</h4>
-                        <p className="text-sm text-zinc-500">Acesse todos os dias para ganhar bônus de Score e Saldo.</p>
+                        <p className="text-sm text-zinc-500">Acesse todos os dias para ganhar pontos Farm.</p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="bg-emerald-500 text-black text-[10px] font-black py-1.5 px-3 rounded-lg uppercase tracking-wider">
-                            Recompensa:+R$0.01
+                        <div className="bg-amber-500 text-black text-[10px] font-black py-1.5 px-3 rounded-lg uppercase tracking-wider">
+                            +50 Pontos Farm
                         </div>
                         <div className="bg-zinc-800 text-zinc-400 text-[10px] font-black py-1.5 px-3 rounded-lg uppercase tracking-wider">
                             +10 Score
