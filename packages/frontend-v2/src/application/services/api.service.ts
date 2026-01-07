@@ -602,11 +602,24 @@ class ApiService {
     });
   }
 
+  // Atualizar perfil completo (campos sensíveis)
+  async updateUserProfile(data: {
+    name?: string;
+    pixKey?: string;
+    secretPhrase?: string;
+    panicPhrase?: string;
+    safeContactPhone?: string;
+    password?: string;
+    confirmationCode?: string;
+  }): Promise<any> {
+    return this.put<any>('/users/profile', data);
+  }
+
   // Método para confirmar saque via 2FA
-  async confirmWithdrawal(transactionId: number, code: string): Promise<any> {
+  async confirmWithdrawal(transactionId: number, code: string, password: string): Promise<any> {
     return this.request<any>('/withdrawals/confirm', {
       method: 'POST',
-      body: JSON.stringify({ transactionId, code })
+      body: JSON.stringify({ transactionId, code, password })
     });
   }
 

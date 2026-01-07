@@ -458,7 +458,7 @@ export const get2FASetup = () => apiService.get2FASetup();
 
 export const verify2FA = (email: string, code: string) => apiService.verify2FA(email, code);
 
-export const confirmWithdrawal = (transactionId: number, code: string) => apiService.confirmWithdrawal(transactionId, code);
+export const confirmWithdrawal = (transactionId: number, code: string, password: string) => apiService.confirmWithdrawal(transactionId, code, password);
 
 export const deleteUserAccount = async (twoFactorCode?: string): Promise<any> => {
   const result = await apiService.deleteAccount(twoFactorCode);

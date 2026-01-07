@@ -155,12 +155,12 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
         setError(null);
         try {
             const res = await registerUser(name, email, password, pixKey, secretPhrase, phone, referralCode, cpf);
-            if (res.twoFactor) {
-                setTwoFactorData(res.twoFactor);
-                setVerifyEmailAddr(email);
-                setPendingUser(res.user);
-                setIs2FASetup(true);
-                setShowVerifyModal(true);
+            if (res.user) {
+                setSuccess('Cadastro realizado com sucesso! Bem-vindo.');
+                setTimeout(() => {
+                    onLogin(res.user);
+                    setSuccess(null);
+                }, 1500);
             }
         } catch (e: any) {
             setError(e.message);
