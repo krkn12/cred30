@@ -21,20 +21,6 @@ export const VotingView = ({ appState, onBack, onRefresh, onSuccess, onError }: 
     const [votingInProgress, setVotingInProgress] = useState<number | null>(null);
     const [userCurrentPower, setUserCurrentPower] = useState<number>(0);
 
-    const user = appState?.currentUser;
-    const activeQuotas = appState?.quotas?.filter(q => q.userId === user?.id && q.status === 'ACTIVE').length ?? 0;
-    const totalCommunityMembers = appState?.users?.length ?? 0;
-    void totalCommunityMembers;
-
-    // Guard clause: prevent crash if appState or user is not loaded yet
-    if (!appState || !user) {
-        return <LoadingScreen fullScreen message="Carregando Governança..." />;
-    }
-
-    if (isLoading && proposals.length === 0) {
-        return <LoadingScreen message="Buscando Propostas Ativas..." />;
-    }
-
     const fetchProposals = async () => {
         try {
             const res = await apiService.get<any>('/voting/proposals');
@@ -61,6 +47,18 @@ export const VotingView = ({ appState, onBack, onRefresh, onSuccess, onError }: 
         const interval = setInterval(fetchProposals, 15000);
         return () => clearInterval(interval);
     }, []);
+
+    const user = appState?.currentUser;
+    const activeQuotas = appState?.quotas?.filter(q => q.userId === user?.id && q.status === 'ACTIVE').length ?? 0;
+
+    // Guard clause: prevent crash if appState or user is not loaded yet
+    if (!appState || !user) {
+        return <LoadingScreen fullScreen message="Carregando Governança..." />;
+    }
+
+    if (isLoading && proposals.length === 0) {
+        return <LoadingScreen message="Buscando Propostas Ativas..." />;
+    }
 
     const handleVote = async (proposalId: number, choice: 'yes' | 'no') => {
         setVotingInProgress(proposalId);
