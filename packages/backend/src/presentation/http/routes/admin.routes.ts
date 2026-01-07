@@ -262,7 +262,7 @@ adminRoutes.get('/dashboard', adminMiddleware, async (c) => {
         (SELECT COUNT(*) FROM loans WHERE status IN ('PENDING', 'APPROVED', 'PAYMENT_PENDING')) as active_loans_count,
         (SELECT COALESCE(SUM(CAST(total_repayment AS NUMERIC)), 0) FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING')) as total_to_receive,
         (SELECT COALESCE(SUM(amount), 0) FROM system_costs) as total_monthly_costs,
-        (SELECT COUNT(*) FROM voting_proposals WHERE status = 'ACTIVE') as active_proposals_count
+        (SELECT COUNT(*) FROM governance_proposals WHERE status = 'active') as active_proposals_count
     `);
 
     const stats = statsResult.rows[0];

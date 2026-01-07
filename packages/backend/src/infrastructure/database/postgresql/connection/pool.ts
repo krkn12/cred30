@@ -978,40 +978,34 @@ export const initializeDatabase = async () => {
       CREATE INDEX IF NOT EXISTS idx_webhook_status ON webhook_logs(status);
     `);
 
-    // --- SISTEMA DE GOVERNANÇA (VOTAÇÃO) ---
-    console.log('Verificando tabelas de votação...');
+    // --- SISTEMA DE GOVERNANÇA (VOTAÇÃO V2) ---
+    console.log('Verificando tabelas de governança...');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS voting_proposals (
+      CREATE TABLE IF NOT EXISTS governance_proposals (
         id SERIAL PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
         description TEXT NOT NULL,
-        status VARCHAR(20) DEFAULT 'ACTIVE', -- ACTIVE, CLOSED
-        yes_votes INTEGER DEFAULT 0,
-        no_votes INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        closed_at TIMESTAMP
+        creator_id INTEGER REFERENCES users(id),
+        category VARCHAR(50) DEFAULT 'general',
+        status VARCHAR(20) DEFAULT 'active', -- active, passed, rejected, closed
+        yes_votes_power DECIMAL(15, 2) DEFAULT 0,
+        no_votes_power DECIMAL(15, 2) DEFAULT 0,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
-      CREATE TABLE IF NOT EXISTS voting_votes (
+      CREATE TABLE IF NOT EXISTS governance_votes (
         id SERIAL PRIMARY KEY,
-        proposal_id INTEGER REFERENCES voting_proposals(id) ON DELETE CASCADE,
+        proposal_id INTEGER REFERENCES governance_proposals(id) ON DELETE CASCADE,
         user_id ${userIdType} REFERENCES users(id),
-        vote VARCHAR(10) NOT NULL, -- YES, NO
-        weight INTEGER DEFAULT 1,
+        choice VARCHAR(10) NOT NULL, -- yes, no
+        voting_power DECIMAL(15, 2) DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(proposal_id, user_id)
       );
 
-      CREATE INDEX IF NOT EXISTS idx_voting_votes_proposal ON voting_votes(proposal_id);
-      CREATE INDEX IF NOT EXISTS idx_voting_votes_user ON voting_votes(user_id);
-      
-      -- Garantir coluna weight para votos existentes ou novos
-      DO $$ 
-      BEGIN 
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='voting_votes' AND column_name='weight') THEN 
-          ALTER TABLE voting_votes ADD COLUMN weight INTEGER DEFAULT 1; 
-        END IF; 
-      END $$;
+      CREATE INDEX IF NOT EXISTS idx_gov_votes_proposal ON governance_votes(proposal_id);
+      CREATE INDEX IF NOT EXISTS idx_gov_votes_user ON governance_votes(user_id);
     `);
     // Garantir que todas as tabelas tenham as colunas de data necessárias para os índices
     await client.query(`
