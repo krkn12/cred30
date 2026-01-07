@@ -63,6 +63,7 @@ const MyBugReportsView = lazyWithRetry(() => import('../components/views/MyBugRe
 const LogisticsView = lazyWithRetry(() => import('../components/views/LogisticsView'));
 const DepositView = lazyWithRetry(() => import('../components/views/DepositView').then(m => ({ default: m.DepositView })));
 const ServicesView = lazyWithRetry(() => import('../components/views/ServicesView').then(m => ({ default: m.ServicesView })));
+const RewardsShopView = lazyWithRetry(() => import('../components/views/RewardsShopView').then(m => ({ default: m.RewardsShopView })));
 
 export default function App() {
   const [state, setState] = useState<AppState>({
@@ -571,13 +572,14 @@ export default function App() {
                 <Route path="marketplace" element={<Suspense fallback={null}><MarketplaceView state={state} onBack={() => navigate('/app/dashboard')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} onRefresh={refreshState} /></Suspense>} />
                 <Route path="earn" element={<Suspense fallback={null}><EarnView state={state} onBack={() => navigate('/app/dashboard')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} onRefresh={refreshState} onUpgrade={handleUpgradeProClick} /></Suspense>} />
                 <Route path="games" element={<Suspense fallback={null}><GamesView onBack={() => navigate('/app/dashboard')} /></Suspense>} />
-                <Route path="education" element={<Suspense fallback={null}><EducationView onBack={() => navigate('/app/dashboard')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} /></Suspense>} />
+                <Route path="education" element={<Suspense fallback={null}><EducationView onBack={() => navigate('/app/dashboard')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} userBalance={state.currentUser.balance} onRefresh={refreshState} /></Suspense>} />
                 <Route path="faq" element={<Suspense fallback={null}><FaqView /></Suspense>} />
                 <Route path="voting" element={<Suspense fallback={null}><VotingView appState={state} onBack={() => navigate('/app/dashboard')} onRefresh={refreshState} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} /></Suspense>} />
                 <Route path="promo-videos" element={<Suspense fallback={null}><PromoVideosView userBalance={state.currentUser.balance} onRefresh={refreshState} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} onFarm={() => navigate('/app/promo-videos/farm')} /></Suspense>} />
                 <Route path="promo-videos/farm" element={<Suspense fallback={null}><ViewFarmView onBack={() => navigate('/app/promo-videos')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} onRefresh={refreshState} /></Suspense>} />
                 <Route path="history" element={<Suspense fallback={null}><HistoryView transactions={state.transactions.filter(t => t.userId === state.currentUser!.id)} isPro={state.currentUser?.membership_type === 'PRO'} /></Suspense>} />
                 <Route path="services" element={<Suspense fallback={null}><ServicesView userBalance={state.currentUser.balance} isVerified={state.currentUser.is_verified || false} isPro={state.currentUser.membership_type === 'PRO'} onSuccess={(t, m) => setShowSuccess({ isOpen: true, title: t, message: m })} onError={(t, m) => setShowError({ isOpen: true, title: t, message: m })} onRefresh={refreshState} /></Suspense>} />
+                <Route path="rewards-shop" element={<Suspense fallback={null}><RewardsShopView state={state} onBack={() => navigate('/app/dashboard')} onSuccess={(t, m) => setShowSuccess({ isOpen: true, title: t, message: m })} onError={(t, m) => setShowError({ isOpen: true, title: t, message: m })} onRefresh={refreshState} /></Suspense>} />
                 <Route path="seller" element={<Suspense fallback={null}><SellerRegistrationView /></Suspense>} />
                 <Route path="logistics" element={<Suspense fallback={null}><LogisticsView /></Suspense>} />
                 <Route path="admin" element={

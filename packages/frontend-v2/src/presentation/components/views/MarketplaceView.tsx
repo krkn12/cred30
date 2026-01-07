@@ -64,8 +64,9 @@ interface MarketplaceViewProps {
 }
 
 // Componentes internos para anúncios (memoizados para evitar re-renders)
+// IMPORTANTE: Os anúncios são ocultados em mobile para não atrapalhar a experiência
 const AdBanner = memo(({ type, title, description, actionText }: any) => (
-    <div className={`p-4 rounded-2xl border transition-all hover:scale-[1.02] cursor-pointer ${type === 'BANNER'
+    <div className={`hidden sm:block p-3 sm:p-4 rounded-2xl border transition-all hover:scale-[1.02] cursor-pointer ${type === 'BANNER'
         ? 'bg-gradient-to-br from-primary-600/20 to-purple-600/10 border-primary-500/20 shadow-lg shadow-primary-500/5'
         : 'bg-zinc-900/50 border-zinc-800'
         }`}>
@@ -74,7 +75,7 @@ const AdBanner = memo(({ type, title, description, actionText }: any) => (
             <Sparkles size={12} className="text-primary-400" />
         </div>
         {title && <h4 className="text-xs font-black text-white mb-1 uppercase tracking-tight">{title}</h4>}
-        <p className="text-[10px] text-zinc-400 leading-tight mb-3">{description}</p>
+        <p className="text-[10px] text-zinc-400 leading-tight mb-2 sm:mb-3 line-clamp-2">{description}</p>
         {actionText && (
             <button className="w-full py-2 bg-primary-500 hover:bg-primary-400 text-black text-[9px] font-black rounded-lg transition-all uppercase tracking-widest shadow-lg shadow-primary-500/20">
                 {actionText}
@@ -84,17 +85,18 @@ const AdBanner = memo(({ type, title, description, actionText }: any) => (
 ));
 AdBanner.displayName = 'AdBanner';
 
+// IMPORTANTE: Os anúncios nativos são ocultados em mobile para não atrapalhar a experiência
 const NativeAdCard = memo(({ title, price, category, img }: any) => (
-    <div className="bg-zinc-900/40 border border-zinc-800/50 rounded-2xl overflow-hidden group hover:border-amber-500/30 transition-all flex flex-col relative">
+    <div className="hidden sm:flex bg-zinc-900/40 border border-zinc-800/50 rounded-2xl overflow-hidden group hover:border-amber-500/30 transition-all flex-col relative">
         <div className="absolute top-2 left-2 z-10">
             <span className="text-[8px] font-black bg-amber-500 text-black px-1.5 py-0.5 rounded shadow-lg uppercase">OFERTA PARCEIRA</span>
         </div>
         <div className="aspect-square bg-zinc-950 flex items-center justify-center overflow-hidden">
             <img src={img} alt={title} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" loading="lazy" />
         </div>
-        <div className="p-4 flex-1 flex flex-col">
+        <div className="p-3 sm:p-4 flex-1 flex flex-col">
             <h3 className="font-bold text-white text-sm line-clamp-1 mb-1 uppercase tracking-tight">{title}</h3>
-            <p className="text-[10px] text-zinc-500 mb-4 uppercase font-bold tracking-widest">{category}</p>
+            <p className="text-[10px] text-zinc-500 mb-2 sm:mb-4 uppercase font-bold tracking-widest">{category}</p>
             <div className="mt-auto flex items-center justify-between">
                 <span className="text-sm font-black text-amber-400">{price}</span>
                 <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg group-hover:bg-amber-500 group-hover:text-black transition-all">
