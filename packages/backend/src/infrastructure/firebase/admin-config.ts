@@ -16,6 +16,12 @@ export const initializeFirebaseAdmin = () => {
                 serviceAccountData = serviceAccountData.slice(1, -1);
             }
             const serviceAccount = JSON.parse(serviceAccountData);
+
+            // CORREÇÃO CRÍTICA: Substituir literais de quebra de linha por quebras reais no private_key
+            // Isso resolve o erro "Invalid PEM formatted message"
+            if (serviceAccount.private_key) {
+                serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+            }
             admin.initializeApp({
                 credential: admin.credential.cert(serviceAccount)
             });
