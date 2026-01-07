@@ -418,6 +418,14 @@ export const loginUser = async (
   return convertApiUserToUser(response.user);
 };
 
+export const loginWithGoogle = async (idToken: string): Promise<any> => {
+  const response = await apiService.loginWithGoogle(idToken);
+  return {
+    user: convertApiUserToUser(response.user),
+    isNewUser: response.isNewUser
+  };
+};
+
 export const resetPassword = async (
   email: string,
   secretPhrase: string,

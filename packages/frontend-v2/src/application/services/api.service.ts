@@ -215,6 +215,22 @@ class ApiService {
     return response.data!;
   }
 
+  // Método para login via Google (Firebase)
+  async loginWithGoogle(idToken: string): Promise<AuthResponse & { isNewUser?: boolean }> {
+    const response = await this.request<AuthResponse & { isNewUser?: boolean }>('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ idToken }),
+    });
+
+    // Armazenar token
+    this.token = response.data?.token || null;
+    if (this.token) {
+      localStorage.setItem('authToken', this.token);
+    }
+
+    return response.data!;
+  }
+
   // Obter dados de configuração 2FA
   async get2FASetup(): Promise<any> {
     const response = await this.request<any>('/auth/2fa/setup');
