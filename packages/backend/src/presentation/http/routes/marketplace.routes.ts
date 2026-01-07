@@ -96,6 +96,7 @@ marketplaceRoutes.get('/listings', authMiddleware, async (c: Context) => {
         const search = c.req.query('search');
         const city = c.req.query('city');
         const uf = c.req.query('uf');
+        const neighborhood = c.req.query('neighborhood');
 
         // Otimização: Busca unificada via SQL com paginação e filtros de localização
         const combinedResult = await pool.query(`
@@ -103,29 +104,29 @@ marketplaceRoutes.get('/listings', authMiddleware, async (c: Context) => {
                 (SELECT l.id::text, l.title, l.description, l.price::float, l.image_url, l.category, 
                         u.name as seller_name, l.seller_id::text, l.is_boosted, l.created_at, l.status, 'P2P' as type,
                         NULL as affiliate_url, l.quota_id, u.asaas_wallet_id, u.address as seller_address,
-                        u.seller_address_city, u.seller_address_state
+                        u.seller_address_city, u.seller_address_state, u.seller_address_neighborhood
                  FROM marketplace_listings l 
                  JOIN users u ON l.seller_id = u.id 
                  WHERE l.status = 'ACTIVE'
                  AND ($3::text IS NULL OR $3 = 'TODOS' OR l.category = $3)
                  AND ($4::text IS NULL OR (l.title ILIKE '%' || $4 || '%' OR l.description ILIKE '%' || $4 || '%'))
                  AND ($5::text IS NULL OR u.seller_address_city ILIKE $5)
-                 AND ($6::text IS NULL OR u.seller_address_state = $6))
+                 AND ($6::text IS NULL OR u.seller_address_state = $6)
+                 AND ($7::text IS NULL OR u.seller_address_neighborhood ILIKE '%' || $7 || '%'))
                 UNION ALL
                 (SELECT p.id::text, p.title, p.description, p.price::float, p.image_url, p.category, 
                         'Cred30 Parceiros' as seller_name, '0' as seller_id, true as is_boosted, p.created_at, 'ACTIVE' as status, 'AFFILIATE' as type,
                         p.affiliate_url, NULL as quota_id, NULL as asaas_wallet_id, 'Brasil' as seller_address,
-                        NULL as seller_address_city, NULL as seller_address_state
+                        NULL as seller_address_city, NULL as seller_address_state, NULL as seller_address_neighborhood
                  FROM products p
                  WHERE p.active = true
                  AND ($3::text IS NULL OR $3 = 'TODOS' OR p.category = $3)
                  AND ($4::text IS NULL OR (p.title ILIKE '%' || $4 || '%' OR p.description ILIKE '%' || $4 || '%'))
-                 -- Produtos parceiros aparecem em todas as buscas geográficas, pois são nacionais
                  )
             ) as combined
             ORDER BY is_boosted DESC, created_at DESC
             LIMIT $1 OFFSET $2
-        `, [limit, offset, category || null, search || null, city || null, uf || null]);
+        `, [limit, offset, category || null, search || null, city || null, uf || null, neighborhood || null]);
 
         return c.json({
             success: true,
