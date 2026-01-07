@@ -217,7 +217,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                     <p className="text-xl text-zinc-400 font-medium leading-relaxed">
                         A revolução do microcrédito associativo.
                         <br />
-                        <span className="text-primary-400">Sem juros abusivos. Sem bancos.</span>
+                        <span className="text-primary-400">Sem taxas abusivas. Sem intermediários.</span>
                     </p>
                 </div>
             </div>
@@ -444,7 +444,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                             </div>
 
                                             <p className="text-[10px] text-zinc-500 text-center px-4 leading-relaxed">
-                                                CPF, PIX e Telefone serão solicitados quando você quiser comprar cotas ou solicitar empréstimo.
+                                                CPF, PIX e Telefone serão solicitados quando você quiser participar das cotas ou solicitar apoio mútuo.
                                             </p>
                                         </>
                                     )}
@@ -538,7 +538,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                             <a href="/privacy" className="hover:text-zinc-400">Privacidade</a>
                             <a href="https://wa.me/5591980177874?text=Olá, preciso de suporte com o Cred30" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400">Suporte</a>
                         </div>
-                        <p className="text-[10px] text-zinc-700">© 2025 Cred30 Social Bank</p>
+                        <p className="text-[10px] text-zinc-700">© 2025 Cred30 Comunidade de Apoio</p>
                     </footer>
                 </div>
             </div>

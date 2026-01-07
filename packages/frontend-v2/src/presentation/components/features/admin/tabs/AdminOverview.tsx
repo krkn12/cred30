@@ -51,7 +51,7 @@ export const AdminOverview = ({ state }: AdminOverviewProps) => {
                 <MetricCard title="Membros" value={state.stats?.usersCount ?? state.users?.length ?? 0} subtitle="Usuários Totais" icon={Users} color="blue" />
                 <MetricCard title="Participações" value={state.stats?.quotasCount ?? 0} subtitle="Licenças em Operação" icon={PieChart} color="cyan" />
                 <MetricCard title="Capital Social de Reserva" value={formatCurrency(state.stats?.systemConfig?.investment_reserve || 0)} subtitle="Fundo de Estabilidade" icon={TrendingUp} color="orange" />
-                <MetricCard title="Liquidez Real" value={formatCurrency(state.stats?.systemConfig?.real_liquidity ?? state.systemBalance ?? 0)} subtitle="Disponível p/ Saque/Apoio" icon={DollarSign} color="emerald" />
+                <MetricCard title="Liquidez Real" value={formatCurrency(state.stats?.systemConfig?.real_liquidity ?? state.systemBalance ?? 0)} subtitle="Disponível p/ Resgate/Apoio" icon={DollarSign} color="emerald" />
                 <MetricCard title="Votações Ativas" value={state.stats?.activeProposalsCount ?? 0} subtitle="Governança em Aberto" icon={Vote} color="purple" />
             </div>
         </div>

@@ -62,19 +62,19 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
         <MetricCard
           title="Bônus de Encargos"
           value={formatCurrency(profitPool)}
-          subtitle="Juros acumulados"
+          subtitle="Excedentes acumulados"
           color="green"
         />
         <MetricCard
           title="Total Emprestado"
           value={formatCurrency(totalLoaned)}
-          subtitle="Valor em empréstimos ativos"
+          subtitle="Valor em apoios mútuos ativos"
           color="yellow"
         />
         <MetricCard
           title="A Receber"
           value={formatCurrency(totalToReceive)}
-          subtitle="Principal + juros a receber"
+          subtitle="Principal + taxas a receber"
           color="purple"
         />
       </div>
@@ -143,7 +143,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
                   <span className="font-medium">{formatCurrency(FINANCIAL_CONSTANTS.QUOTA_PRICE)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Taxa de Juros:</span>
+                  <span className="text-sm text-gray-600">Taxa de Manutenção:</span>
                   <span className="font-medium">{(FINANCIAL_CONSTANTS.LOAN_INTEREST_RATE * 100).toFixed(0)}%</span>
                 </div>
                 <div className="flex justify-between">

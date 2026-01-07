@@ -142,7 +142,7 @@ export const HistoryView = ({ transactions: initialTransactions, isPro }: Histor
                 <div className="glass p-4">
                     <div className="flex items-center gap-2 mb-2">
                         <TrendingDown size={16} className="text-red-400" />
-                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Saídas</span>
+                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Retiradas</span>
                     </div>
                     <p className="text-lg sm:text-xl font-bold text-red-400">{formatCurrency(totals.outgoing)}</p>
                 </div>

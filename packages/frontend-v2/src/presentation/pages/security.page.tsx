@@ -57,7 +57,7 @@ const SecurityPage = () => {
                             </div>
                             <h2 className="text-xl font-bold mb-3">Criptografia SSL</h2>
                             <p className="text-zinc-400 text-sm leading-relaxed">
-                                Todos os dados que trafegam entre seu dispositivo e nossos servidores são protegidos por criptografia SSL de 256 bits, o mesmo padrão utilizado pelos maiores bancos do mundo.
+                                Todos os dados que trafegam entre seu dispositivo e nossos servidores são protegidos por criptografia SSL de 256 bits, o mesmo padrão utilizado pelos maiores sistemas do mundo.
                             </p>
                         </section>
                     </div>

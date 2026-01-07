@@ -165,7 +165,7 @@ export default function App() {
 
     try {
       await requestDeposit(amount);
-      setShowSuccess({ isOpen: true, title: 'Depósito Registrado', message: 'Aguardando confirmação do administrador.' });
+      setShowSuccess({ isOpen: true, title: 'Adesão Registrada', message: 'Aguardando confirmação do administrador.' });
       navigate('/app/dashboard');
       refreshState();
     } catch (e: any) {
@@ -640,8 +640,8 @@ export default function App() {
                               Quem você indicar ganha <span className="text-emerald-400 font-bold">taxas especiais</span> por até <span className="text-emerald-400 font-bold">3 usos</span>:
                             </p>
                             <ul className="text-[10px] text-zinc-500 mt-2 space-y-1">
-                              <li>• Juros de <span className="text-emerald-400">3,5%</span> (ao invés de 20%)</li>
-                              <li>• Taxa de saque de <span className="text-emerald-400">R$ 1,00</span> (50% off)</li>
+                              <li>• Taxa de <span className="text-emerald-400">3,5%</span> (ao invés de 20%)</li>
+                              <li>• Taxa de resgate de <span className="text-emerald-400">R$ 1,00</span> (50% off)</li>
                               <li>• Marketplace com <span className="text-emerald-400">2,5%</span> de taxa (50% off)</li>
                             </ul>
                           </div>

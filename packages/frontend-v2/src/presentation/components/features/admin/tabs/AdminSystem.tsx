@@ -237,7 +237,7 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
                                 Injetar Receita Externa
                             </h3>
                             <p className="text-sm text-zinc-400 leading-relaxed max-w-xl">
-                                Recebeu lucro fora do App (ex: taxas, serviços externos)? Injete aqui para aumentar o saldo do sistema e o pool de recompensas dos membros.
+                                Recebeu excedente fora do App (ex: taxas, serviços externos)? Injete aqui para aumentar o saldo do sistema e o pool de participação dos membros.
                             </p>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
@@ -256,12 +256,12 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
                                     const val = parseFloat(input.value);
                                     if (!val || val <= 0) return onError("Erro", "Insira um valor válido.");
 
-                                    if (!window.confirm(`Deseja injetar R$ ${val.toFixed(2)} como lucro no sistema?`)) return;
+                                    if (!window.confirm(`Deseja injetar R$ ${val.toFixed(2)} como excedente no sistema?`)) return;
 
                                     try {
                                         const res = await apiService.addProfitToPool(val);
                                         if (res.success) {
-                                            onSuccess("Sucesso", res.message || "Lucro injetado e distribuído!");
+                                            onSuccess("Sucesso", res.message || "Excedente injetado e distribuído!");
                                             input.value = '';
                                             onRefresh();
                                             fetchFinanceHistory();

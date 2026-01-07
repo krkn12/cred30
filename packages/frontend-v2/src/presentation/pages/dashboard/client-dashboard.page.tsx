@@ -97,7 +97,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center text-white font-bold mb-2">
               -
             </div>
-            <span className="text-sm font-medium text-gray-900">Sacar</span>
+            <span className="text-sm font-medium text-gray-900">Resgatar</span>
           </button>
 
           <button
@@ -200,7 +200,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
               {pendingLoans.length > 0 && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                   <p className="text-sm text-yellow-800">
-                    ⚠️ Você tem {pendingLoans.length} empréstimo(s) pendente(s) de aprovação
+                    ⚠️ Você tem {pendingLoans.length} apoio(s) mútuo(s) pendente(s) de aprovação
                   </p>
                 </div>
               )}
@@ -238,7 +238,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
               ))}
               {loans.length > 3 && (
                 <p className="text-sm text-gray-500 text-center">
-                  E mais {loans.length - 3} empréstimo(s)...
+                  E mais {loans.length - 3} apoio(s) mútuo(s)...
                 </p>
               )}
             </div>
