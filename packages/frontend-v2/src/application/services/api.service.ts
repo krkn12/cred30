@@ -78,7 +78,7 @@ class ApiService {
     };
 
     try {
-      console.log('[API] Making request to:', url, 'Method:', config.method || 'GET');
+
       const response = await fetch(url, config);
 
       // Tentar fazer parse do JSON apenas se o content-type for application/json
@@ -348,7 +348,7 @@ class ApiService {
 
   // Método para comprar cotas (PIX manual ou saldo)
   async buyQuotas(quantity: number, useBalance: boolean, paymentMethod?: 'pix'): Promise<any> {
-    console.log('[FRONTEND] buyQuotas called with:', { quantity, useBalance, paymentMethod });
+
     const response = await this.request<any>('/quotas/buy', {
       method: 'POST',
       body: JSON.stringify({

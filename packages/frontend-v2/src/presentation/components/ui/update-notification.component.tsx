@@ -10,7 +10,7 @@ export const UpdateNotification: React.FC = () => {
         updateServiceWorker,
     } = useRegisterSW({
         onRegistered(r) {
-            console.log('SW Registered:', r);
+            // SW Registered
         },
         onRegisterError(error) {
             console.error('SW registration error', error);

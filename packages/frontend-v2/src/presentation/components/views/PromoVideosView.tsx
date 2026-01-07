@@ -955,8 +955,6 @@ const CreateCampaignModal: React.FC<{
     onPaymentSuccess: (data: any) => void;
 }> = ({ userBalance, onClose, onSuccess, onError, onPaymentSuccess }) => {
     const [loading, setLoading] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState<'BALANCE' | 'PIX' | 'CARD'>('BALANCE');
-    const [payerCpfCnpj, setPayerCpfCnpj] = useState('');
     const [form, setForm] = useState({
         title: '',
         description: '',
@@ -986,24 +984,14 @@ const CreateCampaignModal: React.FC<{
         setForm(prev => ({ ...prev, pricePerView: currentPricePerView }));
     }, [currentPricePerView]);
 
-    // Taxas do Asaas (mesmas do backend)
-    const ASAAS_PIX_FIXED_FEE = 0.99;
-    const ASAAS_CARD_FEE_PERCENT = 0.0299;
-    const ASAAS_CARD_FIXED_FEE = 0.49;
-
     const estimatedViews = Math.floor((form.budget / form.pricePerView) * 1.02); // 2% bonus views
     const viewerEarning = form.pricePerView * 0.60;
 
     // Lista de tags para o formulário
     const FORM_TAGS = ['ENTRETENIMENTO', 'MUSICA', 'EDUCACAO', 'GAMES', 'LIFESTYLE', 'TECNOLOGIA', 'NEGOCIOS', 'SAUDE', 'HUMOR', 'OUTROS'];
 
-    // Valor total baseado no método de pagamento
-    const gatewayFee = paymentMethod === 'PIX'
-        ? ASAAS_PIX_FIXED_FEE
-        : paymentMethod === 'CARD'
-            ? (form.budget + ASAAS_CARD_FIXED_FEE) / (1 - ASAAS_CARD_FEE_PERCENT) - form.budget
-            : 0;
-    const totalToPay = form.budget + gatewayFee;
+    // Valor total
+    const totalToPay = form.budget;
 
     const handleSubmit = async () => {
         if (!form.title || !form.videoUrl) {
@@ -1011,30 +999,18 @@ const CreateCampaignModal: React.FC<{
             return;
         }
 
-        if (paymentMethod !== 'BALANCE' && !payerCpfCnpj) {
-            onError('Erro', 'Informe o CPF ou CNPJ para o pagamento');
-            return;
-        }
-
-        // Só valida saldo se for pagar com saldo
-        if (paymentMethod === 'BALANCE' && form.budget > userBalance) {
-            onError('Saldo Insuficiente', `Você tem R$ ${userBalance.toFixed(2)} de saldo`);
+        if (form.budget > userBalance) {
+            onError('Saldo Insuficiente', `Você tem R$ ${userBalance.toFixed(2)} de saldo. Realize um depósito.`);
             return;
         }
 
         setLoading(true);
         try {
-            const res = await apiService.post<any>('/promo-videos/create', { ...form, paymentMethod, payerCpfCnpj: payerCpfCnpj.replace(/\D/g, '') });
+            const res = await apiService.post<any>('/promo-videos/create', { ...form, paymentMethod: 'BALANCE' });
 
             if (res.success) {
-                // Se for PIX, mostrar detalhes da cobrança
-                if (paymentMethod === 'PIX' && res.data) {
-                    onPaymentSuccess(res.data);
-                    onClose(); // Close creation modal, success modal will be opened by parent
-                } else {
-                    onSuccess();
-                    onClose();
-                }
+                onSuccess();
+                onClose();
             } else {
                 onError('Erro', res.message || 'Erro ao criar campanha');
             }
@@ -1236,42 +1212,23 @@ const CreateCampaignModal: React.FC<{
                         </div>
                     </div>
 
-                    {/* Método de Pagamento - Visual Moderno */}
+                    {/* Método de Pagamento - FIXO: SALDO */}
                     <div>
                         <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest block mb-4 px-1">Forma de Pagamento</label>
-                        <div className="grid grid-cols-3 gap-3">
-                            {[
-                                { id: 'BALANCE', label: 'SALDO', icon: <Wallet size={20} />, color: 'primary' },
-                                { id: 'PIX', label: 'PIX', icon: <Smartphone size={20} />, color: 'emerald' },
-                                { id: 'CARD', label: 'CARD', icon: <CreditCard size={20} />, color: 'blue' }
-                            ].map((m) => (
-                                <button
-                                    key={m.id}
-                                    type="button"
-                                    onClick={() => setPaymentMethod(m.id as any)}
-                                    className={`flex flex-col items-center gap-2 py-4 rounded-2xl transition-all border-2 ${paymentMethod === m.id
-                                        ? `bg-${m.color}-500/10 border-${m.color}-500/50 text-${m.color}-400 shadow-lg shadow-${m.color}-500/10`
-                                        : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:border-zinc-700'}`}
-                                >
-                                    {m.icon}
-                                    <span className="text-[10px] font-black tracking-widest">{m.label}</span>
-                                </button>
-                            ))}
-                        </div>
-
-                        {(paymentMethod === 'PIX' || paymentMethod === 'CARD') && (
-                            <div className="mt-4 animate-in slide-in-from-top-2">
-                                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest block mb-2 px-1">CPF ou CNPJ (Obrigatório)</label>
-                                <input
-                                    type="text"
-                                    value={payerCpfCnpj}
-                                    onChange={e => setPayerCpfCnpj(e.target.value)}
-                                    placeholder="000.000.000-00"
-                                    maxLength={18}
-                                    className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 px-5 text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-primary-500/50 transition-all font-medium"
-                                />
+                        <div className="w-full bg-primary-500/10 border border-primary-500/50 rounded-2xl p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-primary-500 rounded-lg text-black">
+                                    <Wallet size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-white uppercase tracking-wider">Saldo da Conta</p>
+                                    <p className="text-[10px] text-primary-400 font-bold">DISPONÍVEL: R$ {userBalance.toFixed(2)}</p>
+                                </div>
                             </div>
-                        )}
+                            {form.budget > userBalance && (
+                                <span className="text-[10px] bg-red-500/20 text-red-500 px-2 py-1 rounded-lg font-bold">SALDO INSUFICIENTE</span>
+                            )}
+                        </div>
                     </div>
 
                     {/* Detailed Summary Card */}
@@ -1299,22 +1256,24 @@ const CreateCampaignModal: React.FC<{
                                 <span className="text-zinc-500 font-bold">{(form.budget * 0.4).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                             </div>
                         </div>
-
-                        {paymentMethod !== 'BALANCE' && (
-                            <div className="pt-2 mt-4 border-t border-primary-500/10 flex justify-between items-baseline">
-                                <span className="text-xs text-zinc-400 font-black uppercase tracking-widest">Total Líquido</span>
-                                <span className="text-2xl font-black text-primary-400">{totalToPay.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                            </div>
-                        )}
                     </div>
 
-                    <button
-                        onClick={handleSubmit}
-                        disabled={loading || (paymentMethod === 'BALANCE' && form.budget > userBalance)}
-                        className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-30 disabled:grayscale text-black font-black uppercase tracking-[0.2em] py-5 rounded-2xl transition-all shadow-[0_20px_40px_-10px_rgba(6,182,212,0.3)] active:scale-[0.98] text-xs"
-                    >
-                        {loading ? 'PROCESSANDO...' : 'CONFIRMAR E ATIVAR'}
-                    </button>
+                    {form.budget > userBalance ? (
+                        <button
+                            onClick={() => window.location.href = '/app/deposit'}
+                            className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-black uppercase tracking-[0.2em] py-5 rounded-2xl transition-all text-xs"
+                        >
+                            SALDO INSUFICIENTE (RECARREGAR)
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleSubmit}
+                            disabled={loading}
+                            className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-70 text-black font-black uppercase tracking-[0.2em] py-5 rounded-2xl transition-all shadow-[0_20px_40px_-10px_rgba(6,182,212,0.3)] active:scale-[0.98] text-xs"
+                        >
+                            {loading ? 'PROCESSANDO...' : 'CONFIRMAR E ATIVAR'}
+                        </button>
+                    )}
 
                     <p className="text-[9px] text-zinc-600 text-center uppercase font-bold tracking-tight">Campanha verificada • Proteção contra fraudes ativada</p>
                 </div>
