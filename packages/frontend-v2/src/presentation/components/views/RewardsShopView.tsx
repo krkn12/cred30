@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     Gift, ArrowLeft, ShoppingBag, Smartphone, Coffee,
     Music, Gamepad2, Film, Fuel, Heart, Zap, Crown,
@@ -19,156 +19,70 @@ interface RewardsShopViewProps {
 interface RewardItem {
     id: string;
     name: string;
-    description: string;
+    description?: string;
     pointsCost: number;
     type: 'GIFT_CARD' | 'COUPON' | 'PIX_CASHBACK' | 'MEMBERSHIP';
     brand?: string;
-    icon: any;
-    color: string;
-    bgColor: string;
-    featured?: boolean;
-    discount?: string;
-    value?: string;
+    value?: number;
+    canAfford?: boolean;
 }
 
-const REWARDS_CATALOG: RewardItem[] = [
-    // Gift Cards
-    {
-        id: 'gc-amazon-10',
-        name: 'Gift Card Amazon',
-        description: 'Vale presente Amazon de R$ 10',
-        pointsCost: 1000,
-        type: 'GIFT_CARD',
-        brand: 'Amazon',
-        icon: ShoppingBag,
-        color: 'text-orange-400',
-        bgColor: 'bg-orange-500/10',
-        value: 'R$ 10'
-    },
-    {
-        id: 'gc-ifood-15',
-        name: 'Cupom iFood',
-        description: 'Desconto de R$ 15 no iFood',
-        pointsCost: 1500,
-        type: 'COUPON',
-        brand: 'iFood',
-        icon: Coffee,
-        color: 'text-red-400',
-        bgColor: 'bg-red-500/10',
-        value: 'R$ 15',
-        featured: true
-    },
-    {
-        id: 'gc-spotify-1m',
-        name: 'Spotify Premium',
-        description: '1 mês de Spotify Premium',
-        pointsCost: 2000,
-        type: 'GIFT_CARD',
-        brand: 'Spotify',
-        icon: Music,
-        color: 'text-green-400',
-        bgColor: 'bg-green-500/10',
-        value: '1 mês'
-    },
-    {
-        id: 'gc-netflix-25',
-        name: 'Gift Card Netflix',
-        description: 'Vale presente Netflix R$ 25',
-        pointsCost: 2500,
-        type: 'GIFT_CARD',
-        brand: 'Netflix',
-        icon: Film,
-        color: 'text-red-500',
-        bgColor: 'bg-red-500/10',
-        value: 'R$ 25'
-    },
-    {
-        id: 'gc-uber-20',
-        name: 'Crédito Uber',
-        description: 'Crédito de R$ 20 no Uber',
-        pointsCost: 2000,
-        type: 'GIFT_CARD',
-        brand: 'Uber',
-        icon: Fuel,
-        color: 'text-zinc-100',
-        bgColor: 'bg-zinc-800',
-        value: 'R$ 20'
-    },
-    {
-        id: 'gc-playstore-30',
-        name: 'Google Play',
-        description: 'Gift Card Google Play R$ 30',
-        pointsCost: 3000,
-        type: 'GIFT_CARD',
-        brand: 'Google',
-        icon: Gamepad2,
-        color: 'text-blue-400',
-        bgColor: 'bg-blue-500/10',
-        value: 'R$ 30'
-    },
-    {
-        id: 'gc-recarga-10',
-        name: 'Recarga Celular',
-        description: 'Recarga de R$ 10 qualquer operadora',
-        pointsCost: 1000,
-        type: 'GIFT_CARD',
-        brand: 'Recarga',
-        icon: Smartphone,
-        color: 'text-purple-400',
-        bgColor: 'bg-purple-500/10',
-        value: 'R$ 10'
-    },
-    // PIX Cashback
-    {
-        id: 'pix-5',
-        name: 'PIX R$ 5',
-        description: 'Receba R$ 5 via PIX na sua conta',
-        pointsCost: 5000,
-        type: 'PIX_CASHBACK',
-        icon: Zap,
-        color: 'text-primary-400',
-        bgColor: 'bg-primary-500/10',
-        value: 'R$ 5'
-    },
-    {
-        id: 'pix-10',
-        name: 'PIX R$ 10',
-        description: 'Receba R$ 10 via PIX na sua conta',
-        pointsCost: 9000,
-        type: 'PIX_CASHBACK',
-        icon: Zap,
-        color: 'text-primary-400',
-        bgColor: 'bg-primary-500/10',
-        value: 'R$ 10',
-        discount: '10% OFF'
-    },
-    // Membership
-    {
-        id: 'membership-pro-1m',
-        name: 'PRO 1 Mês',
-        description: 'Seja Cred30 PRO por 1 mês',
-        pointsCost: 10000,
-        type: 'MEMBERSHIP',
-        icon: Crown,
-        color: 'text-amber-400',
-        bgColor: 'bg-amber-500/10',
-        value: '1 mês',
-        featured: true
-    },
-];
+// Mapeamento de ícones e cores por tipo/id
+const getRewardStyle = (id: string, type: string) => {
+    const styles: Record<string, { icon: any, color: string, bgColor: string }> = {
+        'gc-amazon-10': { icon: ShoppingBag, color: 'text-orange-400', bgColor: 'bg-orange-500/10' },
+        'gc-ifood-15': { icon: Coffee, color: 'text-red-400', bgColor: 'bg-red-500/10' },
+        'gc-spotify-1m': { icon: Music, color: 'text-green-400', bgColor: 'bg-green-500/10' },
+        'gc-netflix-25': { icon: Film, color: 'text-red-500', bgColor: 'bg-red-500/10' },
+        'gc-uber-20': { icon: Fuel, color: 'text-zinc-100', bgColor: 'bg-zinc-800' },
+        'gc-playstore-30': { icon: Gamepad2, color: 'text-blue-400', bgColor: 'bg-blue-500/10' },
+        'gc-recarga-10': { icon: Smartphone, color: 'text-purple-400', bgColor: 'bg-purple-500/10' },
+    };
+
+    if (styles[id]) return styles[id];
+
+    // Fallback por tipo
+    if (type === 'PIX_CASHBACK') return { icon: Zap, color: 'text-primary-400', bgColor: 'bg-primary-500/10' };
+    if (type === 'MEMBERSHIP') return { icon: Crown, color: 'text-amber-400', bgColor: 'bg-amber-500/10' };
+    if (type === 'COUPON') return { icon: Coffee, color: 'text-red-400', bgColor: 'bg-red-500/10' };
+
+    return { icon: Gift, color: 'text-zinc-400', bgColor: 'bg-zinc-800' };
+};
 
 export const RewardsShopView = ({ state, onBack, onSuccess, onError, onRefresh }: RewardsShopViewProps) => {
     const user = state.currentUser!;
-    const farmPoints = user.ad_points || 0;
 
+    const [farmPoints, setFarmPoints] = useState(user.ad_points || 0);
+    const [catalog, setCatalog] = useState<RewardItem[]>([]);
+    const [loadingCatalog, setLoadingCatalog] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<'ALL' | 'GIFT_CARD' | 'COUPON' | 'PIX_CASHBACK' | 'MEMBERSHIP'>('ALL');
     const [loading, setLoading] = useState<string | null>(null);
     const [confirmItem, setConfirmItem] = useState<RewardItem | null>(null);
     const [redeemedCodes, setRedeemedCodes] = useState<{ code: string, item: string }[]>([]);
 
+    // Carregar catálogo da API
+    const loadCatalog = useCallback(async () => {
+        setLoadingCatalog(true);
+        try {
+            const res = await apiService.get<any>('/earn/rewards-catalog');
+            if (res.success && res.data) {
+                setFarmPoints(res.data.currentPoints || 0);
+                setCatalog(res.data.catalog || []);
+            }
+        } catch (e) {
+            console.error('Erro ao carregar catálogo:', e);
+        } finally {
+            setLoadingCatalog(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadCatalog();
+    }, [loadCatalog]);
+
     const filteredRewards = selectedCategory === 'ALL'
-        ? REWARDS_CATALOG
-        : REWARDS_CATALOG.filter(r => r.type === selectedCategory);
+        ? catalog
+        : catalog.filter(r => r.type === selectedCategory);
 
     const handleRedeemReward = async (item: RewardItem) => {
         setLoading(item.id);
@@ -185,6 +99,7 @@ export const RewardsShopView = ({ state, onBack, onSuccess, onError, onRefresh }
                 }
                 onSuccess('Resgatado!', response.message || `Você resgatou: ${item.name}`);
                 await onRefresh();
+                await loadCatalog(); // Atualizar pontos
             } else {
                 onError('Erro', response.message);
             }
@@ -283,9 +198,15 @@ export const RewardsShopView = ({ state, onBack, onSuccess, onError, onRefresh }
 
             {/* Grid de Recompensas */}
             <div className="grid grid-cols-2 gap-3">
-                {filteredRewards.map(item => {
-                    const canAfford = farmPoints >= item.pointsCost;
+                {loadingCatalog ? (
+                    <div className="col-span-2 flex justify-center py-8">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary-400" />
+                    </div>
+                ) : filteredRewards.map(item => {
+                    const canAfford = item.canAfford ?? (farmPoints >= item.pointsCost);
                     const isLoading = loading === item.id;
+                    const style = getRewardStyle(item.id, item.type);
+                    const IconComponent = style.icon;
 
                     return (
                         <div
@@ -293,33 +214,18 @@ export const RewardsShopView = ({ state, onBack, onSuccess, onError, onRefresh }
                             className={`relative bg-zinc-900/50 border rounded-2xl overflow-hidden group transition-all ${canAfford ? 'border-zinc-800 hover:border-primary-500/50' : 'border-zinc-800/50 opacity-60'
                                 }`}
                         >
-                            {/* Badge Featured */}
-                            {item.featured && (
-                                <div className="absolute top-2 left-2 z-10">
-                                    <span className="text-[8px] font-black bg-amber-500 text-black px-2 py-0.5 rounded-full uppercase">
-                                        Popular
-                                    </span>
-                                </div>
-                            )}
-                            {/* Badge Discount */}
-                            {item.discount && (
-                                <div className="absolute top-2 right-2 z-10">
-                                    <span className="text-[8px] font-black bg-emerald-500 text-black px-2 py-0.5 rounded-full uppercase">
-                                        {item.discount}
-                                    </span>
-                                </div>
-                            )}
-
                             {/* Icon Area */}
-                            <div className={`p-6 ${item.bgColor} flex items-center justify-center`}>
-                                <item.icon size={40} className={item.color} />
+                            <div className={`p-6 ${style.bgColor} flex items-center justify-center`}>
+                                <IconComponent size={40} className={style.color} />
                             </div>
 
                             {/* Content */}
                             <div className="p-4 space-y-3">
                                 <div>
                                     <h4 className="text-sm font-bold text-white leading-tight">{item.name}</h4>
-                                    <p className="text-[10px] text-zinc-500 mt-0.5 line-clamp-2">{item.description}</p>
+                                    <p className="text-[10px] text-zinc-500 mt-0.5 line-clamp-2">
+                                        {item.description || (item.value ? `Valor: R$ ${item.value}` : '')}
+                                    </p>
                                 </div>
 
                                 <div className="flex items-center justify-between">

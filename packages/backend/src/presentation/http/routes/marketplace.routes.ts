@@ -141,6 +141,85 @@ marketplaceRoutes.get('/listings', authMiddleware, async (c: Context) => {
     }
 });
 
+/**
+ * Listar meus pedidos (Compras e Vendas)
+ */
+marketplaceRoutes.get('/my-orders', authMiddleware, async (c: Context) => {
+    try {
+        const user = c.get('user') as UserContext;
+        const pool = getDbPool(c);
+
+        const result = await pool.query(`
+            SELECT 
+                mo.id, mo.amount, mo.status, mo.created_at, mo.payment_method, mo.delivery_status,
+                ml.title, ml.image_url,
+                s.name as seller_name, s.id as seller_id,
+                b.name as buyer_name, b.id as buyer_id,
+                mo.buyer_id = $1 as is_buyer
+            FROM marketplace_orders mo
+            JOIN marketplace_listings ml ON mo.listing_id = ml.id
+            JOIN users s ON mo.seller_id = s.id
+            JOIN users b ON mo.buyer_id = b.id
+            WHERE mo.buyer_id = $1 OR mo.seller_id = $1
+            ORDER BY mo.created_at DESC
+        `, [user.id]);
+
+        return c.json({
+            success: true,
+            data: { orders: result.rows }
+        });
+    } catch (error) {
+        console.error('Erro ao listar meus pedidos:', error);
+        return c.json({ success: false, message: 'Erro ao buscar pedidos' }, 500);
+    }
+});
+
+/**
+ * Listar missões logísticas (Entregas disponíveis)
+ * Alias para /logistics/available mantido para compatibilidade com MarketplaceView
+ */
+marketplaceRoutes.get('/logistic/missions', authMiddleware, async (c: Context) => {
+    try {
+        const pool = getDbPool(c);
+
+        // Reutilizando a lógica de logistics/available
+        const result = await pool.query(`
+            SELECT 
+                mo.id as order_id,
+                mo.delivery_fee,
+                mo.delivery_address,
+                mo.pickup_address,
+                mo.created_at,
+                ml.title as item_title,
+                ml.image_url,
+                seller.name as seller_name
+            FROM marketplace_orders mo
+            LEFT JOIN marketplace_listings ml ON mo.listing_id = ml.id
+            LEFT JOIN users seller ON mo.seller_id = seller.id
+            WHERE mo.delivery_status = 'AVAILABLE'
+              AND mo.status = 'WAITING_SHIPPING'
+            ORDER BY mo.delivery_fee DESC, mo.created_at ASC
+            LIMIT 50
+        `);
+
+        return c.json({
+            success: true,
+            data: result.rows.map(row => ({
+                id: row.order_id,
+                title: row.item_title,
+                image: row.image_url,
+                deliveryFee: parseFloat(row.delivery_fee || '0'),
+                from: row.seller_name,
+                toAddress: row.delivery_address, // Simplificado para view de cards
+                distance: 'Calculating...', // Frontend pode calcular ou mockar
+            }))
+        });
+    } catch (error: any) {
+        console.error('[MARKETPLACE] Erro ao listar missões:', error);
+        return c.json({ success: false, message: `Erro ao buscar missões: ${error.message}` }, 500);
+    }
+});
+
 marketplaceRoutes.post('/create', authMiddleware, async (c: Context) => {
     try {
         const user = c.get('user') as UserContext;
