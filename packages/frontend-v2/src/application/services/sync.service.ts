@@ -61,7 +61,8 @@ class SyncService {
                     case 'REQUEST_LOAN':
                         result = await apiService.requestLoan(
                             action.payload.amount,
-                            action.payload.installments
+                            action.payload.installments,
+                            action.payload.guaranteePercentage
                         );
                         break;
                     case 'REPAY_LOAN':

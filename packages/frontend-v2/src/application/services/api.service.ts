@@ -381,12 +381,13 @@ class ApiService {
   }
 
   // Método para solicitar empréstimo
-  async requestLoan(amount: number, installments: number): Promise<any> {
+  async requestLoan(amount: number, installments: number, guaranteePercentage: number = 100): Promise<any> {
     const response = await this.request<any>('/loans/request', {
       method: 'POST',
       body: JSON.stringify({
         amount,
         installments,
+        guaranteePercentage
       }),
     });
     return response.data;

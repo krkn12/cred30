@@ -333,12 +333,13 @@ export const sellAllQuotas = async (): Promise<number> => {
 
 export const requestLoan = async (
   amount: number,
-  installments: number
+  installments: number,
+  guaranteePercentage: number = 100
 ): Promise<any> => {
   if (!navigator.onLine) {
-    return await syncService.enqueue('REQUEST_LOAN', { amount, installments });
+    return await syncService.enqueue('REQUEST_LOAN', { amount, installments, guaranteePercentage });
   }
-  return await apiService.requestLoan(amount, installments);
+  return await apiService.requestLoan(amount, installments, guaranteePercentage);
 };
 
 export const repayLoan = async (loanId: string, useBalance: boolean, paymentMethod?: 'pix'): Promise<any> => {

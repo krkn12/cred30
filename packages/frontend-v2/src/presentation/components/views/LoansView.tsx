@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, AlertTriangle, X as XIcon, Clock, TrendingUp, Download, FileText, QrCode, Wallet } from 'lucide-react';
-import { Loan, User } from '../../../domain/types/common.types';
-import { apiService } from '../../../application/services/api.service';
-import { downloadLoanContract, createContractData } from '../../../application/services/contract.service';
-
+import { Wallet, Clock, DollarSign, TrendingUp, AlertTriangle, FileText, QrCode, X as XIcon, Download } from 'lucide-react';
+import { Loan, User } from '../../domain/types/common.types';
+import { apiService } from '../../application/services/api.service';
+import { createContractData, downloadLoanContract } from '../../shared/utils/contract-generator.utils';
 
 interface LoansViewProps {
     loans: Loan[];
-    onRequest: (amount: number, installments: number) => void;
+    onRequest: (amount: number, installments: number, guaranteePercentage: number) => void;
     onPay: (loanId: string, full: boolean, method?: 'pix') => void;
     onPayInstallment: (loanId: string, amount: number, full: boolean, method?: 'pix') => void;
     userBalance: number;
@@ -17,6 +16,7 @@ interface LoansViewProps {
 export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalance, currentUser }: LoansViewProps) => {
     const [amount, setAmount] = useState(500);
     const [months, setMonths] = useState(3);
+    const [guaranteePercentage, setGuaranteePercentage] = useState(100);
     const [payModalId, setPayModalId] = useState<string | null>(null);
 
     const [viewDetailsId, setViewDetailsId] = useState<string | null>(null);
@@ -45,19 +45,22 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
         fetchLimit();
     }, [loans, userBalance]);
 
-    const interestRate = 0.20; // 20%
+    // Tabela de juros baseada na garantia (Conforme Backend)
+    const getInterestRate = (pct: number) => {
+        if (pct <= 50) return 0.35;
+        if (pct <= 60) return 0.28;
+        if (pct <= 70) return 0.22;
+        if (pct <= 80) return 0.18;
+        if (pct <= 90) return 0.14;
+        return 0.10;
+    };
+
+    const interestRate = getInterestRate(guaranteePercentage);
     const totalRepay = amount * (1 + interestRate);
     const monthlyPayment = totalRepay / months;
 
     const activeLoans = loans.filter(l => l.status === 'APPROVED' || l.status === 'PENDING' || l.status === 'PAYMENT_PENDING');
     const selectedLoan = activeLoans.find(l => l.id === payModalId);
-
-    // Helper: Calculate remaining installments
-    const getRemainingInstallments = (loan: Loan) => {
-        const total = loan.installments;
-        const paid = loan.paidInstallmentsCount || 0;
-        return Math.max(0, total - paid);
-    };
 
     // Helper: Calculate installment value
     const getInstallmentValue = (loan: Loan) => {
@@ -67,7 +70,6 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
     void isPro;
     void viewDetailsId;
     void setViewDetailsId;
-    void getRemainingInstallments;
 
     return (
         <div className="space-y-8 pb-32">
@@ -81,13 +83,6 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
                         <div>
                             <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1 block">Apoio Mútuo em Aberto</span>
-                            {/* This activeLoan variable is not defined in the current scope.
-                                Assuming it should be derived from 'loans' or 'activeLoans' if there's only one active loan to display here.
-                                For now, I'll use a placeholder or the first active loan if available.
-                                If there can be multiple active loans, this card structure might need to be iterated or adapted.
-                                For the purpose of this edit, I'll assume a single 'activeLoan' concept for this card.
-                                If no active loan, this card might not render or show a different state.
-                            */}
                             <h3 className="text-2xl sm:text-3xl font-black text-white">R$ {activeLoans.length > 0 ? activeLoans[0].amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}</h3>
                         </div>
                         <div className="bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 rounded-lg flex items-center gap-2 self-start sm:self-auto">
@@ -125,6 +120,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                     </div>
                 </div>
             </div>
+
             {/* Loan Request Card */}
             <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-5">
@@ -209,6 +205,24 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                             </div>
 
                             <div>
+                                <label className="text-xs text-zinc-400 font-medium mb-2 block">Cotas em Garantia (Menos Garantia = Mais Juros)</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[50, 60, 70, 80, 90, 100].map(pct => (
+                                        <button
+                                            key={pct}
+                                            onClick={() => setGuaranteePercentage(pct)}
+                                            className={`py-3 rounded-xl text-xs font-black transition-all border ${guaranteePercentage === pct
+                                                ? 'bg-primary-500 text-black border-primary-400 shadow-lg shadow-primary-500/20'
+                                                : 'bg-zinc-900 border-white/5 text-zinc-500 hover:text-white'}`}
+                                        >
+                                            {pct}% Gar.
+                                            <div className="text-[9px] opacity-70">Juros: {(getInterestRate(pct) * 100).toFixed(0)}%</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
                                 <label className="text-xs text-zinc-400 font-medium mb-2 block">Deseja parcelar em quantas vezes?</label>
                                 <div className="relative">
                                     <input
@@ -248,7 +262,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                         <span className="text-white font-medium">{amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-zinc-500">Taxa de Manutenção (20%)</span>
+                                        <span className="text-zinc-500">Taxa de Manutenção ({(interestRate * 100).toFixed(0)}%)</span>
                                         <span className="text-red-400 font-medium">{(totalRepay - amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
@@ -264,14 +278,12 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                             </div>
 
                             <button
-                                onClick={() => onRequest(amount, months)}
+                                onClick={() => onRequest(amount, months, guaranteePercentage)}
                                 disabled={!amount || amount <= 0 || creditLimit?.totalLimit === 0}
                                 className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-xl mt-6 transition shadow-lg shadow-emerald-500/20"
                             >
                                 {creditLimit?.totalLimit === 0 ? 'Ajuda Indisponível' : 'Solicitar Apoio Mútuo'}
                             </button>
-
-                            {/* AdBanner removido para limpeza de UI */}
                         </div>
                     </div>
                 </div>
@@ -502,6 +514,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                     </div>
                 </div>
             )}
+
             {/* Legal Disclaimer */}
             <div className="mt-8 px-4 text-[10px] text-zinc-600 text-center leading-relaxed">
                 <p>As ajudas mútuas estão sujeitas à análise de Score e disponibilidade de caixa do Clube. Os apoios são lastreados por execução de garantia sobre licenças ativas no sistema. Em caso de atraso superior a 5 dias, o lastro será executado automaticamente conforme Termos de Uso (SCP/Mútuo Civil).</p>

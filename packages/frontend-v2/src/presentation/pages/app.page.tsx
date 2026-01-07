@@ -352,9 +352,9 @@ export default function App() {
   };
   void handleReinvest;
 
-  const handleRequestLoan = async (amount: number, installments: number) => {
+  const handleRequestLoan = async (amount: number, installments: number, guaranteePercentage: number = 100) => {
     try {
-      await requestLoan(amount, installments);
+      await requestLoan(amount, installments, guaranteePercentage);
       await refreshState();
       setShowSuccess({ isOpen: true, title: 'Sucesso!', message: 'Apoio solicitado com sucesso!' });
     } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
