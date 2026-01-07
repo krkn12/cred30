@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Store, Phone, MapPin, Building2, CheckCircle, AlertCircle, Loader2, ArrowLeft, BadgeCheck, Percent, Zap } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 import { useNavigate } from 'react-router-dom';
+import { useLocation } from '../../hooks/use-location';
 
 interface SellerStatus {
     isSeller: boolean;
@@ -12,6 +13,8 @@ interface SellerStatus {
 
 export const SellerRegistrationView = () => {
     const navigate = useNavigate();
+    const { fetchAddressByCep } = useLocation();
+
     const [sellerStatus, setSellerStatus] = useState<SellerStatus | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -31,6 +34,22 @@ export const SellerRegistrationView = () => {
         postalCode: '',
         companyType: 'INDIVIDUAL' as 'INDIVIDUAL' | 'MEI' | 'LIMITED'
     });
+
+    // Auto-fill address on CEP blur
+    const handleCepBlur = async () => {
+        if (formData.postalCode.length === 8) {
+            const address = await fetchAddressByCep(formData.postalCode);
+            if (address) {
+                setFormData(prev => ({
+                    ...prev,
+                    address: address.street,
+                    neighborhood: address.neighborhood,
+                    city: address.city,
+                    state: address.uf
+                }));
+            }
+        }
+    };
 
     useEffect(() => {
         fetchSellerStatus();
@@ -271,6 +290,7 @@ export const SellerRegistrationView = () => {
                             type="text"
                             value={formData.postalCode}
                             onChange={(e) => updateField('postalCode', e.target.value.replace(/\D/g, '').slice(0, 8))}
+                            onBlur={handleCepBlur}
                             placeholder="CEP"
                             className="col-span-1 bg-zinc-900 border border-white/5 rounded-xl py-3 px-4 text-white focus:border-primary-500 outline-none transition text-sm"
                             required
