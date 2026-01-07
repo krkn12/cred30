@@ -201,7 +201,14 @@ export const OfflineMarketplaceView = ({ user, pendingSales, onSaveSale, onSync 
                     <div className="border-t border-zinc-800 pt-4">
                         <p className="text-xs text-zinc-500 mb-2 font-bold uppercase">Cliente já pagou?</p>
                         <div className="h-64 bg-black rounded-2xl overflow-hidden relative border border-zinc-700">
-                            <Scanner onScan={(result) => result[0] && handleScan(result[0].rawValue)} />
+                            <Scanner
+                                onScan={(result) => result[0] && handleScan(result[0].rawValue)}
+                                onError={(err) => {
+                                    console.error(err);
+                                    if (err) setError('Permita o uso da câmera para continuar.');
+                                }}
+                                constraints={{ facingMode: 'environment' }}
+                            />
                             <div className="absolute inset-0 border-2 border-primary-500/50 pointer-events-none rounded-2xl animate-pulse"></div>
                             <div className="absolute bottom-2 left-0 right-0 text-center text-[10px] text-white bg-black/50 py-1">Aponte para o QR do Cliente</div>
                         </div>
@@ -216,7 +223,14 @@ export const OfflineMarketplaceView = ({ user, pendingSales, onSaveSale, onSync 
                 <div className="space-y-4 text-center">
                     <p className="text-sm text-zinc-300">Aponte para o QR Code do Vendedor</p>
                     <div className="h-64 bg-black rounded-2xl overflow-hidden relative border border-zinc-700 mx-auto">
-                        <Scanner onScan={(result) => result[0] && handleScan(result[0].rawValue)} />
+                        <Scanner
+                            onScan={(result) => result[0] && handleScan(result[0].rawValue)}
+                            onError={(err) => {
+                                console.error(err);
+                                if (err) setError('Permita o uso da câmera para continuar.');
+                            }}
+                            constraints={{ facingMode: 'environment' }}
+                        />
                         <div className="absolute inset-0 border-2 border-primary-500/50 pointer-events-none rounded-2xl animate-pulse"></div>
                     </div>
                     <button onClick={() => setMode('MENU')} className="w-full py-3 text-zinc-500 text-xs font-bold uppercase">Cancelar</button>
