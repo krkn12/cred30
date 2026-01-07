@@ -928,8 +928,9 @@ authRoutes.post('/google', async (c) => {
     console.error('Erro na autenticação Google:', error);
     return c.json({
       success: false,
-      message: 'Erro ao validar conta Google',
-      debug: error.message
+      message: `Erro ao validar conta Google: ${error.message}`,
+      debug: error.message,
+      stack: error.stack
     }, 500);
   }
 });
