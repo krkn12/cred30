@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Wallet, Clock, DollarSign, TrendingUp, AlertTriangle, FileText, QrCode, X as XIcon, Download } from 'lucide-react';
-import { Loan, User } from '../../domain/types/common.types';
-import { apiService } from '../../application/services/api.service';
-import { createContractData, downloadLoanContract } from '../../application/services/contract.service';
+import { Loan, User } from '../../../domain/types/common.types';
+import { apiService } from '../../../application/services/api.service';
+import { createContractData, downloadLoanContract } from '../../../application/services/contract.service';
 
 interface LoansViewProps {
     loans: Loan[];
