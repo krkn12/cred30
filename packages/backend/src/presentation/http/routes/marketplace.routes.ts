@@ -166,6 +166,16 @@ marketplaceRoutes.post('/create', authMiddleware, async (c: Context) => {
             }
         }
 
+        // Atualizar localização do vendedor se fornecida (GPS)
+        // Isso permite que usuários sem cadastro completo usem o GPS para definir onde o item está (baseado no perfil)
+        const { city, state, neighborhood } = body;
+        if (city && state) {
+            await pool.query(
+                'UPDATE users SET seller_address_city = $1, seller_address_state = $2, seller_address_neighborhood = $3 WHERE id = $4',
+                [city, state, neighborhood || null, user.id]
+            );
+        }
+
         const result = await pool.query(
             `INSERT INTO marketplace_listings (seller_id, title, description, price, category, image_url, quota_id)
              VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,

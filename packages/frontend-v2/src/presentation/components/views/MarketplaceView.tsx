@@ -233,6 +233,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const [missions, setMissions] = useState<any[]>([]);
     const [deliveryOption, setDeliveryOption] = useState<'SELF_PICKUP' | 'COURIER_REQUEST' | 'EXTERNAL_SHIPPING'>('SELF_PICKUP');
     const [offeredFee, setOfferedFee] = useState<string>('5.00');
+    const [gpsLocation, setGpsLocation] = useState<{ city: string, state: string, neighborhood: string } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -423,7 +424,8 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 description: newListing.description,
                 price: parseFloat(newListing.price),
                 category: newListing.category,
-                imageUrl: newListing.image_url || undefined
+                imageUrl: newListing.image_url || undefined,
+                ...(gpsLocation ? gpsLocation : {})
             };
 
             // Se for uma cota, enviar o ID
@@ -507,6 +509,110 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
     const formatCurrency = (val: number) => {
         return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    };
+
+    const handleUseMyLocation = () => {
+        if (!navigator.geolocation) {
+            onError('Erro', 'Geolocalização não suportada.');
+            return;
+        }
+
+        setIsLoading(true);
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            try {
+                const { latitude, longitude } = position.coords;
+                // Nominatim API (Free)
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                const data = await response.json();
+
+                if (data.address) {
+                    const stateName = data.address.state;
+                    const cityName = data.address.city || data.address.town || data.address.municipality;
+                    const suburb = data.address.suburb || data.address.neighbourhood;
+
+                    // Tentar encontrar a sigla do estado
+                    // Como ufs é carregado do useLocation, devemos ter acesso.
+                    // Assumindo que a API do IBGE retorna nomes parecidos com OSM.
+                    // Vamos tentar buscar pelo nome.
+                    const foundUF = ufs.find(u =>
+                        u.nome.toLowerCase() === stateName?.toLowerCase() ||
+                        u.sigla.toLowerCase() === stateName?.toLowerCase()
+                    );
+
+                    if (foundUF) {
+                        setSelectedUF(foundUF.sigla);
+                        // Delay para dar tempo de carregar as cidades (se necessário) ou apenas setar.
+                        // O hook useLocation limpa cidades quando UF muda?
+                        // Vamos setar com timeout para garantir.
+                        setTimeout(() => {
+                            if (cityName) setSelectedCity(cityName);
+                            if (suburb) setSelectedNeighborhood(suburb);
+                        }, 800);
+
+                        setShowFilters(true);
+                        onSuccess('Localização Definida', `${cityName || 'Cidade'} - ${foundUF.sigla}`);
+                    } else {
+                        onError('Ops', `Estado não reconhecido: ${stateName}`);
+                    }
+                }
+            } catch (error) {
+                console.error(error);
+                onError('Erro', 'Falha ao buscar endereço GPS.');
+            } finally {
+                setIsLoading(false);
+            }
+        }, (err) => {
+            console.warn(err);
+            setIsLoading(false);
+            onError('Erro no GPS', 'Verifique se a permissão de localização está ativa.');
+        });
+    };
+
+    const handleGetListingGPS = () => {
+        if (!navigator.geolocation) {
+            onError('Erro', 'Geolocalização não suportada.');
+            return;
+        }
+
+        setIsLoading(true);
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            try {
+                const { latitude, longitude } = position.coords;
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                const data = await response.json();
+
+                if (data.address) {
+                    const stateName = data.address.state;
+                    const cityName = data.address.city || data.address.town || data.address.municipality;
+                    const neighborhood = data.address.suburb || data.address.neighbourhood;
+
+                    const foundUF = ufs.find(u =>
+                        u.nome.toLowerCase() === stateName?.toLowerCase() ||
+                        u.sigla.toLowerCase() === stateName?.toLowerCase()
+                    );
+
+                    if (cityName && foundUF) {
+                        setGpsLocation({
+                            city: cityName,
+                            state: foundUF.sigla,
+                            neighborhood: neighborhood || ''
+                        });
+                        onSuccess('Localização Definida', `Seu anúncio será em: ${neighborhood ? neighborhood + ' - ' : ''}${cityName}/${foundUF.sigla}`);
+                    } else {
+                        onError('Erro', 'Não conseguimos identificar sua cidade/estado com precisão.');
+                    }
+                }
+            } catch (error) {
+                console.error(error);
+                onError('Erro', 'Falha ao buscar GPS.');
+            } finally {
+                setIsLoading(false);
+            }
+        }, (err) => {
+            console.warn(err);
+            setIsLoading(false);
+            onError('Erro', 'Permissão de localização negada.');
+        });
     };
 
     // Loading principal
@@ -635,6 +741,16 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
                         {/* Filtros Expansíveis */}
                         <div className="pt-2 px-1 flex items-center gap-2">
+                            <button
+                                onClick={handleUseMyLocation}
+                                className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary-500/10 text-primary-400 text-[9px] font-black uppercase tracking-wider hover:bg-primary-500 hover:text-black transition-all"
+                                title="Usar minha localização atual"
+                            >
+                                <Navigation2 size={10} /> Perto de Mim
+                            </button>
+
+                            <div className="h-4 w-px bg-white/10 mx-1" />
+
                             <button
                                 onClick={() => setShowFilters(!showFilters)}
                                 className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 transition ${showFilters || selectedUF ? 'text-white' : 'text-primary-200/70 hover:text-white'}`}
@@ -973,12 +1089,30 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6 flex gap-3 text-left">
                         <MapPin size={20} className="text-blue-400 shrink-0 mt-0.5" />
-                        <div>
+                        <div className="flex-1">
                             <p className="text-sm font-bold text-blue-100">Localização do Anúncio</p>
                             <p className="text-xs text-blue-200/70 mt-1 leading-relaxed">
-                                Seu item aparecerá para compradores da sua região atual.
-                                <br />Certifique-se de que seu endereço no perfil está correto para facilitar a venda e entrega.
+                                Defina onde seu produto está para aparecer para compradores próximos.
                             </p>
+
+                            <button
+                                type="button"
+                                onClick={handleGetListingGPS}
+                                className={`mt-3 w-full sm:w-auto ${gpsLocation ? 'bg-emerald-500 text-white' : 'bg-blue-500 hover:bg-blue-400 text-white'} px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition shadow-lg`}
+                            >
+                                {gpsLocation ? <CheckCircle2 size={14} /> : <Navigation2 size={14} />}
+                                {gpsLocation ? 'LOCALIZAÇÃO DEFINIDA' : 'USAR LOCALIZAÇÃO ATUAL (GPS)'}
+                            </button>
+
+                            {gpsLocation ? (
+                                <p className="text-[10px] sent-blue-200 font-bold mt-2 flex items-center gap-1">
+                                    <MapPin size={10} /> {gpsLocation.neighborhood ? `${gpsLocation.neighborhood} - ` : ''}{gpsLocation.city}/{gpsLocation.state}
+                                </p>
+                            ) : (
+                                <p className="text-[10px] text-blue-200/50 mt-2">
+                                    *Isso atualizará a localização do seu perfil de vendedor.
+                                </p>
+                            )}
                         </div>
                     </div>
 
