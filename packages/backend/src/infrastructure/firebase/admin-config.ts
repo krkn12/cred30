@@ -10,7 +10,12 @@ export const initializeFirebaseAdmin = () => {
     try {
         // Se houver as credenciais no .env, inicializa
         if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-            const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+            let serviceAccountData = process.env.FIREBASE_SERVICE_ACCOUNT;
+            // Remover aspas simples extras se existirem (comum em alguns ambientes)
+            if (typeof serviceAccountData === 'string' && serviceAccountData.startsWith("'") && serviceAccountData.endsWith("'")) {
+                serviceAccountData = serviceAccountData.slice(1, -1);
+            }
+            const serviceAccount = JSON.parse(serviceAccountData);
             admin.initializeApp({
                 credential: admin.credential.cert(serviceAccount)
             });
