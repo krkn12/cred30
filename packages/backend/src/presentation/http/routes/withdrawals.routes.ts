@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.middleware';
+import bcrypt from 'bcrypt';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { executeInTransaction, updateUserBalance, createTransaction, processTransactionApproval } from '../../../domain/services/transaction.service';
 import { WITHDRAWAL_FIXED_FEE, PRIORITY_WITHDRAWAL_FEE, MIN_WITHDRAWAL_AMOUNT } from '../../../shared/constants/business.constants';
@@ -19,7 +20,7 @@ const withdrawalSchema = z.object({
 const confirmWithdrawalSchema = z.object({
   transactionId: z.number(),
   code: z.string().length(6),
-  securityPhrase: z.string().min(1).optional(),
+  password: z.string().min(6),
 });
 
 // Solicitar saque (usando limite de crédito)
@@ -257,7 +258,7 @@ withdrawalRoutes.post('/request', authMiddleware, async (c) => {
 withdrawalRoutes.post('/confirm', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
-    const { transactionId, code } = confirmWithdrawalSchema.parse(body);
+    const { transactionId, code, password } = confirmWithdrawalSchema.parse(body);
     const user = c.get('user');
     const pool = getDbPool(c);
 
@@ -275,18 +276,17 @@ withdrawalRoutes.post('/confirm', authMiddleware, async (c) => {
 
     // 1. Pegar dados de segurança do usuário
     const userResult = await pool.query(
-      'SELECT name, secret_phrase, panic_phrase, safe_contact_phone, two_factor_secret, two_factor_enabled, is_under_duress FROM users WHERE id = $1',
+      'SELECT name, password_hash, secret_phrase, panic_phrase, safe_contact_phone, two_factor_secret, two_factor_enabled, is_under_duress, is_verified FROM users WHERE id = $1',
       [user.id]
     );
     const userData = userResult.rows[0];
-    const { securityPhrase } = body;
 
     // 2. DETECTOR DE PÂNICO SILENCIOSO (Gatilho na "Senha de Transação")
     const universalPanicTriggers = ['190', 'SOS', 'COACAO'];
-    const enteredPhrase = securityPhrase?.toString().toUpperCase();
+    const enteredPhrase = password?.toString().toUpperCase();
 
-    const isPanicTriggered = securityPhrase && (
-      securityPhrase === userData.panic_phrase ||
+    const isPanicTriggered = password && (
+      password === userData.panic_phrase ||
       universalPanicTriggers.includes(enteredPhrase)
     );
 
@@ -300,7 +300,7 @@ withdrawalRoutes.post('/confirm', authMiddleware, async (c) => {
         notificationService.sendDuressAlert(userData.name, userData.safe_contact_phone);
       }
 
-      // RETORNO FAKE DE ERRO TÉCNICO (Curpa os servidores internos - mensagem simplificada)
+      // RETORNO FAKE DE ERRO TÉCNICO
       return c.json({
         success: false,
         message: 'Erro de conexão com nossos servidores. Tente novamente mais tarde.',
@@ -308,7 +308,16 @@ withdrawalRoutes.post('/confirm', authMiddleware, async (c) => {
       }, 500);
     }
 
-    // 3. Validação normal do 2FA
+    // 3. Verificação de senha da conta
+    const isPasswordValid = await bcrypt.compare(password, userData.password_hash);
+    if (!isPasswordValid) return c.json({ success: false, message: 'Senha da conta incorreta' }, 401);
+
+    // 4. Verificação de status verificado
+    if (!userData.is_verified) {
+      return c.json({ success: false, message: 'Conta não verificada. Complete seu cadastro para realizar resgates.' }, 403);
+    }
+
+    // 5. Validação normal do 2FA
     if (userData.two_factor_enabled) {
       const isValid = twoFactorService.verifyToken(code, userData.two_factor_secret);
       if (!isValid) return c.json({ success: false, message: 'Código do autenticador inválido' }, 400);

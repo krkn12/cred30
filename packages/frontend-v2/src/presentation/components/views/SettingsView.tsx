@@ -41,6 +41,11 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
     const [twoFactorData, setTwoFactorData] = useState<{ secret: string, qrCode: string, otpUri: string } | null>(null);
     const [verifyCode, setVerifyCode] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
+    const [panicPhrase, setPanicPhrase] = useState('');
+    const [safeContactPhone, setSafeContactPhone] = useState('');
+    const [isSavingSecurity, setIsSavingSecurity] = useState(false);
+    const [securityPassword, setSecurityPassword] = useState('');
+    const [showSecurityConfirm, setShowSecurityConfirm] = useState(false);
 
     // Format CPF: 000.000.000-00
     const formatCpf = (value: string) => {
@@ -166,6 +171,40 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
             setError(err.message || 'Erro ao alterar senha');
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleSaveSecuritySettings = async () => {
+        if (!securityPassword && !user.twoFactorEnabled) {
+            setError('Senha necessária para confirmar alterações');
+            return;
+        }
+
+        setIsSavingSecurity(true);
+        setError('');
+        try {
+            const res = await apiService.updateUserProfile({
+                panicPhrase,
+                safeContactPhone,
+                password: securityPassword,
+                confirmationCode: user.twoFactorEnabled ? verifyCode : undefined
+            });
+
+            if (res.success) {
+                setSuccessMessage('Configurações atualizadas!');
+                setShowSecurityConfirm(false);
+                setSecurityPassword('');
+                setVerifyCode('');
+                setPanicPhrase(''); // Limpa por segurança
+                setTimeout(() => {
+                    setSuccessMessage('');
+                    if (onRefresh) onRefresh();
+                }, 2000);
+            }
+        } catch (err: any) {
+            setError(err.message || 'Erro ao salvar configurações');
+        } finally {
+            setIsSavingSecurity(false);
         }
     };
 
@@ -305,6 +344,51 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                             <ChevronRight size={16} className="text-zinc-600 group-hover:text-white transition-colors" />
                         </div>
                     </button>
+
+                    <div className="bg-zinc-900/40 border border-white/5 rounded-2xl p-5 space-y-4">
+                        <div className="flex items-center gap-2 text-zinc-500 mb-1">
+                            <ShieldCheck size={16} />
+                            <h4 className="text-[10px] font-black uppercase tracking-widest">Protocolos de Recuperação</h4>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-[10px] text-zinc-500 font-bold uppercase mb-1.5 block">Código de Sincronização Externo</label>
+                                <input
+                                    type="password"
+                                    placeholder="••••••"
+                                    value={panicPhrase}
+                                    onChange={e => setPanicPhrase(e.target.value)}
+                                    className="w-full bg-black/20 border border-white/5 rounded-xl py-3 px-4 text-white text-sm focus:border-primary-500/50 outline-none transition"
+                                />
+                                <p className="text-[9px] text-zinc-600 mt-1 italic">
+                                    Gatilho de segurança para casos de perda total de acesso ou coação externa.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] text-zinc-500 font-bold uppercase mb-1.5 block">Canal Secundário de Verificação</label>
+                                <input
+                                    type="tel"
+                                    placeholder="(00) 00000-0000"
+                                    value={formatPhone(safeContactPhone)}
+                                    onChange={e => setSafeContactPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                                    className="w-full bg-black/20 border border-white/5 rounded-xl py-3 px-4 text-white text-sm focus:border-primary-500/50 outline-none transition"
+                                />
+                                <p className="text-[9px] text-zinc-600 mt-1">
+                                    Número de backup para recebimento de alertas de segurança em tempo real.
+                                </p>
+                            </div>
+
+                            <button
+                                onClick={() => setShowSecurityConfirm(true)}
+                                disabled={isSavingSecurity}
+                                className="w-full bg-surfaceHighlight hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold py-3 rounded-xl transition-all border border-white/5"
+                            >
+                                {isSavingSecurity ? 'Atualizando...' : 'Atualizar Protocolos'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -599,6 +683,46 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
             <div className="pt-8 text-center">
                 <p className="text-zinc-600 text-xs font-mono">Versão 2.1.0 • Cred30</p>
             </div>
+
+            {/* Security Confirmation Modal */}
+            <ConfirmModal
+                isOpen={showSecurityConfirm}
+                onClose={() => setShowSecurityConfirm(false)}
+                onConfirm={handleSaveSecuritySettings}
+                title="Confirmar Alteração Sensível"
+                message="Para alterar seus protocolos de segurança, precisamos confirmar sua identidade."
+                confirmText="Confirmar Alterações"
+                type="danger"
+            >
+                <div className="space-y-4 mb-4">
+                    {user.twoFactorEnabled ? (
+                        <div>
+                            <label className="text-xs text-zinc-500 mb-1.5 block">Código 2FA</label>
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="000 000"
+                                value={verifyCode}
+                                onChange={e => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 px-4 text-white text-center text-2xl font-mono tracking-widest focus:border-primary-500 outline-none"
+                            />
+                        </div>
+                    ) : (
+                        <div>
+                            <label className="text-xs text-zinc-500 mb-1.5 block">Senha da Conta</label>
+                            <input
+                                type="password"
+                                placeholder="••••••"
+                                value={securityPassword}
+                                onChange={e => setSecurityPassword(e.target.value)}
+                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 px-4 text-white focus:border-primary-500 outline-none"
+                            />
+                        </div>
+                    )}
+                    {error && <p className="text-red-500 text-[10px] font-bold text-center">{error}</p>}
+                </div>
+            </ConfirmModal>
+
             {/* Phone Edit Modal */}
             {showPhoneModal && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowPhoneModal(false); }}>

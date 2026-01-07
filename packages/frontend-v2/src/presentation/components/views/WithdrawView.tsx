@@ -17,7 +17,7 @@ interface WithdrawViewProps {
 
 export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess, onError, onRefresh }: WithdrawViewProps) => {
     const [val, setVal] = useState('');
-    const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, transactionId: number | null, code: string }>({ isOpen: false, transactionId: null, code: '' });
+    const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, transactionId: number | null, code: string, password: string }>({ isOpen: false, transactionId: null, code: '', password: '' });
     const [showAd, setShowAd] = useState(false);
     const [adTimer, setAdTimer] = useState(5);
 
@@ -73,10 +73,10 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
     const handleConfirmWithCode = async () => {
         if (!confirmModal.transactionId) return;
         try {
-            const res = await confirmWithdrawal(confirmModal.transactionId, confirmModal.code);
+            const res = await confirmWithdrawal(confirmModal.transactionId, confirmModal.code, confirmModal.password);
             if (res.success) {
                 onSuccess('Resgate Confirmado!', 'Seu resgate foi processado com sucesso.');
-                setConfirmModal({ ...confirmModal, isOpen: false });
+                setConfirmModal({ ...confirmModal, isOpen: false, password: '', code: '' });
                 setVal('');
                 onRefresh();
             } else {
@@ -88,9 +88,10 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
     };
 
     const handleRequestWithdrawal = async () => {
-        const amount = parseFloat(val);
-        void amount;
-        // Regra de anúncio: mostrar sempre ao solicitar saque
+        if (!currentUser?.is_verified) {
+            onError('Conta não Verificada', 'Você precisa ter o selo de verificado para realizar resgates. Verifique seu perfil nas configurações.');
+            return;
+        }
         setShowAd(true);
         setAdTimer(5);
     };
@@ -102,7 +103,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
             const res = await apiService.requestWithdrawal(amount, currentUser?.pixKey || '');
 
             if (res.success && res.data?.requiresConfirmation) {
-                setConfirmModal({ isOpen: true, transactionId: res.data.transactionId, code: '' });
+                setConfirmModal({ isOpen: true, transactionId: res.data.transactionId, code: '', password: '' });
             } else if (res.success) {
                 onSuccess('Solicitação Enviada', 'Solicitação de resgate enviada! Aguarde processamento.');
                 setVal('');
@@ -229,16 +230,31 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                                 <p className="text-zinc-500 text-sm mt-2 font-medium">Insira o código do seu autenticador</p>
                             </div>
 
-                            <input
-                                type="text"
-                                inputMode="numeric"
-                                autoComplete="one-time-code"
-                                placeholder="000 000"
-                                value={confirmModal.code}
-                                onChange={e => setConfirmModal({ ...confirmModal, code: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                                className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 text-center text-4xl tracking-[0.2em] text-white focus:border-primary-500/50 outline-none mb-8 font-black font-mono transition-all"
-                                autoFocus
-                            />
+                            <div className="space-y-4 mb-8">
+                                <div className="space-y-2">
+                                    <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-1">Senha da Conta</p>
+                                    <input
+                                        type="password"
+                                        placeholder="••••••"
+                                        value={confirmModal.password}
+                                        onChange={e => setConfirmModal({ ...confirmModal, password: e.target.value })}
+                                        className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-4 px-6 text-white focus:border-primary-500/50 outline-none font-medium transition-all"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-1">Código 2FA</p>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        autoComplete="one-time-code"
+                                        placeholder="000 000"
+                                        value={confirmModal.code}
+                                        onChange={e => setConfirmModal({ ...confirmModal, code: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                                        className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-4 text-center text-2xl tracking-[0.2em] text-white focus:border-primary-500/50 outline-none font-black font-mono transition-all"
+                                    />
+                                </div>
+                            </div>
 
                             <div className="space-y-4">
                                 <button
