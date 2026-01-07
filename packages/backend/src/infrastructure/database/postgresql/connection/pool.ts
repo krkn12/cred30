@@ -232,6 +232,26 @@ export const initializeDatabase = async () => {
           await client.query('ALTER TABLE users ADD COLUMN cpf VARCHAR(14)');
         }
 
+        const lastIpColumn = await client.query(`
+          SELECT column_name FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'last_ip'
+        `);
+
+        if (lastIpColumn.rows.length === 0) {
+          console.log('Adicionando coluna last_ip à tabela users...');
+          await client.query('ALTER TABLE users ADD COLUMN last_ip VARCHAR(45)');
+        }
+
+        const lastLoginColumn = await client.query(`
+          SELECT column_name FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'last_login_at'
+        `);
+
+        if (lastLoginColumn.rows.length === 0) {
+          console.log('Adicionando coluna last_login_at à tabela users...');
+          await client.query('ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP');
+        }
+
         console.log('Tabela users verificada e atualizada com sucesso');
       }
     }
@@ -275,7 +295,10 @@ export const initializeDatabase = async () => {
         seller_address_city VARCHAR(255),
         seller_address_state VARCHAR(255),
         seller_address_postal_code VARCHAR(255),
+        seller_address_postal_code VARCHAR(255),
         seller_created_at TIMESTAMP,
+        last_ip VARCHAR(45),
+        last_login_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);

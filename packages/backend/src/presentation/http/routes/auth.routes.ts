@@ -899,7 +899,8 @@ authRoutes.post('/google', async (c) => {
 
     // Registrar IP e data do login
     const ip = c.req.header('x-forwarded-for') || '127.0.0.1';
-    pool.query('UPDATE users SET last_ip = $1, last_login_at = NOW() WHERE id = $2', [ip, user.id]);
+    pool.query('UPDATE users SET last_ip = $1, last_login_at = NOW() WHERE id = $2', [ip, user.id])
+      .catch((err: any) => console.error('Erro silencioso ao atualizar IP/Login:', err));
 
     return c.json({
       success: true,
