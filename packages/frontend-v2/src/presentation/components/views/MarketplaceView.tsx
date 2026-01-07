@@ -54,6 +54,7 @@ import { useDebounce } from '../../hooks/use-performance';
 import { LoadingScreen } from '../ui/LoadingScreen';
 import { LoadingButton } from '../ui/LoadingButton';
 import { OrderTrackingMap } from '../features/marketplace/OrderTrackingMap';
+import { useLocation } from '../../hooks/use-location';
 
 interface MarketplaceViewProps {
     state: AppState;
@@ -284,16 +285,19 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         setCart({ sellerId: null, sellerName: null, items: [] });
     };
 
+    const { ufs, cities, fetchCities } = useLocation();
+
     // Filtros de Localização
     const [selectedUF, setSelectedUF] = useState<string>('');
     const [selectedCity, setSelectedCity] = useState<string>('');
     const [showFilters, setShowFilters] = useState(false);
 
-    const UFS = [
-        'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
-        'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
-        'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
-    ];
+    // Effect to load cities when UF changes
+    useEffect(() => {
+        if (selectedUF) {
+            fetchCities(selectedUF);
+        }
+    }, [selectedUF]);
 
     const [newListing, setNewListing] = useState({
         title: '',
@@ -641,26 +645,32 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                         </div>
 
                         {showFilters && (
-                            <div className="pt-2 grid grid-cols-3 gap-2 animate-in slide-in-from-top-2 duration-200">
-                                <form className="col-span-1">
+                            <div className="pt-2 grid grid-cols-2 gap-2 animate-in slide-in-from-top-2 duration-200">
+                                <div className="col-span-1">
                                     <select
                                         value={selectedUF}
-                                        onChange={(e) => setSelectedUF(e.target.value)}
-                                        className="w-full bg-white/10 text-white text-xs rounded-lg p-2 font-medium focus:outline-none focus:ring-1 focus:ring-white/50"
+                                        onChange={(e) => { setSelectedUF(e.target.value); setSelectedCity(''); }}
+                                        className="w-full bg-zinc-800 text-white text-xs rounded-lg p-3 font-medium focus:outline-none focus:ring-1 focus:ring-primary-400 border border-zinc-700"
                                     >
-                                        <option value="" className="bg-zinc-900 text-zinc-500">Estado (UF)</option>
-                                        {UFS.map(uf => (
-                                            <option key={uf} value={uf} className="bg-zinc-900">{uf}</option>
+                                        <option value="" className="bg-zinc-900 text-zinc-500">Filtrar Estado</option>
+                                        {ufs.map(uf => (
+                                            <option key={uf.id} value={uf.sigla} className="bg-zinc-900">{uf.nome} ({uf.sigla})</option>
                                         ))}
                                     </select>
-                                </form>
-                                <input
-                                    type="text"
-                                    placeholder="Cidade..."
-                                    value={selectedCity}
-                                    onChange={(e) => setSelectedCity(e.target.value)}
-                                    className="col-span-2 bg-white/10 text-white text-xs rounded-lg p-2 font-medium placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/50"
-                                />
+                                </div>
+                                <div className="col-span-1">
+                                    <select
+                                        value={selectedCity}
+                                        onChange={(e) => setSelectedCity(e.target.value)}
+                                        disabled={!selectedUF}
+                                        className="w-full bg-zinc-800 text-white text-xs rounded-lg p-3 font-medium focus:outline-none focus:ring-1 focus:ring-primary-400 border border-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <option value="" className="bg-zinc-900 text-zinc-500">{!selectedUF ? 'Escolha UF 1º' : 'Todas Cidades'}</option>
+                                        {cities.map(city => (
+                                            <option key={city.id} value={city.nome} className="bg-zinc-900">{city.nome}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -942,6 +952,18 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                     <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
                         O que você quer vender?
                     </h3>
+
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6 flex gap-3 text-left">
+                        <MapPin size={20} className="text-blue-400 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-sm font-bold text-blue-100">Localização do Anúncio</p>
+                            <p className="text-xs text-blue-200/70 mt-1 leading-relaxed">
+                                Seu item aparecerá para compradores da sua região atual.
+                                <br />Certifique-se de que seu endereço no perfil está correto para facilitar a venda e entrega.
+                            </p>
+                        </div>
+                    </div>
+
                     <form onSubmit={handleCreateListing} className="space-y-4">
                         <div>
                             <div className="flex justify-between items-center mb-1">
