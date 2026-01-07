@@ -184,7 +184,13 @@ const ListingCard = memo(({ item, currentUserId, formatCurrency, onBoost, onDeta
                     <div className="pt-3 border-t border-zinc-800/50 flex items-center justify-between">
                         <div className="flex items-center gap-1 text-zinc-500">
                             <MapPin size={10} />
-                            <span className="text-[10px] font-medium">{item.seller_address ? item.seller_address.split('-')[0].trim() : 'Brasil'}</span>
+                            <span className="text-[10px] font-medium truncate max-w-[120px]" title={`${item.seller_address_neighborhood || ''} - ${item.seller_address_city || ''}/${item.seller_address_state || ''}`}>
+                                {item.seller_address_neighborhood
+                                    ? `${item.seller_address_neighborhood} - ${item.seller_address_city}/${item.seller_address_state}`
+                                    : (item.seller_address_city
+                                        ? `${item.seller_address_city}/${item.seller_address_state}`
+                                        : (item.seller_address ? item.seller_address.split('-')[0].trim() : 'Brasil'))}
+                            </span>
                         </div>
                         <span className="text-[10px] text-zinc-600 font-medium">
                             {formatDate(item.created_at)}
@@ -290,6 +296,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     // Filtros de Localização
     const [selectedUF, setSelectedUF] = useState<string>('');
     const [selectedCity, setSelectedCity] = useState<string>('');
+    const [selectedNeighborhood, setSelectedNeighborhood] = useState<string>('');
     const [showFilters, setShowFilters] = useState(false);
 
     // Effect to load cities when UF changes
@@ -356,7 +363,8 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 category: selectedCategory,
                 search: debouncedSearchQuery,
                 uf: selectedUF,
-                city: selectedCity
+                city: selectedCity,
+                neighborhood: selectedNeighborhood
             }).toString();
 
             const response = await apiService.get<any>(`/marketplace/listings?${query}`);
@@ -372,7 +380,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
             setIsLoading(false);
             setIsLoadingMore(false);
         }
-    }, [offset, selectedCategory, debouncedSearchQuery]);
+    }, [offset, selectedCategory, debouncedSearchQuery, selectedUF, selectedCity, selectedNeighborhood]);
 
     const fetchData = useCallback(async () => {
         if (view === 'browse') {
@@ -403,7 +411,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
     useEffect(() => {
         fetchData();
-    }, [view, selectedCategory, debouncedSearchQuery, selectedUF, selectedCity]); // Removi fetchData da dependência para evitar loops se não for browse
+    }, [view, selectedCategory, debouncedSearchQuery, selectedUF, selectedCity, selectedNeighborhood]); // Removi fetchData da dependência para evitar loops se não for browse
 
     const handleCreateListing = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -634,9 +642,9 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 <ChevronDown size={12} className={`transition-transform ${showFilters ? 'rotate-180' : ''}`} />
                             </button>
 
-                            {(selectedUF || selectedCity) && (
+                            {(selectedUF || selectedCity || selectedNeighborhood) && (
                                 <button
-                                    onClick={() => { setSelectedUF(''); setSelectedCity(''); }}
+                                    onClick={() => { setSelectedUF(''); setSelectedCity(''); setSelectedNeighborhood(''); }}
                                     className="text-[9px] text-zinc-400 underline hover:text-white"
                                 >
                                     Limpar
@@ -645,32 +653,41 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                         </div>
 
                         {showFilters && (
-                            <div className="pt-2 grid grid-cols-2 gap-2 animate-in slide-in-from-top-2 duration-200">
-                                <div className="col-span-1">
-                                    <select
-                                        value={selectedUF}
-                                        onChange={(e) => { setSelectedUF(e.target.value); setSelectedCity(''); }}
-                                        className="w-full bg-zinc-800 text-white text-xs rounded-lg p-3 font-medium focus:outline-none focus:ring-1 focus:ring-primary-400 border border-zinc-700"
-                                    >
-                                        <option value="" className="bg-zinc-900 text-zinc-500">Filtrar Estado</option>
-                                        {ufs.map(uf => (
-                                            <option key={uf.id} value={uf.sigla} className="bg-zinc-900">{uf.nome} ({uf.sigla})</option>
-                                        ))}
-                                    </select>
+                            <div className="pt-2 animate-in slide-in-from-top-2 duration-200 space-y-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="col-span-1">
+                                        <select
+                                            value={selectedUF}
+                                            onChange={(e) => { setSelectedUF(e.target.value); setSelectedCity(''); setSelectedNeighborhood(''); }}
+                                            className="w-full bg-zinc-800 text-white text-xs rounded-lg p-3 font-medium focus:outline-none focus:ring-1 focus:ring-primary-400 border border-zinc-700"
+                                        >
+                                            <option value="" className="bg-zinc-900 text-zinc-500">Filtrar Estado</option>
+                                            {ufs.map(uf => (
+                                                <option key={uf.id} value={uf.sigla} className="bg-zinc-900">{uf.nome} ({uf.sigla})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="col-span-1">
+                                        <select
+                                            value={selectedCity}
+                                            onChange={(e) => setSelectedCity(e.target.value)}
+                                            disabled={!selectedUF}
+                                            className="w-full bg-zinc-800 text-white text-xs rounded-lg p-3 font-medium focus:outline-none focus:ring-1 focus:ring-primary-400 border border-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <option value="" className="bg-zinc-900 text-zinc-500">{!selectedUF ? 'UF 1º' : 'Todas Cidades'}</option>
+                                            {cities.map(city => (
+                                                <option key={city.id} value={city.nome} className="bg-zinc-900">{city.nome}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
-                                <div className="col-span-1">
-                                    <select
-                                        value={selectedCity}
-                                        onChange={(e) => setSelectedCity(e.target.value)}
-                                        disabled={!selectedUF}
-                                        className="w-full bg-zinc-800 text-white text-xs rounded-lg p-3 font-medium focus:outline-none focus:ring-1 focus:ring-primary-400 border border-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        <option value="" className="bg-zinc-900 text-zinc-500">{!selectedUF ? 'Escolha UF 1º' : 'Todas Cidades'}</option>
-                                        {cities.map(city => (
-                                            <option key={city.id} value={city.nome} className="bg-zinc-900">{city.nome}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                                <input
+                                    type="text"
+                                    value={selectedNeighborhood}
+                                    onChange={(e) => setSelectedNeighborhood(e.target.value)}
+                                    placeholder="Filtrar por Bairro..."
+                                    className="w-full bg-zinc-800 text-white text-xs rounded-lg p-3 font-medium focus:outline-none focus:ring-1 focus:ring-primary-400 border border-zinc-700 placeholder:text-zinc-600"
+                                />
                             </div>
                         )}
                     </div>
