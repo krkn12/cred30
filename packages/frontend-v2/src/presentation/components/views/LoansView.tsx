@@ -421,14 +421,6 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                         </p>
 
                         <div className="space-y-4">
-                            <div className="bg-primary-500/10 border border-primary-500/20 rounded-xl p-3 flex items-center gap-3">
-                                <QrCode size={20} className="text-primary-400" />
-                                <div>
-                                    <p className="text-xs font-bold text-primary-400">Pagamento via PIX Manual</p>
-                                    <p className="text-[10px] text-zinc-500">Transferência para chave PIX do administrador</p>
-                                </div>
-                            </div>
-
                             <div className="bg-background p-3 rounded-xl border border-surfaceHighlight">
                                 <div className="flex justify-between text-sm mb-1">
                                     <span className="text-zinc-400">Seu Saldo</span>
@@ -436,23 +428,24 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                 </div>
                             </div>
 
-                            <button
-                                onClick={() => { onPay(selectedLoan.id, true); setPayModalId(null); }}
-                                disabled={userBalance < selectedLoan.totalRepayment}
-                                className="w-full bg-primary-500 hover:bg-primary-600 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed text-black font-black py-4 rounded-xl mb-2 transition shadow-lg shadow-primary-500/20"
-                            >
-                                {userBalance < selectedLoan.totalRepayment ? 'Saldo Insuficiente' : 'Pagar com Saldo'}
-                            </button>
-
-                            <button
-                                onClick={() => { onPay(selectedLoan.id, false, 'pix'); setPayModalId(null); }}
-                                className="w-full font-black py-4 rounded-xl transition shadow-lg bg-emerald-500 text-white shadow-emerald-500/20"
-                            >
-                                Gerar PIX de Reposição
-                            </button>
+                            {userBalance < selectedLoan.totalRepayment ? (
+                                <button
+                                    onClick={() => window.location.href = '/app/deposit'}
+                                    className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-black py-4 rounded-xl mb-2 transition"
+                                >
+                                    SALDO INSUFICIENTE (RECARREGAR)
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => { onPay(selectedLoan.id, true); setPayModalId(null); }}
+                                    className="w-full bg-primary-500 hover:bg-primary-600 text-black font-black py-4 rounded-xl mb-2 transition shadow-lg shadow-primary-500/20"
+                                >
+                                    Pagar com Saldo
+                                </button>
+                            )}
 
                             <p className="text-[9px] text-zinc-600 text-center mt-4 leading-relaxed">
-                                O valor será transferido via PIX para o administrador. Após confirmação, o saldo será atualizado automaticamente.
+                                O valor será debitado do seu saldo interno e o compromisso será baixado automaticamente.
                             </p>
                         </div>
                     </div>
@@ -471,14 +464,6 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                         </p>
 
                         <div className="space-y-4">
-                            <div className="bg-primary-500/10 border border-primary-500/20 rounded-xl p-3 flex items-center gap-3">
-                                <QrCode size={20} className="text-primary-400" />
-                                <div>
-                                    <p className="text-xs font-bold text-primary-400">Pagamento via PIX Manual</p>
-                                    <p className="text-[10px] text-zinc-500">Transferência para chave PIX do administrador</p>
-                                </div>
-                            </div>
-
                             <div className="bg-background p-3 rounded-xl border border-surfaceHighlight">
                                 <div className="flex justify-between text-sm mb-1">
                                     <span className="text-zinc-400">Seu Saldo</span>
@@ -486,29 +471,27 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                 </div>
                             </div>
 
-                            <button
-                                onClick={() => {
-                                    onPayInstallment(installmentModalData.loanId, installmentModalData.installmentAmount, true);
-                                    setInstallmentModalData(null);
-                                }}
-                                disabled={userBalance < installmentModalData.installmentAmount}
-                                className="w-full bg-primary-500 hover:bg-primary-600 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed text-black font-black py-4 rounded-xl mb-2 transition shadow-lg shadow-primary-500/20"
-                            >
-                                {userBalance < installmentModalData.installmentAmount ? 'Saldo Insuficiente' : 'Pagar com Saldo'}
-                            </button>
-
-                            <button
-                                onClick={() => {
-                                    onPayInstallment(installmentModalData.loanId, installmentModalData.installmentAmount, false, 'pix');
-                                    setInstallmentModalData(null);
-                                }}
-                                className="w-full font-black py-4 rounded-xl transition shadow-lg bg-emerald-500 text-white shadow-emerald-500/20"
-                            >
-                                Gerar PIX da Parcela
-                            </button>
+                            {userBalance < installmentModalData.installmentAmount ? (
+                                <button
+                                    onClick={() => window.location.href = '/app/deposit'}
+                                    className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-black py-4 rounded-xl mb-2 transition"
+                                >
+                                    SALDO INSUFICIENTE (RECARREGAR)
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => {
+                                        onPayInstallment(installmentModalData.loanId, installmentModalData.installmentAmount, true);
+                                        setInstallmentModalData(null);
+                                    }}
+                                    className="w-full bg-primary-500 hover:bg-primary-600 text-black font-black py-4 rounded-xl mb-2 transition shadow-lg shadow-primary-500/20"
+                                >
+                                    Pagar com Saldo
+                                </button>
+                            )}
 
                             <p className="text-[9px] text-zinc-600 text-center mt-4 leading-relaxed">
-                                O valor será transferido via PIX para o administrador. Após confirmação, seu compromisso será atualizado.
+                                O valor será debitado do seu saldo interno e sua parcela será registrada como paga.
                             </p>
                         </div>
                     </div>

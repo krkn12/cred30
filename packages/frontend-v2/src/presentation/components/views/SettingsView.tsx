@@ -46,6 +46,12 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
     const [isSavingSecurity, setIsSavingSecurity] = useState(false);
     const [securityPassword, setSecurityPassword] = useState('');
     const [showSecurityConfirm, setShowSecurityConfirm] = useState(false);
+    const [pendingAction, setPendingAction] = useState<'SECURITY' | 'PIX' | null>(null);
+
+    // PIX State
+    const [showPixModal, setShowPixModal] = useState(false);
+    const [pixInput, setPixInput] = useState('');
+    const [pixError, setPixError] = useState('');
 
     // Format CPF: 000.000.000-00
     const formatCpf = (value: string) => {
@@ -174,6 +180,17 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
         }
     };
 
+    const handleInitiatePixUpdate = () => {
+        setPixError('');
+        if (!pixInput || pixInput.length < 5) {
+            setPixError('Chave PIX muito curta');
+            return;
+        }
+        setShowPixModal(false);
+        setPendingAction('PIX');
+        setShowSecurityConfirm(true);
+    };
+
     const handleSaveSecuritySettings = async () => {
         if (!securityPassword && !user.twoFactorEnabled) {
             setError('Senha necessária para confirmar alterações');
@@ -182,20 +199,31 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
 
         setIsSavingSecurity(true);
         setError('');
+
         try {
-            const res = await apiService.updateUserProfile({
-                panicPhrase,
-                safeContactPhone,
+            const payload: any = {
                 password: securityPassword,
                 confirmationCode: user.twoFactorEnabled ? verifyCode : undefined
-            });
+            };
+
+            if (pendingAction === 'PIX') {
+                payload.pixKey = pixInput;
+            } else {
+                // SECURITY update
+                payload.panicPhrase = panicPhrase;
+                payload.safeContactPhone = safeContactPhone;
+            }
+
+            const res = await apiService.updateUserProfile(payload);
 
             if (res.success) {
-                setSuccessMessage('Configurações atualizadas!');
+                setSuccessMessage(pendingAction === 'PIX' ? 'Chave PIX atualizada!' : 'Configurações atualizadas!');
                 setShowSecurityConfirm(false);
                 setSecurityPassword('');
                 setVerifyCode('');
                 setPanicPhrase(''); // Limpa por segurança
+                setPendingAction(null);
+
                 setTimeout(() => {
                     setSuccessMessage('');
                     if (onRefresh) onRefresh();
@@ -203,8 +231,13 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
             }
         } catch (err: any) {
             setError(err.message || 'Erro ao salvar configurações');
-        } finally {
             setIsSavingSecurity(false);
+        } finally {
+            if (pendingAction !== 'PIX') { // Se for PIX, mantemos loading até o refresh? Não, better to clear always
+                setIsSavingSecurity(false);
+            } else {
+                setIsSavingSecurity(false);
+            }
         }
     };
 
@@ -243,7 +276,15 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                     </div>
                     <div>
                         <label className="text-xs text-zinc-500">Chave PIX</label>
-                        <p className="text-white border-b border-surfaceHighlight pb-2">{user.pixKey}</p>
+                        <div className="flex items-center justify-between border-b border-surfaceHighlight pb-2">
+                            <p className="text-white">{user.pixKey || 'Não cadastrada'}</p>
+                            <button
+                                onClick={() => { setPixInput(user.pixKey || ''); setShowPixModal(true); }}
+                                className="text-xs text-primary-400 hover:text-primary-300 font-bold"
+                            >
+                                {user.pixKey ? 'Editar' : 'Adicionar'}
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <label className="text-xs text-zinc-500">Telefone / WhatsApp</label>
@@ -680,6 +721,46 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                 </div>
             )}
 
+            {/* PIX Edit Modal */}
+            {showPixModal && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowPixModal(false); }}>
+                    <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 w-full max-w-sm relative animate-fade-in shadow-2xl">
+                        <button title="Fechar" onClick={() => setShowPixModal(false)} className="absolute top-4 right-4 text-zinc-400 hover:text-white bg-zinc-800 p-1.5 rounded-full z-10"><XIcon size={24} /></button>
+
+                        <h3 className="text-xl font-bold text-white mb-2">{user.pixKey ? 'Editar PIX' : 'Adicionar PIX'}</h3>
+                        <p className="text-zinc-400 text-sm mb-6">Chave PIX (E-mail, CPF, Tel ou Aleatória) para recebimento.</p>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs text-zinc-400 font-medium mb-1.5 block">Chave PIX</label>
+                                <input
+                                    type="text"
+                                    placeholder="Informe sua chave PIX"
+                                    value={pixInput}
+                                    onChange={(e) => setPixInput(e.target.value)}
+                                    className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 px-4 text-white text-lg font-medium focus:border-primary-500 outline-none transition"
+                                />
+                            </div>
+
+                            {pixError && (
+                                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-lg flex items-center gap-2">
+                                    <AlertCircle size={14} />
+                                    {pixError}
+                                </div>
+                            )}
+
+                            <button
+                                onClick={handleInitiatePixUpdate}
+                                disabled={!pixInput || pixInput.length < 5}
+                                className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 text-black font-bold py-3 rounded-xl transition"
+                            >
+                                Continuar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="pt-8 text-center">
                 <p className="text-zinc-600 text-xs font-mono">Versão 2.1.0 • Cred30</p>
             </div>
@@ -687,11 +768,15 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
             {/* Security Confirmation Modal */}
             <ConfirmModal
                 isOpen={showSecurityConfirm}
-                onClose={() => setShowSecurityConfirm(false)}
+                onClose={() => { setShowSecurityConfirm(false); setPendingAction(null); }}
                 onConfirm={handleSaveSecuritySettings}
-                title="Confirmar Alteração Sensível"
-                message="Para alterar seus protocolos de segurança, precisamos confirmar sua identidade."
-                confirmText="Confirmar Alterações"
+                title={pendingAction === 'PIX' ? "Confirmar Nova Chave PIX" : "Confirmar Alteração Sensível"}
+                message={
+                    pendingAction === 'PIX'
+                        ? `Confirme para definir a chave PIX: ${pixInput}. Isso aplicará o bloqueio de segurança de 48h para saques.`
+                        : "Para alterar seus protocolos de segurança, precisamos confirmar sua identidade."
+                }
+                confirmText={pendingAction === 'PIX' ? "Confirmar e Salvar PIX" : "Confirmar Alterações"}
                 type="danger"
             >
                 <div className="space-y-4 mb-4">

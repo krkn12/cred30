@@ -248,31 +248,27 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                         ))}
                     </div>
 
-                    <div className="bg-background/40 rounded-xl p-1 mb-6 flex gap-1 border border-primary-500/10">
-                        <button
-                            onClick={() => setProMethod('balance')}
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-black tracking-widest transition flex flex-col items-center justify-center ${proMethod === 'balance' ? 'bg-primary-500 text-black shadow-lg shadow-primary-500/20' : 'text-zinc-500 hover:text-white'}`}
-                        >
-                            <span>SALDO</span>
-                            <span className={`text-[8px] opacity-70 ${proMethod === 'balance' ? 'text-black' : 'text-zinc-600'}`}>
-                                {user.balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            </span>
-                        </button>
-                        <button
-                            onClick={() => setProMethod('pix')}
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-black tracking-widest transition ${proMethod === 'pix' ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'text-zinc-500 hover:text-white'}`}
-                        >
-                            PIX
-                        </button>
+                    <div className="bg-background/40 rounded-xl p-3 mb-6 flex flex-col items-center justify-center border border-primary-500/10 text-center">
+                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Seu Saldo Disponível</p>
+                        <p className="text-xl font-black text-white">{user.balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                     </div>
 
-                    <button
-                        onClick={() => handleUpgradePro(proMethod)}
-                        disabled={loadingLocal || user.membership_type === 'PRO'}
-                        className={`w-full py-4 rounded-2xl font-black transition active:scale-95 flex items-center justify-center gap-2 ${user.membership_type === 'PRO' ? 'bg-zinc-800 text-zinc-500' : (proMethod === 'pix' ? 'bg-emerald-500 text-black' : 'bg-white text-black hover:bg-zinc-200')} shadow-xl`}
-                    >
-                        {loadingLocal ? <RefreshCw className="animate-spin" size={20} /> : (user.membership_type === 'PRO' ? 'MEMBRO PRO ATIVO' : `ASSINAR PRO POR R$ 29,90`)}
-                    </button>
+                    {user.balance < 29.90 && user.membership_type !== 'PRO' ? (
+                        <button
+                            onClick={() => window.location.href = '/app/deposit'}
+                            className="w-full py-4 rounded-2xl font-black transition active:scale-95 flex items-center justify-center gap-2 bg-zinc-800 text-zinc-400 hover:text-white"
+                        >
+                            SALDO INSUFICIENTE (RECARREGAR)
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => handleUpgradePro('balance')}
+                            disabled={loadingLocal || user.membership_type === 'PRO'}
+                            className={`w-full py-4 rounded-2xl font-black transition active:scale-95 flex items-center justify-center gap-2 ${user.membership_type === 'PRO' ? 'bg-zinc-800 text-zinc-500' : 'bg-primary-500 hover:bg-primary-400 text-black shadow-xl shadow-primary-500/20'}`}
+                        >
+                            {loadingLocal ? <RefreshCw className="animate-spin" size={20} /> : (user.membership_type === 'PRO' ? 'MEMBRO PRO ATIVO' : `ASSINAR PRO POR R$ 29,90`)}
+                        </button>
+                    )}
                     <p className="text-[8px] text-zinc-600 text-center mt-3 uppercase font-bold tracking-widest leading-normal">
                         Assinando hoje você ajuda a aumentar os excedentes operacionais para todos os membros da plataforma.
                     </p>

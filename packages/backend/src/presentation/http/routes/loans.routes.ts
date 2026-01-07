@@ -380,7 +380,8 @@ loanRoutes.post('/repay-installment', authMiddleware, async (c) => {
     const interestPortion = installmentAmount - principalPortion;
 
     await pool.query('UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2', [principalPortion, interestPortion]);
-    await pool.query('UPDATE loans SET total_repayment = total_repayment - $1, amount = amount - $2 WHERE id = $3', [installmentAmount, principalPortion, loanId]);
+    // REMOVIDO: logicamente incorreto alterar o valor total do contrato original. O saldo devedor é calculado pela diferença (total - pago).
+    // await pool.query('UPDATE loans SET total_repayment = total_repayment - $1, amount = amount - $2 WHERE id = $3', [installmentAmount, principalPortion, loanId]);
 
     const newPaidAmount = paidAmount + installmentAmount;
     if (newPaidAmount >= parseFloat(loan.total_repayment)) {
