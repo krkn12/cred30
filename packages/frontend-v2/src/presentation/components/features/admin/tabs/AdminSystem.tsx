@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, Activity, ArrowUpRight, ArrowDownLeft, Trash2, Check, Settings as SettingsIcon, AlertTriangle } from 'lucide-react';
+import { TrendingUp, Activity, ArrowUpRight, ArrowDownLeft, Trash2, Check, Settings as SettingsIcon, AlertTriangle, DollarSign } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 import { AppState } from '../../../../../domain/types/common.types';
 
@@ -224,6 +224,56 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
                         </div>
                         <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
                             <div className="bg-emerald-500 h-full" style={{ width: '100%' }}></div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Injeção de Lucro Manual (Receita Externa) */}
+                <div className="bg-gradient-to-br from-emerald-600/20 to-emerald-900/10 border border-emerald-500/20 rounded-3xl p-8 shadow-2xl col-span-1 md:col-span-2">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                        <div className="flex-1">
+                            <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
+                                <div className="p-2 bg-emerald-500/20 rounded-lg"><DollarSign className="text-emerald-400" size={20} /></div>
+                                Injetar Receita Externa
+                            </h3>
+                            <p className="text-sm text-zinc-400 leading-relaxed max-w-xl">
+                                Recebeu lucro fora do App (ex: taxas, serviços externos)? Injete aqui para aumentar o saldo do sistema e o pool de recompensas dos membros.
+                            </p>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-bold">R$</span>
+                                <input
+                                    type="number"
+                                    placeholder="0,00"
+                                    id="manual-profit-input"
+                                    className="w-full sm:w-48 bg-black/40 border border-emerald-500/20 rounded-2xl pl-10 pr-4 py-4 text-white font-black outline-none focus:border-emerald-500/50 transition-all placeholder:text-zinc-700"
+                                />
+                            </div>
+                            <button
+                                onClick={async () => {
+                                    const input = document.getElementById('manual-profit-input') as HTMLInputElement;
+                                    const val = parseFloat(input.value);
+                                    if (!val || val <= 0) return onError("Erro", "Insira um valor válido.");
+
+                                    if (!window.confirm(`Deseja injetar R$ ${val.toFixed(2)} como lucro no sistema?`)) return;
+
+                                    try {
+                                        const res = await apiService.addProfitToPool(val);
+                                        if (res.success) {
+                                            onSuccess("Sucesso", res.message || "Lucro injetado e distribuído!");
+                                            input.value = '';
+                                            onRefresh();
+                                            fetchFinanceHistory();
+                                        }
+                                    } catch (e: any) {
+                                        onError("Erro", e.message);
+                                    }
+                                }}
+                                className="bg-emerald-500 hover:bg-emerald-400 text-black font-black px-8 py-4 rounded-2xl transition-all uppercase tracking-widest text-xs shadow-xl shadow-emerald-500/20 active:scale-95"
+                            >
+                                Confirmar Injeção
+                            </button>
                         </div>
                     </div>
                 </div>
