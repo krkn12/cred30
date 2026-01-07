@@ -5,7 +5,7 @@ import { UpdateNotification } from '../components/ui/update-notification.compone
 import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, repayInstallment, changePassword, upgradePro, claimAdReward, apiService, requestDeposit } from '../../application/services/storage.service';
 import { syncService } from '../../application/services/sync.service';
 import { AppState } from '../../domain/types/common.types';
-import { QUOTA_PRICE, ADMIN_PIX_KEY } from '../../shared/constants/app.constants';
+import { QUOTA_PRICE } from '../../shared/constants/app.constants';
 import { calculateTotalToPay } from '../../shared/utils/financial.utils';
 import { Check, X as XIcon, RefreshCw, AlertTriangle, Users, Copy, TrendingUp } from 'lucide-react';
 import { PIXModal } from '../components/ui/pix-modal.component';

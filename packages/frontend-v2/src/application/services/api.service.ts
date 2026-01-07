@@ -308,18 +308,6 @@ class ApiService {
     return response.data;
   }
 
-  // Método para atualizar perfil do usuário
-  async updateUserProfile(data: {
-    name?: string;
-    pixKey?: string;
-    secretPhrase?: string;
-  }): Promise<any> {
-    const response = await this.request<any>('/users/profile', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-    return response.data;
-  }
 
   // Método para obter saldo do usuário
   async getUserBalance(): Promise<{ balance: number }> {
