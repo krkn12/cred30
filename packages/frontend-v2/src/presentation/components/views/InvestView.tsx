@@ -12,7 +12,7 @@ interface InvestViewProps {
 export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) => {
     void isPro;
     const [qty, setQty] = useState(1);
-    const [method] = useState<'BALANCE'>('BALANCE');
+    const [method] = useState<'BALANCE' | 'PIX'>('BALANCE');
     const [showConfirm, setShowConfirm] = useState(false);
     const [acceptedTerms, setAcceptedTerms] = useState(false);
     const [showTermsModal, setShowTermsModal] = useState(false);
@@ -333,18 +333,7 @@ const BenefitCard = ({ icon, title, description, color }: { icon: any, title: st
     </div>
 );
 
-const MethodButton = ({ active, onClick, label, sublabel }: any) => (
-    <button
-        onClick={onClick}
-        className={`flex-1 py-3.5 rounded-xl text-[10px] font-black tracking-widest transition-all flex flex-col items-center justify-center ${active
-            ? 'bg-primary-500 text-black shadow-lg shadow-primary-500/20'
-            : 'text-zinc-600 hover:text-white hover:bg-white/5'
-            }`}
-    >
-        <span>{label}</span>
-        {sublabel && <span className={`text-[8px] mt-0.5 opacity-70 ${active ? 'text-black' : 'text-zinc-500'}`}>{sublabel}</span>}
-    </button>
-);
+
 
 const SummaryItem = ({ label, value, highlight }: any) => (
     <div className={`flex justify-between text-xs font-bold ${highlight ? 'text-primary-500/80' : 'text-zinc-500'}`}>

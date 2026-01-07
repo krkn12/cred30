@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import React, { useState, useMemo, useEffect, useCallback, memo } from 'react';
+import { useState, useMemo, useEffect, useCallback, memo } from 'react';
 import {
     Users, Gamepad2, TrendingUp, ArrowUpFromLine, BookOpen,
     Crown, Clock, ArrowDownLeft, ArrowUpRight,

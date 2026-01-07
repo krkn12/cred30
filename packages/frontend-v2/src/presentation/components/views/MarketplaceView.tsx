@@ -23,8 +23,26 @@ import {
     CheckCircle,
     Plus,
     Clock,
-    User
+    User,
+    LayoutGrid,
+    Ticket,
+    Smartphone,
+    Car,
+    Home,
+    Wrench,
+    Shirt,
 } from 'lucide-react';
+
+const CATEGORY_ICONS: Record<string, any> = {
+    'TODOS': LayoutGrid,
+    'PARTICIPAÇÕES': Ticket,
+    'ELETRÔNICOS': Smartphone,
+    'VEÍCULOS': Car,
+    'IMÓVEIS': Home,
+    'SERVIÇOS': Wrench,
+    'MODA': Shirt,
+    'OUTROS': Package
+};
 
 import { useNavigate } from 'react-router-dom';
 import { AppState } from '../../../domain/types/common.types';
@@ -215,6 +233,17 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const [paymentMethod] = useState<'BALANCE'>('BALANCE');
     const [trackingOrder, setTrackingOrder] = useState<any>(null);
 
+    // Filtros de Localização
+    const [selectedUF, setSelectedUF] = useState<string>('');
+    const [selectedCity, setSelectedCity] = useState<string>('');
+    const [showFilters, setShowFilters] = useState(false);
+
+    const UFS = [
+        'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
+        'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
+        'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+    ];
+
     const [newListing, setNewListing] = useState({
         title: '',
         description: '',
@@ -270,7 +299,9 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 limit: LIMIT.toString(),
                 offset: currentOffset.toString(),
                 category: selectedCategory,
-                search: debouncedSearchQuery
+                search: debouncedSearchQuery,
+                uf: selectedUF,
+                city: selectedCity
             }).toString();
 
             const response = await apiService.get<any>(`/marketplace/listings?${query}`);
@@ -317,7 +348,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
     useEffect(() => {
         fetchData();
-    }, [view, selectedCategory, debouncedSearchQuery]); // Removi fetchData da dependência para evitar loops se não for browse
+    }, [view, selectedCategory, debouncedSearchQuery, selectedUF, selectedCity]); // Removi fetchData da dependência para evitar loops se não for browse
 
     const handleCreateListing = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -529,30 +560,83 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 </button>
                             )}
                         </div>
+
+                        {/* Filtros Expansíveis */}
+                        <div className="pt-2 px-1 flex items-center gap-2">
+                            <button
+                                onClick={() => setShowFilters(!showFilters)}
+                                className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 transition ${showFilters || selectedUF ? 'text-white' : 'text-primary-200/70 hover:text-white'}`}
+                            >
+                                <MapPin size={12} /> {selectedUF ? `${selectedCity ? selectedCity + '-' : ''}${selectedUF}` : 'Filtrar por Localização'}
+                                <ChevronDown size={12} className={`transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {(selectedUF || selectedCity) && (
+                                <button
+                                    onClick={() => { setSelectedUF(''); setSelectedCity(''); }}
+                                    className="text-[9px] text-zinc-400 underline hover:text-white"
+                                >
+                                    Limpar
+                                </button>
+                            )}
+                        </div>
+
+                        {showFilters && (
+                            <div className="pt-2 grid grid-cols-3 gap-2 animate-in slide-in-from-top-2 duration-200">
+                                <form className="col-span-1">
+                                    <select
+                                        value={selectedUF}
+                                        onChange={(e) => setSelectedUF(e.target.value)}
+                                        className="w-full bg-white/10 text-white text-xs rounded-lg p-2 font-medium focus:outline-none focus:ring-1 focus:ring-white/50"
+                                    >
+                                        <option value="" className="bg-zinc-900 text-zinc-500">Estado (UF)</option>
+                                        {UFS.map(uf => (
+                                            <option key={uf} value={uf} className="bg-zinc-900">{uf}</option>
+                                        ))}
+                                    </select>
+                                </form>
+                                <input
+                                    type="text"
+                                    placeholder="Cidade..."
+                                    value={selectedCity}
+                                    onChange={(e) => setSelectedCity(e.target.value)}
+                                    className="col-span-2 bg-white/10 text-white text-xs rounded-lg p-2 font-medium placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/50"
+                                />
+                            </div>
+                        )}
                     </div>
 
-                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
-                        {['TODOS', ...categories].map((cat) => (
-                            <button
-                                key={cat}
-                                onClick={() => setSelectedCategory(cat)}
-                                className={`
-                                    px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap
-                                    ${selectedCategory === cat
-                                        ? 'bg-primary-500 text-black shadow-lg shadow-primary-500/30'
-                                        : 'bg-zinc-900/80 text-zinc-400 hover:bg-zinc-800 hover:text-white border border-zinc-800'}
-                                `}
-                            >
-                                {cat === 'PARTICIPAÇÕES' ? '🎫 Cotas' :
-                                    cat === 'ELETRÔNICOS' ? '📱 Eletrônicos' :
-                                        cat === 'VEÍCULOS' ? '🚗 Veículos' :
-                                            cat === 'IMÓVEIS' ? '🏠 Imóveis' :
-                                                cat === 'SERVIÇOS' ? '🔧 Serviços' :
-                                                    cat === 'MODA' ? '👕 Moda' :
-                                                        cat === 'OUTROS' ? '📦 Outros' :
-                                                            cat === 'TODOS' ? '🔥 Todos' : cat}
-                            </button>
-                        ))}
+                    <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-2 px-1">
+                        {['TODOS', ...categories].map((cat) => {
+                            const Icon = CATEGORY_ICONS[cat] || Package;
+                            const isSelected = selectedCategory === cat;
+                            return (
+                                <button
+                                    key={cat}
+                                    onClick={() => setSelectedCategory(cat)}
+                                    className={`
+                                        flex flex-col items-center gap-2 min-w-[70px] p-2 rounded-xl transition-all
+                                        ${isSelected
+                                            ? 'scale-105'
+                                            : 'opacity-60 hover:opacity-100 hover:bg-zinc-800/50'}
+                                    `}
+                                >
+                                    <div className={`
+                                        w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-lg
+                                        ${isSelected
+                                            ? 'bg-primary-500 text-black shadow-primary-500/20'
+                                            : 'bg-zinc-800 text-zinc-400 border border-zinc-700'}
+                                    `}>
+                                        <Icon size={20} className={isSelected ? 'animate-bounce-short' : ''} />
+                                    </div>
+                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'text-white' : 'text-zinc-500'}`}>
+                                        {cat === 'PARTICIPAÇÕES' ? 'Cotas' :
+                                            cat === 'TODOS' ? 'Início' :
+                                                cat.charAt(0) + cat.slice(1).toLowerCase()}
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
 
                     {/* Banner Informativo Compacto */}

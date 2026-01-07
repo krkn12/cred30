@@ -1,6 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Users, KeyRound, Lock, QrCode, Repeat, ArrowLeft, Mail, ShieldCheck, XCircle, Check, Copy, Phone as PhoneIcon } from 'lucide-react';
+import { Users, KeyRound, Lock, Repeat, ArrowLeft, Mail, ShieldCheck, XCircle, Check, Copy } from 'lucide-react';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../../../infrastructure/firebase/config';
 import { loginUser, registerUser, resetPassword, verify2FA, apiService, loginWithGoogle } from '../../../application/services/storage.service';
@@ -19,12 +19,9 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
 
     // Form States
     const [name, setName] = useState('');
-    const [cpf, setCpf] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [secretPhrase, setSecretPhrase] = useState('');
-    const [pixKey, setPixKey] = useState('');
-    const [phone, setPhone] = useState('');
     const [referralCode, setReferralCode] = useState('');
     const [newPassword, setNewPassword] = useState('');
 
@@ -38,7 +35,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [showTerms, setShowTerms] = useState(false);
-    const [pendingUser, setPendingUser] = useState<User | null>(null);
+
 
 
 
@@ -154,7 +151,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
         setShowTerms(false);
         setError(null);
         try {
-            const res = await registerUser(name, email, password, pixKey, secretPhrase, phone, referralCode, cpf);
+            const res = await registerUser(name, email, password, '', secretPhrase, '', referralCode, '');
             if (res.user) {
                 setSuccess('Cadastro realizado com sucesso! Bem-vindo.');
                 setTimeout(() => {
@@ -177,12 +174,8 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                 setSuccess('Conta ativada com sucesso! Entrando...');
                 setTimeout(() => {
                     setShowVerifyModal(false);
-                    if (pendingUser) {
-                        onLogin(pendingUser);
-                    } else {
-                        setIsRegister(false);
-                        setIs2FASetup(false);
-                    }
+                    setIsRegister(false);
+                    setIs2FASetup(false);
                     setSuccess(null);
                 }, 1500);
             } else {
