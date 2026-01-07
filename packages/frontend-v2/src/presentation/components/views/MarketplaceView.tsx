@@ -31,6 +31,7 @@ import {
     Home,
     Wrench,
     Shirt,
+    AlertTriangle,
 } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<string, any> = {
@@ -104,7 +105,7 @@ const NativeAdCard = memo(({ title, price, category, img }: any) => (
 ));
 NativeAdCard.displayName = 'NativeAdCard';
 
-const ListingCard = memo(({ item, currentUserId, formatCurrency, onBoost, onDetails }: any) => {
+const ListingCard = memo(({ item, currentUserId, formatCurrency, onBoost, onDetails, onAddToCart }: any) => {
     const isOwner = item.seller_id === currentUserId;
 
     // Formatação da data (ex: Hoje, 14:30 ou 05 Jan)
@@ -190,13 +191,20 @@ const ListingCard = memo(({ item, currentUserId, formatCurrency, onBoost, onDeta
                     </div>
 
                     {/* Botão de Ação para Dono */}
-                    {isOwner && (
+                    {isOwner ? (
                         <button
                             onClick={(e) => { e.stopPropagation(); onBoost(item); }}
                             disabled={item.is_boosted}
                             className={`w-full text-[9px] font-black py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all ${item.is_boosted ? 'bg-zinc-800 text-zinc-500' : 'bg-primary-500/10 text-primary-400 hover:bg-primary-500 hover:text-black border border-primary-500/20'}`}
                         >
                             <Zap size={12} /> {item.is_boosted ? 'ANÚNCIO IMPULSIONADO' : 'IMPULSIONAR AGORA'}
+                        </button>
+                    ) : (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onAddToCart(item); }}
+                            className="w-full text-[9px] font-black py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all bg-zinc-800 text-zinc-300 hover:bg-emerald-500 hover:text-white border border-white/5 hover:border-emerald-500/50"
+                        >
+                            <Plus size={12} /> ADICIONAR
                         </button>
                     )}
                 </div>
@@ -208,7 +216,7 @@ ListingCard.displayName = 'ListingCard';
 
 export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: MarketplaceViewProps) => {
     const navigate = useNavigate();
-    const [view, setView] = useState<'browse' | 'create' | 'my-orders' | 'details' | 'missions' | 'offline'>('browse');
+    const [view, setView] = useState<'browse' | 'create' | 'my-orders' | 'details' | 'missions' | 'offline' | 'cart'>('browse');
     const [pendingOfflineSales, setPendingOfflineSales] = useState<any[]>(() => {
         const saved = localStorage.getItem('cred30_offline_sales');
         return saved ? JSON.parse(saved) : [];
@@ -231,7 +239,50 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const [offlineVoucher, setOfflineVoucher] = useState<{ code: string, amount: number, item: string } | null>(null);
     const [redeemCode, setRedeemCode] = useState('');
     const [paymentMethod] = useState<'BALANCE'>('BALANCE');
+    const [cart, setCart] = useState<{ sellerId: string | null; sellerName: string | null; items: any[] }>(() => {
+        const saved = localStorage.getItem('cred30_cart');
+        return saved ? JSON.parse(saved) : { sellerId: null, sellerName: null, items: [] };
+    });
+
     const [trackingOrder, setTrackingOrder] = useState<any>(null);
+
+    useEffect(() => {
+        localStorage.setItem('cred30_cart', JSON.stringify(cart));
+    }, [cart]);
+
+    const addToCart = (item: any) => {
+        if (cart.sellerId && cart.sellerId !== item.seller_id) {
+            onError('Loja Diferente', `Você já tem itens da loja "${cart.sellerName}". Finalize a compra ou limpe o carrinho antes de comprar de "${item.seller_name}".`);
+            return;
+        }
+
+        if (cart.items.some(i => i.id === item.id)) {
+            onSuccess('Já no carrinho', 'Este item já está na sua lista.');
+            return;
+        }
+
+        setCart(prev => ({
+            sellerId: item.seller_id,
+            sellerName: item.seller_name,
+            items: [...prev.items, item]
+        }));
+        onSuccess('Adicionado', 'Item adicionado ao carrinho!');
+    };
+
+    const removeFromCart = (itemId: string) => {
+        setCart(prev => {
+            const newItems = prev.items.filter(i => i.id !== itemId);
+            return {
+                sellerId: newItems.length === 0 ? null : prev.sellerId,
+                sellerName: newItems.length === 0 ? null : prev.sellerName,
+                items: newItems
+            };
+        });
+    };
+
+    const clearCart = () => {
+        setCart({ sellerId: null, sellerName: null, items: [] });
+    };
 
     // Filtros de Localização
     const [selectedUF, setSelectedUF] = useState<string>('');
@@ -498,6 +549,14 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 >
                     Offline
                 </button>
+                {cart.items.length > 0 && (
+                    <button
+                        onClick={() => setView('cart')}
+                        className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition overflow-hidden relative ${view === 'cart' ? 'bg-zinc-800 text-white shadow-sm' : 'text-primary-400 bg-primary-500/5'}`}
+                    >
+                        Carrinho ({cart.items.length})
+                    </button>
+                )}
             </div>
 
             {/* Protective Escrow Banner */}
@@ -705,6 +764,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                 setSelectedItem(it);
                                                 setView('details');
                                             }}
+                                            onAddToCart={addToCart}
                                         />
 
                                         {(index + 1) % 3 === 0 && (
@@ -753,6 +813,127 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                             </>
                         );
                     })()}
+                </div>
+            )}
+
+            {view === 'cart' && (
+                <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 min-h-[50vh] animate-in slide-in-from-right duration-300">
+                    <div className="flex items-center gap-4 mb-8 pb-4 border-b border-zinc-800">
+                        <button onClick={() => setView('browse')} className="p-2 -ml-2 hover:bg-zinc-800 rounded-xl transition text-zinc-400 hover:text-white">
+                            <ArrowLeft size={20} />
+                        </button>
+                        <div>
+                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                <Package className="text-primary-400" /> Carrinho de Compras
+                            </h2>
+                            {cart.sellerName && (
+                                <p className="text-xs text-zinc-500 uppercase font-bold tracking-widest mt-1">
+                                    Vendedor: <span className="text-white">{cart.sellerName}</span>
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {cart.items.length === 0 ? (
+                        <div className="text-center py-20 flex flex-col items-center">
+                            <Package size={64} className="text-zinc-800 mb-4" />
+                            <h3 className="text-white font-bold mb-2">Seu carrinho está vazio</h3>
+                            <button onClick={() => setView('browse')} className="text-primary-400 text-xs font-bold uppercase tracking-widest hover:underline">
+                                Voltar às compras
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            <div className="divide-y divide-zinc-800">
+                                {cart.items.map((item, idx) => (
+                                    <div key={idx} className="py-4 flex gap-4 items-center">
+                                        <div className="w-16 h-16 bg-zinc-950 rounded-lg overflow-hidden border border-zinc-800 shrink-0">
+                                            {item.image_url ? (
+                                                <img src={item.image_url} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <ImageIcon className="w-full h-full p-4 text-zinc-700" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="text-sm font-bold text-white truncate">{item.title}</h4>
+                                            <p className="text-xs text-primary-400 font-bold mt-1">{formatCurrency(parseFloat(item.price))}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => removeFromCart(item.id)}
+                                            className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition"
+                                        >
+                                            <XIcon size={18} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="bg-zinc-950 p-6 rounded-2xl border border-zinc-800">
+                                <div className="flex justify-between items-center mb-6">
+                                    <span className="text-sm font-bold text-zinc-400">Total ({cart.items.length} itens)</span>
+                                    <span className="text-2xl font-black text-white">
+                                        {formatCurrency(cart.items.reduce((acc, i) => acc + parseFloat(i.price), 0))}
+                                    </span>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex gap-3 items-start">
+                                        <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                                        <p className="text-[10px] text-amber-200/80 leading-relaxed">
+                                            Ao confirmar, o sistema processará {cart.items.length} pedidos individuais para o vendedor <strong>{cart.sellerName}</strong>.
+                                            O pagamento será debitado do seu saldo.
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            setConfirmData({
+                                                isOpen: true,
+                                                title: 'Finalizar Compra em Massa',
+                                                message: `Confirmar compra de ${cart.items.length} itens da loja ${cart.sellerName}? Total: ${formatCurrency(cart.items.reduce((acc, i) => acc + parseFloat(i.price), 0))}`,
+                                                confirmText: `PAGAR ${formatCurrency(cart.items.reduce((acc, i) => acc + parseFloat(i.price), 0))}`,
+                                                type: 'success',
+                                                onConfirm: async () => {
+                                                    setIsLoading(true);
+                                                    setConfirmData(null); // Fechar modal
+
+                                                    let successCount = 0;
+                                                    let failCount = 0;
+
+                                                    for (const item of cart.items) {
+                                                        try {
+                                                            await apiService.post('/marketplace/buy', {
+                                                                listingId: item.id,
+                                                                deliveryType: 'SELF_PICKUP', // Default simples
+                                                                paymentMethod: 'BALANCE',
+                                                                deliveryAddress: 'Combinar com Vendedor'
+                                                            });
+                                                            successCount++;
+                                                        } catch (e) {
+                                                            console.error(e);
+                                                            failCount++;
+                                                        }
+                                                    }
+
+                                                    setIsLoading(false);
+                                                    if (successCount > 0) {
+                                                        onSuccess('Sucesso Parcial', `${successCount} itens comprados com sucesso! ${failCount > 0 ? `${failCount} falharam.` : ''}`);
+                                                        clearCart();
+                                                        setView('my-orders');
+                                                    } else {
+                                                        onError('Erro', 'Falha ao processar compras. Tente novamente.');
+                                                    }
+                                                }
+                                            });
+                                        }}
+                                        className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-xl uppercase tracking-widest shadow-lg shadow-primary-500/20 active:scale-95 transition"
+                                    >
+                                        FINALIZAR COMPRA
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
