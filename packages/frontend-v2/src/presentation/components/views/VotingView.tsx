@@ -37,15 +37,19 @@ export const VotingView = ({ appState, onBack, onRefresh, onSuccess, onError }: 
 
     const fetchProposals = async () => {
         try {
-            const res = await apiService.get('/voting/proposals');
+            const res = await apiService.get<any>('/voting/proposals');
             if (res.success) {
-                setProposals(res.data as any[]);
-                if ((res as any).userCurrentPower) {
-                    setUserCurrentPower((res as any).userCurrentPower);
+                setProposals(res.data || []);
+                if (res.userCurrentPower !== undefined) {
+                    setUserCurrentPower(res.userCurrentPower);
                 }
+            } else {
+                console.warn('[GOV] Failed to fetch proposals:', res.message);
+                setProposals([]);
             }
         } catch (e: any) {
-            console.error(e);
+            console.error('[GOV] Error fetching proposals:', e);
+            setProposals([]);
         } finally {
             setIsLoading(false);
         }
@@ -66,7 +70,7 @@ export const VotingView = ({ appState, onBack, onRefresh, onSuccess, onError }: 
                 onSuccess("Voto Registrado", res.message);
                 fetchProposals();
                 onRefresh(); // Sincroniza o score no app todo
-                generateReceipt(proposalId, choice, (res as any).powerApplied);
+                generateReceipt(proposalId, choice, res.powerApplied || 0);
             } else {
                 onError("Erro", res.message);
             }

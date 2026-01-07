@@ -22,6 +22,7 @@ interface ApiResponse<T> {
     offset: number;
     hasMore: boolean;
   };
+  [key: string]: any; // Permite campos extras como userCurrentPower, requiresVerification, etc.
 }
 
 interface AuthResponse {
