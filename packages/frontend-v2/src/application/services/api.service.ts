@@ -83,6 +83,13 @@ class ApiService extends ApiBase {
     return response.data;
   };
 
+  // Notificações (stub - retorna função vazia para evitar erros)
+  listenToNotifications(callback: (notification: any) => void): () => void {
+    // TODO: Implementar sistema de notificações real (WebSocket, SSE ou polling)
+    console.warn('listenToNotifications não implementado ainda');
+    return () => { }; // Retorna função de cleanup vazia
+  }
+
   // Utilitários de Auth propagados do ApiBase via qualquer sub-serviço (eles compartilham a mesma lógica)
   isAuthenticated() {
     return this.auth.isAuthenticated();
