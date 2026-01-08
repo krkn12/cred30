@@ -60,4 +60,8 @@ export class AdminApi extends ApiBase {
         const response = await this.post<any>('/admin/marketplace/cleanup-old-listings', { daysOld });
         return response.data;
     }
+
+    async getAdminReviews(): Promise<any> {
+        return await this.request<any>('/admin/reviews');
+    }
 }
