@@ -61,6 +61,8 @@ class ApiService extends ApiBase {
   getPendingTransactions = this.admin.getPendingTransactions.bind(this.admin);
   getPayoutQueue = this.admin.getPayoutQueue.bind(this.admin);
   getAdminReviews = this.admin.getAdminReviews.bind(this.admin);
+  getHealthMetrics = this.admin.getHealthMetrics.bind(this.admin);
+  getAllProductsAdmin = this.admin.getAllProductsAdmin.bind(this.admin);
 
   // Auth & Account
   resetPassword = this.auth.resetPassword.bind(this.auth);
@@ -81,6 +83,11 @@ class ApiService extends ApiBase {
   confirmDelivered = this.marketplace.confirmDelivered.bind(this.marketplace);
   getMyDeliveries = this.marketplace.getMyDeliveries.bind(this.marketplace);
   cancelDelivery = this.marketplace.cancelDelivery.bind(this.marketplace);
+
+  // Voting
+  getProposals = this.misc.getProposals.bind(this.misc);
+  vote = this.misc.vote.bind(this.misc);
+
   getDeliveryStats = async () => {
     const response = await this.get<any>('/logistics/stats');
     return response.data;
