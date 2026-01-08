@@ -4,7 +4,8 @@ const getApiBaseUrl = () => {
     if (currentUrl.includes('ngrok-free.app')) {
         return currentUrl + '/api';
     }
-    return (import.meta as any).env.VITE_API_URL || '/api';
+    // Usa a variável de ambiente ou o backend oficial do Render como fallback
+    return (import.meta as any).env.VITE_API_URL || 'https://cred30-backend.onrender.com';
 };
 
 export const API_BASE_URL = getApiBaseUrl();

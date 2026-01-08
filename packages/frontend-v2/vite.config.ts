@@ -142,7 +142,7 @@ export default defineConfig({
         host: true,
         proxy: {
             '/api': {
-                target: 'http://localhost:3001',
+                target: 'https://cred30-backend.onrender.com',
                 changeOrigin: true,
                 secure: false,
             }
