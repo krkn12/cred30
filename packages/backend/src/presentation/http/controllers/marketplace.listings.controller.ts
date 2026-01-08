@@ -47,7 +47,7 @@ export class MarketplaceListingsController {
             (SELECT p.id::text, p.title, p.description, p.price::float, p.image_url, p.category, 
                     'Cred30 Parceiros' as seller_name, '0' as seller_id, true as is_boosted, p.created_at, 'ACTIVE' as status, 'AFFILIATE' as type,
                     '' as city, '' as uf
-             FROM affiliate_products p 
+             FROM products p 
              WHERE p.active = true
              AND ($3::text IS NULL OR $3 = 'TODOS' OR p.category = $3)
              AND ($4::text IS NULL OR (p.title ILIKE '%' || $4 || '%' OR p.description ILIKE '%' || $4 || '%'))
