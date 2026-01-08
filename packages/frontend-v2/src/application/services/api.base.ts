@@ -90,7 +90,12 @@ export class ApiBase {
             if (error.name === 'TypeError' && !navigator.onLine) {
                 error.message = 'Sua conexão com a internet caiu. O App exibirá dados salvos quando possível.';
             }
-            console.error('Erro na requisição:', error);
+
+            // Silence 401/Token errors (handled by logout logic)
+            const isAuthError = error.status === 401 || error.message?.includes('Token');
+            if (!isAuthError) {
+                console.error('Erro na requisição:', error);
+            }
             throw error;
         }
     }
