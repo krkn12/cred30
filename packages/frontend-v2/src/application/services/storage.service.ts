@@ -31,7 +31,7 @@ const convertApiUserToUser = (apiUser: any): User => {
     referralCode: apiUser.referralCode || apiUser.referral_code || '',
     isAdmin: apiUser.isAdmin || apiUser.is_admin || apiUser.role === 'ADMIN' || false,
     score: apiUser.score ?? 0,
-    twoFactorEnabled: apiUser.twoFactorEnabled || apiUser.two_factor_enabled || false,
+    two_factor_enabled: apiUser.twoFactorEnabled || apiUser.two_factor_enabled || false,
     cpf: apiUser.cpf || null,
     phone: apiUser.phone || null,
     // Campos adicionais que o backend retorna
@@ -233,8 +233,11 @@ export const loadState = async (): Promise<AppState> => {
       stats,
       welcomeBenefit,
     };
-  } catch (error) {
-    console.error('Erro ao carregar estado da aplicação:', error);
+  } catch (error: any) {
+    // Suppress logging for auth errors (expected during logout/expiry)
+    if (!error.message?.includes('Token') && !error.message?.includes('401')) {
+      console.error('Erro ao carregar estado da aplicação:', error);
+    }
 
     // Em caso de erro, retornar estado padrão
     return {
