@@ -235,14 +235,14 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onD
                         <div className="flex items-center gap-4">
                             <NotificationBell />
                             <div className="text-right">
-                                <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-1">Impacto Democrático</p>
+                                <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-1">Boost de Lucro</p>
                                 <div
-                                    onClick={onVoting}
-                                    className="cursor-pointer flex items-center gap-2 glass px-4 py-2 rounded-2xl hover:bg-white/10 transition-all active:scale-95"
+                                    className="cursor-help flex items-center gap-2 glass px-4 py-2 rounded-2xl hover:bg-white/10 transition-all border border-emerald-500/20"
+                                    title="Seu multiplicador de dividendos baseado em engajamento (2FA + PRO + Atividade)"
                                 >
-                                    <BarChart3 size={16} className="text-primary-400" />
+                                    <TrendingUp size={16} className="text-emerald-400" />
                                     <span className="text-xl font-black text-white">
-                                        {((1 + Math.sqrt(userQuotas.length)) * (1 + (user.score || 0) / 1000)).toFixed(1)}
+                                        {(1.0 + (user.two_factor_enabled ? 0.1 : 0) + (user.membership_type === 'PRO' ? 0.2 : 0)).toFixed(1)}x
                                     </span>
                                 </div>
                             </div>
