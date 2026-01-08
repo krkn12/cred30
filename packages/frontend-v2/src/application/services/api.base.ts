@@ -27,7 +27,9 @@ export class ApiBase {
     protected token: string | null = null;
 
     constructor() {
-        this.token = localStorage.getItem('authToken');
+        const stored = localStorage.getItem('authToken');
+        // Prevent "null" or "undefined" strings from being accepted as valid tokens
+        this.token = (stored && stored !== 'null' && stored !== 'undefined') ? stored : null;
     }
 
     public isAuthenticated(): boolean {

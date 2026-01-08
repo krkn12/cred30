@@ -10,11 +10,27 @@ interface AdBannerProps {
 }
 
 export const AdBanner = ({ type, title, description, actionText, hide }: AdBannerProps) => {
-    const [isVisible, setIsVisible] = React.useState(true);
+    const [isVisible, setIsVisible] = React.useState(false);
     const SMART_LINK = 'https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa';
+
+    React.useEffect(() => {
+        const lastClosed = localStorage.getItem(`ad_closed_${type}`);
+        // Se fechado há menos de 1 hora, mantém invisível
+        if (lastClosed && Date.now() - parseInt(lastClosed) < 1000 * 60 * 60) {
+            setIsVisible(false);
+        } else {
+            setIsVisible(true);
+        }
+    }, [type]);
 
     const handleClick = () => {
         window.open(SMART_LINK, '_blank');
+    };
+
+    const handleClose = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setIsVisible(false);
+        localStorage.setItem(`ad_closed_${type}`, Date.now().toString());
     };
 
     // Não renderiza se o usuário é PRO, se foi fechado ou se há flag global de desativação
@@ -45,7 +61,7 @@ export const AdBanner = ({ type, title, description, actionText, hide }: AdBanne
                 <div className="flex items-center gap-2">
                     <ExternalLink size={18} className="text-zinc-600 group-hover:text-primary-400 transition-colors" />
                     <button
-                        onClick={(e) => { e.stopPropagation(); setIsVisible(false); }}
+                        onClick={handleClose}
                         className="p-2 text-zinc-700 hover:text-white transition-colors"
                     >
                         <X size={14} />
@@ -68,7 +84,7 @@ export const AdBanner = ({ type, title, description, actionText, hide }: AdBanne
                         <span className="text-[9px] text-zinc-500 italic">Anúncio Externo</span>
                     </div>
                     <button
-                        onClick={(e) => { e.stopPropagation(); setIsVisible(false); }}
+                        onClick={handleClose}
                         className="text-zinc-600 hover:text-white p-1"
                         title="Ocultar"
                     >
@@ -105,7 +121,7 @@ export const AdBanner = ({ type, title, description, actionText, hide }: AdBanne
                 </p>
             </div>
             <button
-                onClick={(e) => { e.stopPropagation(); setIsVisible(false); }}
+                onClick={handleClose}
                 className="opacity-0 group-hover:opacity-100 p-1 text-zinc-600 hover:text-white transition-all"
             >
                 <X size={12} />
