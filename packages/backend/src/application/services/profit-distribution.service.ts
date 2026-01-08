@@ -17,59 +17,89 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
             return { success: false, message: 'Não há resultados acumulados para distribuir' };
         }
 
-        // Contar licenças ativas ELEGÍVEIS (Usuário tem apoio OU jogou)
-        // Regra: "quem tiver licença e ter feito apoio ou jogou e pra ganha nas licenças"
+        // ---------------------------------------------------------------------
+        // NOVA LÓGICA DE DISTRIBUIÇÃO PONDERADA (Score-Based)
+        // Incentivos:
+        // 1. Histórico de Pagamento (Loans Paid) -> Ganha peso
+        // 2. Volume de Gastos (Total Spent) -> Ganha peso
+        // 3. Ativação (2FA, PRO) -> Ganha peso
+        // ---------------------------------------------------------------------
 
         const eligibleUsersQuery = `
-            SELECT q.user_id, COUNT(q.id) as quota_count
+            SELECT 
+                q.user_id, 
+                COUNT(q.id) as quota_count,
+                u.two_factor_enabled,
+                u.membership_type,
+                COALESCE((SELECT COUNT(*) FROM loans l WHERE l.user_id = q.user_id AND l.status = 'PAID'), 0) as paid_loans,
+                COALESCE((SELECT SUM(amount) FROM transactions t 
+                 WHERE t.user_id = q.user_id 
+                 AND t.type IN ('MARKET_PURCHASE', 'MARKET_PURCHASE_CREDIT', 'GAME_BET', 'PREMIUM_PURCHASE', 'MEMBERSHIP_UPGRADE', 'REPUTATION_CONSULT')
+                ), 0) as total_spent
             FROM quotas q
+            JOIN users u ON u.id = q.user_id
             WHERE q.status = 'ACTIVE'
             AND (
-                -- Atividade 1: Participação Financeira (Apoios Ativos ou Pagos)
+                -- Mantém a regra básica de elegibilidade mínima (ter interagido)
                 EXISTS (SELECT 1 FROM loans l WHERE l.user_id = q.user_id AND l.status IN ('APPROVED', 'PAYMENT_PENDING', 'PAID'))
                 OR 
-                -- Atividade 2: Transações no Ecossistema (Jogos, Ads, Academy, Mercado, Upgrades)
                 EXISTS (
                     SELECT 1 FROM transactions t 
                     WHERE t.user_id = q.user_id 
-                    AND t.type IN (
-                        'GAME_BET', 'AD_REWARD', 'EDUCATION_REWARD', 
-                        'MARKET_BOOST', 'MARKET_PURCHASE', 'MARKET_PURCHASE_CREDIT', 'MARKET_SALE',
-                        'MEMBERSHIP_UPGRADE', 'LOAN_PAYMENT', 'PREMIUM_PURCHASE', 'DAILY_CHECKIN', 'REPUTATION_CONSULT'
-                    )
+                    AND t.type IN ('GAME_BET', 'AD_REWARD', 'EDUCATION_REWARD', 'MARKET_PURCHASE', 'MEMBERSHIP_UPGRADE')
                 )
                 OR
-                -- Atividade 3: Participação em Governança (Votação)
                 EXISTS (SELECT 1 FROM voting_votes vv WHERE vv.user_id = q.user_id)
-                OR
-                -- Atividade 4: Pedidos Ativos no Marketplace
-                EXISTS (SELECT 1 FROM marketplace_orders mo WHERE mo.buyer_id = q.user_id OR mo.seller_id = q.user_id)
             )
-            GROUP BY q.user_id
+            GROUP BY q.user_id, u.two_factor_enabled, u.membership_type
         `;
 
         const eligibleResult = await pool.query(eligibleUsersQuery);
-        const usersWithQuotas = eligibleResult.rows;
+        let usersWithQuotas = eligibleResult.rows;
 
-        // Calcular total de licenças elegíveis
-        const eligibleTotalQuotas = usersWithQuotas.reduce((acc, row) => acc + parseInt(row.quota_count), 0);
+        // Calcular "Cotas Ponderadas" (Weighted Shares)
+        // Multiplicador Base = 1.0
+        usersWithQuotas = usersWithQuotas.map(user => {
+            let multiplier = 1.0;
 
-        console.log('DEBUG - Licenças elegíveis para bônus:', eligibleTotalQuotas);
+            // Bônus 1: Ativação (+10% se tiver 2FA, +20% se for PRO)
+            if (user.two_factor_enabled) multiplier += 0.1;
+            if (user.membership_type === 'PRO') multiplier += 0.2;
 
-        if (eligibleTotalQuotas === 0) {
-            // Se não há licenças elegíveis, o lucro PERMANECE no profit_pool
-            // para a próxima distribuição. NÃO transferimos para system_balance
-            // porque isso inflaria a liquidez artificialmente.
+            // Bônus 2: Bom Pagador (+5% por empréstimo pago, limitado a +50%)
+            const paidLoansBonus = Math.min(parseInt(user.paid_loans || 0) * 0.05, 0.5);
+            multiplier += paidLoansBonus;
 
-            console.log('DEBUG - Nenhuma cota elegível. Lucro permanece no profit_pool:', config.profit_pool);
+            // Bônus 3: Grande Gastador (+10% a cada R$ 500 gastos, limitado a +200%)
+            const spent = parseFloat(user.total_spent || 0);
+            if (spent > 0) {
+                // Exemplo: 500 gastos = +0.1. 1000 gastos = +0.2
+                const spendBonus = Math.min(spent / 5000, 2.0); // Cap de 2x (precisa gastar 10k)
+                multiplier += (spent / 500) * 0.1;
+            }
+
+            // Apply weighting
+            const rawQuotas = parseInt(user.quota_count);
+            const weightedQuotas = rawQuotas * multiplier;
 
             return {
+                ...user,
+                raw_quotas: rawQuotas,
+                multiplier: multiplier,
+                weighted_quotas: weightedQuotas
+            };
+        });
+
+        // Calcular total de COTAS PONDERADAS (não cotas físicas)
+        const totalWeightedQuotas = usersWithQuotas.reduce((acc, row) => acc + row.weighted_quotas, 0);
+
+        console.log('DEBUG - Cotas Ponderadas Totais:', totalWeightedQuotas.toFixed(2));
+
+        if (totalWeightedQuotas <= 0) {
+            return {
                 success: false,
-                message: `Não há licenciados elegíveis (ativos em apoios/jogos). O resultado de R$ ${parseFloat(config.profit_pool).toFixed(2)} permanece acumulado para a próxima distribuição.`,
-                data: {
-                    profitPoolRetained: parseFloat(config.profit_pool),
-                    reason: 'NO_ELIGIBLE_QUOTAS'
-                }
+                message: `Não há elegibilidade suficiente. Lucro retido.`,
+                data: { profitPoolRetained: parseFloat(config.profit_pool) }
             };
         }
 
@@ -80,53 +110,48 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
         const taxAmount = profit * MAINTENANCE_TAX_SHARE;
         const operationalAmount = profit * MAINTENANCE_OPERATIONAL_SHARE;
         const ownerAmount = profit * MAINTENANCE_OWNER_SHARE;
-
         const totalForMaintenance = taxAmount + operationalAmount + ownerAmount;
 
-        // O valor por licença aumenta, pois o bolo é dividido por menos gente (apenas elegíveis)
-        const dividendPerQuota = totalForUsers / eligibleTotalQuotas;
+        // O valor agora é por "Cota Ponderada"
+        const dividendPerWeightedQuota = totalForUsers / totalWeightedQuotas;
 
-        // Distribuir para usuários - OTIMIZAÇÃO MASSIVA (Batch Processing)
-        console.log('DEBUG - Iniciando distribuição batch para elegíveis...', {
-            totalProfit: profit,
-            usersCount: usersWithQuotas.length
+        // Distribuir
+        console.log('DEBUG - Iniciando distribuição ponderada...', { totalProfit: profit, usersCount: usersWithQuotas.length });
+
+        const userIds = usersWithQuotas.map(u => u.user_id);
+        const userAmounts = usersWithQuotas.map(u => Number((u.weighted_quotas * dividendPerWeightedQuota).toFixed(2)));
+        const userDescriptions = usersWithQuotas.map(u => {
+            const extra = ((u.multiplier - 1) * 100).toFixed(0);
+            return `Distribuição de Lucro (${u.raw_quotas} cotas + ${extra}% bônus de engajamento)`;
         });
 
-        // Preparar arrays para o processamento batch no Postgres
-        const userIds = usersWithQuotas.map(u => u.user_id);
-        const userAmounts = usersWithQuotas.map(u => Number((parseInt(u.quota_count) * dividendPerQuota).toFixed(2)));
-        const userDescriptions = usersWithQuotas.map(u =>
-            `Bônus Disponível (85% do Resultado): R$ ${dividendPerQuota.toFixed(4)}/licença (${u.quota_count} licenças) - Elegível`
-        );
-
-        // Executar atualização em massa e inserção de transações em uma única chamada
-        // Usamos UNNEST para transformar os arrays em uma tabela virtual e JOIN para atualizar/inserir
-        await pool.query(`
-            WITH distribution_data AS (
-                SELECT 
-                    unnest($1::int[]) as u_id, 
-                    unnest($2::decimal[]) as u_amount,
-                    unnest($3::text[]) as u_desc
-            ),
-            update_balances AS (
-                UPDATE users u
-                SET balance = u.balance + dd.u_amount
-                FROM distribution_data dd
-                WHERE u.id = dd.u_id
-            )
-            INSERT INTO transactions (user_id, type, amount, description, status)
-            SELECT u_id, 'DEPOSIT', u_amount, u_desc, 'APPROVED'
-            FROM distribution_data
-            WHERE u_amount > 0;
-        `, [userIds, userAmounts, userDescriptions]);
+        // Executar atualização em massa
+        if (userIds.length > 0) {
+            await pool.query(`
+                WITH distribution_data AS (
+                    SELECT 
+                        unnest($1::int[]) as u_id, 
+                        unnest($2::decimal[]) as u_amount,
+                        unnest($3::text[]) as u_desc
+                ),
+                update_balances AS (
+                    UPDATE users u
+                    SET balance = u.balance + dd.u_amount
+                    FROM distribution_data dd
+                    WHERE u.id = dd.u_id
+                )
+                INSERT INTO transactions (user_id, type, amount, description, status)
+                SELECT u_id, 'DEPOSIT', u_amount, u_desc, 'APPROVED'
+                FROM distribution_data
+                WHERE u_amount > 0;
+            `, [userIds, userAmounts, userDescriptions]);
+        }
 
         const distributedTotal = userAmounts.reduce((acc, val) => acc + val, 0);
-
-        // Transferir 15% para manutenção E zerar o profit_pool
-        // Ajustar diferença de arredondamento se houver
         const roundingDifference = totalForUsers - distributedTotal;
         const finalMaintenance = totalForMaintenance + roundingDifference;
 
+        // Atualizar config
         await pool.query(
             `UPDATE system_config 
              SET system_balance = system_balance + $1, 
@@ -137,26 +162,21 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
             [finalMaintenance, taxAmount, operationalAmount, ownerAmount]
         );
 
-        console.log('DEBUG - Distribuição batch finalizada com sucesso.');
-
         // Notificar Admin
         notificationService.notifyProfitDistributed(profit).catch(e => console.error('Erro ao notificar admin:', e));
 
         return {
             success: true,
-            message: 'Distribuição de bônus realizada com sucesso!',
+            message: 'Distribuição Ponderada realizada com sucesso!',
             data: {
                 totalProfit: profit,
                 distributed: distributedTotal,
-                maintenance: finalMaintenance,
-                perQuota: dividendPerQuota,
-                eligibleTotalQuotas,
-                usersBenefited: usersWithQuotas.length
+                dividendPerWeightedQuota,
+                totalWeightedQuotas
             },
         };
     } catch (error) {
-        console.error('Erro ao distribuir bônus automaticamente:', error);
-
+        console.error('Erro ao distribuir bônus:', error);
         throw error;
     }
 };
