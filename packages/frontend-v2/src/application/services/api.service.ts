@@ -107,11 +107,92 @@ class ApiService extends ApiBase {
     return response.data;
   };
 
-  // Notificações (stub - retorna função vazia para evitar erros)
-  listenToNotifications(_callback: (notification: any) => void): () => void {
-    // TODO: Implementar sistema de notificações real (WebSocket, SSE ou polling)
-    console.warn('listenToNotifications não implementado ainda');
-    return () => { }; // Retorna função de cleanup vazia
+  // Notificações em Tempo Real via SSE (Server-Sent Events)
+  listenToNotifications(callback: (notification: any) => void): () => void {
+    // Verifica se está autenticado
+    if (!this.isAuthenticated()) {
+      console.warn('[Notifications] Usuário não autenticado, ignorando SSE.');
+      return () => { };
+    }
+
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      return () => { };
+    }
+
+    // Monta a URL do SSE com o token
+    const baseUrl = (import.meta as any).env.VITE_API_URL || 'https://cred30-backend.onrender.com';
+    const sseUrl = `${baseUrl}/api/notifications/stream`;
+
+    let eventSource: EventSource | null = null;
+    let reconnectTimeout: any = null;
+    let isClosing = false;
+
+    const connect = () => {
+      if (isClosing) return;
+
+      try {
+        // EventSource não suporta headers customizados nativamente.
+        // Usamos query param para auth (alternativa comum para SSE)
+        eventSource = new EventSource(`${sseUrl}?token=${token}`);
+
+        eventSource.onopen = () => {
+          console.log('[Notifications] Conectado ao stream de notificações ✅');
+        };
+
+        eventSource.onmessage = (event) => {
+          try {
+            if (event.data && event.data !== 'ping') {
+              const notification = JSON.parse(event.data);
+              callback(notification);
+            }
+          } catch (e) {
+            // Ignora erros de parse (pode ser ping)
+          }
+        };
+
+        eventSource.addEventListener('notification', (event: any) => {
+          try {
+            const notification = JSON.parse(event.data);
+            callback(notification);
+          } catch (e) {
+            console.error('[Notifications] Erro ao processar notificação:', e);
+          }
+        });
+
+        eventSource.onerror = (error) => {
+          console.warn('[Notifications] Conexão SSE perdida, tentando reconectar...', error);
+          eventSource?.close();
+
+          // Tenta reconectar após 5 segundos
+          if (!isClosing) {
+            reconnectTimeout = setTimeout(connect, 5000);
+          }
+        };
+
+      } catch (error) {
+        console.error('[Notifications] Erro ao conectar SSE:', error);
+        // Tenta reconectar após 10 segundos
+        if (!isClosing) {
+          reconnectTimeout = setTimeout(connect, 10000);
+        }
+      }
+    };
+
+    // Inicia a conexão
+    connect();
+
+    // Retorna função de cleanup
+    return () => {
+      isClosing = true;
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      if (eventSource) {
+        eventSource.close();
+        console.log('[Notifications] Desconectado do stream de notificações');
+      }
+    };
   }
 
   // Utilitários de Auth propagados do ApiBase via qualquer sub-serviço (eles compartilham a mesma lógica)
