@@ -317,15 +317,13 @@ export class QuotasController {
                 }, 400);
             }
 
-            const firstQuotaResult = await pool.query(
-                'SELECT MIN(purchase_date) as first_purchase FROM quotas WHERE user_id = $1',
-                [user.id]
-            );
-            const firstPurchaseDate = new Date(firstQuotaResult.rows[0].first_purchase).getTime();
+            // Nova Lógica: Liberação anual a partir de 21 de Dezembro
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const releaseDate = new Date(currentYear, 11, 21); // 21 de Dezembro
 
-            const now = Date.now();
-            const seniorityTime = now - firstPurchaseDate;
-            const hasSeniority = seniorityTime >= VESTING_PERIOD_MS;
+            // Liberado se hoje for >= 21 de Dezembro
+            const hasSeniority = now.getTime() >= releaseDate.getTime();
             const isEarlyExit = !hasSeniority;
 
             const originalAmount = parseFloat(quota.purchase_price);
@@ -479,14 +477,12 @@ export class QuotasController {
                 return c.json({ success: false, message: 'Você não possui participações para cessão' }, 400);
             }
 
-            const firstQuotaResult = await pool.query(
-                'SELECT MIN(purchase_date) as first_purchase FROM quotas WHERE user_id = $1',
-                [user.id]
-            );
-            const firstPurchaseDate = new Date(firstQuotaResult.rows[0].first_purchase).getTime();
-            const now = Date.now();
-            const seniorityTime = now - firstPurchaseDate;
-            const hasSeniority = seniorityTime >= VESTING_PERIOD_MS;
+            // Nova Lógica: Liberação anual a partir de 21 de Dezembro
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const releaseDate = new Date(currentYear, 11, 21); // 21 de Dezembro
+
+            const hasSeniority = now.getTime() >= releaseDate.getTime();
 
             let totalReceived = 0;
             let totalPenalty = 0;
