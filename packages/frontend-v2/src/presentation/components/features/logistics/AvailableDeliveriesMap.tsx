@@ -91,11 +91,37 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
         mapRef.current = L.map(mapContainerRef.current, {
             zoomControl: true,
             attributionControl: false
-        }).setView([-14.235, -51.9253], 4);
+        }).setView([-14.235, -51.9253], 4); // Initial setView for Brazil
 
+        // Adicionar tiles do OpenStreetMap
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
         }).addTo(mapRef.current);
+
+        // Tentar focar na localização do usuário
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    if (mapRef.current) {
+                        mapRef.current.flyTo([position.coords.latitude, position.coords.longitude], 13, {
+                            duration: 2 // 2 seconds animation
+                        });
+
+                        // Adicionar um ponto azul indicando "Você está aqui"
+                        L.circleMarker([position.coords.latitude, position.coords.longitude], {
+                            radius: 8,
+                            fillColor: "#3b82f6", // blue-500
+                            color: "#fff",
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        }).addTo(mapRef.current).bindPopup("Sua localização");
+                    }
+                },
+                (error) => console.log('GPS Error:', error),
+                { enableHighAccuracy: true, timeout: 5000 }
+            );
+        }
 
         return () => {
             if (mapRef.current) {
