@@ -190,6 +190,11 @@ export default function App() {
     }
   };
 
+  // 🔥 CRITICAL: Trigger initial data load on mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
   const refreshState = async () => {
     try {
       const newState = await loadState();
