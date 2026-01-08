@@ -54,6 +54,23 @@ export const LogisticsView = () => {
     const [trackingOrder, setTrackingOrder] = useState<Delivery | null>(null);
     const [showAvailableMap, setShowAvailableMap] = useState(false);
 
+    // Filtro de ignorados (Local Storage)
+    const [ignoredOrders, setIgnoredOrders] = useState<number[]>(() => {
+        try {
+            return JSON.parse(localStorage.getItem('ignoredLogisticsOrders') || '[]');
+        } catch { return []; }
+    });
+
+    // Filtra entregas ignoradas
+    const visibleDeliveries = availableDeliveries.filter(d => !ignoredOrders.includes(d.orderId));
+
+    const handleIgnore = (orderId: number) => {
+        const newIgnored = [...ignoredOrders, orderId];
+        setIgnoredOrders(newIgnored);
+        localStorage.setItem('ignoredLogisticsOrders', JSON.stringify(newIgnored));
+        setSuccess('Entrega ocultada do mapa.');
+    };
+
     useEffect(() => {
         loadData();
     }, [activeTab]);
@@ -279,14 +296,14 @@ export const LogisticsView = () => {
                         VER TODAS NO MAPA
                     </button>
 
-                    {availableDeliveries.length === 0 ? (
+                    {visibleDeliveries.length === 0 ? (
                         <div className="text-center py-20">
                             <Package size={48} className="text-zinc-600 mx-auto mb-4" />
                             <p className="text-zinc-400">Nenhuma entrega disponível no momento</p>
                             <p className="text-zinc-600 text-sm mt-2">Volte em breve para ver novas oportunidades!</p>
                         </div>
                     ) :
-                        availableDeliveries.map(delivery => (
+                        visibleDeliveries.map(delivery => (
                             <div key={delivery.orderId} className="glass p-5 rounded-2xl">
                                 <div className="flex gap-4">
                                     {delivery.imageUrl ? (
@@ -488,7 +505,7 @@ export const LogisticsView = () => {
             {/* Available Deliveries Map */}
             {showAvailableMap && (
                 <AvailableDeliveriesMap
-                    deliveries={availableDeliveries.map(d => ({
+                    deliveries={visibleDeliveries.map(d => ({
                         id: d.orderId.toString(),
                         delivery_fee: d.deliveryFee,
                         delivery_address: d.deliveryAddress,
@@ -509,6 +526,7 @@ export const LogisticsView = () => {
                         setShowAvailableMap(false);
                         await loadData();
                     }}
+                    onIgnore={(id) => handleIgnore(parseInt(id))}
                     onClose={() => setShowAvailableMap(false)}
                 />
             )}

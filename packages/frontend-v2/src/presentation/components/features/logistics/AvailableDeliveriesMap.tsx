@@ -22,19 +22,24 @@ interface DeliveryMission {
 interface AvailableDeliveriesMapProps {
     deliveries: DeliveryMission[];
     onAccept: (deliveryId: string) => Promise<void>;
+    onIgnore: (deliveryId: string) => void;
     onClose: () => void;
 }
 
 export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
     deliveries,
     onAccept,
+    onIgnore,
     onClose
 }) => {
+    // ... existing refs and state ...
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<L.Map | null>(null);
     const markersRef = useRef<L.Marker[]>([]);
     const [selectedDelivery, setSelectedDelivery] = useState<DeliveryMission | null>(null);
     const [isAccepting, setIsAccepting] = useState(false);
+
+    // ... existing icons and geocode logic ...
 
     // Ícones personalizados
     const pickupIcon = L.divIcon({
@@ -62,7 +67,6 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
         iconAnchor: [20, 40]
     });
 
-    // Geocodificar endereço como fallback
     const geocodeAddress = async (address: string): Promise<{ lat: number; lng: number } | null> => {
         try {
             const response = await fetch(
@@ -81,17 +85,14 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
         return null;
     };
 
-    // Inicializar mapa
     useEffect(() => {
         if (!mapContainerRef.current || mapRef.current) return;
 
-        // Criar mapa centrado no Brasil
         mapRef.current = L.map(mapContainerRef.current, {
             zoomControl: true,
             attributionControl: false
         }).setView([-14.235, -51.9253], 4);
 
-        // Adicionar tiles do OpenStreetMap
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
         }).addTo(mapRef.current);
@@ -104,17 +105,14 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
         };
     }, []);
 
-    // Adicionar marcadores para entregas
     useEffect(() => {
         if (!mapRef.current) return;
 
-        // Limpar marcadores existentes
         markersRef.current.forEach(marker => marker.remove());
         markersRef.current = [];
 
         const bounds: L.LatLngExpression[] = [];
 
-        // Adicionar marcadores para cada entrega (corrigido para async)
         const addMarkers = async () => {
             for (const delivery of deliveries) {
                 if (!mapRef.current) return;
@@ -122,7 +120,6 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                 let pickupCoords = null;
                 let deliveryCoords = null;
 
-                // Usar coordenadas do banco ou geocodificar
                 if (delivery.pickup_lat && delivery.pickup_lng) {
                     pickupCoords = { lat: delivery.pickup_lat, lng: delivery.pickup_lng };
                 } else if (delivery.pickup_address) {
@@ -135,7 +132,6 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                     deliveryCoords = await geocodeAddress(delivery.delivery_address);
                 }
 
-                // Adicionar marcador de coleta
                 if (pickupCoords) {
                     const pickupMarker = L.marker([pickupCoords.lat, pickupCoords.lng], { icon: pickupIcon })
                         .addTo(mapRef.current!)
@@ -145,7 +141,6 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                     bounds.push([pickupCoords.lat, pickupCoords.lng]);
                 }
 
-                // Adicionar marcador de entrega
                 if (deliveryCoords) {
                     const deliveryMarker = L.marker([deliveryCoords.lat, deliveryCoords.lng], { icon: deliveryIcon })
                         .addTo(mapRef.current!)
@@ -156,7 +151,6 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                 }
             }
 
-            // Ajustar zoom para mostrar todos os marcadores
             if (bounds.length > 0 && mapRef.current) {
                 mapRef.current.fitBounds(L.latLngBounds(bounds), { padding: [50, 50], maxZoom: 15 });
             }
@@ -182,6 +176,7 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
     const formatCurrency = (value: number) => {
         return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     };
+
 
     return (
         <div className="fixed inset-0 z-[200] bg-black animate-in fade-in duration-300 flex flex-col">
@@ -311,10 +306,13 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                             {/* Botões de Ação */}
                             <div className="flex gap-3 pt-2">
                                 <button
-                                    onClick={() => setSelectedDelivery(null)}
-                                    className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-bold text-sm transition"
+                                    onClick={() => {
+                                        onIgnore(selectedDelivery.id);
+                                        setSelectedDelivery(null);
+                                    }}
+                                    className="px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-xl font-bold text-sm transition"
                                 >
-                                    Cancelar
+                                    Ignorar
                                 </button>
                                 <button
                                     onClick={handleAcceptDelivery}
