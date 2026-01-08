@@ -58,6 +58,9 @@ class ApiService extends ApiBase {
   getAdminDashboard = this.admin.getDashboard.bind(this.admin);
   addProfitToPool = this.admin.addProfitPool.bind(this.admin);
   distributeDividends = this.admin.distributeDividends.bind(this.admin);
+  getPendingTransactions = this.admin.getPendingTransactions.bind(this.admin);
+  getPayoutQueue = this.admin.getPayoutQueue.bind(this.admin);
+  getAdminReviews = this.admin.getAdminReviews.bind(this.admin);
 
   // Auth & Account
   resetPassword = this.auth.resetPassword.bind(this.auth);
