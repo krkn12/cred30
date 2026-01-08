@@ -346,7 +346,7 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onD
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             <button
-                                onClick={onDeposit}
+                                onClick={() => onDeposit()}
                                 className="bg-white text-emerald-900 hover:scale-[1.02] transition-all text-[10px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl shadow-xl flex flex-col items-center justify-center gap-2 active:scale-95"
                             >
                                 <ArrowDownLeft size={20} /> DEPOSITAR
