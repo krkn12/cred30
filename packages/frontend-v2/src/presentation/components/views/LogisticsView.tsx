@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 import { OrderTrackingMap } from '../features/marketplace/OrderTrackingMap';
+import { AvailableDeliveriesMap } from '../features/logistics/AvailableDeliveriesMap';
 
 interface Delivery {
     orderId: number;
@@ -47,6 +48,7 @@ export const LogisticsView = () => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [trackingOrder, setTrackingOrder] = useState<Delivery | null>(null);
+    const [showAvailableMap, setShowAvailableMap] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -271,6 +273,15 @@ export const LogisticsView = () => {
                     </div>
                 ) : (
                     <div className="space-y-4">
+                        {/* View on Map Button */}
+                        <button
+                            onClick={() => setShowAvailableMap(true)}
+                            className="w-full bg-primary-500 hover:bg-primary-400 text-black px-4 py-3 rounded-xl font-black text-sm transition-all shadow-xl shadow-primary-500/20 flex items-center justify-center gap-2 uppercase tracking-wider"
+                        >
+                            <MapIcon size={20} />
+                            VER TODAS NO MAPA
+                        </button>
+
                         {availableDeliveries.map(delivery => (
                             <div key={delivery.orderId} className="glass p-5 rounded-2xl">
                                 <div className="flex gap-4">
@@ -468,6 +479,34 @@ export const LogisticsView = () => {
                     orderId={trackingOrder.orderId.toString()}
                     onClose={() => setTrackingOrder(null)}
                     userRole="courier"
+                />
+            )}
+
+            {/* Available Deliveries Map */}
+            {showAvailableMap && (
+                <AvailableDeliveriesMap
+                    deliveries={availableDeliveries.map(d => ({
+                        id: d.orderId.toString(),
+                        delivery_fee: d.deliveryFee,
+                        delivery_address: d.deliveryAddress,
+                        pickup_address: d.pickupAddress,
+                        pickup_lat: null,
+                        pickup_lng: null,
+                        delivery_lat: null,
+                        delivery_lng: null,
+                        item_title: d.itemTitle,
+                        image_url: d.imageUrl || null,
+                        seller_name: d.sellerName,
+                        buyer_name: d.buyerName,
+                        buyer_phone: d.contactPhone || '',
+                        seller_phone: ''
+                    }))}
+                    onAccept={async (deliveryId) => {
+                        await handleAccept(parseInt(deliveryId));
+                        setShowAvailableMap(false);
+                        await loadData();
+                    }}
+                    onClose={() => setShowAvailableMap(false)}
                 />
             )}
         </div>

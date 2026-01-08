@@ -110,8 +110,9 @@ export class MarketplaceController {
             const pool = getDbPool(c);
 
             const result = await pool.query(`
-                SELECT o.id, o.delivery_fee, o.delivery_address, o.pickup_address, o.created_at,
-                       o.contact_phone as buyer_phone,
+                SELECT o.id, o.delivery_fee, o.delivery_address, o.pickup_address, 
+                       o.pickup_lat, o.pickup_lng, o.delivery_lat, o.delivery_lng,
+                       o.created_at, o.contact_phone as buyer_phone,
                        COALESCE(u_seller.phone, u_seller.pix_key) as seller_phone,
                        l.title as item_title, l.image_url,
                        u_seller.name as seller_name, u_buyer.name as buyer_name
