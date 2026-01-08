@@ -64,4 +64,8 @@ export class AdminApi extends ApiBase {
     async getAdminReviews(): Promise<any> {
         return await this.request<any>('/admin/reviews');
     }
+
+    async getAllProductsAdmin(): Promise<any> {
+        return await this.request<any>('/admin/products');
+    }
 }
