@@ -17,6 +17,10 @@ interface Delivery {
     courierEarnings: string;
     deliveryAddress: string;
     pickupAddress: string;
+    pickupLat?: number | null;
+    pickupLng?: number | null;
+    deliveryLat?: number | null;
+    deliveryLng?: number | null;
     contactPhone?: string;
     sellerName: string;
     sellerId: number;
@@ -489,10 +493,10 @@ export const LogisticsView = () => {
                         delivery_fee: d.deliveryFee,
                         delivery_address: d.deliveryAddress,
                         pickup_address: d.pickupAddress,
-                        pickup_lat: null,
-                        pickup_lng: null,
-                        delivery_lat: null,
-                        delivery_lng: null,
+                        pickup_lat: d.pickupLat || null,
+                        pickup_lng: d.pickupLng || null,
+                        delivery_lat: d.deliveryLat || null,
+                        delivery_lng: d.deliveryLng || null,
                         item_title: d.itemTitle,
                         image_url: d.imageUrl || null,
                         seller_name: d.sellerName,
