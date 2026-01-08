@@ -71,6 +71,12 @@ class ApiService extends ApiBase {
   getMarketplaceCleanupStats = this.admin.getMarketplaceCleanupStats.bind(this.admin);
   cleanupOldListings = this.admin.cleanupOldListings.bind(this.admin);
 
+
+  // Aliases required by AdminUserManagement.tsx
+  adminGetUsers = this.admin.getUsers.bind(this.admin);
+  adminUpdateUserAccess = this.admin.updateUserAccess.bind(this.admin);
+  adminCreateAttendant = this.admin.createAttendant.bind(this.admin);
+
   // Auth & Account
   resetPassword = this.auth.resetPassword.bind(this.auth);
   changePassword = this.users.changePassword.bind(this.users);
