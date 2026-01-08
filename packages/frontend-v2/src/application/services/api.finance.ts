@@ -67,4 +67,8 @@ export class FinanceApi extends ApiBase {
         const response = await this.post<any>('/transactions/deposit', { amount });
         return response.data;
     }
+
+    async submitReview(transactionId: number, rating: number, comment: string, isPublic: boolean): Promise<any> {
+        return this.post<any>('/transactions/review', { transactionId, rating, comment, isPublic });
+    }
 }
