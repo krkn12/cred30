@@ -792,6 +792,10 @@ export const initializeDatabase = async () => {
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(20);
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS picked_up_at TIMESTAMP;
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP;
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS pickup_lat DECIMAL(10, 8);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS pickup_lng DECIMAL(11, 8);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_lat DECIMAL(10, 8);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_lng DECIMAL(11, 8);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
     `);
