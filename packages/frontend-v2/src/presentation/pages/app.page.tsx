@@ -1,8 +1,8 @@
-import { useState, useEffect, lazy, Suspense, useMemo } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from '../components/layout/main-layout.component';
 import { UpdateNotification } from '../components/ui/update-notification.component';
-import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, repayInstallment, changePassword, upgradePro, claimAdReward, apiService, requestDeposit } from '../../application/services/storage.service';
+import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, changePassword, apiService, requestDeposit, requestWithdrawal } from '../../application/services/storage.service';
 import { syncService } from '../../application/services/sync.service';
 import { AppState } from '../../domain/types/common.types';
 import { QUOTA_PRICE } from '../../shared/constants/app.constants';
@@ -231,7 +231,6 @@ export default function App() {
 
   const handleBuyQuota = async (qty: number, method: 'PIX' | 'BALANCE' = 'BALANCE') => {
     try {
-      const { total } = calculateTotalToPay(qty * QUOTA_PRICE, method.toLowerCase() as any);
       const pm = method.toLowerCase() as any;
       const response = await buyQuota(qty, method === 'BALANCE', pm !== 'balance' ? pm : undefined);
 
@@ -296,9 +295,9 @@ export default function App() {
     }
   };
 
-  const handleRequestLoan = async (amount: number, reason: string) => {
+  const handleRequestLoan = async (amount: number, installments: number = 12) => {
     try {
-      const result = await requestLoan(amount, reason);
+      const result = await requestLoan(amount, installments, 100);
       if (result.success) {
         setShowSuccess({ isOpen: true, title: 'Solicitado', message: result.message });
         refreshState();
@@ -310,9 +309,9 @@ export default function App() {
     }
   };
 
-  const handleRepayLoan = async (loanId: number) => {
+  const handleRepayLoan = async (loanId: string) => {
     try {
-      const result = await repayLoan(loanId);
+      const result = await repayLoan(loanId, true);
       if (result.success) {
         setShowSuccess({ isOpen: true, title: 'Pago', message: result.message });
         refreshState();
@@ -326,13 +325,9 @@ export default function App() {
 
   const handleWithdraw = async (amount: number, pixKey: string) => {
     try {
-      const result = await apiService.requestWithdraw(amount, pixKey);
-      if (result.success) {
-        setShowSuccess({ isOpen: true, title: 'Solicitado', message: 'Saque solicitado com sucesso!' });
-        refreshState();
-      } else {
-        setShowError({ isOpen: true, title: 'Erro', message: result.message });
-      }
+      await requestWithdrawal(amount, pixKey);
+      setShowSuccess({ isOpen: true, title: 'Solicitado', message: 'Saque solicitado com sucesso!' });
+      refreshState();
     } catch (e: any) {
       setShowError({ isOpen: true, title: 'Erro', message: e.message });
     }
@@ -452,9 +447,11 @@ export default function App() {
                   <Suspense fallback={null}>
                     <LoansView
                       loans={state.loans.filter(l => l.userId === state.currentUser?.id)}
-                      onRepay={handleRepayLoan}
-                      onRequest={handleRequestLoan}
-                      maxLoanAmount={state.currentUser!.maxLoanAmount}
+                      onRequest={(amount, installments, guaranteePercentage) => handleRequestLoan(amount, installments)}
+                      onPay={(loanId, _full, _method) => handleRepayLoan(loanId)}
+                      onPayInstallment={() => { }}
+                      userBalance={state.currentUser?.balance || 0}
+                      currentUser={state.currentUser}
                     />
                   </Suspense>
                 } />
