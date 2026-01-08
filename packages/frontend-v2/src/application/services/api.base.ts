@@ -24,13 +24,21 @@ export interface ApiResponse<T> {
 }
 
 export class ApiBase {
-    protected token: string | null = null;
-
-    constructor() {
+    // Shared source of truth via localStorage
+    protected get token(): string | null {
         const stored = localStorage.getItem('authToken');
-        // Prevent "null" or "undefined" strings from being accepted as valid tokens
-        this.token = (stored && stored !== 'null' && stored !== 'undefined') ? stored : null;
+        return (stored && stored !== 'null' && stored !== 'undefined') ? stored : null;
     }
+
+    protected set token(value: string | null) {
+        if (value) {
+            localStorage.setItem('authToken', value);
+        } else {
+            localStorage.removeItem('authToken');
+        }
+    }
+
+    constructor() { }
 
     public isAuthenticated(): boolean {
         return !!this.token;
