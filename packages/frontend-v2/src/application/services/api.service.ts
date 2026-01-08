@@ -47,6 +47,7 @@ class ApiService extends ApiBase {
   requestWithdrawal = this.finance.requestWithdrawal.bind(this.finance);
   confirmWithdrawal = this.finance.confirmWithdrawal.bind(this.finance);
   requestDeposit = this.finance.requestDeposit.bind(this.finance);
+  submitReview = this.finance.submitReview.bind(this.finance);
 
   // Marketplace
   getMarketplaceListings = this.marketplace.getListings.bind(this.marketplace);

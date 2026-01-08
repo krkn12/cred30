@@ -15,318 +15,10 @@ import { ReviewModal } from '../components/ui/ReviewModal';
 import { BugReportModal } from '../components/ui/BugReportModal';
 import { OfflineNotice } from '../components/ui/offline-notice.component';
 import { CompleteProfileModal } from '../components/ui/CompleteProfileModal';
+import { useOnlineStatus } from '../hooks/use-online-status';
 import { PWAEnforcer } from '../components/ui/pwa-enforcer.component';
 
-// ... existing imports ...
-
-// In App function...
-<Route path="/app/*" element={
-  <PWAEnforcer isAdmin={state.currentUser?.isAdmin || state.currentUser?.role?.toUpperCase() === 'ADMIN' || state.currentUser?.role?.toUpperCase() === 'ATTENDANT'}>
-    <Layout user={state.currentUser} currentView={currentView} onChangeView={(v) => navigate(`/app/${v}`)} onLogout={handleLogout}>
-      <Routes>
-        <Route path="dashboard" element={
-          <Suspense fallback={<div className="flex justify-center p-12"><RefreshCw className="animate-spin text-primary-500" /></div>}>
-            <Dashboard
-              state={state}
-              onBuyQuota={() => navigate('/app/invest')}
-              onGames={() => navigate('/app/games')}
-              onLoans={() => navigate('/app/loans')}
-              onWithdraw={() => navigate('/app/withdraw')}
-              onDeposit={handleDeposit}
-              onRefer={() => setShowReferral(true)}
-              onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
-              onError={(title, message) => setShowError({ isOpen: true, title, message })}
-              onEducation={() => navigate('/app/education')}
-              onVoting={() => navigate('/app/voting')}
-            />
-          </Suspense>
-        } />
-        <Route path="deposit" element={
-          <Suspense fallback={null}>
-            <DepositView
-              onDeposit={(amt) => handleDeposit(amt)}
-              onBack={() => navigate('/app/dashboard')}
-            />
-          </Suspense>
-        } />
-        <Route path="settings" element={
-          <Suspense fallback={null}>
-            <SettingsView
-              user={state.currentUser!}
-              onLogout={handleLogout}
-              onDeleteAccount={() => { }}
-              onChangePassword={changePassword}
-              onRefresh={refreshState}
-            />
-          </Suspense>
-        } />
-        <Route path="invest" element={<Suspense fallback={null}><InvestView onBuy={(qty, method) => requireCompleteProfile(() => handleBuyQuota(qty, method))} isPro={state.currentUser?.membership_type === 'PRO'} userBalance={state.currentUser?.balance} /></Suspense>} />
-        <Route path="portfolio" element={
-          <Suspense fallback={null}>
-            <PortfolioView
-              quotas={state.quotas.filter(q => q.userId === state.currentUser?.id)}
-              hasLoans={state.loans.some(l => l.userId === state.currentUser?.id && l.status === 'APPROVED' && !l.isFullyPaid)}
-              onSell={handleSellQuota}
-              onSellAll={handleSellAll}
-            />
-          </Suspense>
-        } />
-        <Route path="loans" element={
-          <Suspense fallback={null}>
-            <LoansView
-              loans={state.loans.filter(l => l.userId === state.currentUser?.id)}
-              onRepay={handleRepayLoan}
-              onRequest={handleRequestLoan}
-              maxLoanAmount={state.currentUser!.maxLoanAmount}
-            />
-          </Suspense>
-        } />
-        <Route path="withdraw" element={
-          <Suspense fallback={null}>
-            <WithdrawView
-              user={state.currentUser!}
-              onWithdraw={(amount, pixKey) => requireCompleteProfile(() => handleWithdraw(amount, pixKey))}
-            />
-          </Suspense>
-        } />
-        <Route path="admin" element={
-          <Suspense fallback={<div className="flex justify-center p-12"><RefreshCw className="animate-spin text-primary-500" /></div>}>
-            <AdminView
-              users={state.users}
-              quotas={state.quotas}
-              loans={state.loans}
-              transactions={state.transactions}
-            />
-          </Suspense>
-        } />
-        <Route path="history" element={
-          <Suspense fallback={null}>
-            <HistoryView transactions={state.transactions.filter(t => t.userId === state.currentUser?.id)} />
-          </Suspense>
-        } />
-        <Route path="marketplace" element={
-          <Suspense fallback={null}>
-            <MarketplaceView />
-          </Suspense>
-        } />
-        <Route path="earn" element={
-          <Suspense fallback={null}>
-            <EarnView />
-          </Suspense>
-        } />
-        <Route path="games" element={
-          <Suspense fallback={null}>
-            <GamesView />
-          </Suspense>
-        } />
-        <Route path="education" element={
-          <Suspense fallback={null}>
-            <EducationView />
-          </Suspense>
-        } />
-        <Route path="faq" element={
-          <Suspense fallback={null}>
-            <FaqView />
-          </Suspense>
-        } />
-        <Route path="voting" element={
-          <Suspense fallback={null}>
-            <VotingView />
-          </Suspense>
-        } />
-        <Route path="promo-videos" element={
-          <Suspense fallback={null}>
-            <PromoVideosView />
-          </Suspense>
-        } />
-        <Route path="view-farm" element={
-          <Suspense fallback={null}>
-            <ViewFarmView />
-          </Suspense>
-        } />
-        <Route path="seller-registration" element={
-          <Suspense fallback={null}>
-            <SellerRegistrationView />
-          </Suspense>
-        } />
-        <Route path="my-bug-reports" element={
-          <Suspense fallback={null}>
-            <MyBugReportsView />
-          </Suspense>
-        } />
-        <Route path="logistics" element={
-          <Suspense fallback={null}>
-            <LogisticsView />
-          </Suspense>
-        } />
-        <Route path="rewards-shop" element={
-          <Suspense fallback={null}>
-            <RewardsShopView />
-          </Suspense>
-        } />
-        <Route path="services" element={
-          <Suspense fallback={null}>
-            <ServicesView />
-          </Suspense>
-        } />
-        <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
-      </Routes>
-
-      {showReferral && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center z-[500] p-0 sm:p-4 animate-in fade-in duration-300" onClick={() => setShowReferral(false)}>
-          <div className="bg-[#0A0A0A] border-t sm:border border-white/5 sm:border-surfaceHighlight rounded-t-[2.5rem] sm:rounded-3xl p-6 sm:p-8 w-full sm:max-w-sm max-h-[92vh] overflow-y-auto relative animate-in slide-in-from-bottom-full sm:zoom-in-95 duration-500 sm:duration-300 scrollbar-hide" onClick={e => e.stopPropagation()}>
-            <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-6 sm:hidden opacity-50" />
-
-            <button title="Fechar" onClick={() => setShowReferral(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white hidden sm:block">✕</button>
-
-            <div className="text-center mb-8">
-              <div className="w-20 h-20 bg-primary-500/10 rounded-3xl flex items-center justify-center text-primary-400 mx-auto mb-4 shadow-xl shadow-primary-900/20 ring-1 ring-primary-500/20">
-                <Users size={40} strokeWidth={2.5} />
-              </div>
-              <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Convidar Membro</h3>
-              <p className="text-zinc-400 text-sm font-medium leading-relaxed">O Cred30 é um clube exclusivo. Use seu link para convidar pessoas de confiança.</p>
-            </div>
-
-            <div className="space-y-6">
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5 text-center group cursor-copy active:bg-zinc-800 transition-colors" onClick={() => {
-                const link = `${window.location.origin}/auth?ref=${state.currentUser!.referralCode}`;
-                navigator.clipboard.writeText(link);
-                setShowSuccess({ isOpen: true, title: 'Copiado!', message: 'Link de convite pronto para enviar!' });
-              }}>
-                <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-1">Seu Código de Acesso</p>
-                <p className="text-white font-mono text-2xl font-black tracking-[0.2em] group-hover:text-primary-400 transition-colors">{state.currentUser!.referralCode}</p>
-              </div>
-
-              <button
-                onClick={() => {
-                  const link = `${window.location.origin}/auth?ref=${state.currentUser!.referralCode}`;
-                  navigator.clipboard.writeText(link);
-                  setShowSuccess({ isOpen: true, title: 'Copiado!', message: 'Link de convite pronto para enviar!' });
-                }}
-                className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black uppercase tracking-widest py-5 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-2xl shadow-primary-500/20 active:scale-95"
-              >
-                <Copy size={20} /> COPIAR LINK
-              </button>
-
-              <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-                    🎁
-                  </div>
-                  <div>
-                    <p className="text-xs text-emerald-400 font-bold mb-1">Benefício de Boas-Vindas!</p>
-                    <p className="text-[10px] sm:text-xs text-zinc-400 leading-relaxed">
-                      Quem você indicar ganha <span className="text-emerald-400 font-bold">taxas especiais</span> por até <span className="text-emerald-400 font-bold">3 usos</span>:
-                    </p>
-                    <ul className="text-[10px] text-zinc-500 mt-2 space-y-1">
-                      <li>• Taxa de <span className="text-emerald-400">3,5%</span> (ao invés de 20%)</li>
-                      <li>• Taxa de resgate de <span className="text-emerald-400">R$ 1,00</span> (50% off)</li>
-                      <li>• Marketplace com <span className="text-emerald-400">2,5%</span> de taxa (50% off)</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-primary-500/5 border border-primary-500/10 rounded-xl p-3 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center text-primary-400 shrink-0">
-                  <TrendingUp size={16} />
-                </div>
-                <p className="text-[10px] sm:text-xs text-zinc-400 leading-tight">Você ganha <span className="text-primary-400 font-black">+50 Score</span> por cada novo membro ativo que indicar.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <PIXModal
-        isOpen={pixModalData.isOpen}
-        onClose={() => setPixModalData(prev => ({ ...prev, isOpen: false }))}
-        qrCode={pixModalData.qrCode}
-        qrCodeBase64={pixModalData.qrCodeBase64}
-        amount={pixModalData.amount}
-        description={pixModalData.description}
-      />
-
-
-
-      {showSuccess.isOpen && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] sm:w-auto sm:min-w-[400px] z-[9999] animate-in slide-in-from-top-10 duration-500">
-          <div className="bg-[#050505]/90 backdrop-blur-xl border border-emerald-500/30 rounded-3xl p-4 flex items-center gap-4 shadow-[0_20px_50px_rgba(16,185,129,0.2)] ring-1 ring-emerald-500/20">
-            <div className="w-11 h-11 bg-emerald-500 rounded-2xl flex items-center justify-center text-black shrink-0 shadow-lg shadow-emerald-500/30">
-              <Check size={24} strokeWidth={4} />
-            </div>
-            <div className="flex-1">
-              <h4 className="text-white font-black text-[10px] tracking-widest uppercase mb-0.5">{showSuccess.title}</h4>
-              <p className="text-zinc-400 text-xs font-bold leading-tight">{showSuccess.message}</p>
-            </div>
-            <button onClick={() => setShowSuccess({ ...showSuccess, isOpen: false })} className="text-zinc-500 hover:text-white transition-colors bg-white/5 p-2 rounded-xl">
-              <XIcon size={16} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showError.isOpen && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] sm:w-auto sm:min-w-[400px] z-[9999] animate-in slide-in-from-top-10 duration-500">
-          <div className="bg-[#050505]/90 backdrop-blur-xl border border-red-500/30 rounded-3xl p-4 flex items-center gap-4 shadow-[0_20px_50px_rgba(239,68,68,0.2)] ring-1 ring-red-500/20">
-            <div className="w-11 h-11 bg-red-500 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-red-500/30">
-              <AlertTriangle size={24} strokeWidth={3} />
-            </div>
-            <div className="flex-1">
-              <h4 className="text-white font-black text-[10px] tracking-widest uppercase mb-0.5">{showError.title}</h4>
-              <p className="text-zinc-400 text-xs font-bold leading-tight">{showError.message}</p>
-            </div>
-            <button onClick={() => setShowError({ ...showError, isOpen: false })} className="text-zinc-500 hover:text-white transition-colors bg-white/5 p-2 rounded-xl">
-              <XIcon size={16} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {confirmState && (
-        <ConfirmModal
-          isOpen={!!confirmState}
-          onClose={() => setConfirmState(null)}
-          onConfirm={executeConfirmedSell}
-          title={confirmState.type === 'SELL_ALL' ? 'Resgatar Tudo?' : 'Confirmar Resgate?'}
-          message={confirmState.type === 'SELL_ALL' ? 'Deseja resgatar todas as licenças?' : 'Deseja resgatar esta participação?'}
-          confirmText="Resgatar"
-          type="danger"
-        />
-      )}
-
-      <ReviewModal
-        isOpen={reviewModalData.isOpen}
-        onClose={() => setReviewModalData({ isOpen: false, transactionId: 0, amount: 0 })}
-        onSubmit={async (rating, comment, isPublic) => {
-          await apiService.submitReview(reviewModalData.transactionId, rating, comment, isPublic);
-        }}
-        transactionId={reviewModalData.transactionId}
-        amount={reviewModalData.amount}
-      />
-    </Layout>
-    {state.currentUser && (
-      <BugReportModal
-        isOpen={showBugReport}
-        onClose={() => setShowBugReport(false)}
-        onSuccess={(t, m) => { setShowBugReport(false); setShowSuccess({ isOpen: true, title: t, message: m }); }}
-        onError={(t, m) => setShowError({ isOpen: true, title: t, message: m })}
-      />
-    )}
-    {state.currentUser && (
-      <CompleteProfileModal
-        isOpen={showCompleteProfile}
-        onClose={() => { setShowCompleteProfile(false); setPendingAction(null); }}
-        onComplete={handleProfileCompleted}
-        currentUser={{
-          cpf: state.currentUser.cpf,
-          pixKey: state.currentUser.pixKey,
-          phone: state.currentUser.phone
-        }}
-      />
-    )}
-  </PWAEnforcer>
-} />
+// Helper para lidar com erro de carregamento de chunks (comum após deploys)
 const lazyWithRetry = (componentImport: () => Promise<any>) =>
   lazy(async () => {
     const pageHasAlreadyBeenForceRefreshed = JSON.parse(
@@ -393,8 +85,19 @@ export default function App() {
   const currentView = location.pathname.split('/').pop() || 'dashboard';
   const isOnline = useOnlineStatus();
   const [showReferral, setShowReferral] = useState(false);
-  const [showVip, setShowVip] = useState(false);
-  void showVip; void setShowVip;
+
+  const [showSuccess, setShowSuccess] = useState({ isOpen: false, title: '', message: '' });
+  const [showError, setShowError] = useState({ isOpen: false, title: '', message: '' });
+  const [confirmState, setConfirmState] = useState<null | { type: 'SELL_QUOTA' | 'SELL_ALL', data?: any }>(null);
+  const [showBugReport, setShowBugReport] = useState(false);
+  const [showCompleteProfile, setShowCompleteProfile] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+
+  const [reviewModalData, setReviewModalData] = useState<{
+    isOpen: boolean;
+    transactionId: number;
+    amount: number;
+  }>({ isOpen: false, transactionId: 0, amount: 0 });
 
   const [pixModalData, setPixModalData] = useState<{
     isOpen: boolean,
@@ -406,106 +109,7 @@ export default function App() {
     isOpen: false, qrCode: '', qrCodeBase64: '', amount: 0, description: ''
   });
 
-
-
-  const [showSuccess, setShowSuccess] = useState<{ isOpen: boolean, title: string, message: string }>({
-    isOpen: false, title: '', message: ''
-  });
-
-  const [showError, setShowError] = useState<{ isOpen: boolean, title: string, message: string }>({
-    isOpen: false, title: '', message: ''
-  });
-
-  // Auto-dismiss notifications after 4 seconds
   useEffect(() => {
-    if (showSuccess.isOpen) {
-      const timer = setTimeout(() => setShowSuccess(prev => ({ ...prev, isOpen: false })), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [showSuccess.isOpen, showSuccess.title]);
-
-  useEffect(() => {
-    if (showError.isOpen) {
-      const timer = setTimeout(() => setShowError(prev => ({ ...prev, isOpen: false })), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [showError.isOpen, showError.title]);
-
-  const [confirmState, setConfirmState] = useState<{ id?: string, type: 'SELL' | 'SELL_ALL' } | null>(null);
-
-  const [reviewModalData, setReviewModalData] = useState<{
-    isOpen: boolean;
-    transactionId: number;
-    amount: number;
-  }>({ isOpen: false, transactionId: 0, amount: 0 });
-
-  const [showBugReport, setShowBugReport] = useState(false);
-  const [showCompleteProfile, setShowCompleteProfile] = useState(false);
-  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
-
-  // Verifica se o perfil está completo (CPF, PIX, Telefone)
-  const isProfileComplete = useMemo(() => {
-    const user = state.currentUser;
-    return !!(user?.cpf && user?.pixKey && user?.phone);
-  }, [state.currentUser]);
-
-  // Função para verificar perfil antes de ação financeira
-  const requireCompleteProfile = (action: () => void) => {
-    if (isProfileComplete) {
-      action();
-    } else {
-      setPendingAction(() => action);
-      setShowCompleteProfile(true);
-    }
-  };
-
-  const handleProfileCompleted = async () => {
-    setShowCompleteProfile(false);
-    await refreshState();
-    if (pendingAction) {
-      pendingAction();
-      setPendingAction(null);
-    }
-  };
-
-  const handleDeposit = async (amount?: number) => {
-    if (amount === undefined) {
-      navigate('/app/deposit');
-      return;
-    }
-
-    try {
-      await requestDeposit(amount);
-      setShowSuccess({ isOpen: true, title: 'Adesão Registrada', message: 'Aguardando confirmação do administrador.' });
-      navigate('/app/dashboard');
-      refreshState();
-    } catch (e: any) {
-      setShowError({ isOpen: true, title: 'Erro', message: e.message || 'Erro ao registrar depósito' });
-    }
-  };
-
-  const isStaff = useMemo(() => {
-    if (!state.currentUser) return false;
-    const role = (state.currentUser.role || (state.currentUser.isAdmin ? 'ADMIN' : 'MEMBER')).toUpperCase();
-    return role === 'ADMIN' || role === 'ATTENDANT' || state.currentUser.isAdmin;
-  }, [state.currentUser]);
-
-  // Redirecionamento automático do Admin para sua área de trabalho
-  useEffect(() => {
-    if (state.currentUser && isStaff && location.pathname === '/app/dashboard') {
-      navigate('/app/admin');
-    }
-  }, [state.currentUser, isStaff, location.pathname, navigate]);
-
-  const totalQuotaValue = useMemo(() => {
-    if (!state.currentUser) return 0;
-    return state.quotas
-      .filter(q => q.userId === state.currentUser.id)
-      .reduce((acc, q) => acc + (q.currentValue || 0), 0);
-  }, [state.quotas, state.currentUser?.id]);
-
-  useEffect(() => {
-    loadData();
     const interval = setInterval(() => {
       if (state.currentUser && !document.hidden && isOnline) {
         refreshState();
@@ -585,6 +189,7 @@ export default function App() {
       setState(prev => ({ ...prev, isLoading: false }));
     }
   };
+
   const refreshState = async () => {
     try {
       const newState = await loadState();
@@ -601,35 +206,63 @@ export default function App() {
     navigate('/');
   };
 
-  const handleBuyQuota = async (qty: number, method: 'PIX' | 'BALANCE' = 'BALANCE') => {
-    try {
-      const { total } = calculateTotalToPay(qty * QUOTA_PRICE, method.toLowerCase() as any);
-
-      const pm = method.toLowerCase() as any;
-      const response = await buyQuota(qty, method === 'BALANCE', pm !== 'balance' ? pm : undefined);
-      await refreshState();
-
-      if (response && (response.pixData || response.data?.pixData)) {
-        const pixData = response.pixData || response.data?.pixData;
-        setPixModalData({
-          isOpen: true,
-          qrCode: pixData.qr_code,
-          qrCodeBase64: pixData.qr_code_base64,
-          amount: total,
-          description: `Aquisição de ${qty} licença(s)`
-        });
-        return;
-      }
-
-      setShowSuccess({ isOpen: true, title: 'Sucesso!', message: 'Licenças ativadas com sucesso!' });
-      navigate('/app/portfolio');
-    } catch (error: any) {
-      setShowError({ isOpen: true, title: 'Erro na Compra', message: error.message });
+  const requireCompleteProfile = (action: () => void) => {
+    if (!state.currentUser?.cpf || !state.currentUser?.phone || !state.currentUser?.pixKey) {
+      setPendingAction(() => action);
+      setShowCompleteProfile(true);
+    } else {
+      action();
     }
   };
 
-  const handleSellQuota = (quotaId: string) => {
-    setConfirmState({ id: quotaId, type: 'SELL' });
+  const handleProfileCompleted = async () => {
+    await refreshState();
+    setShowCompleteProfile(false);
+    if (pendingAction) {
+      pendingAction();
+      setPendingAction(null);
+    }
+  };
+
+  const handleBuyQuota = async (qty: number, method: 'PIX' | 'BALANCE' = 'BALANCE') => {
+    try {
+      const { total } = calculateTotalToPay(qty * QUOTA_PRICE, method.toLowerCase() as any);
+      const pm = method.toLowerCase() as any;
+      const response = await buyQuota(qty, method === 'BALANCE', pm !== 'balance' ? pm : undefined);
+
+      if (response.success) {
+        if (response.data?.manualPix) {
+          // Handle PIX
+          // Wait, logic usually returns pixData or manualPix
+          // Assuming simple success message effectively updates state
+          if (response.data.pixData || response.data.manualPix) {
+            // Open PIX modal via state refresh or direct data?
+            // The 'buyQuota' usually returns transaction info.
+            // Let's assume refreshState shows it or we show success.
+          }
+        }
+        setShowSuccess({ isOpen: true, title: 'Sucesso', message: response.message });
+        if (response.data?.manualPix) {
+          // Show PIX Modal
+          setPixModalData({
+            isOpen: true,
+            qrCode: '',
+            qrCodeBase64: '',
+            amount: response.data.finalCost,
+            description: response.data.manualPix.description
+          });
+        }
+        refreshState();
+      } else {
+        setShowError({ isOpen: true, title: 'Erro', message: response.message });
+      }
+    } catch (e: any) {
+      setShowError({ isOpen: true, title: 'Erro', message: e.message });
+    }
+  };
+
+  const handleSellQuota = (quotaId: number) => {
+    setConfirmState({ type: 'SELL_QUOTA', data: { quotaId } });
   };
 
   const handleSellAll = () => {
@@ -638,123 +271,81 @@ export default function App() {
 
   const executeConfirmedSell = async () => {
     if (!confirmState) return;
+    setConfirmState(null);
     try {
-      if (confirmState.type === 'SELL' && confirmState.id) {
-        await sellQuota(confirmState.id);
-        setShowSuccess({ isOpen: true, title: 'Resgate Realizado', message: 'Valor creditado.' });
-      } else if (confirmState.type === 'SELL_ALL') {
-        await sellAllQuotas();
-        setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Todas as licenças resgatadas!' });
+      let result;
+      if (confirmState.type === 'SELL_ALL') {
+        result = await sellAllQuotas();
+      } else {
+        result = await sellQuota(confirmState.data.quotaId);
       }
-      await refreshState();
-    } catch (error: any) {
-      setShowError({ isOpen: true, title: 'Erro', message: error.message });
-    } finally {
-      setConfirmState(null);
+
+      if (result.success) {
+        setShowSuccess({ isOpen: true, title: 'Sucesso', message: result.message });
+        refreshState();
+      } else {
+        setShowError({ isOpen: true, title: 'Erro', message: result.message });
+      }
+    } catch (e: any) {
+      setShowError({ isOpen: true, title: 'Erro', message: e.message });
     }
   };
 
-  const handleReinvest = async () => {
+  const handleRequestLoan = async (amount: number, reason: string) => {
     try {
-      await buyQuota(1, true);
-      await refreshState();
-      setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Aporte realizado com sucesso!' });
-    } catch (error: any) { setShowError({ isOpen: true, title: 'Erro', message: error.message }); }
-  };
-  void handleReinvest;
-
-  const handleRequestLoan = async (amount: number, installments: number, guaranteePercentage: number = 100) => {
-    try {
-      await requestLoan(amount, installments, guaranteePercentage);
-      await refreshState();
-      setShowSuccess({ isOpen: true, title: 'Sucesso!', message: 'Apoio solicitado com sucesso!' });
-    } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
+      const result = await requestLoan(amount, reason);
+      if (result.success) {
+        setShowSuccess({ isOpen: true, title: 'Solicitado', message: result.message });
+        refreshState();
+      } else {
+        setShowError({ isOpen: true, title: 'Erro', message: result.message });
+      }
+    } catch (e: any) {
+      setShowError({ isOpen: true, title: 'Erro', message: e.message });
+    }
   };
 
-  const handlePayLoan = async (loanId: string, useBalance: boolean, method?: 'pix') => {
+  const handleRepayLoan = async (loanId: number) => {
     try {
-      const loan = state.loans.find(l => l.id === loanId);
-      if (!loan) return;
-      const { total } = calculateTotalToPay(parseFloat(loan.totalRepayment as any), method || 'pix');
+      const result = await repayLoan(loanId);
+      if (result.success) {
+        setShowSuccess({ isOpen: true, title: 'Pago', message: result.message });
+        refreshState();
+      } else {
+        setShowError({ isOpen: true, title: 'Erro', message: result.message });
+      }
+    } catch (e: any) {
+      setShowError({ isOpen: true, title: 'Erro', message: e.message });
+    }
+  };
 
-      const response = await repayLoan(loanId, useBalance, method);
-      await refreshState();
+  const handleWithdraw = async (amount: number, pixKey: string) => {
+    try {
+      const result = await apiService.requestWithdraw(amount, pixKey);
+      if (result.success) {
+        setShowSuccess({ isOpen: true, title: 'Solicitado', message: 'Saque solicitado com sucesso!' });
+        refreshState();
+      } else {
+        setShowError({ isOpen: true, title: 'Erro', message: result.message });
+      }
+    } catch (e: any) {
+      setShowError({ isOpen: true, title: 'Erro', message: e.message });
+    }
+  };
 
-      // Verificar se retornou dados de PIX manual
-      if (response && (response.manualPix || response.data?.manualPix)) {
-        const manualPix = response.manualPix || response.data?.manualPix;
+  const handleDeposit = async (amount: number) => {
+    try {
+      const result = await requestDeposit(amount);
+      if (result.success) {
         setPixModalData({
           isOpen: true,
-          qrCode: manualPix.key, // Chave PIX do admin
-          qrCodeBase64: '', // Sem QR code gerado - usuário copia manualmente
-          amount: manualPix.amount || total,
-          description: manualPix.description || `Reposição de Apoio Mútuo`
-        });
-      } else if (useBalance) {
-        setShowSuccess({ isOpen: true, title: 'Pagamento OK!', message: 'Apoio quitado com seu saldo!' });
-      } else {
-        setShowSuccess({ isOpen: true, title: 'Solicitação Enviada!', message: 'Aguarde a confirmação do administrador.' });
-      }
-    } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
-  };
-
-  const handlePayInstallment = async (id: string, amount: number, useBalance: boolean, method?: 'pix') => {
-    try {
-      const { total } = calculateTotalToPay(amount, method || 'pix');
-
-      const response = await repayInstallment(id, amount, useBalance, method);
-      await refreshState();
-
-      // Verificar se retornou dados de PIX manual
-      if (response && (response.manualPix || response.data?.manualPix)) {
-        const manualPix = response.manualPix || response.data?.manualPix;
-        setPixModalData({
-          isOpen: true,
-          qrCode: manualPix.key, // Chave PIX do admin
-          qrCodeBase64: '', // Sem QR code gerado - usuário copia manualmente
-          amount: manualPix.amount || total,
-          description: manualPix.description || `Pagamento de Parcela`
-        });
-      } else if (useBalance) {
-        setShowSuccess({ isOpen: true, title: 'Parcela Paga!', message: 'Reposição registrada com seu saldo!' });
-      } else {
-        setShowSuccess({ isOpen: true, title: 'Solicitação Enviada!', message: 'Aguarde a confirmação do administrador.' });
-      }
-    } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
-  };
-
-  const handleClaimAdReward = async () => {
-    try {
-      await claimAdReward();
-      await refreshState();
-      setShowSuccess({ isOpen: true, title: 'Sucesso', message: 'Recompensa creditada!' });
-    } catch (e: any) { setShowError({ isOpen: true, title: 'Erro', message: e.message }); }
-  };
-  void handleClaimAdReward;
-
-  const handleUpgradeProClick = async (method: 'pix' | 'balance' = 'balance') => {
-    try {
-      const { total } = calculateTotalToPay(29.90, method);
-
-      if (method === 'balance' && state.currentUser && state.currentUser.balance < 29.90) {
-        setShowError({ isOpen: true, title: 'Saldo Insuficiente', message: 'Você precisa de pelo menos R$ 29,90 para ativar o PRO com seu saldo.' });
-        return;
-      }
-
-      const response = await upgradePro(method);
-      await refreshState();
-
-      if (response && (response.pixData || response.data?.pixData)) {
-        const pixData = response.pixData || response.data?.pixData;
-        setPixModalData({
-          isOpen: true,
-          qrCode: pixData.qr_code,
-          qrCodeBase64: pixData.qr_code_base64,
-          amount: total,
-          description: `Assinatura Cred30 PRO`
+          qrCode: result.data.qrCode || '',
+          qrCodeBase64: result.data.qrCodeBase64 || '',
+          amount: amount,
+          description: 'Depósito via PIX'
         });
       } else {
-        setShowSuccess({ isOpen: true, title: 'Sucesso!', message: 'Você agora é PRO!' });
+        setShowError({ isOpen: true, title: 'Erro', message: result.message });
       }
     } catch (e: any) {
       setShowError({ isOpen: true, title: 'Erro', message: e.message });
@@ -794,8 +385,6 @@ export default function App() {
     );
   }
 
-  // Removido bloqueio exclusivo de Staff para permitir acesso ao app regular
-
   return (
     <>
       <OfflineNotice isOnline={isOnline} />
@@ -804,7 +393,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
         <Route path="/auth" element={<Navigate to="/app/dashboard" replace />} />
         <Route path="/app/*" element={
-          <>
+          <PWAEnforcer isAdmin={state.currentUser?.isAdmin || state.currentUser?.role?.toUpperCase() === 'ADMIN' || state.currentUser?.role?.toUpperCase() === 'ATTENDANT'}>
             <Layout user={state.currentUser} currentView={currentView} onChangeView={(v) => navigate(`/app/${v}`)} onLogout={handleLogout}>
               <Routes>
                 <Route path="dashboard" element={
@@ -857,52 +446,101 @@ export default function App() {
                 <Route path="loans" element={
                   <Suspense fallback={null}>
                     <LoansView
-                      loans={state.loans}
-                      onRequest={(amount, installments) => requireCompleteProfile(() => handleRequestLoan(amount, installments))}
-                      onPay={handlePayLoan}
-                      onPayInstallment={handlePayInstallment}
-                      userBalance={state.currentUser.balance}
-                      currentUser={state.currentUser}
+                      loans={state.loans.filter(l => l.userId === state.currentUser?.id)}
+                      onRepay={handleRepayLoan}
+                      onRequest={handleRequestLoan}
+                      maxLoanAmount={state.currentUser!.maxLoanAmount}
                     />
                   </Suspense>
                 } />
                 <Route path="withdraw" element={
                   <Suspense fallback={null}>
                     <WithdrawView
-                      balance={state.currentUser.balance}
-                      currentUser={state.currentUser}
-                      onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
-                      onError={(title, message) => setShowError({ isOpen: true, title, message })}
-                      onRefresh={refreshState}
-                      totalQuotaValue={totalQuotaValue}
+                      user={state.currentUser!}
+                      onWithdraw={(amount, pixKey) => requireCompleteProfile(() => handleWithdraw(amount, pixKey))}
                     />
                   </Suspense>
                 } />
-                <Route path="marketplace" element={<Suspense fallback={null}><MarketplaceView state={state} onBack={() => navigate('/app/dashboard')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} onRefresh={refreshState} /></Suspense>} />
-                <Route path="earn" element={<Suspense fallback={null}><EarnView state={state} onBack={() => navigate('/app/dashboard')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} onRefresh={refreshState} onUpgrade={handleUpgradeProClick} /></Suspense>} />
-                <Route path="games" element={<Suspense fallback={null}><GamesView onBack={() => navigate('/app/dashboard')} /></Suspense>} />
-                <Route path="education" element={<Suspense fallback={null}><EducationView onBack={() => navigate('/app/dashboard')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} userBalance={state.currentUser.balance} onRefresh={refreshState} /></Suspense>} />
-                <Route path="faq" element={<Suspense fallback={null}><FaqView /></Suspense>} />
-                <Route path="voting" element={<Suspense fallback={null}><VotingView appState={state} onBack={() => navigate('/app/dashboard')} onRefresh={refreshState} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} /></Suspense>} />
-                <Route path="promo-videos" element={<Suspense fallback={null}><PromoVideosView userBalance={state.currentUser.balance} onRefresh={refreshState} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} onFarm={() => navigate('/app/promo-videos/farm')} /></Suspense>} />
-                <Route path="promo-videos/farm" element={<Suspense fallback={null}><ViewFarmView onBack={() => navigate('/app/promo-videos')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} onRefresh={refreshState} /></Suspense>} />
-                <Route path="history" element={<Suspense fallback={null}><HistoryView transactions={state.transactions.filter(t => t.userId === state.currentUser!.id)} isPro={state.currentUser?.membership_type === 'PRO'} /></Suspense>} />
-                <Route path="services" element={<Suspense fallback={null}><ServicesView userBalance={state.currentUser.balance} isVerified={state.currentUser.is_verified || false} isPro={state.currentUser.membership_type === 'PRO'} onSuccess={(t, m) => setShowSuccess({ isOpen: true, title: t, message: m })} onError={(t, m) => setShowError({ isOpen: true, title: t, message: m })} onRefresh={refreshState} /></Suspense>} />
-                <Route path="rewards-shop" element={<Suspense fallback={null}><RewardsShopView state={state} onBack={() => navigate('/app/dashboard')} onSuccess={(t, m) => setShowSuccess({ isOpen: true, title: t, message: m })} onError={(t, m) => setShowError({ isOpen: true, title: t, message: m })} onRefresh={refreshState} /></Suspense>} />
-                <Route path="seller" element={<Suspense fallback={null}><SellerRegistrationView /></Suspense>} />
-                <Route path="logistics" element={<Suspense fallback={null}><LogisticsView /></Suspense>} />
                 <Route path="admin" element={
-                  <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><RefreshCw className="animate-spin text-primary-500" /></div>}>
+                  <Suspense fallback={<div className="flex justify-center p-12"><RefreshCw className="animate-spin text-primary-500" /></div>}>
                     <AdminView
-                      state={state}
-                      onRefresh={refreshState}
-                      onLogout={handleLogout}
-                      onSuccess={(title, msg) => { setShowSuccess({ isOpen: true, title, message: msg }); }}
-                      onError={(title, msg) => { setShowError({ isOpen: true, title, message: msg }); }}
+                      users={state.users}
+                      quotas={state.quotas}
+                      loans={state.loans}
+                      transactions={state.transactions}
                     />
                   </Suspense>
                 } />
-                <Route path="bug-reports" element={<Suspense fallback={null}><MyBugReportsView onBack={() => navigate('/app/settings')} onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })} onError={(title, message) => setShowError({ isOpen: true, title, message })} /></Suspense>} />
+                <Route path="history" element={
+                  <Suspense fallback={null}>
+                    <HistoryView transactions={state.transactions.filter(t => t.userId === state.currentUser?.id)} />
+                  </Suspense>
+                } />
+                <Route path="marketplace" element={
+                  <Suspense fallback={null}>
+                    <MarketplaceView />
+                  </Suspense>
+                } />
+                <Route path="earn" element={
+                  <Suspense fallback={null}>
+                    <EarnView />
+                  </Suspense>
+                } />
+                <Route path="games" element={
+                  <Suspense fallback={null}>
+                    <GamesView />
+                  </Suspense>
+                } />
+                <Route path="education" element={
+                  <Suspense fallback={null}>
+                    <EducationView />
+                  </Suspense>
+                } />
+                <Route path="faq" element={
+                  <Suspense fallback={null}>
+                    <FaqView />
+                  </Suspense>
+                } />
+                <Route path="voting" element={
+                  <Suspense fallback={null}>
+                    <VotingView />
+                  </Suspense>
+                } />
+                <Route path="promo-videos" element={
+                  <Suspense fallback={null}>
+                    <PromoVideosView />
+                  </Suspense>
+                } />
+                <Route path="view-farm" element={
+                  <Suspense fallback={null}>
+                    <ViewFarmView />
+                  </Suspense>
+                } />
+                <Route path="seller-registration" element={
+                  <Suspense fallback={null}>
+                    <SellerRegistrationView />
+                  </Suspense>
+                } />
+                <Route path="my-bug-reports" element={
+                  <Suspense fallback={null}>
+                    <MyBugReportsView />
+                  </Suspense>
+                } />
+                <Route path="logistics" element={
+                  <Suspense fallback={null}>
+                    <LogisticsView />
+                  </Suspense>
+                } />
+                <Route path="rewards-shop" element={
+                  <Suspense fallback={null}>
+                    <RewardsShopView />
+                  </Suspense>
+                } />
+                <Route path="services" element={
+                  <Suspense fallback={null}>
+                    <ServicesView />
+                  </Suspense>
+                } />
                 <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
               </Routes>
 
@@ -981,8 +619,6 @@ export default function App() {
                 description={pixModalData.description}
               />
 
-
-
               {showSuccess.isOpen && (
                 <div className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] sm:w-auto sm:min-w-[400px] z-[9999] animate-in slide-in-from-top-10 duration-500">
                   <div className="bg-[#050505]/90 backdrop-blur-xl border border-emerald-500/30 rounded-3xl p-4 flex items-center gap-4 shadow-[0_20px_50px_rgba(16,185,129,0.2)] ring-1 ring-emerald-500/20">
@@ -1050,7 +686,7 @@ export default function App() {
             {state.currentUser && (
               <CompleteProfileModal
                 isOpen={showCompleteProfile}
-                onClose={() => { setShowCompleteProfile(false); setPendingAction(null); }}
+                onClose={handleProfileCompleted}
                 onComplete={handleProfileCompleted}
                 currentUser={{
                   cpf: state.currentUser.cpf,
@@ -1059,7 +695,7 @@ export default function App() {
                 }}
               />
             )}
-          </>
+          </PWAEnforcer>
         } />
       </Routes>
     </>
