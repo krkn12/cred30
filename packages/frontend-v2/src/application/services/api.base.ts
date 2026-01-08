@@ -61,13 +61,21 @@ export class ApiBase {
         options: RequestInit = {}
     ): Promise<ApiResponse<T>> {
         const url = `${API_BASE_URL}${endpoint}`;
+
+        // Timeout de 15 segundos para evitar loading infinito
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
         const config: RequestInit = {
             headers: this.getHeaders(),
+            signal: controller.signal,
             ...options,
         };
 
         try {
             const response = await fetch(url, config);
+            clearTimeout(timeoutId);
+
             let data;
             const contentType = response.headers.get('content-type');
 
@@ -95,6 +103,10 @@ export class ApiBase {
 
             return data;
         } catch (error: any) {
+            if (error.name === 'AbortError') {
+                error.message = 'O servidor demorou muito para responder. Verifique sua conexão.';
+            }
+
             if (error.name === 'TypeError' && !navigator.onLine) {
                 error.message = 'Sua conexão com a internet caiu. O App exibirá dados salvos quando possível.';
             }
