@@ -113,40 +113,6 @@ export const PWAEnforcer: React.FC<PWAEnforcerProps> = ({ isAdmin, children }) =
     const isDesktop = isDesktopDevice();
 
     // ========================================
-    // ADMIN: Se está no PWA, avisa para usar web
-    // ========================================
-    if (isAdmin && isInstalled) {
-        return (
-            <>
-                {children}
-                <div className="fixed bottom-0 left-0 right-0 z-[9999] p-4 animate-in slide-in-from-bottom duration-500">
-                    <div className="max-w-md mx-auto bg-gradient-to-br from-amber-950 to-amber-900 border border-amber-500/30 rounded-2xl p-5 shadow-2xl shadow-amber-900/50">
-                        <div className="flex items-start gap-4">
-                            <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center shrink-0">
-                                <Monitor className="text-amber-400" size={24} />
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="text-white font-bold text-base mb-1">Área Administrativa</h3>
-                                <p className="text-amber-200/80 text-sm leading-relaxed mb-4">
-                                    Para melhor experiência como admin, recomendamos usar o navegador web em vez do aplicativo.
-                                </p>
-                                <a
-                                    href={window.location.href}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-3 rounded-xl text-sm text-center transition block"
-                                >
-                                    Abrir no Navegador
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </>
-        );
-    }
-
-    // ========================================
     // CLIENTE DESKTOP: BLOQUEIA acesso web (força PWA)
     // ========================================
     if (!isAdmin && isDesktop && !isInstalled) {
@@ -218,7 +184,7 @@ export const PWAEnforcer: React.FC<PWAEnforcerProps> = ({ isAdmin, children }) =
     // ========================================
     // CLIENTE MOBILE SEM PWA: Mostra aviso para instalar
     // ========================================
-    if (!isAdmin && isMobile && !isInstalled && isInstallable) {
+    if (isMobile && !isInstalled && isInstallable) {
         return (
             <>
                 {children}
