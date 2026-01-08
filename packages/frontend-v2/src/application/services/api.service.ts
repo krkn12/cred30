@@ -63,6 +63,13 @@ class ApiService extends ApiBase {
   getAdminReviews = this.admin.getAdminReviews.bind(this.admin);
   getHealthMetrics = this.admin.getHealthMetrics.bind(this.admin);
   getAllProductsAdmin = this.admin.getAllProductsAdmin.bind(this.admin);
+  getUsers = this.admin.getUsers.bind(this.admin);
+  updateUserAccess = this.admin.updateUserAccess.bind(this.admin);
+  createAttendant = this.admin.createAttendant.bind(this.admin);
+  confirmPayout = this.admin.confirmPayout.bind(this.admin);
+  processAction = this.admin.processAction.bind(this.admin);
+  getMarketplaceCleanupStats = this.admin.getMarketplaceCleanupStats.bind(this.admin);
+  cleanupOldListings = this.admin.cleanupOldListings.bind(this.admin);
 
   // Auth & Account
   resetPassword = this.auth.resetPassword.bind(this.auth);
@@ -94,7 +101,7 @@ class ApiService extends ApiBase {
   };
 
   // Notificações (stub - retorna função vazia para evitar erros)
-  listenToNotifications(callback: (notification: any) => void): () => void {
+  listenToNotifications(_callback: (notification: any) => void): () => void {
     // TODO: Implementar sistema de notificações real (WebSocket, SSE ou polling)
     console.warn('listenToNotifications não implementado ainda');
     return () => { }; // Retorna função de cleanup vazia
