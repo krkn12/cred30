@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import {
     Truck, Package, Phone, Clock, CheckCircle, XCircle,
     ArrowRight, Loader2, DollarSign, Star, AlertCircle, RefreshCw,
-    Navigation, User, Store
+    Navigation, User, Store, Map as MapIcon
 } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
+import { OrderTrackingMap } from '../features/marketplace/OrderTrackingMap';
 
 interface Delivery {
     orderId: number;
@@ -45,6 +46,7 @@ export const LogisticsView = () => {
     const [actionLoading, setActionLoading] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [trackingOrder, setTrackingOrder] = useState<Delivery | null>(null);
 
     useEffect(() => {
         loadData();
@@ -374,6 +376,13 @@ export const LogisticsView = () => {
                                         {delivery.deliveryStatus === 'ACCEPTED' && (
                                             <>
                                                 <button
+                                                    onClick={() => setTrackingOrder(delivery)}
+                                                    className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all flex items-center justify-center"
+                                                    title="Ver no Mapa"
+                                                >
+                                                    <MapIcon size={18} />
+                                                </button>
+                                                <button
                                                     onClick={() => handleCancel(delivery.orderId)}
                                                     disabled={actionLoading === delivery.orderId}
                                                     className="text-red-400 hover:text-red-300 text-sm font-bold py-2 px-4 rounded-lg border border-red-500/20 transition-colors"
@@ -394,20 +403,29 @@ export const LogisticsView = () => {
                                             </>
                                         )}
                                         {delivery.deliveryStatus === 'IN_TRANSIT' && (
-                                            <button
-                                                onClick={() => handleDelivered(delivery.orderId)}
-                                                disabled={actionLoading === delivery.orderId}
-                                                className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
-                                            >
-                                                {actionLoading === delivery.orderId ? (
-                                                    <Loader2 size={16} className="animate-spin" />
-                                                ) : (
-                                                    <>
-                                                        <CheckCircle size={16} />
-                                                        Entreguei
-                                                    </>
-                                                )}
-                                            </button>
+                                            <>
+                                                <button
+                                                    onClick={() => setTrackingOrder(delivery)}
+                                                    className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all flex items-center justify-center mr-1"
+                                                    title="Ver no Mapa"
+                                                >
+                                                    <MapIcon size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelivered(delivery.orderId)}
+                                                    disabled={actionLoading === delivery.orderId}
+                                                    className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
+                                                >
+                                                    {actionLoading === delivery.orderId ? (
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <CheckCircle size={16} />
+                                                            Entreguei
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </>
                                         )}
                                         {delivery.deliveryStatus === 'DELIVERED' && (
                                             <span className="text-xs text-yellow-400 bg-yellow-500/10 px-3 py-2 rounded-lg">
@@ -444,6 +462,14 @@ export const LogisticsView = () => {
                     </li>
                 </ul>
             </div>
+            {/* Tracking Modal */}
+            {trackingOrder && (
+                <OrderTrackingMap
+                    orderId={trackingOrder.orderId.toString()}
+                    onClose={() => setTrackingOrder(null)}
+                    userRole="courier"
+                />
+            )}
         </div>
     );
 };
