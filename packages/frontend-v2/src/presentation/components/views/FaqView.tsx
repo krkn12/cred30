@@ -48,7 +48,7 @@ export const FaqView: React.FC = () => {
         {
             icon: <DollarSign size={18} />,
             question: "Quando posso resgatar meus bônus?",
-            answer: "Os bônus de participação podem ser resgatados assim que atingirem o valor mínimo. Já o Capital Social das participações possui um período de carência (vesting) para garantir a estabilidade do fundo comum. Consulte a aba 'Carteira' para ver seus prazos de resgate."
+            answer: "Os bônus de participação podem ser resgatados imediatamente ao atingir o mínimo. Já o Capital Social (venda da cota) possui uma Janela Anual de Liquidez que se abre todo dia 21 de Dezembro. Resgates solicitados fora dessa janela estão sujeitos a multa por saída antecipada."
         },
         {
             icon: <Users size={18} />,
