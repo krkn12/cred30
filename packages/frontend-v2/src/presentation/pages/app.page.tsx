@@ -5,8 +5,6 @@ import { UpdateNotification } from '../components/ui/update-notification.compone
 import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, changePassword, apiService, requestDeposit, requestWithdrawal } from '../../application/services/storage.service';
 import { syncService } from '../../application/services/sync.service';
 import { AppState } from '../../domain/types/common.types';
-import { QUOTA_PRICE } from '../../shared/constants/app.constants';
-import { calculateTotalToPay } from '../../shared/utils/financial.utils';
 import { Check, X as XIcon, RefreshCw, AlertTriangle, Users, Copy, TrendingUp } from 'lucide-react';
 import { PIXModal } from '../components/ui/pix-modal.component';
 import { AuthScreen } from '../components/views/AuthScreen';
@@ -447,7 +445,7 @@ export default function App() {
                   <Suspense fallback={null}>
                     <LoansView
                       loans={state.loans.filter(l => l.userId === state.currentUser?.id)}
-                      onRequest={(amount, installments, guaranteePercentage) => handleRequestLoan(amount, installments)}
+                      onRequest={(amount, installments, _guaranteePercentage) => handleRequestLoan(amount, installments)}
                       onPay={(loanId, _full, _method) => handleRepayLoan(loanId)}
                       onPayInstallment={() => { }}
                       userBalance={state.currentUser?.balance || 0}
