@@ -205,7 +205,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                             </div>
 
                             <div>
-                                <label className="text-xs text-zinc-400 font-medium mb-2 block">Cotas em Garantia (Menos Garantia = Maior Taxa)</label>
+                                <label className="text-xs text-zinc-400 font-medium mb-2 block">Participações em Garantia (Menos Garantia = Maior Taxa)</label>
                                 <div className="grid grid-cols-3 gap-2">
                                     {[50, 60, 70, 80, 90, 100].map(pct => (
                                         <button
@@ -417,7 +417,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
 
                         <h3 className="text-xl font-bold text-white mb-4">Finalizar Compromisso</h3>
                         <p className="text-zinc-400 text-sm mb-6">
-                            Você está prestes a repor o valor total de <strong className="text-white">{selectedLoan.totalRepayment.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong> para a cooperativa.
+                            Você está prestes a repor o valor total de <strong className="text-white">{selectedLoan.totalRepayment.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong> para o clube.
                         </p>
 
                         <div className="space-y-4">
