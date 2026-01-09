@@ -46,7 +46,7 @@ async function getOrCreateUser(client: any, email: string, name: string, cpf: st
 }
 
 async function seed() {
-    console.log('🌱 Iniciando Seed "Manual Increment" com Correções...');
+    console.log('🌱 Iniciando Seed "Manual Increment" com Endereços...');
     const client = await pool.connect();
 
     try {
@@ -86,23 +86,22 @@ async function seed() {
             const pickup = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
             const delivery = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
 
-            // Calculando valores obrigatórios
             const amount = prod.price;
             const fee = amount * 0.10;
             const sellerAmt = amount - fee;
 
-            // Orders
+            // Orders (WAITING_SHIPPING + Address)
             await client.query(`
                 INSERT INTO marketplace_orders
                 (id, buyer_id, listing_id, seller_id, amount, fee_amount, seller_amount, status, delivery_type, delivery_status, delivery_fee, created_at, 
-                 pickup_lat, pickup_lng, delivery_lat, delivery_lng)
-                VALUES ($1, $2, $3, $4, $5, $10, $11, 'WAITING_SHIPPING', 'DELIVERY', 'AVAILABLE', 5.00, NOW(), $6, $7, $8, $9)
-            `, [nextOrderId, buyerId, listId, sellerId, amount, pickup.lat, pickup.lng, delivery.lat, delivery.lng, fee, sellerAmt]);
+                 pickup_lat, pickup_lng, pickup_address, delivery_lat, delivery_lng, delivery_address)
+                VALUES ($1, $2, $3, $4, $5, $10, $11, 'WAITING_SHIPPING', 'DELIVERY', 'AVAILABLE', 5.00, NOW(), $6, $7, $12, $8, $9, $13)
+            `, [nextOrderId, buyerId, listId, sellerId, amount, pickup.lat, pickup.lng, delivery.lat, delivery.lng, fee, sellerAmt, pickup.address, delivery.address]);
 
             console.log(`Order ${nextOrderId} criado: ${prod.title}`);
             nextOrderId++;
         }
-        console.log('✅ SUCESSO DO SEED! 5 Pedidos em Belém.');
+        console.log('✅ SUCESSO DO SEED! 5 Pedidos em Belém com Endereços.');
 
     } catch (error: any) {
         console.error('❌ Erro:', error);
