@@ -48,6 +48,7 @@ class ApiService extends ApiBase {
   confirmWithdrawal = this.finance.confirmWithdrawal.bind(this.finance);
   requestDeposit = this.finance.requestDeposit.bind(this.finance);
   submitReview = this.finance.submitReview.bind(this.finance);
+  getAvailableLimit = this.finance.getAvailableLimit.bind(this.finance);
 
   // Marketplace
   getMarketplaceListings = this.marketplace.getListings.bind(this.marketplace);
@@ -120,9 +121,11 @@ class ApiService extends ApiBase {
       return () => { };
     }
 
-    // Monta a URL do SSE com o token
+    // Monta a URL do SSE com o token (usa mesma base que outras requisições)
     const baseUrl = (import.meta as any).env.VITE_API_URL || 'https://cred30-backend.onrender.com';
-    const sseUrl = `${baseUrl}/api/notifications/stream`;
+    // Remove trailing /api se existir, pois vamos adicionar o path completo
+    const cleanBaseUrl = baseUrl.replace(/\/api\/?$/, '');
+    const sseUrl = `${cleanBaseUrl}/api/notifications/stream`;
 
     let eventSource: EventSource | null = null;
     let reconnectTimeout: any = null;
