@@ -115,12 +115,45 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
             attributionControl: false
         }).setView([initialLat, initialLng], 15);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
+        // Usar CartoDB Dark Matter para modo escuro premium
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            maxZoom: 20
         }).addTo(mapRef.current);
 
         // Tentar geocodificar o destino e origem
         const points: L.LatLngExpression[] = [];
+        let startPoint: L.LatLngExpression | null = null;
+        let midPoint: L.LatLngExpression | null = null;
+        let endPoint: L.LatLngExpression | null = null;
+
+        if (data.courier_lat) {
+            courierMarkerRef.current = L.marker([data.courier_lat, data.courier_lng], { icon: courierIcon })
+                .addTo(mapRef.current);
+            startPoint = [data.courier_lat, data.courier_lng];
+            points.push(startPoint);
+        }
+
+        if (data.pickup_address) {
+            try {
+                // Tenta usar coords se disponíveis, senão geocode (fallback) - O código original usava geocode sempre, o que é lento.
+                // Vou manter o geocode original por segurança, mas idealmente viria do backend.
+                const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(data.pickup_address)}&limit=1`);
+                const geoData = await geoRes.json();
+                if (geoData && geoData.length > 0) {
+                    const pickLat = parseFloat(geoData[0].lat);
+                    const pickLng = parseFloat(geoData[0].lon);
+                    midPoint = [pickLat, pickLng];
+                    L.marker([pickLat, pickLng], {
+                        icon: L.divIcon({
+                            html: `<div class="bg-amber-500 p-2 rounded-full shadow-lg border-2 border-white"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg></div>`,
+                            className: '', iconSize: [32, 32], iconAnchor: [16, 16]
+                        })
+                    }).addTo(mapRef.current).bindPopup('Retirada');
+                    points.push(midPoint);
+                }
+            } catch (err) { console.error('Pick geocode error', err); }
+        }
 
         if (data.delivery_address) {
             try {
@@ -129,42 +162,44 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
                 if (geoData && geoData.length > 0) {
                     const destLat = parseFloat(geoData[0].lat);
                     const destLng = parseFloat(geoData[0].lon);
+                    endPoint = [destLat, destLng];
                     L.marker([destLat, destLng], { icon: destinationIcon })
                         .addTo(mapRef.current)
                         .bindPopup('Entrega');
-                    points.push([destLat, destLng]);
+                    points.push(endPoint);
                 }
             } catch (err) { console.error('Dest geocode error', err); }
         }
 
-        if (data.pickup_address) {
+        // Desenhar rota OSRM
+        if (startPoint && (midPoint || endPoint)) {
+            const dest = midPoint || endPoint;
+            // @ts-ignore
+            const sLat = startPoint[0], sLng = startPoint[1];
+            // @ts-ignore
+            const eLat = dest[0], eLng = dest[1];
+
             try {
-                const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(data.pickup_address)}&limit=1`);
-                const geoData = await geoRes.json();
-                if (geoData && geoData.length > 0) {
-                    const pickLat = parseFloat(geoData[0].lat);
-                    const pickLng = parseFloat(geoData[0].lon);
-                    L.marker([pickLat, pickLng], {
-                        icon: L.divIcon({
-                            html: `<div class="bg-amber-500 p-2 rounded-full shadow-lg border-2 border-white"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg></div>`,
-                            className: '', iconSize: [32, 32], iconAnchor: [16, 16]
-                        })
-                    }).addTo(mapRef.current).bindPopup('Retirada');
-                    points.push([pickLat, pickLng]);
+                const response = await fetch(
+                    `https://router.project-osrm.org/route/v1/driving/${sLng},${sLat};${eLng},${eLat}?overview=full&geometries=geojson`
+                );
+                const routeData = await response.json();
+                if (routeData.routes && routeData.routes.length > 0) {
+                    const coordinates = routeData.routes[0].geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]);
+                    L.polyline(coordinates, {
+                        color: '#3b82f6',
+                        weight: 6,
+                        opacity: 0.8,
+                        lineCap: 'round'
+                    }).addTo(mapRef.current);
                 }
-            } catch (err) { console.error('Pick geocode error', err); }
+            } catch (e) { console.error('Erro rota OSRM', e); }
         }
 
-        if (data.courier_lat) {
-            courierMarkerRef.current = L.marker([data.courier_lat, data.courier_lng], { icon: courierIcon })
-                .addTo(mapRef.current);
-            points.push([data.courier_lat, data.courier_lng]);
-        }
-
-        if (points.length > 1) {
+        if (points.length > 0) {
             mapRef.current.fitBounds(L.latLngBounds(points), { padding: [50, 50] });
-        } else if (points.length === 1) {
-            mapRef.current.setView(points[0], 15);
+        } else {
+            mapRef.current.setView([-1.4558, -48.4902], 13);
         }
     };
 
