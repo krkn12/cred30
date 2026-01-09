@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Download, X, Smartphone, Lock, AlertTriangle } from 'lucide-react';
+import { Download, X, Lock, AlertTriangle } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
     prompt: () => Promise<void>;
@@ -109,7 +109,6 @@ interface PWAEnforcerProps {
  */
 export const PWAEnforcer: React.FC<PWAEnforcerProps> = ({ isAdmin, children }) => {
     const { isInstallable, isInstalled, promptInstall } = usePWAInstall();
-    const isMobile = isMobileDevice();
     const isDesktop = isDesktopDevice();
 
     // ========================================
@@ -183,39 +182,6 @@ export const PWAEnforcer: React.FC<PWAEnforcerProps> = ({ isAdmin, children }) =
         );
     }
 
-    // ========================================
-    // CLIENTE MOBILE SEM PWA: Mostra aviso para instalar
-    // ========================================
-    if (isMobile && !isInstalled && isInstallable) {
-        return (
-            <>
-                {children}
-                <div className="fixed bottom-0 left-0 right-0 z-[9999] p-4 animate-in slide-in-from-bottom duration-500">
-                    <div className="max-w-md mx-auto bg-gradient-to-br from-primary-950 to-primary-900 border border-primary-500/30 rounded-2xl p-5 shadow-2xl shadow-primary-900/50">
-                        <div className="flex items-start gap-4">
-                            <div className="w-12 h-12 bg-primary-500/20 rounded-xl flex items-center justify-center shrink-0">
-                                <Smartphone className="text-primary-400" size={24} />
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="text-white font-bold text-base mb-1">Instale o App Cred30</h3>
-                                <p className="text-primary-200/80 text-sm leading-relaxed mb-4">
-                                    Para a melhor experiência, instale o aplicativo na sua tela inicial. É rápido e sem downloads!
-                                </p>
-                                <button
-                                    onClick={promptInstall}
-                                    className="w-full bg-primary-500 hover:bg-primary-400 text-black font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition"
-                                >
-                                    <Download size={18} />
-                                    Instalar Agora
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </>
-        );
-    }
-
     // Caso padrão: permite acesso normal
     return <>{children}</>;
 };
@@ -255,25 +221,29 @@ export const PWAInstallBanner: React.FC<{ onDismiss?: () => void }> = ({ onDismi
     };
 
     return (
-        <div className="fixed top-0 left-0 right-0 z-[9998] p-3 bg-gradient-to-r from-primary-600 to-emerald-600 shadow-lg">
-            <div className="max-w-md mx-auto flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                    <Download size={20} className="text-white shrink-0" />
-                    <p className="text-white text-sm font-medium">
-                        {isIOS ? 'Adicione o Cred30 à sua tela de início!' : 'Adicione à tela inicial para acesso rápido!'}
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={handleInstallClick}
-                        className="bg-white text-black px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-zinc-100 transition-all active:scale-95 flex items-center gap-2"
-                    >
-                        <Download size={12} strokeWidth={3} />
-                        {isIOS ? 'Como Instalar' : 'Instalar'}
-                    </button>
-                    <button onClick={handleDismiss} className="text-white/60 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-all">
-                        <X size={18} />
-                    </button>
+        <div className="fixed top-safe left-1/2 -translate-x-1/2 z-[9999] w-[92%] max-w-sm mt-4">
+            <div className="bg-zinc-900/90 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl ring-1 ring-white/5 animate-in slide-in-from-top duration-500">
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary-500/10 rounded-xl flex items-center justify-center text-primary-400 border border-primary-500/20">
+                            <Download size={20} />
+                        </div>
+                        <div>
+                            <p className="text-white text-xs font-black uppercase tracking-tight">Instalar App</p>
+                            <p className="text-[10px] text-zinc-500 font-medium">Acesso rápido e mais seguro</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleInstallClick}
+                            className="bg-primary-500 text-black px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95"
+                        >
+                            {isIOS ? 'Como' : 'Instalar'}
+                        </button>
+                        <button onClick={handleDismiss} className="text-zinc-500 hover:text-white p-2">
+                            <X size={18} />
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
