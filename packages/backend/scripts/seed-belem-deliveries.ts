@@ -2,6 +2,7 @@
 import { Pool } from 'pg';
 import * as dotenv from 'dotenv';
 import path from 'path';
+import { DELIVERY_FEE_MIN } from '../src/utils/constants';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
@@ -97,8 +98,8 @@ async function seed() {
                 INSERT INTO marketplace_orders
                 (id, buyer_id, listing_id, seller_id, amount, fee_amount, seller_amount, status, delivery_type, delivery_status, delivery_fee, created_at, 
                  pickup_lat, pickup_lng, pickup_address, delivery_lat, delivery_lng, delivery_address)
-                VALUES ($1, $2, $3, $4, $5, $10, $11, 'WAITING_SHIPPING', 'DELIVERY', 'AVAILABLE', 5.00, NOW(), $6, $7, $12, $8, $9, $13)
-            `, [nextOrderId, buyerId, listId, sellerId, amount, pickup.lat, pickup.lng, delivery.lat, delivery.lng, fee, sellerAmt, pickup.address, delivery.address]);
+                VALUES ($1, $2, $3, $4, $5, $10, $11, 'WAITING_SHIPPING', 'DELIVERY', 'AVAILABLE', $14, NOW(), $6, $7, $12, $8, $9, $13)
+            `, [nextOrderId, buyerId, listId, sellerId, amount, pickup.lat, pickup.lng, delivery.lat, delivery.lng, fee, sellerAmt, pickup.address, delivery.address, DELIVERY_FEE_MIN]);
 
             console.log(`Order ${nextOrderId} criado: ${prod.title}`);
             nextOrderId++;

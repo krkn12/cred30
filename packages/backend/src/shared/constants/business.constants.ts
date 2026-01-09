@@ -25,8 +25,9 @@ export const PENALTY_RATE = Number(process.env.PENALTY_RATE) || 0.4;
 // Período de carência em milissegundos (1 ano)
 export const VESTING_PERIOD_MS = (Number(process.env.VESTING_PERIOD_DAYS) || 365) * 24 * 60 * 60 * 1000;
 
-// Taxa diária de atraso (0.5% ao dia de multa por atraso)
-export const DAILY_LATE_FEE = 0.005;
+// Taxa diária de atraso (0.066% ao dia = 2% ao mês - limite legal)
+export const DAILY_LATE_FEE = 0.00066;
+export const MAX_LATE_PENALTY = 0.02; // Limite máximo de 2%
 
 // Um mês em milissegundos (para simulação de tempo)
 export const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
@@ -49,7 +50,7 @@ export const LOAN_ORIGINATION_FEE_RATE = 0.03; // 3% de taxa de originação (se
 export const WITHDRAWAL_FIXED_FEE = 3.50; // Taxa fixa de R$ 3,50 por saque (se não tiver cotas suficientes)
 export const MIN_WITHDRAWAL_AMOUNT = 1.00; // Valor mínimo para saque = R$ 1,00
 export const MARKETPLACE_ESCROW_FEE_RATE = 0.12; // 12% de taxa de garantia (Escrow) para verificados
-export const MARKETPLACE_NON_VERIFIED_FEE_RATE = 0.275; // 27.5% de taxa para vendedores não verificados
+export const MARKETPLACE_NON_VERIFIED_FEE_RATE = 0.12; // 12% de taxa para vendedores não verificados
 export const MARKET_CREDIT_INTEREST_RATE = 0.015; // 1.5% ao mês (Mais barato que o apoio mútuo padrão)
 export const MARKET_CREDIT_MAX_INSTALLMENTS = 24; // Até 24x para facilitar compras grandes
 export const MARKET_CREDIT_MIN_SCORE = 450; // Score mínimo para comprar parcelado

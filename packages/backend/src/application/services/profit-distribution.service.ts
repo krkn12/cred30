@@ -35,7 +35,6 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
         // - QUOTA_PURCHASE: Comprou cota (pagou taxa)
         // - MARKET_PURCHASE: Comprou no marketplace (taxa vai pro vendedor/sistema)
         // - REPUTATION_CONSULT: Consultou reputação (serviço pago)
-        // - GAME_BET: Apostou (house edge)
         // - LOGISTIC_DELIVERY: Pagou frete
 
         const eligibleUsersQuery = `
@@ -47,7 +46,7 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
                 COALESCE((SELECT COUNT(*) FROM loans l WHERE l.user_id = q.user_id AND l.status = 'PAID'), 0) as paid_loans,
                 COALESCE((SELECT SUM(amount) FROM transactions t 
                  WHERE t.user_id = q.user_id 
-                 AND t.type IN ('MARKET_PURCHASE', 'MARKET_PURCHASE_CREDIT', 'GAME_BET', 'MEMBERSHIP_UPGRADE', 'REPUTATION_CONSULT', 'MARKET_BOOST')
+                 AND t.type IN ('MARKET_PURCHASE', 'MARKET_PURCHASE_CREDIT', 'MEMBERSHIP_UPGRADE', 'REPUTATION_CONSULT', 'MARKET_BOOST')
                 ), 0) as total_spent,
                 -- Calcular receita total gerada por este usuário
                 COALESCE((
@@ -57,7 +56,6 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
                         WHEN t.type = 'MEMBERSHIP_UPGRADE' THEN t.amount  -- 100% PRO vai pro sistema
                         WHEN t.type = 'MARKET_BOOST' THEN t.amount  -- 100% boost vai pro sistema
                         WHEN t.type = 'REPUTATION_CONSULT' THEN t.amount  -- 100% consulta vai pro sistema
-                        WHEN t.type = 'GAME_BET' THEN t.amount * 0.05  -- ~5% house edge
                         WHEN t.type = 'MARKET_PURCHASE' THEN t.amount * 0.12  -- ~12% taxa marketplace
                         WHEN t.type = 'MARKET_PURCHASE_CREDIT' THEN t.amount * 0.15  -- ~15% juros+taxa crediário
                         ELSE 0
@@ -94,7 +92,6 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
                         'MEMBERSHIP_UPGRADE',  -- Pagou PRO
                         'MARKET_BOOST',        -- Pagou impulsionamento
                         'REPUTATION_CONSULT',  -- Pagou consulta de reputação
-                        'GAME_BET',            -- Apostou (house edge)
                         'MARKET_PURCHASE',     -- Comprou no marketplace (taxa vai pro sistema)
                         'MARKET_PURCHASE_CREDIT', -- Crediário (juros + taxa)
                         'QUOTA_PURCHASE'       -- Comprou cota (taxa administrativa)

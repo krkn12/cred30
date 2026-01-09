@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, X, CheckCircle2, AlertTriangle, Info, Trash2 } from 'lucide-react';
+import { Bell, X, CheckCircle2, AlertTriangle, Info, Trash2, Package, DollarSign, CreditCard } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 
 interface Notification {
     id: string;
     title: string;
     message: string;
-    type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
+    type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR' | 'PAYMENT' | 'ORDER' | 'DELIVERY';
     read: boolean;
     date: number;
 }
@@ -15,6 +15,7 @@ export const NotificationBell: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [hasUnread, setHasUnread] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Carregar do localStorage ao iniciar
@@ -24,7 +25,9 @@ export const NotificationBell: React.FC = () => {
             try {
                 const parsed = JSON.parse(saved);
                 setNotifications(parsed);
-                setHasUnread(parsed.some((n: Notification) => !n.read));
+                const unread = parsed.filter((n: Notification) => !n.read).length;
+                setHasUnread(unread > 0);
+                setUnreadCount(unread);
             } catch (e) { console.error('Error loading notifications', e); }
         }
 
@@ -34,17 +37,27 @@ export const NotificationBell: React.FC = () => {
                 id: Date.now().toString(),
                 title: data.title || 'Nova Notificação',
                 message: data.body || data.message || '',
-                type: data.type === 'ALERT' ? 'WARNING' : (data.type === 'SUCCESS' ? 'SUCCESS' : 'INFO'),
+                type: data.type === 'PAYMENT' ? 'PAYMENT' : 
+                      data.type === 'ORDER' ? 'ORDER' : 
+                      data.type === 'DELIVERY' ? 'DELIVERY' :
+                      data.type === 'ALERT' ? 'WARNING' : 
+                      data.type === 'SUCCESS' ? 'SUCCESS' : 'INFO',
                 read: false,
                 date: Date.now()
             };
 
             setNotifications(prev => {
-                const updated = [newNotif, ...prev].slice(0, 50); // Manter ultimas 50
+                const updated = [newNotif, ...prev].slice(0, 50);
                 localStorage.setItem('user_notifications', JSON.stringify(updated));
                 return updated;
             });
             setHasUnread(true);
+            setUnreadCount(prev => prev + 1);
+
+            // Vibração no mobile
+            if (navigator.vibrate) {
+                navigator.vibrate([100, 50, 100]);
+            }
 
             // Tocar som suave
             try { new Audio('/notification.mp3').play().catch(() => { }); } catch { }
@@ -68,21 +81,49 @@ export const NotificationBell: React.FC = () => {
         const updated = notifications.map(n => ({ ...n, read: true }));
         setNotifications(updated);
         setHasUnread(false);
+        setUnreadCount(0);
         localStorage.setItem('user_notifications', JSON.stringify(updated));
     };
 
     const clearAll = () => {
         setNotifications([]);
         setHasUnread(false);
+        setUnreadCount(0);
         localStorage.removeItem('user_notifications');
+    };
+
+    const markAsRead = (id: string) => {
+        const updated = notifications.map(n => 
+            n.id === id ? { ...n, read: true } : n
+        );
+        setNotifications(updated);
+        const unread = updated.filter((n: Notification) => !n.read).length;
+        setHasUnread(unread > 0);
+        setUnreadCount(unread);
+        localStorage.setItem('user_notifications', JSON.stringify(updated));
     };
 
     const getIcon = (type: string) => {
         switch (type) {
-            case 'SUCCESS': return <CheckCircle2 size={16} className="text-emerald-400" />;
-            case 'WARNING': return <AlertTriangle size={16} className="text-amber-400" />;
-            case 'ERROR': return <X size={16} className="text-red-400" />;
-            default: return <Info size={16} className="text-blue-400" />;
+            case 'SUCCESS': return <CheckCircle2 size={20} className="text-emerald-400" />;
+            case 'WARNING': return <AlertTriangle size={20} className="text-amber-400" />;
+            case 'ERROR': return <X size={20} className="text-red-400" />;
+            case 'PAYMENT': return <DollarSign size={20} className="text-green-400" />;
+            case 'ORDER': return <Package size={20} className="text-primary-400" />;
+            case 'DELIVERY': return <CreditCard size={20} className="text-blue-400" />;
+            default: return <Info size={20} className="text-blue-400" />;
+        }
+    };
+
+    const getTypeColor = (type: string) => {
+        switch (type) {
+            case 'SUCCESS': return 'bg-emerald-500/10 border-emerald-500/20';
+            case 'WARNING': return 'bg-amber-500/10 border-amber-500/20';
+            case 'ERROR': return 'bg-red-500/10 border-red-500/20';
+            case 'PAYMENT': return 'bg-green-500/10 border-green-500/20';
+            case 'ORDER': return 'bg-primary-500/10 border-primary-500/20';
+            case 'DELIVERY': return 'bg-blue-500/10 border-blue-500/20';
+            default: return 'bg-blue-500/10 border-blue-500/20';
         }
     };
 
@@ -90,61 +131,94 @@ export const NotificationBell: React.FC = () => {
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative w-10 h-10 rounded-xl bg-zinc-800/50 hover:bg-zinc-700/50 border border-white/5 flex items-center justify-center transition-all active:scale-95 text-zinc-400 hover:text-white"
+                className={`
+                    relative w-12 h-12 rounded-xl flex items-center justify-center transition-all active:scale-95
+                    ${hasUnread 
+                        ? 'bg-primary-500/20 border border-primary-500/30 text-primary-400 shadow-lg shadow-primary-500/20' 
+                        : 'bg-zinc-800/50 hover:bg-zinc-700/50 border border-white/5 text-zinc-400 hover:text-white'}
+                `}
             >
-                <Bell size={20} />
+                <Bell size={24} />
                 {hasUnread && (
-                    <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
+                    <span className="absolute -top-1 -right-1 min-w-[22px] h-[22px] px-1.5 bg-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center shadow-lg shadow-red-500/40 animate-bounce">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
                 )}
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 top-12 w-[calc(100vw-2rem)] sm:w-96 max-w-[calc(100vw-2rem)] sm:max-w-96 bg-[#0A0A0A] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 -right-2 sm:right-0">
-                    <div className="p-4 border-b border-white/5 flex items-center justify-between bg-zinc-900/50">
-                        <h3 className="text-sm font-bold text-white">Notificações</h3>
-                        <div className="flex gap-3">
+                <div className="absolute right-2 sm:right-0 top-14 w-[calc(100vw-2rem)] sm:w-96 max-w-[calc(100vw-2rem)] sm:max-w-96 bg-[#0A0A0A] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                    <div className="p-4 border-b border-white/5 flex items-center justify-between bg-zinc-900/80 backdrop-blur-xl sticky top-0">
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-base font-bold text-white">Notificações</h3>
+                            {hasUnread && (
+                                <span className="px-2 py-0.5 bg-primary-500/20 text-primary-400 text-[10px] font-bold rounded-full">
+                                    {unreadCount} nova{unreadCount > 1 ? 's' : ''}
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex gap-2">
                             {notifications.length > 0 && (
-                                <button onClick={clearAll} className="text-[10px] text-zinc-500 hover:text-red-400 transition-colors flex items-center gap-1">
+                                <button 
+                                    onClick={clearAll} 
+                                    className="px-3 py-1.5 text-[11px] text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors flex items-center gap-1"
+                                >
                                     <Trash2 size={12} /> Limpar
                                 </button>
                             )}
                             {hasUnread && (
-                                <button onClick={markAllRead} className="text-[10px] text-primary-400 hover:text-primary-300 transition-colors font-bold">
-                                    Marcar lidas
+                                <button 
+                                    onClick={markAllRead} 
+                                    className="px-3 py-1.5 text-[11px] bg-primary-500/20 hover:bg-primary-500/30 text-primary-400 rounded-lg transition-colors font-bold"
+                                >
+                                    Marcar todas lidas
                                 </button>
                             )}
                         </div>
                     </div>
 
-                    <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
+                    <div className="max-h-[70vh] overflow-y-auto custom-scrollbar">
                         {notifications.length === 0 ? (
-                            <div className="p-8 text-center text-zinc-500 flex flex-col items-center">
-                                <Bell size={32} className="opacity-20 mb-3" />
-                                <p className="text-xs">Nenhuma notificação por enquanto.</p>
+                            <div className="p-10 text-center text-zinc-500 flex flex-col items-center">
+                                <div className="w-16 h-16 bg-zinc-800/50 rounded-full flex items-center justify-center mb-4">
+                                    <Bell size={32} className="opacity-30" />
+                                </div>
+                                <p className="text-sm">Nenhuma notificação ainda</p>
+                                <p className="text-[11px] text-zinc-600 mt-1">Você verá suas notificações aqui</p>
                             </div>
                         ) : (
                             <div className="divide-y divide-white/5">
                                 {notifications.map(notif => (
-                                    <div key={notif.id} className={`p-4 hover:bg-white/5 transition-colors ${!notif.read ? 'bg-primary-500/5' : ''}`}>
+                                    <div 
+                                        key={notif.id} 
+                                        onClick={() => markAsRead(notif.id)}
+                                        className={`
+                                            p-4 cursor-pointer transition-all duration-200
+                                            ${!notif.read ? 'bg-primary-500/5 hover:bg-primary-500/10' : 'hover:bg-white/5'}
+                                        `}
+                                    >
                                         <div className="flex gap-3 items-start">
-                                            <div className="mt-0.5 shrink-0">
+                                            <div className={`
+                                                w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border
+                                                ${getTypeColor(notif.type)}
+                                            `}>
                                                 {getIcon(notif.type)}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex justify-between items-start gap-2 mb-0.5">
-                                                    <h4 className={`text-xs font-bold ${!notif.read ? 'text-white' : 'text-zinc-400'}`}>
+                                                <div className="flex justify-between items-start gap-2 mb-1">
+                                                    <h4 className={`text-sm font-bold ${!notif.read ? 'text-white' : 'text-zinc-400'}`}>
                                                         {notif.title}
                                                     </h4>
-                                                    <span className="text-[9px] text-zinc-600 shrink-0">
+                                                    <span className="text-[10px] text-zinc-600 shrink-0">
                                                         {new Date(notif.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     </span>
                                                 </div>
-                                                <p className="text-[11px] text-zinc-500 leading-relaxed break-words">
+                                                <p className="text-xs text-zinc-500 leading-relaxed line-clamp-2">
                                                     {notif.message}
                                                 </p>
                                             </div>
                                             {!notif.read && (
-                                                <div className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0 mt-1.5" />
+                                                <div className="w-2 h-2 rounded-full bg-primary-500 shrink-0 mt-1.5 shadow-[0_0_8px_rgba(168,85,247,0.6)]" />
                                             )}
                                         </div>
                                     </div>

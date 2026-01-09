@@ -52,7 +52,6 @@ const AdminView = lazyWithRetry(() => import('../components/views/AdminView').th
 const HistoryView = lazyWithRetry(() => import('../components/views/HistoryView').then(m => ({ default: m.HistoryView })));
 const MarketplaceView = lazyWithRetry(() => import('../components/views/MarketplaceView').then(m => ({ default: m.MarketplaceView })));
 const EarnView = lazyWithRetry(() => import('../components/views/EarnView').then(m => ({ default: m.EarnView })));
-const GamesView = lazyWithRetry(() => import('../components/views/GamesView').then(m => ({ default: m.GamesView })));
 const EducationView = lazyWithRetry(() => import('../components/views/EducationView').then(m => ({ default: m.EducationView })));
 const FaqView = lazyWithRetry(() => import('../components/views/FaqView').then(m => ({ default: m.FaqView })));
 const VotingView = lazyWithRetry(() => import('../components/views/VotingView').then(m => ({ default: m.VotingView })));
@@ -430,7 +429,6 @@ export default function App() {
                     <Dashboard
                       state={state}
                       onBuyQuota={() => navigate('/app/invest')}
-                      onGames={() => navigate('/app/games')}
                       onLoans={() => navigate('/app/loans')}
                       onWithdraw={() => navigate('/app/withdraw')}
                       onDeposit={() => navigate('/app/deposit')}
@@ -534,11 +532,6 @@ export default function App() {
                       onError={(title, message) => setShowError({ isOpen: true, title, message })}
                       onUpgrade={handleUpgradePro}
                     />
-                  </Suspense>
-                } />
-                <Route path="games" element={
-                  <Suspense fallback={null}>
-                    <GamesView onBack={() => navigate(-1)} />
                   </Suspense>
                 } />
                 <Route path="education" element={
@@ -719,7 +712,7 @@ export default function App() {
                       <h4 className="text-white font-black text-[10px] tracking-widest uppercase mb-0.5">{showSuccess.title}</h4>
                       <p className="text-zinc-400 text-xs font-bold leading-tight">{showSuccess.message}</p>
                     </div>
-                    <button onClick={() => setShowSuccess({ ...showSuccess, isOpen: false })} className="text-zinc-500 hover:text-white transition-colors bg-white/5 p-2 rounded-xl">
+                    <button title="Fechar" aria-label="Fechar" onClick={() => setShowSuccess({ ...showSuccess, isOpen: false })} className="text-zinc-500 hover:text-white transition-colors bg-white/5 p-2 rounded-xl">
                       <XIcon size={16} />
                     </button>
                   </div>
@@ -736,7 +729,7 @@ export default function App() {
                       <h4 className="text-white font-black text-[10px] tracking-widest uppercase mb-0.5">{showError.title}</h4>
                       <p className="text-zinc-400 text-xs font-bold leading-tight">{showError.message}</p>
                     </div>
-                    <button onClick={() => setShowError({ ...showError, isOpen: false })} className="text-zinc-500 hover:text-white transition-colors bg-white/5 p-2 rounded-xl">
+                    <button title="Fechar" aria-label="Fechar" onClick={() => setShowError({ ...showError, isOpen: false })} className="text-zinc-500 hover:text-white transition-colors bg-white/5 p-2 rounded-xl">
                       <XIcon size={16} />
                     </button>
                   </div>

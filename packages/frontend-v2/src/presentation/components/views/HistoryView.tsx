@@ -2,17 +2,16 @@ import { useState, useMemo } from 'react';
 import { ArrowDownLeft, ArrowUpRight, Clock, CheckCircle2, XCircle, Search, Filter, Calendar, DollarSign, TrendingUp, TrendingDown, Receipt, ChevronDown, Loader2 } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 import { Transaction } from '../../../domain/types/common.types';
-import { AdBanner } from '../ui/AdBanner';
+
 
 interface HistoryViewProps {
     transactions: Transaction[];
-    isPro?: boolean;
 }
 
 type FilterType = 'ALL' | 'IN' | 'OUT';
 type StatusFilter = 'ALL' | 'APPROVED' | 'PENDING' | 'REJECTED';
 
-export const HistoryView = ({ transactions: initialTransactions, isPro }: HistoryViewProps) => {
+export const HistoryView = ({ transactions: initialTransactions }: HistoryViewProps) => {
     const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions || []);
     const [searchTerm, setSearchTerm] = useState('');
     const [typeFilter, setTypeFilter] = useState<FilterType>('ALL');
@@ -321,7 +320,8 @@ export const HistoryView = ({ transactions: initialTransactions, isPro }: Histor
                     </div>
                 )}
 
-                {/* Banner promocional */}
+                {/* Banner promocional desativado */}
+                {/*
                 <div className="pt-4">
                     <AdBanner
                         type="BANNER"
@@ -331,6 +331,7 @@ export const HistoryView = ({ transactions: initialTransactions, isPro }: Histor
                         hide={isPro}
                     />
                 </div>
+                */}
             </div>
         </div>
     );

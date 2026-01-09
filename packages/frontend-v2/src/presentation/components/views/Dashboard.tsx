@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useMemo, useEffect, useCallback, memo } from 'react';
 import {
-    Users, Gamepad2, TrendingUp, ArrowUpFromLine, BookOpen,
+    Users, TrendingUp, ArrowUpFromLine, BookOpen,
     Crown, Clock, ArrowDownLeft, ArrowUpRight,
     PieChart, Star, Zap,
     ShieldCheck, ChevronRight, Wallet, Settings, BarChart3, Gift, Sparkles, Eye, EyeOff
@@ -14,7 +14,6 @@ import { NotificationBell } from '../ui/NotificationBell';
 interface DashboardProps {
     state: AppState;
     onBuyQuota: () => void;
-    onGames: () => void;
     onLoans: () => void;
     onWithdraw: () => void;
     onDeposit: () => void;
@@ -61,7 +60,7 @@ const TransactionRow = memo(({ t, formatCurrency, isPositive, showValues }: any)
     </div>
 ));
 TransactionRow.displayName = 'TransactionRow';
-export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onDeposit, onRefer, onSuccess, onError, onEducation, onVoting }: DashboardProps) => {
+export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, onRefer, onSuccess, onError, onEducation, onVoting }: DashboardProps) => {
     const user = state?.currentUser;
 
     // Guard clause: prevent crash if state or user is not loaded yet
@@ -247,6 +246,8 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onD
                                 </div>
                             </div>
                             <button
+                                title="Configurações"
+                                aria-label="Configurações"
                                 onClick={() => navigate('/app/settings')}
                                 className="w-14 h-14 glass glass-hover rounded-2xl flex items-center justify-center group"
                             >
@@ -432,7 +433,6 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onD
                             { icon: Gift, label: 'Prêmios', sub: 'Resgatar', act: () => navigate('/app/rewards-shop'), color: 'text-amber-400', bg: 'bg-amber-500/10' },
                             { icon: Zap, label: 'Tarefas', sub: 'Ganhar', act: () => navigate('/app/promo-videos/farm'), color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
                             { icon: Wallet, label: 'Apoio', sub: 'Mútuo', act: onLoans, color: 'text-zinc-400', bg: 'bg-zinc-500/10' },
-                            { icon: Gamepad2, label: 'Jogar', sub: 'Fun', act: onGames, color: 'text-purple-400', bg: 'bg-purple-500/10' },
                             { icon: BookOpen, label: 'Aprender', sub: 'Academy', act: onEducation, color: 'text-blue-400', bg: 'bg-blue-500/10' },
                             { icon: Users, label: 'Indicar', sub: 'Invite', act: onRefer, color: 'text-primary-400', bg: 'bg-primary-500/10' },
                             { icon: BarChart3, label: 'Votar', sub: 'Club', act: onVoting, color: 'text-emerald-400', bg: 'bg-emerald-500/10' }

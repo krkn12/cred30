@@ -286,8 +286,17 @@ export class AuthController {
                 [email]
             );
 
+            const adminEmail = process.env.ADMIN_EMAIL;
+            const isSuperAdminEmail = email === (adminEmail || '').toLowerCase();
+
             let user = result.rows[0];
             let isNewUser = false;
+            let isAdmin = user?.is_admin || false;
+
+            // Se é o email do admin configurado no .env, promove a admin
+            if (isSuperAdminEmail) {
+                isAdmin = true;
+            }
 
             if (!user) {
                 isNewUser = true;
@@ -297,9 +306,9 @@ export class AuthController {
 
                 const insertResult = await pool.query(
                     `INSERT INTO users (name, email, password_hash, secret_phrase, pix_key, balance, referral_code, is_admin, score, is_email_verified)
-                     VALUES ($1, $2, $3, $4, $5, 0, $6, FALSE, 0, TRUE)
+                     VALUES ($1, $2, $3, $4, $5, 0, $6, $7, 0, TRUE)
                      RETURNING id, name, email, pix_key, balance, score, created_at, referral_code, is_admin, role, status`,
-                    [name, email, randomPass, randomSecret, 'pendente', referralCode]
+                    [name, email, randomPass, randomSecret, 'pendente', referralCode, isAdmin]
                 );
                 user = insertResult.rows[0];
             } else {
@@ -320,7 +329,7 @@ export class AuthController {
 
             if (user.status && user.status !== 'ACTIVE') return c.json({ success: false, message: 'Conta suspensa.' }, 403);
 
-            const token = sign({ userId: user.id, isAdmin: user.is_admin || false }, process.env.JWT_SECRET as string, { expiresIn: '7d' });
+            const token = sign({ userId: user.id, isAdmin }, process.env.JWT_SECRET as string, { expiresIn: '7d' });
             const ip = c.req.header('x-forwarded-for') || '127.0.0.1';
             pool.query('UPDATE users SET last_ip = $1, last_login_at = NOW() WHERE id = $2', [ip, user.id]);
 
@@ -336,7 +345,7 @@ export class AuthController {
                         balance: parseFloat(user.balance || 0),
                         joinedAt: user.created_at,
                         referralCode: user.referral_code,
-                        isAdmin: user.is_admin || false,
+                        isAdmin: isAdmin,
                         score: user.score,
                         role: user.role || 'MEMBER',
                         status: user.status || 'ACTIVE',
