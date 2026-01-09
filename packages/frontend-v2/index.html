@@ -1,100 +1,102 @@
 <!doctype html>
 <html lang="pt-BR" class="dark">
-
-<head>
+  <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="upgrade-insecure-requests"
+    />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="icon" type="image/png" href="/pwa-192x192.png" />
     <link rel="shortcut icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/pwa-192x192.png" />
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#09090b">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#09090b" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <title>Cred30 | Clube de Apoio Mútuo e Comunidade Colaborativa</title>
 
     <!-- Performance & Preconnect -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="dns-prefetch" href="https://pl28308452.effectivegatecpm.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://pl28308452.effectivegatecpm.com" />
 
     <!-- SEO & Social Sharing -->
-    <meta name="description"
-        content="Cred30: A maior comunidade exclusiva de apoio mútuo, educação financeira e benefícios colaborativos. Acesse o clube e transforme sua gestão hoje.">
-    <meta name="keywords"
-        content="Cred30, Cred 30, apoio mútuo, educação financeira, comunidade colaborativa, clube de benefícios, microcrédito Belém, finanças pessoais, cooperativismo, sistema de cotas">
+    <meta
+      name="description"
+      content="Cred30: A maior comunidade exclusiva de apoio mútuo, educação financeira e benefícios colaborativos. Acesse o clube e transforme sua gestão hoje."
+    />
+    <meta
+      name="keywords"
+      content="Cred30, Cred 30, apoio mútuo, educação financeira, comunidade colaborativa, clube de benefícios, microcrédito Belém, finanças pessoais, cooperativismo, sistema de cotas"
+    />
     <link rel="canonical" href="https://cred30.site/" />
-    <meta name="robots" content="index, follow">
-    <meta name="author" content="Cred30 Team">
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="Cred30 Team" />
 
     <!-- Structured Data -->
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "Cred30",
-      "url": "https://cred30.site/",
-      "logo": "https://cred30.site/pwa-192x192.png",
-      "description": "Comunidade exclusiva de apoio mútuo e gestão colaborativa."
-    }
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Cred30",
+        "url": "https://cred30.site/",
+        "logo": "https://cred30.site/pwa-192x192.png",
+        "description": "Comunidade exclusiva de apoio mútuo e gestão colaborativa."
+      }
     </script>
-    <meta property="og:url" content="https://cred30.site/">
-    <meta property="og:title" content="Cred30 | Clube de Apoio Mútuo e Benefícios">
-    <meta property="og:description"
-        content="Participe do Cred30. Uma comunidade exclusiva com foco em educação, gestão pessoal e apoio mútuo para seus membros.">
-    <meta property="og:image" content="https://cred30.site/pwa-512x512.png">
+    <meta property="og:url" content="https://cred30.site/" />
+    <meta
+      property="og:title"
+      content="Cred30 | Clube de Apoio Mútuo e Benefícios"
+    />
+    <meta
+      property="og:description"
+      content="Participe do Cred30. Uma comunidade exclusiva com foco em educação, gestão pessoal e apoio mútuo para seus membros."
+    />
+    <meta property="og:image" content="https://cred30.site/pwa-512x512.png" />
 
     <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://cred30.site/">
-    <meta property="twitter:title" content="Cred30 | Clube de Apoio Mútuo">
-    <meta property="twitter:description"
-        content="A maior comunidade colaborativa de apoio mútuo e educação financeira. Junte-se ao Cred30.">
-    <meta property="twitter:image" content="https://cred30.site/pwa-512x512.png">
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://cred30.site/" />
+    <meta property="twitter:title" content="Cred30 | Clube de Apoio Mútuo" />
+    <meta
+      property="twitter:description"
+      content="A maior comunidade colaborativa de apoio mútuo e educação financeira. Junte-se ao Cred30."
+    />
+    <meta
+      property="twitter:image"
+      content="https://cred30.site/pwa-512x512.png"
+    />
 
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet" media="print" onload="this.media='all'" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+      media="print"
+      onload="this.media = 'all'"
+    />
     <noscript>
-        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
-            rel="stylesheet" />
+      <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet"
+      />
     </noscript>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+  </head>
 
-
-    <!-- SocialBar Monetization -->
-    <script type="text/javascript"
-        src="https://pl28308452.effectivegatecpm.com/5d/8b/4e/5d8b4e808aa649bedfb0caefc834e394.js"></script>
-
-    <!-- Popunder Smartlink -->
-    <script type="text/javascript">
-        (function () {
-            var popunderUrl = "https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa";
-            var hasPopped = false;
-
-            document.addEventListener('click', function () {
-                if (!hasPopped) {
-                    window.open(popunderUrl, '_blank');
-                    hasPopped = true;
-                    // Opcional: Salvar no sessionStorage para não repetir na mesma sessão
-                    sessionStorage.setItem('cred30_popunder_done', 'true');
-                }
-            });
-
-            // Verificar se já ocorreu na sessão ao carregar
-            if (sessionStorage.getItem('cred30_popunder_done') === 'true') {
-                hasPopped = true;
-            }
-        })();
-    </script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-</head>
-
-<body class="bg-background text-white antialiased">
+  <body class="bg-background text-white antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-</body>
-
+  </body>
 </html>

@@ -20,6 +20,13 @@ export const MIN_LOAN_AMOUNT = 100; // Valor mínimo de apoio mútuo
 export const MAX_WITHDRAWAL_AMOUNT = 50000; // Valor máximo de saque
 export const MIN_WITHDRAWAL_AMOUNT = 10; // Valor mínimo de saque
 
+// Logística - Frete e Entregas
+export const DELIVERY_FEE_MIN = 8.00; // Frete mínimo em reais
+export const DELIVERY_FEE_MAX = 25.00; // Frete máximo em reais
+export const LOGISTICS_COURIER_SHARE = 0.90; // 90% do frete para o entregador
+export const LOGISTICS_SYSTEM_SHARE = 0.10; // 10% do frete para a plataforma
+export const DELIVERY_COURIER_EARN = 4.50; // Ganho fixo do entregador por entrega (calculado: 8.00 * 0.90)
+
 // Status
 export const TRANSACTION_STATUS = {
   PENDING: 'PENDING',

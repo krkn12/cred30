@@ -1,4 +1,4 @@
-import { LogOut, Home, PieChart, DollarSign, Settings, TrendingUp, ArrowUpFromLine, Gamepad2, ShoppingBag, HelpCircle, Play, ShieldCheck } from 'lucide-react';
+import { LogOut, Home, PieChart, DollarSign, Settings, TrendingUp, ArrowUpFromLine, ShoppingBag, HelpCircle, Play, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../../../domain/types/common.types';
 
@@ -26,7 +26,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
     { id: 'marketplace', label: 'Clube', icon: ShoppingBag },
     { id: 'promo-videos', label: 'Views', icon: Play },
     { id: 'invest', label: 'Ativação', icon: TrendingUp },
-    { id: 'games', label: 'Diversão', icon: Gamepad2 },
     { id: 'portfolio', label: 'Participações', icon: PieChart },
     { id: 'loans', label: 'Apoio', icon: DollarSign },
     { id: 'withdraw', label: 'Resgatar', icon: ArrowUpFromLine },
@@ -58,6 +57,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
             </span>
           </div>
           <button
+            title="Configurações"
+            aria-label="Configurações"
             onClick={() => handleNavigation('settings')}
             className={`p-2 rounded-xl transition-all ${currentView === 'settings' ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20' : 'bg-white/5 text-zinc-400 border border-white/5'}`}
           >

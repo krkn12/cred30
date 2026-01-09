@@ -64,62 +64,7 @@ interface MarketplaceViewProps {
     onError: (title: string, message: string) => void;
 }
 
-import { AdBanner } from '../ui/AdBanner'; // Importado globalmente com persistência
 
-// AdBanner local removido em favor do componente global em ../ui/AdBanner
-
-// IMPORTANTE: Os anúncios nativos são ocultados em mobile para não atrapalhar a experiência
-// IMPORTANTE: Anúncios nativos com persistência para não irritar o usuário
-const NativeAdCard = memo(({ title, price, category, img }: any) => {
-    const [visible, setVisible] = useState(true);
-    const SMART_LINK = 'https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa';
-
-    useEffect(() => {
-        const lastClosed = localStorage.getItem('native_ad_closed');
-        if (lastClosed && Date.now() - parseInt(lastClosed) < 1000 * 60 * 60) {
-            setVisible(false);
-        }
-    }, []);
-
-    const handleClose = (e: any) => {
-        e.stopPropagation();
-        setVisible(false);
-        localStorage.setItem('native_ad_closed', Date.now().toString());
-    };
-
-    if (!visible) return null;
-
-    return (
-        <div
-            onClick={() => window.open(SMART_LINK, '_blank')}
-            className="flex bg-zinc-900/40 border border-zinc-800/50 rounded-2xl overflow-hidden group hover:border-amber-500/30 transition-all flex-col relative cursor-pointer"
-        >
-            <div className="absolute top-2 left-2 z-10 flex items-center gap-2">
-                <span className="text-[8px] font-black bg-amber-500 text-black px-1.5 py-0.5 rounded shadow-lg uppercase">OFERTA</span>
-            </div>
-            <button
-                onClick={handleClose}
-                className="absolute top-2 right-2 z-20 w-6 h-6 bg-black/50 hover:bg-red-500 text-white rounded-full flex items-center justify-center transition-colors backdrop-blur-md"
-            >
-                <XIcon size={12} />
-            </button>
-            <div className="aspect-square bg-zinc-950 flex items-center justify-center overflow-hidden">
-                <img src={img} alt={title} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" loading="lazy" />
-            </div>
-            <div className="p-3 sm:p-4 flex-1 flex flex-col">
-                <h3 className="font-bold text-white text-sm line-clamp-1 mb-1 uppercase tracking-tight">{title}</h3>
-                <p className="text-[10px] text-zinc-500 mb-2 sm:mb-4 uppercase font-bold tracking-widest">{category}</p>
-                <div className="mt-auto flex items-center justify-between">
-                    <span className="text-sm font-black text-amber-400">{price}</span>
-                    <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg group-hover:bg-amber-500 group-hover:text-black transition-all">
-                        <ChevronRight size={14} />
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-});
-NativeAdCard.displayName = 'NativeAdCard';
 
 const ListingCard = memo(({ item, currentUserId, formatCurrency, onBoost, onDetails, onAddToCart }: any) => {
     const isOwner = item.seller_id === currentUserId;
@@ -886,7 +831,8 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
                         return (
                             <>
-                                {/* Inserir Anúncio Adsterra no topo */}
+                                {/* Anúncios desativados para experiência limpa */}
+                                {/*
                                 <div className="col-span-1">
                                     <AdBanner
                                         type="BANNER"
@@ -895,8 +841,9 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                         actionText="LIBERAR AGORA"
                                     />
                                 </div>
+                                */}
 
-                                {listings.map((item, index) => (
+                                {listings.map((item) => (
                                     <React.Fragment key={item.id}>
                                         <ListingCard
                                             item={item}
@@ -910,6 +857,8 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                             onAddToCart={addToCart}
                                         />
 
+                                        {/* Anúncios nativos desativados */}
+                                        {/*
                                         {(index + 1) % 3 === 0 && (
                                             <NativeAdCard
                                                 title={index === 2 ? "Novo Cartão Black Sem Anuidade" : "Apoio Financeiro Parceiro"}
@@ -918,15 +867,19 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                 img={index === 2 ? "https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=600&q=80" : "https://images.unsplash.com/photo-1554224155-16974a4005d1?auto=format&fit=crop&w=600&q=80"}
                                             />
                                         )}
+                                        */}
                                     </React.Fragment>
                                 ))}
 
+                                {/* AdBanner desativado */}
+                                {/*
                                 <div className="col-span-1">
                                     <AdBanner
                                         type="TIP"
                                         description="Dica: Clique em anúncios parceiros para aumentar seu Score Cred30."
                                     />
                                 </div>
+                                */}
 
                                 {hasMore && (
                                     <div className="col-span-full pt-10 pb-6 flex flex-col items-center gap-4">

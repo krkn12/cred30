@@ -1,7 +1,7 @@
 export interface Transaction {
   id: number;
   user_id: number;
-  type: 'DEPOSIT' | 'WITHDRAWAL' | 'PROFIT_DISTRIBUTION' | 'QUOTA_PURCHASE' | 'QUOTA_LIQUIDATION' | 'MAINTENANCE_FEE' | 'GAME_BET';
+  type: 'DEPOSIT' | 'WITHDRAWAL' | 'PROFIT_DISTRIBUTION' | 'QUOTA_PURCHASE' | 'QUOTA_LIQUIDATION' | 'MAINTENANCE_FEE';
   amount: number;
   description?: string;
   status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
