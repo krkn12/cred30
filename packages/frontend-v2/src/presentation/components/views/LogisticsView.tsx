@@ -461,20 +461,5 @@ export const LogisticsView = () => {
                 />
             )}
         </div>
-                if (acceptedDelivery) {
-        setTrackingOrder({
-            ...acceptedDelivery,
-            deliveryStatus: 'ACCEPTED' // Forçar status visualmente
-        });
-    }
-}}
-onIgnore = {(id) => handleIgnore(parseInt(id))}
-onClose = {() => setShowAvailableMap(false)}
-        />
-    )
-}
-        </div >
     );
 };
-
-export default LogisticsView;
