@@ -103,10 +103,57 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
         };
     }, [orderId, userRole]);
 
+    const routeLayerRef = useRef<L.Polyline | null>(null);
+    const [courierPos, setCourierPos] = useState<{ lat: number, lng: number } | null>(null);
+    const [destinationPos, setDestinationPos] = useState<{ lat: number, lng: number } | null>(null);
+
+    // Efeito para desenhar/atualizar a rota quando as posições mudam
+    useEffect(() => {
+        const drawRoute = async () => {
+            if (!mapRef.current || !courierPos || !destinationPos) return;
+
+            // Remove rota anterior
+            if (routeLayerRef.current) {
+                routeLayerRef.current.remove();
+                routeLayerRef.current = null;
+            }
+
+            try {
+                // Tenta OSRM
+                const response = await fetch(
+                    `https://router.project-osrm.org/route/v1/driving/${courierPos.lng},${courierPos.lat};${destinationPos.lng},${destinationPos.lat}?overview=full&geometries=geojson`
+                );
+                const data = await response.json();
+
+                if (data.routes && data.routes.length > 0) {
+                    const coordinates = data.routes[0].geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]);
+
+                    routeLayerRef.current = L.polyline(coordinates, {
+                        color: '#3b82f6',
+                        weight: 6,
+                        opacity: 0.9,
+                        lineCap: 'round'
+                    }).addTo(mapRef.current);
+                } else {
+                    throw new Error('No route found');
+                }
+            } catch (e) {
+                // Fallback: Linha reta tracejada
+                console.log('OSRM falhou, usando fallback linear');
+                routeLayerRef.current = L.polyline(
+                    [[courierPos.lat, courierPos.lng], [destinationPos.lat, destinationPos.lng]],
+                    { color: '#3b82f6', weight: 4, dashArray: '10, 10', opacity: 0.6 }
+                ).addTo(mapRef.current);
+            }
+        };
+
+        const timeoutId = setTimeout(drawRoute, 500); // Debounce para não floodar a API
+        return () => clearTimeout(timeoutId);
+    }, [courierPos, destinationPos]);
+
     const initMap = async (data: any) => {
         if (!mapContainerRef.current || mapRef.current) return;
 
-        // Ponto central inicial (ou a posição do entregador, ou Belem como fallback)
         const initialLat = data.courier_lat || -1.4558;
         const initialLng = data.courier_lng || -48.4902;
 
@@ -115,95 +162,66 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
             attributionControl: false
         }).setView([initialLat, initialLng], 15);
 
-        // Usar CartoDB Dark Matter para modo escuro premium
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap &copy; CARTO',
             maxZoom: 20
         }).addTo(mapRef.current);
 
-        // Tentar geocodificar o destino e origem
-        const points: L.LatLngExpression[] = [];
-        let startPoint: L.LatLngExpression | null = null;
-        let midPoint: L.LatLngExpression | null = null;
-        let endPoint: L.LatLngExpression | null = null;
+        // Configurar Ponto de Destino (Prioridade: Entrega, senão Coleta)
+        // Se o status for 'ACCEPTED', o destino é a Coleta (pickup). Se 'IN_TRANSIT', é a Entrega (delivery).
+        // Simplificação: Vamos focar no "Próximo Ponto".
 
-        if (data.courier_lat) {
-            courierMarkerRef.current = L.marker([data.courier_lat, data.courier_lng], { icon: courierIcon })
-                .addTo(mapRef.current);
-            startPoint = [data.courier_lat, data.courier_lng];
-            points.push(startPoint);
+        let targetAddress = data.pickup_address; // Default para ACCEPTED
+        let targetIcon = L.divIcon({ // Icone de Coleta
+            html: `<div class="bg-amber-500 p-2 rounded-full shadow-lg border-2 border-white"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg></div>`,
+            className: '', iconSize: [32, 32], iconAnchor: [16, 16]
+        });
+
+        if (data.delivery_status === 'IN_TRANSIT' || data.status === 'IN_TRANSIT') {
+            targetAddress = data.delivery_address;
+            targetIcon = destinationIcon;
         }
 
-        if (data.pickup_address) {
+        if (targetAddress) {
             try {
-                // Tenta usar coords se disponíveis, senão geocode (fallback) - O código original usava geocode sempre, o que é lento.
-                // Vou manter o geocode original por segurança, mas idealmente viria do backend.
-                const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(data.pickup_address)}&limit=1`);
-                const geoData = await geoRes.json();
-                if (geoData && geoData.length > 0) {
-                    const pickLat = parseFloat(geoData[0].lat);
-                    const pickLng = parseFloat(geoData[0].lon);
-                    midPoint = [pickLat, pickLng];
-                    L.marker([pickLat, pickLng], {
-                        icon: L.divIcon({
-                            html: `<div class="bg-amber-500 p-2 rounded-full shadow-lg border-2 border-white"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg></div>`,
-                            className: '', iconSize: [32, 32], iconAnchor: [16, 16]
-                        })
-                    }).addTo(mapRef.current).bindPopup('Retirada');
-                    points.push(midPoint);
+                // Tenta usar as coordenadas diretas se existirem no data (evita geocode)
+                let destLat, destLng;
+                if ((data.delivery_status === 'IN_TRANSIT') && data.delivery_lat) {
+                    destLat = data.delivery_lat; destLng = data.delivery_lng;
+                } else if (data.pickup_lat) {
+                    destLat = data.pickup_lat; destLng = data.pickup_lng;
+                } else {
+                    // Fallback Geocode
+                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(targetAddress)}&limit=1`);
+                    const geoData = await geoRes.json();
+                    if (geoData && geoData.length > 0) {
+                        destLat = parseFloat(geoData[0].lat);
+                        destLng = parseFloat(geoData[0].lon);
+                    }
                 }
-            } catch (err) { console.error('Pick geocode error', err); }
-        }
 
-        if (data.delivery_address) {
-            try {
-                const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(data.delivery_address)}&limit=1`);
-                const geoData = await geoRes.json();
-                if (geoData && geoData.length > 0) {
-                    const destLat = parseFloat(geoData[0].lat);
-                    const destLng = parseFloat(geoData[0].lon);
-                    endPoint = [destLat, destLng];
-                    L.marker([destLat, destLng], { icon: destinationIcon })
+                if (destLat && destLng) {
+                    setDestinationPos({ lat: destLat, lng: destLng });
+                    L.marker([destLat, destLng], { icon: targetIcon })
                         .addTo(mapRef.current)
-                        .bindPopup('Entrega');
-                    points.push(endPoint);
+                        .bindPopup('Destino Atual');
+
+                    // Ajustar view inicial
+                    mapRef.current.setView([destLat, destLng], 14);
                 }
             } catch (err) { console.error('Dest geocode error', err); }
         }
 
-        // Desenhar rota OSRM
-        if (startPoint && (midPoint || endPoint)) {
-            const dest = midPoint || endPoint;
-            // @ts-ignore
-            const sLat = startPoint[0], sLng = startPoint[1];
-            // @ts-ignore
-            const eLat = dest[0], eLng = dest[1];
-
-            try {
-                const response = await fetch(
-                    `https://router.project-osrm.org/route/v1/driving/${sLng},${sLat};${eLng},${eLat}?overview=full&geometries=geojson`
-                );
-                const routeData = await response.json();
-                if (routeData.routes && routeData.routes.length > 0) {
-                    const coordinates = routeData.routes[0].geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]);
-                    L.polyline(coordinates, {
-                        color: '#3b82f6',
-                        weight: 6,
-                        opacity: 0.8,
-                        lineCap: 'round'
-                    }).addTo(mapRef.current);
-                }
-            } catch (e) { console.error('Erro rota OSRM', e); }
-        }
-
-        if (points.length > 0) {
-            mapRef.current.fitBounds(L.latLngBounds(points), { padding: [50, 50] });
-        } else {
-            mapRef.current.setView([-1.4558, -48.4902], 13);
+        if (data.courier_lat) {
+            setCourierPos({ lat: data.courier_lat, lng: data.courier_lng });
+            courierMarkerRef.current = L.marker([data.courier_lat, data.courier_lng], { icon: courierIcon })
+                .addTo(mapRef.current);
         }
     };
 
     const updateCourierMarker = (lat: number, lng: number) => {
+        setCourierPos({ lat, lng }); // Atualiza estado para disparar redesenho da rota
+
         if (!mapRef.current) return;
 
         if (courierMarkerRef.current) {
@@ -213,8 +231,8 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
                 .addTo(mapRef.current);
         }
 
-        // Seguir o motorista se estivermos visualizando
-        mapRef.current.panTo([lat, lng], { animate: true });
+        // Seguir o motorista suavemente
+        mapRef.current.panTo([lat, lng], { animate: true, duration: 1.0 });
     };
 
     return (
