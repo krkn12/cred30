@@ -125,6 +125,12 @@ const convertApiTransactionToTransaction = (apiTransaction: any): Transaction =>
   };
 };
 
+// Cache para dashboard administrativo
+let cachedDashboard: any = null;
+let lastDashboardCacheTime = 0;
+let isFetchingDashboard = false;
+const DASHBOARD_CACHE_DURATION = 30000; // 30 segundos de cache para dashboard
+
 // Carregar estado da aplicação da API
 export const loadState = async (): Promise<AppState> => {
   try {
@@ -155,19 +161,19 @@ export const loadState = async (): Promise<AppState> => {
     // Se for administrador, obter dados do dashboard
     let systemBalance = 0;
     let profitPool = 0;
-    // Removida declaração redundante de stats aqui
 
     if (currentUser.isAdmin) {
       try {
         const now = Date.now();
 
-        // Forçar sempre busca nova para garantir dados atualizados
+        // Verificar cache para evitar requisições excessivas
         if (cachedDashboard && (now - lastDashboardCacheTime) < DASHBOARD_CACHE_DURATION) {
           console.log('Usando cache do dashboard administrativo');
           systemBalance = cachedDashboard.systemBalance || 0;
           profitPool = cachedDashboard.profitPool || 0;
           stats = cachedDashboard.stats || null;
-        } else {
+        } else if (!isFetchingDashboard) {
+          isFetchingDashboard = true;
           console.log('Buscando dashboard administrativo...');
           const dashboard = await apiService.getAdminDashboard();
 
@@ -215,6 +221,8 @@ export const loadState = async (): Promise<AppState> => {
         // Limpar cache em caso de erro para forçar nova busca
         cachedDashboard = null;
         lastDashboardCacheTime = 0;
+      } finally {
+        isFetchingDashboard = false;
       }
     }
 
@@ -275,13 +283,6 @@ export const updateProfitPool = async (amountToAdd: number): Promise<{ success: 
 };
 
 // CACHE_DURATION removed as it was unused
-
-
-// Cache para dashboard administrativo
-let cachedDashboard: any = null;
-let lastDashboardCacheTime = 0;
-const DASHBOARD_CACHE_DURATION = 15000; // 15 segundos de cache para dashboard
-
 
 
 // Função para limpar o cache quando necessário (ex: após atualização de dividendos)
