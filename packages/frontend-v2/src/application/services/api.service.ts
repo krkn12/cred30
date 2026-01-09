@@ -88,10 +88,6 @@ class ApiService extends ApiBase {
   sellAllQuotas = this.finance.sellAllQuotas.bind(this.finance);
   repayInstallment = this.finance.repayInstallment.bind(this.finance);
 
-  // Monetization
-  buyVerifiedBadge = async () => this.post<any>('/monetization/buy-verified-badge', {});
-  buyScoreBoost = async () => this.post<any>('/monetization/buy-score-boost', {});
-
   // Misc
   claimAdReward = this.users.claimAdReward.bind(this.users);
 
@@ -110,6 +106,15 @@ class ApiService extends ApiBase {
   getDeliveryStats = async () => {
     const response = await this.get<any>('/logistics/stats');
     return response.data;
+  };
+
+  // Premium Features
+  buyVerifiedBadge = async () => {
+    return await this.post<any>('/monetization/buy-verified-badge', {});
+  };
+
+  buyScoreBoost = async () => {
+    return await this.post<any>('/monetization/buy-score-boost', {});
   };
 
   // Notificações em Tempo Real via SSE (Server-Sent Events)

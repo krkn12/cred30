@@ -296,7 +296,7 @@ export const RewardsShopView = ({ state, onBack, onSuccess, onError, onRefresh }
                     title={`Resgatar ${confirmItem.name}?`}
                     message={`Serão deduzidos ${confirmItem.pointsCost.toLocaleString()} pontos do seu saldo. Seu saldo atual: ${farmPoints.toLocaleString()} pts.`}
                     confirmText="RESGATAR AGORA"
-                    type="info"
+                    type="success"
                 />
             )}
         </div>

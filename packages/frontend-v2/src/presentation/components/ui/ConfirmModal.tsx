@@ -9,7 +9,7 @@ interface ConfirmModalProps {
     message: string;
     confirmText?: string;
     cancelText?: string;
-    type?: 'danger' | 'warning' | 'info';
+    type?: 'danger' | 'warning' | 'info' | 'success';
     children?: React.ReactNode;
 }
 
@@ -28,7 +28,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
     const accentColor = type === 'danger' ? 'bg-red-500 hover:bg-red-400 text-white' :
         type === 'warning' ? 'bg-yellow-500 hover:bg-yellow-400 text-black' :
-            'bg-primary-500 hover:bg-primary-400 text-black';
+            type === 'success' ? 'bg-emerald-500 hover:bg-emerald-400 text-black' :
+                'bg-primary-500 hover:bg-primary-400 text-black';
 
     return (
         <div
