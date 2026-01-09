@@ -50,7 +50,16 @@ const getRewardStyle = (id: string, type: string) => {
 };
 
 export const RewardsShopView = ({ state, onBack, onSuccess, onError, onRefresh }: RewardsShopViewProps) => {
-    const user = state.currentUser!;
+    // Early return se o usuário ainda não carregou
+    if (!state?.currentUser) {
+        return (
+            <div className="flex items-center justify-center min-h-[50vh]">
+                <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
+            </div>
+        );
+    }
+
+    const user = state.currentUser;
 
     const [farmPoints, setFarmPoints] = useState(user.ad_points || 0);
     const [catalog, setCatalog] = useState<RewardItem[]>([]);
