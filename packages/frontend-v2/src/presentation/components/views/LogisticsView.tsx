@@ -463,3 +463,4 @@ export const LogisticsView = () => {
         </div>
     );
 };
+export default LogisticsView;
