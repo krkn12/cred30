@@ -485,11 +485,14 @@ export class MarketplaceOrdersController {
             const { verificationCode } = body;
             const orderId = c.req.param('id');
 
-            // Buscar pedido esperando entrega
+            // Buscar pedido esperando confirmação do comprador
+            // Aceita: WAITING_SHIPPING, IN_TRANSIT, ou quando entregador já marcou DELIVERED
             const orderResult = await pool.query(
                 `SELECT o.*, l.title, l.quota_id FROM marketplace_orders o 
            JOIN marketplace_listings l ON o.listing_id = l.id 
-           WHERE o.id = $1 AND o.status IN ('WAITING_SHIPPING', 'IN_TRANSIT')
+           WHERE o.id = $1 
+           AND (o.status IN ('WAITING_SHIPPING', 'IN_TRANSIT') OR o.delivery_status = 'DELIVERED')
+           AND o.status != 'COMPLETED'
            AND (o.buyer_id = $2 OR (o.offline_token IS NOT NULL AND $3::text IS NOT NULL AND o.offline_token = $3))`,
                 [orderId, user.id, verificationCode]
             );
@@ -562,8 +565,8 @@ export class MarketplaceOrdersController {
                 const isCourierAnticipated = order.metadata?.courier_anticipated;
 
                 if (order.courier_id && courierFee > 0) {
-                    const courierPart = courierFee * 0.85; // 85% para o entregador
-                    const systemPart = courierFee * 0.15;  // 15% para o sistema
+                    const courierPart = courierFee * 0.90; // 90% para o entregador
+                    const systemPart = courierFee * 0.10;  // 10% para o sistema
 
                     if (!isCourierAnticipated) {
                         await updateUserBalance(client, order.courier_id, courierPart, 'credit');
