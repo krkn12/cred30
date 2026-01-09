@@ -118,7 +118,6 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
         }
     };
 
-    const [proMethod, setProMethod] = useState<'balance' | 'pix'>('balance');
     const [loadingLocal, setLoadingLocal] = useState(false);
     const [buyingBadge, setBuyingBadge] = useState(false);
     const [buyingBoost, setBuyingBoost] = useState(false);
