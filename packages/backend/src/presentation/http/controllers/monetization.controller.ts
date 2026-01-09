@@ -149,15 +149,21 @@ export class MonetizationController {
 
                 await client.query('UPDATE users SET balance = balance - $1, membership_type = $2 WHERE id = $3', [PRO_UPGRADE_FEE, 'PRO', user.id]);
 
-                const share = PRO_UPGRADE_FEE * 0.25;
+                // REGRA 80/20: 80% Cotistas, 20% Sistema
+                const feeForProfit = PRO_UPGRADE_FEE * 0.80;
+                const feeForReserves = PRO_UPGRADE_FEE * 0.20;
+
+                // Dividir a parte do sistema (20%) em 4 partes iguais (5% do total cada)
+                const reserveShare = feeForReserves * 0.25;
 
                 await client.query(
                     `UPDATE system_config SET 
-                        total_tax_reserve = total_tax_reserve + $1,
-                        total_operational_reserve = total_operational_reserve + $2,
-                        total_owner_profit = total_owner_profit + $3,
-                        investment_reserve = investment_reserve + $4`,
-                    [share, share, share, share]
+                        profit_pool = profit_pool + $1,
+                        total_tax_reserve = total_tax_reserve + $2,
+                        total_operational_reserve = total_operational_reserve + $3,
+                        total_owner_profit = total_owner_profit + $4,
+                        investment_reserve = investment_reserve + $5`,
+                    [feeForProfit, reserveShare, reserveShare, reserveShare, reserveShare]
                 );
 
                 await createTransaction(
@@ -201,8 +207,8 @@ export class MonetizationController {
                 await client.query('UPDATE users SET balance = balance - $1, is_verified = TRUE WHERE id = $2', [VERIFIED_BADGE_PRICE, user.id]);
                 await updateScore(client, user.id, 100, 'Compra de Selo de Verificado (Confiança)');
 
-                const feeForProfit = VERIFIED_BADGE_PRICE * 0.85;
-                const feeForReserves = VERIFIED_BADGE_PRICE * 0.15;
+                const feeForProfit = VERIFIED_BADGE_PRICE * 0.80;
+                const feeForReserves = VERIFIED_BADGE_PRICE * 0.20;
 
                 await client.query(
                     `UPDATE system_config SET 
@@ -251,8 +257,8 @@ export class MonetizationController {
                 await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [SCORE_BOOST_PRICE, user.id]);
                 await updateScore(client, user.id, SCORE_BOOST_POINTS, 'Compra de Pacote Score Boost');
 
-                const feeForProfit = SCORE_BOOST_PRICE * 0.85;
-                const feeForReserves = SCORE_BOOST_PRICE * 0.15;
+                const feeForProfit = SCORE_BOOST_PRICE * 0.80;
+                const feeForReserves = SCORE_BOOST_PRICE * 0.20;
 
                 await client.query(
                     `UPDATE system_config SET 
@@ -367,8 +373,8 @@ export class MonetizationController {
 
                 const target = targetRes.rows[0];
 
-                const feeForProfit = REPUTATION_CHECK_PRICE * 0.85;
-                const feeForReserves = REPUTATION_CHECK_PRICE * 0.15;
+                const feeForProfit = REPUTATION_CHECK_PRICE * 0.80;
+                const feeForReserves = REPUTATION_CHECK_PRICE * 0.20;
 
                 await client.query(
                     `UPDATE system_config SET 

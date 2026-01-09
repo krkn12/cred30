@@ -24,8 +24,6 @@ const REWARDS_CATALOG: Record<string, RewardConfig> = {
     'gc-uber-20': { id: 'gc-uber-20', name: 'Crédito Uber R$ 20', pointsCost: 2000, type: 'GIFT_CARD', value: 20 },
     'gc-playstore-30': { id: 'gc-playstore-30', name: 'Google Play R$ 30', pointsCost: 3000, type: 'GIFT_CARD', value: 30 },
     'gc-recarga-10': { id: 'gc-recarga-10', name: 'Recarga Celular R$ 10', pointsCost: 1000, type: 'GIFT_CARD', value: 10 },
-    'pix-5': { id: 'pix-5', name: 'PIX R$ 5', pointsCost: 5000, type: 'PIX_CASHBACK', value: 5 },
-    'pix-10': { id: 'pix-10', name: 'PIX R$ 10', pointsCost: 9000, type: 'PIX_CASHBACK', value: 10 },
     'membership-pro-1m': { id: 'membership-pro-1m', name: 'PRO 1 Mês', pointsCost: 10000, type: 'MEMBERSHIP', value: 29.90 },
 };
 
@@ -200,63 +198,14 @@ export class EarnController {
     /**
      * Converter pontos
      */
+    /**
+     * Converter pontos - DESATIVADO
+     */
     static async convertPoints(c: Context) {
-        try {
-            const user = c.get('user') as UserContext;
-            const pool = getDbPool(c);
-
-            const result = await executeInTransaction(pool, async (client: PoolClient) => {
-                const userRes = await client.query('SELECT ad_points, balance FROM users WHERE id = $1 FOR UPDATE', [user.id]);
-                const currentPoints = userRes.rows[0].ad_points || 0;
-
-                if (currentPoints < POINTS_RATE) {
-                    throw new Error(`Você precisa de no mínimo ${POINTS_RATE} pontos para converter. Atual: ${currentPoints}`);
-                }
-
-                const lots = Math.floor(currentPoints / POINTS_RATE);
-                const pointsToConvert = lots * POINTS_RATE;
-                const moneyToCredit = lots * MONEY_VALUE;
-                const remainingPoints = currentPoints - pointsToConvert;
-
-                const systemRes = await client.query('SELECT system_balance FROM system_config LIMIT 1 FOR UPDATE');
-                const systemBalance = parseFloat(systemRes.rows[0]?.system_balance || '0');
-
-                if (systemBalance < moneyToCredit) {
-                    throw new Error(`Caixa insuficiente para conversão. Tente novamente mais tarde.`);
-                }
-
-                await client.query(`UPDATE system_config SET system_balance = system_balance - $1`, [moneyToCredit]);
-                await client.query(`UPDATE users SET ad_points = $1, balance = balance + $2 WHERE id = $3`, [remainingPoints, moneyToCredit, user.id]);
-
-                await createTransaction(
-                    client,
-                    user.id,
-                    'BONUS',
-                    moneyToCredit,
-                    `Conversão: ${pointsToConvert} pontos farm`,
-                    'APPROVED'
-                );
-
-                return {
-                    success: true,
-                    pointsConverted: pointsToConvert,
-                    moneyCredited: moneyToCredit,
-                    remainingPoints
-                };
-            });
-
-            if (!result.success) {
-                return c.json({ success: false, message: result.error }, 400);
-            }
-
-            return c.json({
-                success: true,
-                message: `Convertido! ${result.data?.pointsConverted} pontos = R$ ${result.data?.moneyCredited?.toFixed(2)}`,
-                data: result.data
-            });
-        } catch (error: any) {
-            return c.json({ success: false, message: error.message }, 500);
-        }
+        return c.json({
+            success: false,
+            message: 'Conversão direta desativada. Use seus pontos para resgatar Gift Cards ou PRO na Loja.'
+        }, 400);
     }
 
     /**
@@ -338,28 +287,8 @@ export class EarnController {
                         break;
 
                     case 'PIX_CASHBACK':
-                        const systemRes = await client.query('SELECT system_balance FROM system_config LIMIT 1 FOR UPDATE');
-                        const systemBalance = parseFloat(systemRes.rows[0]?.system_balance || '0');
+                        throw new Error('Esta recompensa não está mais disponível.');
 
-                        if (systemBalance < reward.value) {
-                            throw new Error('Caixa operacional insuficiente. Tente outra recompensa.');
-                        }
-
-                        await client.query('UPDATE system_config SET system_balance = system_balance - $1', [reward.value]);
-                        await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [reward.value, user.id]);
-
-                        await createTransaction(
-                            client,
-                            String(user.id),
-                            'BONUS',
-                            reward.value,
-                            `🎁 Resgate: ${reward.name}`,
-                            'APPROVED'
-                        );
-
-                        code = `PIX-${Date.now()}`;
-                        deliveryMessage = `R$ ${reward.value.toFixed(2)} creditados no seu saldo!`;
-                        break;
 
                     case 'MEMBERSHIP':
                         if (currentMembership === 'PRO') {

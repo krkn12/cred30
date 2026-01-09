@@ -26,6 +26,7 @@ const createLoanSchema = z.object({
     amount: z.number().positive(),
     installments: z.number().int().min(1).max(12),
     guaranteePercentage: z.number().int().min(50).max(100).optional().default(100),
+    guarantorId: z.string().optional(),
 });
 
 const repayLoanSchema = z.object({
@@ -139,12 +140,12 @@ export class LoansController {
     static async requestLoan(c: Context) {
         try {
             const body = await c.req.json();
-            const { amount, installments, guaranteePercentage } = createLoanSchema.parse(body);
+            const { amount, installments, guaranteePercentage, guarantorId } = createLoanSchema.parse(body);
 
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
 
-            const loanOffer = await calculateLoanOffer(pool, user.id, amount, guaranteePercentage);
+            const loanOffer = await calculateLoanOffer(pool, user.id, amount, guaranteePercentage, guarantorId);
 
             if (!loanOffer.approved) {
                 return c.json({
@@ -184,6 +185,8 @@ export class LoansController {
                             disbursedAmount: amountToDisburse,
                             guaranteePercentage: offer.guaranteePercentage,
                             guaranteeValue: offer.guaranteeValue,
+                            guarantorId: guarantorId || null,
+                            guarantorName: offer.guarantorName || null,
                             welcomeBenefitApplied: welcomeBenefit.hasDiscount,
                             riskClassInterestRate: offer.interestRate,
                             finalInterestRate
@@ -373,9 +376,31 @@ export class LoansController {
             await pool.query('INSERT INTO loan_installments (loan_id, amount, use_balance, created_at) VALUES ($1, $2, $3, $4)', [loanId, installmentAmount, true, new Date()]);
 
             const principalPortion = installmentAmount * (parseFloat(loan.amount) / parseFloat(loan.total_repayment));
-            const interestPortion = installmentAmount - principalPortion;
+            const interestPortion = Math.max(0, installmentAmount - principalPortion);
 
-            await pool.query('UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2', [principalPortion, interestPortion]);
+            // DISTRIBUIÇÃO CONTÁBIL CORRETA
+            // 1. Principal volta para o fundo de investimento (repor liquidez)
+            // 2. Juros: 80% para Cotistas (Profit Pool) e 20% para a Plataforma (Sistema)
+
+            const profitShare = interestPortion * 0.80; // 80% dos juros para cotistas
+            const systemShare = interestPortion * 0.20; // 20% dos juros para o sistema
+
+            // Dividir a parte do sistema nas reservas (25% de 20% = 5% do total juros cada)
+            const taxPart = systemShare * 0.25;
+            const operPart = systemShare * 0.25;
+            const ownerPart = systemShare * 0.25;
+            const investPart = systemShare * 0.25;
+
+            await pool.query(`
+                UPDATE system_config SET 
+                    investment_reserve = COALESCE(investment_reserve, 0) + $1,
+                    profit_pool = profit_pool + $2,
+                    system_balance = system_balance + $3,
+                    total_tax_reserve = total_tax_reserve + $4,
+                    total_operational_reserve = total_operational_reserve + $5,
+                    total_owner_profit = total_owner_profit + $6
+                `, [principalPortion, profitShare, systemShare, taxPart, operPart, ownerPart]
+            );
 
             const newPaidAmount = paidAmount + installmentAmount;
             if (newPaidAmount >= parseFloat(loan.total_repayment)) {

@@ -105,11 +105,11 @@ export class ApiBase {
             return data;
         } catch (error: any) {
             if (error.name === 'AbortError') {
-                error.message = 'O servidor demorou muito para responder. Verifique sua conexão.';
+                throw new Error('O servidor demorou muito para responder. Verifique sua conexão e tente novamente.');
             }
 
             if (error.name === 'TypeError' && !navigator.onLine) {
-                error.message = 'Sua conexão com a internet caiu. O App exibirá dados salvos quando possível.';
+                throw new Error('Sua conexão com a internet caiu. Verifique seu sinal.');
             }
 
             // Silence 401/Token errors (handled by logout logic)

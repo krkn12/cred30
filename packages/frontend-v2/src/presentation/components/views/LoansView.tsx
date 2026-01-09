@@ -430,7 +430,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
 
                             {userBalance < selectedLoan.totalRepayment ? (
                                 <button
-                                    onClick={() => window.location.href = '/app/deposit'}
+                                    onClick={() => window.location.hash = '#/app/dashboard'} // Redireciona para home onde tem o botão de depósito
                                     className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-black py-4 rounded-xl mb-2 transition"
                                 >
                                     SALDO INSUFICIENTE (RECARREGAR)
@@ -473,7 +473,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
 
                             {userBalance < installmentModalData.installmentAmount ? (
                                 <button
-                                    onClick={() => window.location.href = '/app/deposit'}
+                                    onClick={() => window.location.hash = '#/app/dashboard'}
                                     className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-black py-4 rounded-xl mb-2 transition"
                                 >
                                     SALDO INSUFICIENTE (RECARREGAR)
@@ -481,7 +481,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                             ) : (
                                 <button
                                     onClick={() => {
-                                        onPayInstallment(installmentModalData.loanId, installmentModalData.installmentAmount, true);
+                                        onPayInstallment(installmentModalData.loanId, installmentModalData.installmentAmount, true); // true = useBalance
                                         setInstallmentModalData(null);
                                     }}
                                     className="w-full bg-primary-500 hover:bg-primary-600 text-black font-black py-4 rounded-xl mb-2 transition shadow-lg shadow-primary-500/20"

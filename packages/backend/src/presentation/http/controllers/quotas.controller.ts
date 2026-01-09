@@ -277,9 +277,9 @@ export class QuotasController {
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
 
-            // Verificar se o usuário tem empréstimos ativos
+            // Verificar se o usuário tem empréstimos ativos OU é fiador
             const activeLoansResult = await pool.query(
-                "SELECT COUNT(*) FROM loans WHERE user_id = $1 AND status IN ('PENDING', 'APPROVED', 'PAYMENT_PENDING')",
+                "SELECT COUNT(*) FROM loans WHERE (user_id = $1 OR metadata->>'guarantorId' = $1) AND status IN ('PENDING', 'APPROVED', 'PAYMENT_PENDING')",
                 [user.id]
             );
 
@@ -360,6 +360,14 @@ export class QuotasController {
             const txResult = await executeInTransaction(pool, async (client) => {
                 console.log(`[SELL_QUOTA] Starting transaction for user ${user.id}, quotaId: ${quotaId}, finalAmount: ${finalAmount}`);
 
+                // VERIFICAÇÃO DE LIQUIDEZ (TRAVA DE SEGURANÇA)
+                const liquidityCheck = await client.query('SELECT investment_reserve FROM system_config LIMIT 1 FOR UPDATE');
+                const availableLiquidity = parseFloat(liquidityCheck.rows[0]?.investment_reserve || '0');
+
+                if (availableLiquidity < finalAmount) {
+                    throw new Error('Liquidez momentaneamente indisponível. Seu capital está investido em empréstimos ativos. Tente novamente em breve.');
+                }
+
                 const deleteResult = await client.query(
                     'DELETE FROM quotas WHERE id = $1 AND user_id = $2 RETURNING id',
                     [quotaId, user.id]
@@ -378,12 +386,32 @@ export class QuotasController {
                     throw new Error('Falha ao atualizar saldo do usuário');
                 }
 
+                // DISTRIBUIÇÃO DA MULTA DE RESGATE (PENALTY)
+                // 80% para o Sistema (Gestora) e 20% para os Cotistas (Profit Pool)
                 if (profitAmount > 0) {
-                    await client.query(
-                        'UPDATE system_config SET profit_pool = profit_pool + $1',
-                        [profitAmount]
+                    const profitPoolShare = profitAmount * 0.20;
+                    const systemShare = profitAmount * 0.80;
+
+                    // System Share dividido nas reservas
+                    const taxPart = systemShare * QUOTA_FEE_TAX_SHARE;
+                    const operPart = systemShare * QUOTA_FEE_OPERATIONAL_SHARE;
+                    const ownerPart = systemShare * QUOTA_FEE_OWNER_SHARE;
+                    const investPart = systemShare * QUOTA_FEE_INVESTMENT_SHARE;
+
+                    await client.query(`
+                        UPDATE system_config SET 
+                            profit_pool = profit_pool + $1,
+                            total_tax_reserve = total_tax_reserve + $2,
+                            total_operational_reserve = total_operational_reserve + $3,
+                            total_owner_profit = total_owner_profit + $4,
+                            investment_reserve = COALESCE(investment_reserve, 0) + $5
+                        `, [profitPoolShare, taxPart, operPart, ownerPart, investPart]
                     );
                 }
+
+                // Decrementar do Investment Reserve o valor principal pago ao usuário
+                // Isso garante controle da liquidez
+                await client.query('UPDATE system_config SET investment_reserve = investment_reserve - $1', [finalAmount]);
 
                 await client.query(
                     `INSERT INTO transactions (user_id, type, amount, description, status, metadata)
@@ -453,7 +481,7 @@ export class QuotasController {
             const pool = getDbPool(c);
 
             const activeLoansResult = await pool.query(
-                "SELECT COUNT(*) FROM loans WHERE user_id = $1 AND status IN ('PENDING', 'APPROVED', 'PAYMENT_PENDING')",
+                "SELECT COUNT(*) FROM loans WHERE (user_id = $1 OR metadata->>'guarantorId' = $1) AND status IN ('PENDING', 'APPROVED', 'PAYMENT_PENDING')",
                 [user.id]
             );
 
@@ -520,6 +548,14 @@ export class QuotasController {
             logFinancialAudit('VENDA_TODAS_COTAS_ANTES', user.id, auditBefore);
 
             await executeInTransaction(pool, async (client) => {
+                // VERIFICAÇÃO DE LIQUIDEZ (TRAVA DE SEGURANÇA)
+                const liquidityCheck = await client.query('SELECT investment_reserve FROM system_config LIMIT 1 FOR UPDATE');
+                const availableLiquidity = parseFloat(liquidityCheck.rows[0]?.investment_reserve || '0');
+
+                if (availableLiquidity < totalReceived) {
+                    throw new Error('Liquidez momentaneamente indisponível. Seu capital está investido em empréstimos ativos. Tente novamente em breve.');
+                }
+
                 await client.query(
                     'DELETE FROM quotas WHERE user_id = $1',
                     [user.id]
@@ -530,12 +566,33 @@ export class QuotasController {
                     [totalReceived, user.id]
                 );
 
+                // DISTRIBUIÇÃO DA MULTA DE RESGATE (PENALTY) - SELL ALL
+                // 80% para o Sistema (Gestora) e 20% para os Cotistas (Profit Pool)
+                // DISTRIBUIÇÃO DA MULTA DE RESGATE (PENALTY) - SELL ALL
+                // 80% para o Sistema (Gestora) e 20% para os Cotistas (Profit Pool)
                 if (totalPenalty > 0) {
-                    await client.query(
-                        'UPDATE system_config SET profit_pool = profit_pool + $1',
-                        [totalPenalty]
+                    const profitPoolShare = totalPenalty * 0.20;
+                    const systemShare = totalPenalty * 0.80;
+
+                    // System Share dividido nas reservas
+                    const taxPart = systemShare * QUOTA_FEE_TAX_SHARE;
+                    const operPart = systemShare * QUOTA_FEE_OPERATIONAL_SHARE;
+                    const ownerPart = systemShare * QUOTA_FEE_OWNER_SHARE;
+                    const investPart = systemShare * QUOTA_FEE_INVESTMENT_SHARE;
+
+                    await client.query(`
+                        UPDATE system_config SET 
+                            profit_pool = profit_pool + $1,
+                            total_tax_reserve = total_tax_reserve + $2,
+                            total_operational_reserve = total_operational_reserve + $3,
+                            total_owner_profit = total_owner_profit + $4,
+                            investment_reserve = COALESCE(investment_reserve, 0) + $5
+                        `, [profitPoolShare, taxPart, operPart, ownerPart, investPart]
                     );
                 }
+
+                // Decrementar Liquidez Paga
+                await client.query('UPDATE system_config SET investment_reserve = investment_reserve - $1', [totalReceived]);
 
                 await client.query(
                     `INSERT INTO transactions (user_id, type, amount, description, status, metadata)
