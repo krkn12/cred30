@@ -4,7 +4,7 @@ import { ArrowUpFromLine, ShieldCheck, Clock, XCircle, TrendingUp } from 'lucide
 import { User } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 import { confirmWithdrawal } from '../../../application/services/storage.service';
-import { WITHDRAWAL_FEE_FIXED, WELCOME_WITHDRAWAL_FIXED_FEE, WITHDRAWAL_MIN_AMOUNT } from '../../../shared/constants/app.constants';
+import { WITHDRAWAL_FEE_FIXED, WITHDRAWAL_MIN_AMOUNT } from '../../../shared/constants/app.constants';
 
 interface WithdrawViewProps {
     balance: number;
@@ -24,20 +24,15 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
     // Quick amount options
     const quickAmounts = [50, 100, 200, 500];
 
-    const { isValidAmount, withdrawalAmount, isFree, fee, netAmount } = useMemo(() => {
-        void withdrawalAmount;
+    const { isValidAmount, isFree, fee, netAmount } = useMemo(() => {
         const amount = parseFloat(val) || 0;
         const valid = val !== '' && amount >= WITHDRAWAL_MIN_AMOUNT && amount <= balance;
         const free = totalQuotaValue >= amount;
 
-        // Verifica se o usuário tem benefício de boas-vindas ativo
-        const hasWelcomeBenefit = (currentUser as any)?.welcomeBenefit?.hasDiscount;
-        const baseFee = hasWelcomeBenefit ? WELCOME_WITHDRAWAL_FIXED_FEE : WITHDRAWAL_FEE_FIXED;
-
-        const f = (valid && !free) ? baseFee : 0;
+        const f = (valid && !free) ? WITHDRAWAL_FEE_FIXED : 0;
         const net = valid ? Math.max(0, amount - f) : 0;
         return { isValidAmount: valid, withdrawalAmount: amount, isFree: free, fee: f, netAmount: net };
-    }, [val, balance, totalQuotaValue, currentUser]);
+    }, [val, balance, totalQuotaValue]);
 
 
     const [twoFactorData, setTwoFactorData] = useState<{ otpUri: string } | null>(null);
