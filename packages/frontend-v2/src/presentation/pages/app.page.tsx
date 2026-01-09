@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from '../components/layout/main-layout.component';
 import { UpdateNotification } from '../components/ui/update-notification.component';
-import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, changePassword, apiService, requestDeposit, requestWithdrawal, upgradePro } from '../../application/services/storage.service';
+import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, changePassword, apiService, requestDeposit, upgradePro } from '../../application/services/storage.service';
 import { syncService } from '../../application/services/sync.service';
 import { AppState } from '../../domain/types/common.types';
 import { Check, X as XIcon, RefreshCw, AlertTriangle, Users, Copy, TrendingUp } from 'lucide-react';
@@ -330,15 +330,7 @@ export default function App() {
     }
   };
 
-  const handleWithdraw = async (amount: number, pixKey: string) => {
-    try {
-      await requestWithdrawal(amount, pixKey);
-      setShowSuccess({ isOpen: true, title: 'Solicitado', message: 'Saque solicitado com sucesso!' });
-      refreshState();
-    } catch (e: any) {
-      setShowError({ isOpen: true, title: 'Erro', message: e.message });
-    }
-  };
+
 
   const handleDeposit = async (amount: number) => {
     if (!amount || isNaN(amount) || amount <= 0) {
@@ -495,8 +487,14 @@ export default function App() {
                 <Route path="withdraw" element={
                   <Suspense fallback={null}>
                     <WithdrawView
-                      user={state.currentUser!}
-                      onWithdraw={(amount, pixKey) => requireCompleteProfile(() => handleWithdraw(amount, pixKey))}
+                      balance={state.currentUser?.balance || 0}
+                      currentUser={state.currentUser}
+                      totalQuotaValue={state.quotas
+                        .filter(q => q.userId === state.currentUser?.id)
+                        .reduce((acc, q) => acc + (q.currentValue || q.purchasePrice || 0), 0)}
+                      onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                      onError={(title, message) => setShowError({ isOpen: true, title, message })}
+                      onRefresh={refreshState}
                     />
                   </Suspense>
                 } />

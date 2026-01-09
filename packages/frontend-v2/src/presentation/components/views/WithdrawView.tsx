@@ -130,7 +130,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
 
                 <div className="bg-white/20 rounded-xl p-4 mt-6">
                     <p className="text-sm opacity-80 mb-1">Saldo Disponível</p>
-                    <p className="text-3xl font-bold">{balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                    <p className="text-3xl font-bold">{(balance || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                     <p className="text-xs opacity-70 mt-1">Seu saldo atual na conta</p>
                 </div>
             </div>
@@ -177,7 +177,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
 
                         {val !== '' && parseFloat(val) < WITHDRAWAL_MIN_AMOUNT && (
                             <p className="text-red-400 text-[10px] mt-2 font-medium">
-                                * O valor mínimo para resgate é de {WITHDRAWAL_MIN_AMOUNT.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.
+                                * O valor mínimo para resgate é de {(WITHDRAWAL_MIN_AMOUNT || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.
                             </p>
                         )}
 
@@ -187,12 +187,12 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                                 <div className="flex justify-between">
                                     <span className="text-zinc-400">Taxa de resgate operativo ({isFree ? 'Grátis' : 'Taxa de Manutenção'})</span>
                                     <span className={isFree ? 'text-emerald-400' : 'text-zinc-300'}>
-                                        {isFree ? 'R$ 0,00' : fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        {isFree ? 'R$ 0,00' : (fee || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                     </span>
                                 </div>
                                 <div className="flex justify-between font-bold">
                                     <span className="text-white">Você receberá</span>
-                                    <span className="text-emerald-400">{netAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                    <span className="text-emerald-400">{(netAmount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                 </div>
                             </div>
                         )}
@@ -284,7 +284,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                     <span>Processamento em até 24h úteis</span>
                 </p>
                 <p className="text-xs text-zinc-400 mt-2">
-                    Taxa de manutenção por resgate de {WITHDRAWAL_FEE_FIXED.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.
+                    Taxa de manutenção por resgate de {(WITHDRAWAL_FEE_FIXED || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.
                 </p>
                 <p className="text-xs text-emerald-400/80 mt-2">
                     💡 <strong>Benefício VIP:</strong> Se o valor das suas participações (cotas) for maior ou igual ao resgate, a taxa é <strong>ZERO</strong>!
