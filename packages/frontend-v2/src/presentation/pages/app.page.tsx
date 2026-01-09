@@ -341,6 +341,10 @@ export default function App() {
   };
 
   const handleDeposit = async (amount: number) => {
+    if (!amount || isNaN(amount) || amount <= 0) {
+      setShowError({ isOpen: true, title: 'Erro', message: 'Por favor, insira um valor válido para depósito (mínimo R$ 10,00).' });
+      return;
+    }
     try {
       const result = await requestDeposit(amount);
       if (result.success) {
@@ -412,7 +416,7 @@ export default function App() {
                       onGames={() => navigate('/app/games')}
                       onLoans={() => navigate('/app/loans')}
                       onWithdraw={() => navigate('/app/withdraw')}
-                      onDeposit={handleDeposit}
+                      onDeposit={() => navigate('/app/deposit')}
                       onRefer={() => setShowReferral(true)}
                       onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
                       onError={(title, message) => setShowError({ isOpen: true, title, message })}
