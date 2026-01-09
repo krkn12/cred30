@@ -525,6 +525,22 @@ export const LogisticsView = () => {
                         await handleAccept(parseInt(deliveryId));
                         setShowAvailableMap(false);
                         await loadData();
+
+                        // Fluxo Uber: Mudar para aba Ativas e Abrir Rastreio
+                        setActiveTab('active');
+                        // Encontrar a entrega recém aceita (pode precisar de um pequeno delay se o backend demorar a indexar, mas loadData deve resolver)
+                        // Como loadData atualiza myDeliveries (state), precisamos esperar o update. 
+                        // Mas podemos setar o trackingOrder com um objeto parcial ou esperar.
+                        // Melhor: forçar fetch da entrega específica ou confiar que loadData trouxe.
+
+                        // Hack UX: setar trackingOrder com os dados que já temos do 'visibleDeliveries'
+                        const acceptedDelivery = visibleDeliveries.find(d => d.orderId.toString() === deliveryId);
+                        if (acceptedDelivery) {
+                            setTrackingOrder({
+                                ...acceptedDelivery,
+                                deliveryStatus: 'ACCEPTED' // Forçar status visualmente
+                            });
+                        }
                     }}
                     onIgnore={(id) => handleIgnore(parseInt(id))}
                     onClose={() => setShowAvailableMap(false)}
