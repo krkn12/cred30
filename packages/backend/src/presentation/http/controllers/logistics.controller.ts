@@ -83,6 +83,24 @@ export class LogisticsController {
             const orderId = c.req.param('orderId');
             const pool = getDbPool(c);
 
+            // 1. Verificar Penalidade
+            const userCheck = await pool.query('SELECT courier_penalty_until FROM users WHERE id = $1', [user.id]);
+            if (userCheck.rows[0]?.courier_penalty_until && new Date(userCheck.rows[0].courier_penalty_until) > new Date()) {
+                const waitTime = Math.ceil((new Date(userCheck.rows[0].courier_penalty_until).getTime() - new Date().getTime()) / 60000);
+                return c.json({ success: false, message: `Você está em período de penalidade por cancelamento. Aguarde ${waitTime} minutos.` }, 403);
+            }
+
+            // 2. Verificar Entrega Ativa (Regra: Uma por vez)
+            const activeOrderCheck = await pool.query(
+                `SELECT id FROM marketplace_orders 
+                 WHERE courier_id = $1 AND delivery_status IN ('ACCEPTED', 'IN_TRANSIT', 'DELIVERED')`,
+                [user.id]
+            );
+
+            if (activeOrderCheck.rows.length > 0) {
+                return c.json({ success: false, message: 'Você já tem uma entrega em andamento. Finalize-a antes de pegar outra.' }, 400);
+            }
+
             const orderCheck = await pool.query(
                 `SELECT * FROM marketplace_orders 
                  WHERE id = $1 AND delivery_status = 'AVAILABLE' AND status = 'WAITING_SHIPPING'`,
@@ -245,6 +263,14 @@ export class LogisticsController {
                  SET courier_id = NULL, delivery_status = 'AVAILABLE', updated_at = NOW()
                  WHERE id = $1`,
                 [orderId]
+            );
+
+            // Aplicar Penalidade de 30 minutos
+            await pool.query(
+                `UPDATE users 
+                 SET courier_penalty_until = NOW() + INTERVAL '30 minutes' 
+                 WHERE id = $1`,
+                [user.id]
             );
 
             return c.json({
