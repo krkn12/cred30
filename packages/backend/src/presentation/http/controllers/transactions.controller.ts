@@ -239,6 +239,7 @@ export class TransactionsController {
                 data: { transactionId: result.transactionId }
             });
         } catch (error: any) {
+            if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
             return c.json({ success: false, message: error.message || 'Erro ao registrar depósito' }, 500);
         }
     }
