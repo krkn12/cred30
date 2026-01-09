@@ -27,8 +27,8 @@ export const PortfolioView = ({ quotas, hasLoans, onSell, onSellAll }: Portfolio
 
     const checkEligibility = async () => {
         try {
-            const res = await apiService.checkTitleEligibility();
-            setEligibility(res);
+            const response = await apiService.checkTitleEligibility();
+            setEligibility(response.data);
         } catch (error) {
             console.error('Erro ao verificar elegibilidade:', error);
         }

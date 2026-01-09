@@ -1,64 +1,57 @@
 import { ApiBase, ApiResponse } from './api.base';
 
 export class AdminApi extends ApiBase {
-    async getDashboard(): Promise<any> {
-        const response = await this.request<any>('/admin/dashboard');
-        return response.data;
+    async getDashboard(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/admin/dashboard');
     }
 
-    async getHealthMetrics(): Promise<any> {
-        const response = await this.request<any>('/admin/metrics/health');
-        return response.data;
+    async getHealthMetrics(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/admin/metrics/health');
     }
 
     async addProfitPool(amountToAdd: number): Promise<ApiResponse<void>> {
         return await this.post<void>('/admin/profit-pool', { amountToAdd });
     }
 
-    async distributeDividends(): Promise<any> {
-        const response = await this.post<any>('/admin/distribute-dividends', {});
-        return response.data;
+    async distributeDividends(): Promise<ApiResponse<any>> {
+        return await this.post<any>('/admin/distribute-dividends', {});
     }
 
-    async getPayoutQueue(): Promise<any> {
-        const response = await this.request<any>('/admin/payout-queue');
-        return response.data;
+    async getPayoutQueue(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/admin/payout-queue');
     }
 
-    async confirmPayout(id: string, type: string): Promise<void> {
-        await this.post<void>('/admin/confirm-payout', { id, type });
+    async confirmPayout(id: string, type: string): Promise<ApiResponse<void>> {
+        return await this.post<void>('/admin/confirm-payout', { id, type });
     }
 
-    async getPendingTransactions(): Promise<any> {
-        const response = await this.request<any>('/admin/pending-transactions');
-        return response.data;
+    async getPendingTransactions(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/admin/pending-transactions');
     }
 
-    async processAction(id: string | number, type: string, action: string): Promise<any> {
+    async processAction(id: string | number, type: string, action: string): Promise<ApiResponse<any>> {
         return await this.post<any>('/admin/process-action', { id, type, action });
     }
 
-    async getUsers(options?: any): Promise<any> {
+    async getUsers(options?: any): Promise<ApiResponse<any>> {
         const query = new URLSearchParams(options);
         return await this.request<any>(`/admin/users?${query.toString()}`);
     }
 
-    async updateUserAccess(data: any): Promise<any> {
+    async updateUserAccess(data: any): Promise<ApiResponse<any>> {
         return await this.post<any>('/admin/users/update-access', data);
     }
 
-    async createAttendant(data: any): Promise<any> {
+    async createAttendant(data: any): Promise<ApiResponse<any>> {
         return await this.post<any>('/admin/users/create-attendant', data);
     }
 
-    async getMarketplaceCleanupStats(): Promise<any> {
-        const response = await this.request<any>('/admin/marketplace/cleanup-stats');
-        return response.data;
+    async getMarketplaceCleanupStats(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/admin/marketplace/cleanup-stats');
     }
 
-    async cleanupOldListings(daysOld: number = 7): Promise<any> {
-        const response = await this.post<any>('/admin/marketplace/cleanup-old-listings', { daysOld });
-        return response.data;
+    async cleanupOldListings(daysOld: number = 7): Promise<ApiResponse<any>> {
+        return await this.post<any>('/admin/marketplace/cleanup-old-listings', { daysOld });
     }
 
     async getAdminReviews(): Promise<any> {

@@ -104,8 +104,7 @@ class ApiService extends ApiBase {
   vote = this.misc.vote.bind(this.misc);
 
   getDeliveryStats = async () => {
-    const response = await this.get<any>('/logistics/stats');
-    return response.data;
+    return await this.get<any>('/logistics/stats');
   };
 
   // Premium Features

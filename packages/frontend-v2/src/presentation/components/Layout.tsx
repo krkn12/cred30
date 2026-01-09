@@ -15,12 +15,15 @@ export const Layout: React.FC<LayoutProps> = ({
   onLogout,
   children
 }) => {
+  const isAdmin = user?.isAdmin || user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'ATTENDANT';
+
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'invest', label: 'Participar', icon: '🤝' },
     { id: 'portfolio', label: 'Participação', icon: '💼' },
     { id: 'loans', label: 'Apoio Mútuo', icon: '💸' },
     { id: 'withdraw', label: 'Resgates', icon: '💳' },
+    ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: '🛡️' }] : []),
     { id: 'settings', label: 'Configurações', icon: '⚙️' },
   ];
 
@@ -44,12 +47,12 @@ export const Layout: React.FC<LayoutProps> = ({
                 <button
                   key={item.id}
                   onClick={() => onChangeView(item.id)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === item.id
-                    ? 'bg-primary-500 text-black'
-                    : 'text-zinc-300 hover:text-white hover:bg-surfaceHighlight'
+                  className={`px-5 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] transition-all duration-500 flex items-center gap-2 ${currentView === item.id
+                    ? 'bg-zinc-800 text-primary-400 shadow-2xl shadow-black border border-white/5 scale-[1.05]'
+                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
                     }`}
                 >
-                  <span className="mr-2">{item.icon}</span>
+                  <span className={currentView === item.id ? "animate-pulse" : ""}>{item.icon}</span>
                   {item.label}
                 </button>
               ))}
@@ -62,7 +65,7 @@ export const Layout: React.FC<LayoutProps> = ({
               </span>
               <button
                 onClick={onLogout}
-                className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-5 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all duration-300 border border-red-500/20 active:scale-95 flex items-center gap-2"
               >
                 Sair
               </button>
@@ -78,12 +81,12 @@ export const Layout: React.FC<LayoutProps> = ({
             <button
               key={item.id}
               onClick={() => onChangeView(item.id)}
-              className={`block w-full text-left px-3 py-2 rounded-md text-base font-medium transition-colors ${currentView === item.id
-                ? 'bg-primary-500 text-black'
-                : 'text-zinc-300 hover:text-white hover:bg-surfaceHighlight'
+              className={`block w-full text-left px-5 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all duration-300 flex items-center gap-3 mb-2 ${currentView === item.id
+                ? 'bg-zinc-800 text-primary-400 border border-white/5 shadow-xl'
+                : 'text-zinc-500 hover:text-white hover:bg-white/5 border border-transparent'
                 }`}
             >
-              <span className="mr-2">{item.icon}</span>
+              <span className={currentView === item.id ? "animate-pulse" : ""}>{item.icon}</span>
               {item.label}
             </button>
           ))}

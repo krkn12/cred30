@@ -2,55 +2,46 @@ import { ApiBase, ApiResponse } from './api.base';
 
 export class FinanceApi extends ApiBase {
     // --- QUOTAS ---
-    async getQuotas(): Promise<any> {
-        const response = await this.request<any>('/quotas');
-        return response.data;
+    async getQuotas(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/quotas');
     }
 
-    async buyQuotas(quantity: number, useBalance: boolean, paymentMethod?: string): Promise<any> {
-        const response = await this.post<any>('/quotas/buy', { quantity, useBalance, paymentMethod });
-        return response.data;
+    async buyQuotas(quantity: number, useBalance: boolean, paymentMethod?: string): Promise<ApiResponse<any>> {
+        return await this.post<any>('/quotas/buy', { quantity, useBalance, paymentMethod });
     }
 
-    async sellQuota(quotaId: string): Promise<any> {
-        const response = await this.post<any>('/quotas/sell', { quotaId });
-        return response.data;
+    async sellQuota(quotaId: string): Promise<ApiResponse<any>> {
+        return await this.post<any>('/quotas/sell', { quotaId });
     }
 
-    async sellAllQuotas(): Promise<any> {
-        const response = await this.post<any>('/quotas/sell-all', {});
-        return response.data;
+    async sellAllQuotas(): Promise<ApiResponse<any>> {
+        return await this.post<any>('/quotas/sell-all', {});
     }
 
     // --- LOANS ---
-    async getLoans(): Promise<any> {
-        const response = await this.request<any>('/loans');
-        return response.data;
+    async getLoans(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/loans');
     }
 
-    async requestLoan(amount: number, installments: number, guaranteePercentage: number = 100): Promise<any> {
-        const response = await this.post<any>('/loans/request', { amount, installments, guaranteePercentage });
-        return response.data;
+    async requestLoan(amount: number, installments: number, guaranteePercentage: number = 100): Promise<ApiResponse<any>> {
+        return await this.post<any>('/loans/request', { amount, installments, guaranteePercentage });
     }
 
-    async repayLoan(loanId: string, useBalance: boolean, paymentMethod?: string): Promise<any> {
-        const response = await this.post<any>('/loans/repay', { loanId, useBalance, paymentMethod });
-        return response.data;
+    async repayLoan(loanId: string, useBalance: boolean, paymentMethod?: string): Promise<ApiResponse<any>> {
+        return await this.post<any>('/loans/repay', { loanId, useBalance, paymentMethod });
     }
 
-    async repayInstallment(loanId: string, amount: number, useBalance: boolean, paymentMethod?: string): Promise<any> {
-        const response = await this.post<any>('/loans/repay-installment', {
+    async repayInstallment(loanId: string, amount: number, useBalance: boolean, paymentMethod?: string): Promise<ApiResponse<any>> {
+        return await this.post<any>('/loans/repay-installment', {
             loanId,
             installmentAmount: amount,
             useBalance,
             paymentMethod
         });
-        return response.data;
     }
 
-    async getAvailableLimit(): Promise<any> {
-        const response = await this.request<any>('/loans/available-limit');
-        return response.data;
+    async getAvailableLimit(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/loans/available-limit');
     }
 
     // --- WITHDRAWALS ---
@@ -58,17 +49,16 @@ export class FinanceApi extends ApiBase {
         return await this.post<any>('/withdrawals/request', { amount, pixKey });
     }
 
-    async confirmWithdrawal(transactionId: number, code: string, password: string): Promise<any> {
-        return this.post<any>('/withdrawals/confirm', { transactionId, code, password });
+    async confirmWithdrawal(transactionId: number, code: string, password: string): Promise<ApiResponse<any>> {
+        return await this.post<any>('/withdrawals/confirm', { transactionId, code, password });
     }
 
     // --- DEPOSITS ---
-    async requestDeposit(amount: number): Promise<any> {
-        const response = await this.post<any>('/transactions/deposit', { amount });
-        return response.data;
+    async requestDeposit(amount: number): Promise<ApiResponse<any>> {
+        return await this.post<any>('/transactions/deposit', { amount });
     }
 
-    async submitReview(transactionId: number, rating: number, comment: string, isPublic: boolean): Promise<any> {
-        return this.post<any>('/transactions/review', { transactionId, rating, comment, isPublic });
+    async submitReview(transactionId: number, rating: number, comment: string, isPublic: boolean): Promise<ApiResponse<any>> {
+        return await this.post<any>('/transactions/review', { transactionId, rating, comment, isPublic });
     }
 }

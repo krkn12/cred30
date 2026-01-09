@@ -14,7 +14,7 @@ import { BugReportModal } from '../components/ui/BugReportModal';
 import { OfflineNotice } from '../components/ui/offline-notice.component';
 import { CompleteProfileModal } from '../components/ui/CompleteProfileModal';
 import { useOnlineStatus } from '../hooks/use-online-status';
-import { PWAEnforcer } from '../components/ui/pwa-enforcer.component';
+import { PWAEnforcer, PWAInstallBanner } from '../components/ui/pwa-enforcer.component';
 import { ToastContainer, showToast } from '../components/ui/toast-notification.component';
 
 // Helper para lidar com erro de carregamento de chunks (comum após deploys)
@@ -400,6 +400,7 @@ export default function App() {
     <>
       <OfflineNotice isOnline={isOnline} />
       <UpdateNotification />
+      <PWAInstallBanner />
       <ToastContainer />
       <Routes>
         <Route path="/" element={<Navigate to="/app/dashboard" replace />} />

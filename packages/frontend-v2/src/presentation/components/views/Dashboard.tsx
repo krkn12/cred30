@@ -347,21 +347,30 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onD
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             <button
                                 onClick={() => onDeposit()}
-                                className="bg-white text-emerald-900 hover:scale-[1.02] transition-all text-[10px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl shadow-xl flex flex-col items-center justify-center gap-2 active:scale-95"
+                                className="bg-white text-black hover:scale-[1.02] transition-all duration-500 text-[9px] font-black uppercase tracking-[0.25em] py-5 rounded-3xl shadow-2xl flex flex-col items-center justify-center gap-3 active:scale-95 border border-white/20 group"
                             >
-                                <ArrowDownLeft size={20} /> DEPOSITAR
+                                <div className="p-2 bg-emerald-500/10 rounded-xl group-hover:rotate-12 transition-transform">
+                                    <ArrowDownLeft size={24} className="text-emerald-600" />
+                                </div>
+                                <span className="opacity-80">DEPOSITAR</span>
                             </button>
                             <button
                                 onClick={onWithdraw}
-                                className="bg-black/20 hover:bg-black/40 text-white text-[10px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl backdrop-blur-md transition-all flex flex-col items-center justify-center gap-2 border border-white/10 active:scale-95"
+                                className="bg-zinc-900/40 hover:bg-zinc-900 text-white text-[9px] font-black uppercase tracking-[0.25em] py-5 rounded-3xl backdrop-blur-md transition-all duration-500 flex flex-col items-center justify-center gap-3 border border-white/5 active:scale-95 group"
                             >
-                                <ArrowUpFromLine size={20} /> SACAR
+                                <div className="p-2 bg-white/5 rounded-xl group-hover:-rotate-12 transition-transform">
+                                    <ArrowUpFromLine size={24} className="text-primary-400" />
+                                </div>
+                                <span className="opacity-60 group-hover:opacity-100 transition-opacity">SACAR</span>
                             </button>
                             <button
                                 onClick={onBuyQuota}
-                                className="col-span-2 sm:col-span-1 bg-white/10 hover:bg-white/20 text-white text-[10px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl backdrop-blur-md transition-all flex flex-col sm:flex-col items-center justify-center gap-2 border border-white/10 active:scale-95"
+                                className="col-span-2 sm:col-span-1 bg-white/5 hover:bg-white/10 text-white text-[9px] font-black uppercase tracking-[0.25em] py-5 rounded-3xl backdrop-blur-md transition-all duration-500 flex flex-col items-center justify-center gap-3 border border-white/5 active:scale-95 group"
                             >
-                                <TrendingUp size={20} /> LICENÇAS
+                                <div className="p-2 bg-primary-500/10 rounded-xl group-hover:scale-110 transition-transform">
+                                    <TrendingUp size={24} className="text-primary-400" />
+                                </div>
+                                <span className="opacity-60 group-hover:opacity-100 transition-opacity">LICENÇAS</span>
                             </button>
                         </div>
                     </div>
