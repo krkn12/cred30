@@ -15,6 +15,7 @@ import { OfflineNotice } from '../components/ui/offline-notice.component';
 import { CompleteProfileModal } from '../components/ui/CompleteProfileModal';
 import { useOnlineStatus } from '../hooks/use-online-status';
 import { PWAEnforcer } from '../components/ui/pwa-enforcer.component';
+import { ToastContainer, showToast } from '../components/ui/toast-notification.component';
 
 // Helper para lidar com erro de carregamento de chunks (comum após deploys)
 const lazyWithRetry = (componentImport: () => Promise<any>) =>
@@ -147,6 +148,7 @@ export default function App() {
     let cleanupNotifications: (() => void) | undefined;
     if (state.currentUser && isOnline) {
       cleanupNotifications = apiService.listenToNotifications((notif) => {
+        // Handler especial para pagamentos que requerem avaliação
         if (notif.type === 'PAYOUT_COMPLETED' && notif.metadata?.requiresReview) {
           setReviewModalData({
             isOpen: true,
@@ -155,11 +157,18 @@ export default function App() {
           });
         }
 
-        setShowSuccess({
-          isOpen: true,
+        // Mostrar toast visual
+        showToast({
+          type: notif.type === 'PAYOUT_COMPLETED' ? 'payment'
+            : notif.type === 'ORDER' ? 'order'
+              : notif.type === 'DELIVERY' ? 'delivery'
+                : notif.type === 'error' ? 'error'
+                  : 'info',
           title: notif.title || 'Notificação',
-          message: notif.message || 'Status atualizado!'
+          message: notif.message || 'Status atualizado!',
+          duration: 6000,
         });
+
         refreshState();
       });
     }
@@ -387,6 +396,7 @@ export default function App() {
     <>
       <OfflineNotice isOnline={isOnline} />
       <UpdateNotification />
+      <ToastContainer />
       <Routes>
         <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
         <Route path="/auth" element={<Navigate to="/app/dashboard" replace />} />
