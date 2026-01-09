@@ -604,7 +604,9 @@ export class MarketplaceOrdersController {
             const orderId = c.req.param('id');
 
             const result = await pool.query(
-                `SELECT o.id, o.status, o.courier_id, o.courier_lat, o.courier_lng, 
+                `SELECT o.id, o.status, o.delivery_status, o.courier_id, 
+                o.courier_lat, o.courier_lng, 
+                o.pickup_lat, o.pickup_lng, o.delivery_lat, o.delivery_lng,
                 o.delivery_address, o.pickup_address,
                 u.name as courier_name, u.phone as courier_phone
          FROM marketplace_orders o
