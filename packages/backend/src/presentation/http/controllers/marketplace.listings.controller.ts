@@ -12,6 +12,8 @@ const createListingSchema = z.object({
     category: z.string().optional(),
     imageUrl: z.string().optional(),
     quotaId: z.number().int().optional(),
+    itemType: z.enum(['PHYSICAL', 'DIGITAL']).optional().default('PHYSICAL'),
+    digitalContent: z.string().optional(), // Link/código para itens digitais
 });
 
 export class MarketplaceListingsController {
@@ -34,7 +36,8 @@ export class MarketplaceListingsController {
         SELECT * FROM (
             (SELECT l.id::text, l.title, l.description, l.price::float, l.image_url, l.category, 
                     u.name as seller_name, l.seller_id::text, l.is_boosted, l.created_at, l.status, 'P2P' as type,
-                    u.seller_address_city as city, u.seller_address_state as uf
+                    u.seller_address_city as city, u.seller_address_state as uf,
+                    COALESCE(l.item_type, 'PHYSICAL') as item_type
              FROM marketplace_listings l 
              JOIN users u ON l.seller_id = u.id
              WHERE l.status = 'ACTIVE'
@@ -46,7 +49,7 @@ export class MarketplaceListingsController {
             UNION ALL
             (SELECT p.id::text, p.title, p.description, p.price::float, p.image_url, p.category, 
                     'Cred30 Parceiros' as seller_name, '0' as seller_id, true as is_boosted, p.created_at, 'ACTIVE' as status, 'AFFILIATE' as type,
-                    '' as city, '' as uf
+                    '' as city, '' as uf, 'PHYSICAL' as item_type
              FROM products p 
              WHERE p.active = true
              AND ($3::text IS NULL OR $3 = 'TODOS' OR p.category = $3)
@@ -88,7 +91,15 @@ export class MarketplaceListingsController {
                 }, 400);
             }
 
-            const { title, description, price, category, imageUrl, quotaId } = parseResult.data;
+            const { title, description, price, category, imageUrl, quotaId, itemType, digitalContent } = parseResult.data;
+
+            // Itens digitais precisam de conteúdo digital
+            if (itemType === 'DIGITAL' && !digitalContent) {
+                return c.json({
+                    success: false,
+                    message: 'Itens digitais precisam de um link ou código para entrega automática.'
+                }, 400);
+            }
 
             // Se for uma cota, verificar se pertence ao usuário e está ativa
             if (quotaId) {
@@ -108,15 +119,17 @@ export class MarketplaceListingsController {
             }
 
             const result = await pool.query(
-                `INSERT INTO marketplace_listings (seller_id, title, description, price, category, image_url, quota_id)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-                [user.id, title, description, price, category || (quotaId ? 'COTAS' : 'OUTROS'), imageUrl, quotaId]
+                `INSERT INTO marketplace_listings (seller_id, title, description, price, category, image_url, quota_id, item_type, digital_content)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+                [user.id, title, description, price, category || (quotaId ? 'COTAS' : 'OUTROS'), imageUrl, quotaId, itemType || 'PHYSICAL', digitalContent]
             );
 
             return c.json({
                 success: true,
                 listing: result.rows[0],
-                message: 'Anúncio publicado com sucesso!'
+                message: itemType === 'DIGITAL'
+                    ? 'Item digital publicado! O conteúdo será entregue automaticamente após a compra.'
+                    : 'Anúncio publicado com sucesso!'
             });
         } catch (error) {
             console.error('Erro ao criar anúncio:', error);
