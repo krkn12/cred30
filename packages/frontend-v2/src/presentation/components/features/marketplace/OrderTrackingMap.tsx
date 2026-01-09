@@ -16,28 +16,35 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
     const [trackingData, setTrackingData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Ícones customizados
+    // Ícone de Motoqueiro Premium (SVG)
     const courierIcon = L.divIcon({
-        html: `<div class="bg-indigo-600 p-2 rounded-full shadow-lg border-2 border-white animate-pulse">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.5">
-                    <path d="M5 18H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.19M15 6h2a2 2 0 0 1 2 2v2M23 13v1.17a2 2 0 0 1-1.17 1.83l-3.33 1A2 2 0 0 1 17 17h-1M15 11l-5 5-3-3" />
-                    <circle cx="7" cy="18" r="2" />
-                    <circle cx="17" cy="18" r="2" />
-                </svg>
+        html: `<div class="relative w-12 h-12 flex items-center justify-center">
+                <div class="absolute inset-0 bg-blue-500/30 animate-ping rounded-full"></div>
+                <div class="relative z-10 bg-blue-600 p-2 rounded-full shadow-lg border-2 border-white transform hover:scale-110 transition-transform">
+                     <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/>
+                        <path d="M2.5 17.5H5a2 2 0 0 0 1-1.5L8 9l4 1 2-3h3.5"/>
+                        <path d="M14 6l-3 4-2.5-1M19 17.5V14l-4-6-3 4"/>
+                        <circle cx="18.5" cy="6.5" r="2.5" fill="white"/>
+                     </svg>
+                </div>
               </div>`,
-        className: '',
-        iconSize: [40, 40],
-        iconAnchor: [20, 20]
+        className: 'bg-transparent',
+        iconSize: [48, 48],
+        iconAnchor: [24, 24]
     });
 
     const destinationIcon = L.divIcon({
-        html: `<div class="bg-rose-500 p-2 rounded-full shadow-lg border-2 border-white">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.5">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                    <circle cx="12" cy="10" r="3" />
-                </svg>
+        html: `<div class="relative w-10 h-10 flex items-center justify-center">
+                <div class="absolute inset-0 bg-red-500/30 animate-pulse rounded-full"></div>
+                <div class="relative z-10 bg-red-600 p-2 rounded-full shadow-lg border-2 border-white">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.5">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                        <circle cx="12" cy="10" r="3" />
+                    </svg>
+                </div>
               </div>`,
-        className: '',
+        className: 'bg-transparent',
         iconSize: [40, 40],
         iconAnchor: [20, 40]
     });
@@ -59,6 +66,20 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
         };
 
         fetchTracking();
+
+        // Se for o entregador, forçar a pegada de GPS imediatamente para traçar a rota (mesmo parado)
+        if (userRole === 'courier' && navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    // Atualiza estado local imediatamente para feedback visual
+                    setCourierPos({ lat: latitude, lng: longitude });
+                    // Envia para o servidor se necessário (opcional, foco aqui é UX local)
+                },
+                (err) => console.log('Erro GPS inicial', err),
+                { enableHighAccuracy: true }
+            );
+        }
 
         // Polling para o comprador ver o motorista
         let interval: any;
