@@ -66,7 +66,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
           color="green"
         />
         <MetricCard
-          title="Total Emprestado"
+          title="Total em Apoios Mútuos"
           value={formatCurrency(totalLoaned)}
           subtitle="Valor em apoios mútuos ativos"
           color="yellow"

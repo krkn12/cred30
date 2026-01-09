@@ -235,10 +235,10 @@ export const Dashboard = ({ state, onBuyQuota, onGames, onLoans, onWithdraw, onD
                         <div className="flex items-center gap-4">
                             <NotificationBell />
                             <div className="text-right">
-                                <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-1">Boost de Lucro</p>
+                                <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-1">Boost de Resultado</p>
                                 <div
                                     className="cursor-help flex items-center gap-2 glass px-4 py-2 rounded-2xl hover:bg-white/10 transition-all border border-emerald-500/20"
-                                    title="Seu multiplicador de dividendos baseado em engajamento (2FA + PRO + Atividade)"
+                                    title="Seu multiplicador de excedentes baseado em engajamento (2FA + PRO + Atividade)"
                                 >
                                     <TrendingUp size={16} className="text-emerald-400" />
                                     <span className="text-xl font-black text-white">
