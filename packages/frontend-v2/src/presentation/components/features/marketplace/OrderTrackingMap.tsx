@@ -175,69 +175,113 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
     const initMap = async (data: any) => {
         if (!mapContainerRef.current || mapRef.current) return;
 
-        const initialLat = data.courier_lat || -1.4558;
-        const initialLng = data.courier_lng || -48.4902;
+        // Tentar pegar GPS imediatamente para ter a posição do entregador
+        let initialCourierLat = data.courier_lat;
+        let initialCourierLng = data.courier_lng;
+
+        // Se não tem posição do backend, pegar do GPS local
+        if (!initialCourierLat && userRole === 'courier' && navigator.geolocation) {
+            try {
+                const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 5000
+                    });
+                });
+                initialCourierLat = position.coords.latitude;
+                initialCourierLng = position.coords.longitude;
+                console.log('[MAP] GPS Local obtido:', initialCourierLat, initialCourierLng);
+            } catch (e) {
+                console.log('[MAP] Não conseguiu GPS local, usando fallback Belém');
+                initialCourierLat = -1.4558; // Fallback Belém
+                initialCourierLng = -48.4902;
+            }
+        }
+
+        const mapCenter = initialCourierLat || -1.4558;
+        const mapCenterLng = initialCourierLng || -48.4902;
 
         mapRef.current = L.map(mapContainerRef.current, {
             zoomControl: false,
             attributionControl: false
-        }).setView([initialLat, initialLng], 15);
+        }).setView([mapCenter, mapCenterLng], 15);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap &copy; CARTO',
             maxZoom: 20
         }).addTo(mapRef.current);
 
-        // Configurar Ponto de Destino (Prioridade: Entrega, senão Coleta)
-        // Se o status for 'ACCEPTED', o destino é a Coleta (pickup). Se 'IN_TRANSIT', é a Entrega (delivery).
-        // Simplificação: Vamos focar no "Próximo Ponto".
+        // Setar posição do entregador imediatamente
+        if (initialCourierLat && initialCourierLng) {
+            setCourierPos({ lat: initialCourierLat, lng: initialCourierLng });
+            courierMarkerRef.current = L.marker([initialCourierLat, initialCourierLng], { icon: courierIcon })
+                .addTo(mapRef.current)
+                .bindPopup('Você está aqui');
+        }
 
-        let targetAddress = data.pickup_address; // Default para ACCEPTED
-        let targetIcon = L.divIcon({ // Icone de Coleta
+        // Configurar Ponto de Destino
+        // Status ACCEPTED = ir até o PICKUP (vendedor)
+        // Status IN_TRANSIT = ir até o DELIVERY (comprador)
+        let destLat: number | null = null;
+        let destLng: number | null = null;
+        let targetIcon = L.divIcon({
             html: `<div class="bg-amber-500 p-2 rounded-full shadow-lg border-2 border-white"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg></div>`,
             className: '', iconSize: [32, 32], iconAnchor: [16, 16]
         });
 
-        if (data.delivery_status === 'IN_TRANSIT' || data.status === 'IN_TRANSIT') {
-            targetAddress = data.delivery_address;
+        const isInTransit = data.delivery_status === 'IN_TRANSIT' || data.status === 'IN_TRANSIT';
+
+        if (isInTransit) {
+            // Destino é o endereço de ENTREGA
+            destLat = data.delivery_lat ? parseFloat(data.delivery_lat) : null;
+            destLng = data.delivery_lng ? parseFloat(data.delivery_lng) : null;
             targetIcon = destinationIcon;
+            console.log('[MAP] Modo IN_TRANSIT - Destino: delivery', destLat, destLng);
+        } else {
+            // Destino é o endereço de COLETA (pickup)
+            destLat = data.pickup_lat ? parseFloat(data.pickup_lat) : null;
+            destLng = data.pickup_lng ? parseFloat(data.pickup_lng) : null;
+            console.log('[MAP] Modo ACCEPTED - Destino: pickup', destLat, destLng);
         }
 
-        if (targetAddress) {
-            try {
-                // Tenta usar as coordenadas diretas se existirem no data (evita geocode)
-                let destLat, destLng;
-                if ((data.delivery_status === 'IN_TRANSIT') && data.delivery_lat) {
-                    destLat = data.delivery_lat; destLng = data.delivery_lng;
-                } else if (data.pickup_lat) {
-                    destLat = data.pickup_lat; destLng = data.pickup_lng;
-                } else {
-                    // Fallback Geocode
+        // Se não temos coords, tentar geocode
+        if (!destLat || !destLng) {
+            const targetAddress = isInTransit ? data.delivery_address : data.pickup_address;
+            if (targetAddress) {
+                try {
                     const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(targetAddress)}&limit=1`);
                     const geoData = await geoRes.json();
                     if (geoData && geoData.length > 0) {
                         destLat = parseFloat(geoData[0].lat);
                         destLng = parseFloat(geoData[0].lon);
+                        console.log('[MAP] Geocode bem sucedido:', destLat, destLng);
                     }
+                } catch (err) {
+                    console.error('[MAP] Geocode falhou', err);
                 }
-
-                if (destLat && destLng) {
-                    setDestinationPos({ lat: destLat, lng: destLng });
-                    L.marker([destLat, destLng], { icon: targetIcon })
-                        .addTo(mapRef.current)
-                        .bindPopup('Destino Atual');
-
-                    // Ajustar view inicial
-                    mapRef.current.setView([destLat, destLng], 14);
-                }
-            } catch (err) { console.error('Dest geocode error', err); }
+            }
         }
 
-        if (data.courier_lat) {
-            setCourierPos({ lat: data.courier_lat, lng: data.courier_lng });
-            courierMarkerRef.current = L.marker([data.courier_lat, data.courier_lng], { icon: courierIcon })
-                .addTo(mapRef.current);
+        // Adicionar marcador do destino
+        if (destLat && destLng) {
+            setDestinationPos({ lat: destLat, lng: destLng });
+            L.marker([destLat, destLng], { icon: targetIcon })
+                .addTo(mapRef.current)
+                .bindPopup(isInTransit ? 'Entrega' : 'Coleta');
+
+            // Ajustar zoom para mostrar ambos os pontos
+            if (initialCourierLat && initialCourierLng) {
+                const bounds = L.latLngBounds(
+                    [initialCourierLat, initialCourierLng],
+                    [destLat, destLng]
+                );
+                mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+            } else {
+                mapRef.current.setView([destLat, destLng], 14);
+            }
         }
+
+        console.log('[MAP] Init completo - courierPos:', initialCourierLat, initialCourierLng, 'destPos:', destLat, destLng);
     };
 
     const updateCourierMarker = (lat: number, lng: number) => {
