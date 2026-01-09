@@ -21,7 +21,17 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
     const [loading, setLoading] = useState(false);
     const [showAdModal, setShowAdModal] = useState(false);
     const [countDown, setCountDown] = useState(15);
-    const user = state.currentUser!;
+
+    // Early return se o usuário ainda não carregou
+    if (!state?.currentUser) {
+        return (
+            <div className="flex items-center justify-center min-h-[50vh]">
+                <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
+            </div>
+        );
+    }
+
+    const user = state.currentUser;
 
     const handleWatchVideo = () => {
         setShowAdModal(true);
