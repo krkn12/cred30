@@ -88,6 +88,10 @@ class ApiService extends ApiBase {
   sellAllQuotas = this.finance.sellAllQuotas.bind(this.finance);
   repayInstallment = this.finance.repayInstallment.bind(this.finance);
 
+  // Monetization
+  buyVerifiedBadge = async () => this.post<any>('/monetization/buy-verified-badge', {});
+  buyScoreBoost = async () => this.post<any>('/monetization/buy-score-boost', {});
+
   // Misc
   claimAdReward = this.users.claimAdReward.bind(this.users);
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
     Gift, ArrowLeft, ShoppingBag, Smartphone, Coffee,
-    Music, Gamepad2, Film, Fuel, Heart, Zap, Crown,
+    Music, Gamepad2, Film, Fuel, Zap, Crown,
     ChevronRight, Loader2, Check, AlertTriangle, Star
 } from 'lucide-react';
 import { AppState } from '../../../domain/types/common.types';
@@ -296,7 +296,7 @@ export const RewardsShopView = ({ state, onBack, onSuccess, onError, onRefresh }
                     title={`Resgatar ${confirmItem.name}?`}
                     message={`Serão deduzidos ${confirmItem.pointsCost.toLocaleString()} pontos do seu saldo. Seu saldo atual: ${farmPoints.toLocaleString()} pts.`}
                     confirmText="RESGATAR AGORA"
-                    type="success"
+                    type="info"
                 />
             )}
         </div>
