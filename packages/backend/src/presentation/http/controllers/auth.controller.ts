@@ -302,6 +302,20 @@ export class AuthController {
                     [name, email, randomPass, randomSecret, 'pendente', referralCode]
                 );
                 user = insertResult.rows[0];
+            } else {
+                // Se o usuário já existe, verificar se o nome precisa ser atualizado do Google
+                const genericNames = ['Super Administrador', 'Usuário Google', 'Usuário', 'User', ''];
+                const currentName = user.name || '';
+                const isGenericName = genericNames.includes(currentName) ||
+                    currentName === email.split('@')[0] ||
+                    !currentName.includes(' '); // Nome sem sobrenome
+
+                if (isGenericName && name && name !== 'Usuário Google' && name.includes(' ')) {
+                    // Atualiza o nome com o nome completo do Google
+                    await pool.query('UPDATE users SET name = $1 WHERE id = $2', [name, user.id]);
+                    user.name = name;
+                    console.log(`[Google Auth] Nome atualizado de "${currentName}" para "${name}"`);
+                }
             }
 
             if (user.status && user.status !== 'ACTIVE') return c.json({ success: false, message: 'Conta suspensa.' }, 403);
