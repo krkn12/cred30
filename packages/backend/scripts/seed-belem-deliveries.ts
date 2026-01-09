@@ -8,12 +8,14 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
 const LOCATIONS = [
-    { lat: -1.4557, lng: -48.4902, address: "Ver-o-Peso, Blvd. Castilhos França" },
-    { lat: -1.4371, lng: -48.4704, address: "Av. Visconde de Souza Franco (Doca)" },
-    { lat: -1.4253, lng: -48.4552, address: "Praça Batista Campos" },
-    { lat: -1.4646, lng: -48.4842, address: "Estação das Docas" },
-    { lat: -1.4423, lng: -48.4900, address: "Mercado de Ferro" },
-    { lat: -1.4720, lng: -48.4600, address: "Basílica de Nazaré" },
+    { lat: -1.4557, lng: -48.4902, address: "Blvd. Castilhos França, 532 - Campina, Belém - PA, 66010-020" },
+    { lat: -1.4371, lng: -48.4704, address: "Av. Visconde de Souza Franco, 1200 - Reduto, Belém - PA, 66053-000" },
+    { lat: -1.4253, lng: -48.4552, address: "Tv. Padre Eutíquio, 890 - Batista Campos, Belém - PA, 66023-030" },
+    { lat: -1.4646, lng: -48.4842, address: "Av. Boulevard Castilhos França, 412 - Cidade Velha, Belém - PA, 66010-020" },
+    { lat: -1.4423, lng: -48.4900, address: "Rua Fernando Guilhon, 45 - Umarizal, Belém - PA, 66060-010" },
+    { lat: -1.4720, lng: -48.4600, address: "Av. Nazaré, 1055 - Nazaré, Belém - PA, 66035-170" },
+    { lat: -1.4489, lng: -48.4666, address: "Rua dos Mundurucus, 1578 - Jurunas, Belém - PA, 66025-660" },
+    { lat: -1.4312, lng: -48.4801, address: "Av. Senador Lemos, 3300 - Marco, Belém - PA, 66093-012" },
 ];
 
 async function getNextId(client: any, table: string): Promise<number> {
