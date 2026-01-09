@@ -1,0 +1,26 @@
+[dotenv@17.2.3] injecting env (15) from .env -- tip: ÔÜÖ´©Å  load multiple .env files with { path: ['.env.local', '.env'] }
+­ƒî▒ Iniciando Seed "Manual Increment"...
+IDs: Seller 9, Buyer 10
+Listing 4 criado.
+ÔØî Erro: error: null value in column "fee_amount" of relation "marketplace_orders" violates not-null constraint
+    at C:\Users\josia\Desktop\projetos\cred30\node_modules\pg\lib\client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async seed (C:\Users\josia\Desktop\projetos\cred30\packages\backend\scripts\seed-belem-deliveries.ts:92:13) {
+  length: 503,
+  severity: 'ERROR',
+  code: '23502',
+  detail: 'Failing row contains (1, 4, 10, 9, 25.00, null, null, PAID, null, null, null, null, null, null, null, 2026-01-09 04:40:21.58877, 2026-01-09 04:40:21.58877, null, null, null, AVAILABLE, 5.00, null, null, null, null, null, null, null, DELIVERY, -1.45570000, -48.49020000, -1.43710000, -48.47040000, null).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'marketplace_orders',
+  column: 'fee_amount',
+  dataType: undefined,
+  constraint: undefined,
+  file: 'execMain.c',
+  line: '2032',
+  routine: 'ExecConstraints'
+}

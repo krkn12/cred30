@@ -1,0 +1,27 @@
+[dotenv@17.2.3] injecting env (15) from .env -- tip: ­ƒùé´©Å backup and recover secrets: https://dotenvx.com/ops
+­ƒî▒ Iniciando Seed de Entregas em Bel├®m...
+­ƒæñ Criando usu├írio: vendedor_belem@mail.com...
+ÔØî Erro no seed: null value in column "pix_key" of relation "users" violates not-null constraint
+Detalhes: error: null value in column "pix_key" of relation "users" violates not-null constraint
+    at C:\Users\josia\Desktop\projetos\cred30\node_modules\pg\lib\client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async getOrCreateUser (C:\Users\josia\Desktop\projetos\cred30\packages\backend\scripts\seed-belem-deliveries.ts:34:27)
+    at async seed (C:\Users\josia\Desktop\projetos\cred30\packages\backend\scripts\seed-belem-deliveries.ts:63:26) {
+  length: 603,
+  severity: 'ERROR',
+  code: '23502',
+  detail: 'Failing row contains (8, A├ºa├¡ do Z├®, vendedor_belem@mail.com, hash_temporario_123, segredo_123, null, 1000.00, null, null, f, 800, f, null, null, null, f, null, f, null, MEMBER, ACTIVE, 2026-01-09 04:37:32.085718, f, null, 91999999999, FREE, null, 0.00, null, null, null, null, f, null, 0, null, 00000000001, 0, 0, null, null, null, f, null, 0, null, null, null, null, null, null, null, null, null, null, f, null, null, null, null).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'users',
+  column: 'pix_key',
+  dataType: undefined,
+  constraint: undefined,
+  file: 'execMain.c',
+  line: '2032',
+  routine: 'ExecConstraints'
+}

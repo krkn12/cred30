@@ -1,0 +1,14 @@
+[dotenv@17.2.3] injecting env (15) from .env -- tip: ÔÜÖ´©Å  enable debug logging with { debug: true }
+­ƒî▒ Iniciando Seed "Manual Increment" com Corre├º├Áes...
+IDs: Seller 9, Buyer 10
+Listing 5 criado.
+Order 1 criado: A├ºa├¡ do Bom
+Listing 6 criado.
+Order 2 criado: Tacac├í
+Listing 7 criado.
+Order 3 criado: Farinha
+Listing 8 criado.
+Order 4 criado: Mani├ºoba
+Listing 9 criado.
+Order 5 criado: Pato no Tucupi
+Ô£à SUCESSO DO SEED! 5 Pedidos em Bel├®m.

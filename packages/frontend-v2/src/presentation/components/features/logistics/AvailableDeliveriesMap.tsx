@@ -93,9 +93,10 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
             attributionControl: false
         }).setView([-14.235, -51.9253], 4); // Initial setView for Brazil
 
-        // Adicionar tiles do OpenStreetMap
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
+        // Usar CartoDB Dark Matter para modo escuro premium
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            maxZoom: 20
         }).addTo(mapRef.current);
 
         // Tentar focar na localização do usuário
@@ -178,7 +179,15 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
             }
 
             if (bounds.length > 0 && mapRef.current) {
-                mapRef.current.fitBounds(L.latLngBounds(bounds), { padding: [50, 50], maxZoom: 15 });
+                // Pequeno delay para garantir que o mapa tem tamanho definido
+                setTimeout(() => {
+                    if (mapRef.current) {
+                        console.log('🗺️ Ajustando zoom para', bounds.length, 'entregas');
+                        mapRef.current.fitBounds(L.latLngBounds(bounds), { padding: [50, 50], maxZoom: 15 });
+                    }
+                }, 100);
+            } else {
+                console.log('🗺️ Nenhuma entrega com coordenadas para focar');
             }
         };
 

@@ -1,0 +1,27 @@
+[dotenv@17.2.3] injecting env (15) from .env -- tip: ÔÜÖ´©Å  override existing env vars with { override: true }
+­ƒî▒ Iniciando Seed de Entregas em Bel├®m...
+­ƒæñ Criando usu├írio: vendedor_belem@mail.com...
+­ƒæñ Criando usu├írio: cliente_belem@mail.com...
+ÔØî Erro no seed: column "condition" of relation "marketplace_listings" does not exist
+Detalhes: error: column "condition" of relation "marketplace_listings" does not exist
+    at C:\Users\josia\Desktop\projetos\cred30\node_modules\pg\lib\client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async seed (C:\Users\josia\Desktop\projetos\cred30\packages\backend\scripts\seed-belem-deliveries.ts:77:13) {
+  length: 143,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '121',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '1065',
+  routine: 'checkInsertTargets'
+}

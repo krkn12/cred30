@@ -1,0 +1,62 @@
+[dotenv@17.2.3] injecting env (15) from .env -- tip: ­ƒùé´©Å backup and recover secrets: https://dotenvx.com/ops
+­ƒî▒ Iniciando Seed de Entregas em Bel├®m...
+­ƒöì Colunas em marketplace_orders: [
+  'id',
+  'listing_id',
+  'buyer_id',
+  'seller_id',
+  'amount',
+  'fee_amount',
+  'seller_amount',
+  'status',
+  'payment_method',
+  'delivery_address',
+  'contact_phone',
+  'dispute_reason',
+  'disputed_at',
+  'buyer_rating',
+  'seller_rating',
+  'created_at',
+  'updated_at',
+  'tracking_code',
+  'offline_token',
+  'pickup_address',
+  'delivery_status',
+  'delivery_fee',
+  'courier_id',
+  'pickup_code',
+  'courier_lat',
+  'courier_lng',
+  'picked_up_at',
+  'delivered_at',
+  'delivery_confirmation_code',
+  'delivery_type',
+  'pickup_lat',
+  'pickup_lng',
+  'delivery_lat',
+  'delivery_lng',
+  'courier_rating'
+]
+ÔØî Erro no seed: invalid input syntax for type integer: "09cd20a9-48aa-4f86-9273-3ead4488c5ff"
+Detalhes: error: invalid input syntax for type integer: "09cd20a9-48aa-4f86-9273-3ead4488c5ff"
+    at C:\Users\josia\Desktop\projetos\cred30\node_modules\pg\lib\client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async seed (C:\Users\josia\Desktop\projetos\cred30\packages\backend\scripts\seed-belem-deliveries.ts:36:9) {
+  length: 179,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $1 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'numutils.c',
+  line: '616',
+  routine: 'pg_strtoint32_safe'
+}
