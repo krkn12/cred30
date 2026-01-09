@@ -8,12 +8,12 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
 const LOCATIONS = [
-    { lat: -1.4557, lng: -48.4902 },
-    { lat: -1.4371, lng: -48.4704 },
-    { lat: -1.4253, lng: -48.4552 },
-    { lat: -1.4646, lng: -48.4842 },
-    { lat: -1.4423, lng: -48.4900 },
-    { lat: -1.4720, lng: -48.4600 },
+    { lat: -1.4557, lng: -48.4902, address: "Ver-o-Peso, Blvd. Castilhos França" },
+    { lat: -1.4371, lng: -48.4704, address: "Av. Visconde de Souza Franco (Doca)" },
+    { lat: -1.4253, lng: -48.4552, address: "Praça Batista Campos" },
+    { lat: -1.4646, lng: -48.4842, address: "Estação das Docas" },
+    { lat: -1.4423, lng: -48.4900, address: "Mercado de Ferro" },
+    { lat: -1.4720, lng: -48.4600, address: "Basílica de Nazaré" },
 ];
 
 async function getNextId(client: any, table: string): Promise<number> {

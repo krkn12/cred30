@@ -200,6 +200,67 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
         addMarkers();
     }, [deliveries]);
 
+    const routeLayerRef = useRef<L.Polyline | null>(null);
+
+    // Limpar rota ao desmontar ou trocar seleção
+    useEffect(() => {
+        if (routeLayerRef.current) {
+            routeLayerRef.current.remove();
+            routeLayerRef.current = null;
+        }
+
+        const drawRoute = async () => {
+            if (!selectedDelivery || !mapRef.current) return;
+
+            // Coordenadas de origem e destino
+            let start: { lat: number, lng: number } | null = null;
+            let end: { lat: number, lng: number } | null = null;
+
+            if (selectedDelivery.pickup_lat && selectedDelivery.pickup_lng) {
+                start = { lat: selectedDelivery.pickup_lat, lng: selectedDelivery.pickup_lng };
+            }
+            if (selectedDelivery.delivery_lat && selectedDelivery.delivery_lng) {
+                end = { lat: selectedDelivery.delivery_lat, lng: selectedDelivery.delivery_lng };
+            }
+
+            if (start && end) {
+                try {
+                    // OSRM Public API (Free)
+                    const response = await fetch(
+                        `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`
+                    );
+                    const data = await response.json();
+
+                    if (data.routes && data.routes.length > 0) {
+                        const coordinates = data.routes[0].geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]);
+
+                        // Desenhar linha estilo "Uber"
+                        routeLayerRef.current = L.polyline(coordinates, {
+                            color: '#3b82f6', // blue-500
+                            weight: 6,
+                            opacity: 0.8,
+                            lineCap: 'round'
+                        }).addTo(mapRef.current);
+
+                        // Zoom na rota
+                        mapRef.current.fitBounds(routeLayerRef.current.getBounds(), { padding: [50, 50] });
+                    }
+                } catch (error) {
+                    console.error('Erro ao buscar rota:', error);
+                    // Fallback: linha reta se OSRM falhar
+                    routeLayerRef.current = L.polyline([[start.lat, start.lng], [end.lat, end.lng]], {
+                        color: '#3b82f6',
+                        weight: 4,
+                        dashArray: '10, 10',
+                        opacity: 0.5
+                    }).addTo(mapRef.current);
+                }
+            }
+        };
+
+        drawRoute();
+    }, [selectedDelivery]);
+
     const handleAcceptDelivery = async () => {
         if (!selectedDelivery) return;
 
