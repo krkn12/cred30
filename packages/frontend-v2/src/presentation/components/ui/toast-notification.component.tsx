@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Bell, CheckCircle, AlertTriangle, Info, DollarSign, Package, Truck } from 'lucide-react';
+import { X, CheckCircle, AlertTriangle, Info, DollarSign, Package, Truck } from 'lucide-react';
 
 export interface Toast {
     id: string;
