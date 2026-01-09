@@ -406,35 +406,30 @@ export class EducationController {
                 return c.json({ success: false, message: 'Tempo de estudo insuficiente.' }, 400);
             }
 
-            const amountToPayRaw = points * POINTS_TO_CURRENCY_RATE;
-            const amountToPay = Math.floor(amountToPayRaw * 100) / 100;
+            const amountToPay = 0; // DESATIVADO: Aulas não pagam mais em dinheiro
             const scoreToAdd = Math.floor(points * POINTS_TO_SCORE_RATE);
 
             const result = await executeInTransaction(pool, async (client: PoolClient) => {
                 await client.query('UPDATE education_sessions SET is_active = FALSE, total_seconds = $1 WHERE id = $2', [Math.floor(elapsedSeconds), sessionId]);
 
-                const systemConfigResult = await client.query('SELECT profit_pool FROM system_config LIMIT 1 FOR UPDATE');
-                const currentProfitPool = parseFloat(systemConfigResult.rows[0].profit_pool);
-
-                if (currentProfitPool < amountToPay) throw new Error('LIMIT_REACHED');
-
-                if (amountToPay > 0) {
-                    await client.query('UPDATE system_config SET profit_pool = profit_pool - $1', [amountToPay]);
-                    await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [amountToPay, user.id]);
-                }
+                // Removido débito do profit_pool, pois não há pagamento monetário
 
                 if (scoreToAdd > 0) {
                     await client.query('UPDATE users SET score = score + $1 WHERE id = $2', [scoreToAdd, user.id]);
                 }
 
+                // Opcional: Registrar transação de Score (se houver tabela para isso) ou apenas logar
+                // Como transactions é financeiro, vamos evitar poluir com R$ 0,00 se possível, 
+                // mas para manter histórico de "Aula Concluída", podemos inserir com valor 0.
+
                 const txResult = await client.query(`
                     INSERT INTO transactions (user_id, type, amount, description, status, metadata)
-                    VALUES ($1, 'EDUCATION_REWARD', $2, $3, 'COMPLETED', $4)
+                    VALUES ($1, 'EDUCATION_REWARD', 0, $2, 'COMPLETED', $3)
                     RETURNING id`,
-                    [user.id, amountToPay, `Recompensa Academy - Aula #${lessonId}`, JSON.stringify({ points, lessonId, sessionId })]
+                    [user.id, `Aula Concluída: #${lessonId} (+${scoreToAdd} Score)`, JSON.stringify({ points, lessonId, sessionId })]
                 );
 
-                return { transactionId: txResult.rows[0].id, amount: amountToPay, scoreAdded: scoreToAdd };
+                return { transactionId: txResult.rows[0].id, amount: 0, scoreAdded: scoreToAdd };
             });
 
             if (!result.success) {

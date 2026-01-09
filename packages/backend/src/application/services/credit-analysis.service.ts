@@ -152,14 +152,16 @@ export const calculateLoanOffer = async (
     pool: Pool | PoolClient,
     userId: string,
     requestedAmount: number,
-    guaranteePercentage: number // 50, 60, 70, 80, 90 ou 100
+    guaranteePercentage: number, // 50, 60, 70, 80, 90 ou 100
+    guarantorId?: string // Opcional: ID do Fiador
 ): Promise<{
     approved: boolean;
     reason?: string;
     offer?: {
         amount: number;
         guaranteePercentage: number;
-        guaranteeValue: number; // Valor em R$ das cotas bloqueadas
+        guaranteeValue: number; // Valor em R$ das cotas bloqueadas (Pessoal + Fiador)
+        guarantorName?: string;
         interestRate: number;   // Taxa de juros (ex: 0.35 = 35%)
         totalRepayment: number; // Valor total a pagar
         availableInterestRates: { percentage: number; rate: number }[];
@@ -171,27 +173,60 @@ export const calculateLoanOffer = async (
             return { approved: false, reason: 'Percentual de garantia inválido. Use: 50, 60, 70, 80, 90 ou 100%' };
         }
 
-        // Verificar elegibilidade
+        // Se houver fiador, não pode ser o mesmo usuário
+        if (guarantorId && guarantorId === userId) {
+            return { approved: false, reason: 'Você não pode ser seu próprio fiador.' };
+        }
+
+        // Verificar elegibilidade do Tomador
         const eligibility = await checkLoanEligibility(pool, userId);
         if (!eligibility.eligible) {
             return { approved: false, reason: eligibility.reason };
         }
 
-        const { quotasValue, maxLoanAmount } = eligibility.details;
+        const { quotasValue: userQuotasValue, maxLoanAmount } = eligibility.details;
 
         // Verificar se o valor solicitado está dentro do limite
         if (requestedAmount > maxLoanAmount) {
             return { approved: false, reason: `Valor máximo disponível: R$ ${maxLoanAmount.toFixed(2)} (Baseado no seu gasto anterior e capital acumulado)` };
         }
 
-        // Calcular garantia em R$
-        const guaranteeValue = quotasValue * (guaranteePercentage / 100);
+        // Calcular garantia Pessoal
+        let totalGuaranteeValue = userQuotasValue;
+        let guarantorName = '';
 
-        // Verificar se a garantia é suficiente
-        // A garantia mínima deve cobrir pelo menos 50% do valor emprestado
-        const minGuaranteeRequired = requestedAmount * 0.50;
-        if (guaranteeValue < minGuaranteeRequired) {
-            return { approved: false, reason: `Garantia insuficiente. Suas cotas (${guaranteePercentage}%) = R$ ${guaranteeValue.toFixed(2)}. Mínimo necessário: R$ ${minGuaranteeRequired.toFixed(2)}` };
+        // Se tiver fiador, somar garantia dele
+        if (guarantorId) {
+            const guarantorRes = await pool.query(`
+                SELECT u.name,
+                COALESCE((SELECT SUM(current_value) FROM quotas WHERE user_id = $1 AND status = 'ACTIVE'), 0) as total_quotas
+                FROM users u WHERE u.id = $1
+            `, [guarantorId]);
+
+            if (guarantorRes.rows.length === 0) {
+                return { approved: false, reason: 'Fiador não encontrado.' };
+            }
+
+            const guarantorQuotas = parseFloat(guarantorRes.rows[0].total_quotas);
+
+            // Verificar se fiador tem bloqueios (empréstimos ativos ou outras fianças) faria parte de uma verificação mais complexa.
+            // Para simplificar, assumimos que todas as cotas ativas contam, mas o bloqueio de venda entra em vigor se o empréstimo for aprovado.
+
+            totalGuaranteeValue += guarantorQuotas;
+            guarantorName = guarantorRes.rows[0].name;
+
+            console.log(`[CREDIT_ANALYSIS] Fiador ${guarantorName} adicionou R$ ${guarantorQuotas} de garantia.`);
+        }
+
+        // A garantia necessária é baseada na porcentagem escolhida do valor do empréstimo
+        // Ex: Empréstimo de 1000 com 50% de garantia precisa de 500 reais em cotas.
+        const requiredGuaranteeValue = requestedAmount * (guaranteePercentage / 100);
+
+        if (totalGuaranteeValue < requiredGuaranteeValue) {
+            return {
+                approved: false,
+                reason: `Garantia insuficiente. Suas cotas ${guarantorId ? '+ Fiador ' : ''}somam R$ ${totalGuaranteeValue.toFixed(2)}. Para ${guaranteePercentage}% de garantia, você precisa de R$ ${requiredGuaranteeValue.toFixed(2)}.`
+            };
         }
 
         // Verificar liquidez do sistema
@@ -219,8 +254,8 @@ export const calculateLoanOffer = async (
         }));
 
         console.log('DEBUG - Oferta de Empréstimo:', {
-            userId, requestedAmount, guaranteePercentage, guaranteeValue,
-            interestRate, totalRepayment, maxLoanAmount
+            userId, requestedAmount, guaranteePercentage, totalGuaranteeValue,
+            interestRate, totalRepayment, maxLoanAmount, guarantorId
         });
 
         return {
@@ -228,7 +263,8 @@ export const calculateLoanOffer = async (
             offer: {
                 amount: requestedAmount,
                 guaranteePercentage,
-                guaranteeValue,
+                guaranteeValue: requiredGuaranteeValue, // Valor Comprometido
+                guarantorName,
                 interestRate,
                 totalRepayment: Math.ceil(totalRepayment * 100) / 100,
                 availableInterestRates

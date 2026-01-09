@@ -146,6 +146,21 @@ export async function createTransaction(
   metadata?: any
 ): Promise<{ success: boolean; transactionId?: number; error?: string }> {
   try {
+    // SECURITY ENFORCEMENT: Carteira Única (Single Entry/Exit)
+    // Bloquear tentativas de pagamento externo direto para operações internas.
+    // A única entrada de dinheiro permitida é via DEPOST (Depósito).
+    const BALANCE_ONLY_TYPES = ['BUY_QUOTA', 'LOAN_PAYMENT', 'MARKET_PURCHASE', 'MARKET_BOOST', 'MEMBERSHIP_UPGRADE'];
+
+    if (BALANCE_ONLY_TYPES.includes(type)) {
+      // Se user não enviou metadata ou useBalance não é true
+      if (!metadata || !metadata.useBalance) {
+        return {
+          success: false,
+          error: 'Operação permitida apenas com Saldo Interno via App. Por favor, realize um depósito primeiro.'
+        };
+      }
+    }
+
     const result = await client.query(
       `INSERT INTO transactions (user_id, type, amount, description, status, metadata)
        VALUES ($1, $2, $3, $4, $5, $6)
@@ -399,18 +414,62 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
         const principalPortion = actualPaymentAmount * (loanPrincipal / loanTotal);
         const interestPortion = actualPaymentAmount - principalPortion;
 
-        // CORREÇÃO: Todo o dinheiro que entra (Principal + Juros) deve aumentar o system_balance
-        // se for um pagamento externo (PIX). Se for via saldo, o system_balance não muda
-        // pois o dinheiro já estava lá (apenas muda de 'dono').
+        // CORREÇÃO CRÍTICA (Fluxo de Caixa Contábil):
+        // 1. O PRINCIPAL recebido deve voltar para a investment_reserve (de onde o empréstimo saiu).
+        // 2. O JUROS recebido é LUCRO. Ele deve ser dividido:
+        //    - 80% vai para o profit_pool (Para os usuários/dividendos).
+        //    - 20% é retido como Taxa de Administração sobre o lucro (Para o sistema).
+
+        const interestUserShare = interestPortion * 0.80; // 80% dos juros para usuários
+        const interestSystemFee = interestPortion * 0.20; // 20% dos juros para o sistema
+
+        // A. Se pagamento externo (PIX): O dinheiro entra agora no caixa
         if (!metadata.useBalance) {
           await client.query(
             'UPDATE system_config SET system_balance = system_balance + $1',
             [actualPaymentAmount]
           );
-          console.log(`[LOAN_PAYMENT] Saldo do sistema aumentado em R$ ${actualPaymentAmount} (Principal + Juros)`);
         }
 
-        await client.query('UPDATE system_config SET profit_pool = profit_pool + $1', [interestPortion]);
+        // B. Reabastecer a Reserva de Investimento com o Principal recuperado (Contabilidade)
+        // Isso garante que o fundo de empréstimos seja "giratório" e sustentável
+        await client.query(
+          'UPDATE system_config SET investment_reserve = investment_reserve + $1',
+          [principalPortion]
+        );
+
+        // C. Distribuir os Juros (Lucro)
+        // C1. Parte dos Usuários
+        await client.query(
+          'UPDATE system_config SET profit_pool = profit_pool + $1',
+          [interestUserShare]
+        );
+
+        // C2. Parte do Sistema (Taxa sobre o lucro do empréstimo)
+        // Distribuída conforme regra 25/25/25/25
+        if (interestSystemFee > 0) {
+          await client.query(
+            `UPDATE system_config SET 
+              total_tax_reserve = total_tax_reserve + $1,
+              total_operational_reserve = total_operational_reserve + $2,
+              total_owner_profit = total_owner_profit + $3,
+              investment_reserve = investment_reserve + $4`,
+            [
+              interestSystemFee * PLATFORM_FEE_TAX_SHARE,
+              interestSystemFee * PLATFORM_FEE_OPERATIONAL_SHARE,
+              interestSystemFee * PLATFORM_FEE_OWNER_SHARE,
+              interestSystemFee * PLATFORM_FEE_INVESTMENT_SHARE
+            ]
+          );
+        }
+
+        console.log(`[LOAN_PAYMENT_DISTRIBUTION]
+          Total Recebido: ${actualPaymentAmount.toFixed(2)}
+          Principal Recuperado (InvestReserve): ${principalPortion.toFixed(2)}
+          Lucro Total (Juros): ${interestPortion.toFixed(2)}
+          -> Usuários (80%): ${interestUserShare.toFixed(2)}
+          -> Taxa Adm (20%): ${interestSystemFee.toFixed(2)}`
+        );
 
         const isInstallment = metadata.paymentType === 'installment' || metadata.isInstallment === true;
         const isFullPayment = metadata.paymentType === 'full_payment' || (!isInstallment && loan.status === 'PAYMENT_PENDING');

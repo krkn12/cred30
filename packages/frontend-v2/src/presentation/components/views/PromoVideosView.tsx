@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
-import { Play, DollarSign, Clock, Eye, ChevronRight, Plus, X as XIcon, CheckCircle2, Youtube, Film, ExternalLink, Wallet, Smartphone, CreditCard, Zap, Trash2, ThumbsUp, MessageSquare, UserPlus, Info, ShieldCheck } from 'lucide-react';
+import { Play, DollarSign, Clock, Eye, ChevronRight, Plus, X as XIcon, CheckCircle2, Youtube, Film, ExternalLink, Wallet, Smartphone, Zap, Trash2, ThumbsUp, MessageSquare, UserPlus, Info, ShieldCheck } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { apiService } from '../../../application/services/api.service';
 
@@ -71,6 +71,7 @@ const PaymentSuccessModal: React.FC<{
 }> = ({ data, onClose }) => {
     const totalToPay = data.value || 0;
     const [copied, setCopied] = React.useState(false);
+
 
     const handleCopy = () => {
         if (data.pixCopiaECola) {
@@ -280,7 +281,6 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                     onSuccess('Sucesso!', 'Campanha criada com sucesso');
                 }}
                 onError={onError}
-                onPaymentSuccess={setPaymentSuccessData}
             />
         )
     }
@@ -656,28 +656,7 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                                             <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">{campaign.platform}</p>
                                         </div>
                                         <div className="flex gap-2">
-                                            {campaign.status === 'PENDING' && (
-                                                <button
-                                                    onClick={async (e) => {
-                                                        e.stopPropagation();
-                                                        setLoading(true);
-                                                        try {
-                                                            const res = await apiService.get<any>(`/promo-videos/${campaign.id}/payment`);
-                                                            if (res.success) {
-                                                                setPaymentSuccessData(res.data);
-                                                            } else {
-                                                                onError('Erro', res.message);
-                                                            }
-                                                        } catch (err: any) {
-                                                            onError('Erro', err.message);
-                                                        }
-                                                        setLoading(false);
-                                                    }}
-                                                    className="bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-all"
-                                                >
-                                                    <DollarSign size={10} /> PAGAR
-                                                </button>
-                                            )}
+
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -927,7 +906,6 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                         onSuccess('Sucesso!', 'Campanha criada com sucesso');
                     }}
                     onError={onError}
-                    onPaymentSuccess={setPaymentSuccessData}
                 />
             )}
 
@@ -951,9 +929,8 @@ const CreateCampaignModal: React.FC<{
     userBalance: number;
     onClose: () => void;
     onSuccess: () => void;
-    onError: (title: string, message: string) => void;
-    onPaymentSuccess: (data: any) => void;
-}> = ({ userBalance, onClose, onSuccess, onError, onPaymentSuccess }) => {
+    onError: (title: string, msg: string) => void;
+}> = ({ userBalance, onClose, onSuccess, onError }) => {
     const [loading, setLoading] = useState(false);
     const [form, setForm] = useState({
         title: '',
@@ -990,8 +967,7 @@ const CreateCampaignModal: React.FC<{
     // Lista de tags para o formulário
     const FORM_TAGS = ['ENTRETENIMENTO', 'MUSICA', 'EDUCACAO', 'GAMES', 'LIFESTYLE', 'TECNOLOGIA', 'NEGOCIOS', 'SAUDE', 'HUMOR', 'OUTROS'];
 
-    // Valor total
-    const totalToPay = form.budget;
+
 
     const handleSubmit = async () => {
         if (!form.title || !form.videoUrl) {

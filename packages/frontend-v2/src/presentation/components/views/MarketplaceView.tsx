@@ -168,11 +168,7 @@ const ListingCard = memo(({ item, currentUserId, formatCurrency, onBoost, onDeta
                             <Zap size={10} /> DESTAQUE
                         </div>
                     )}
-                    {item.asaas_wallet_id && (
-                        <div className="bg-emerald-500 text-white text-[8px] px-2 py-1 rounded-full font-black flex items-center gap-1 shadow-lg shadow-emerald-500/20">
-                            <ShieldCheck size={10} /> VERIFICADO
-                        </div>
-                    )}
+
                 </div>
             </div>
 
@@ -714,25 +710,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                         </div>
                     </div>
 
-                    {!state.currentUser?.asaas_wallet_id && (
-                        <div className="bg-primary-500/5 border border-primary-500/20 rounded-2xl p-4 flex items-center justify-between gap-4">
-                            <div className="flex items-start gap-3">
-                                <div className="bg-primary-500/10 p-2 rounded-xl text-primary-400">
-                                    <Sparkles size={20} />
-                                </div>
-                                <div>
-                                    <h4 className="text-xs font-bold text-white">Seja um Vendedor Verificado</h4>
-                                    <p className="text-[10px] text-zinc-500 mt-0.5">Receba via PIX/Cartão e passe mais confiança.</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => navigate('/app/seller')}
-                                className="bg-primary-500 hover:bg-primary-400 text-black px-3 py-1.5 rounded-lg text-[10px] font-black transition active:scale-95"
-                            >
-                                COMEÇAR
-                            </button>
-                        </div>
-                    )}
+
                 </div>
             )}
 

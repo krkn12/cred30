@@ -529,18 +529,25 @@ export class MarketplaceOrdersController {
                 const totalFee = parseFloat(order.fee_amount || '0');
 
                 if (totalFee > 0) {
-                    const taxPart = totalFee * QUOTA_FEE_TAX_SHARE;
-                    const operPart = totalFee * QUOTA_FEE_OPERATIONAL_SHARE;
-                    const ownerPart = totalFee * QUOTA_FEE_OWNER_SHARE;
-                    const investPart = totalFee * QUOTA_FEE_INVESTMENT_SHARE;
+                    // DIVISÃO DA TAXA DE VENDA DO MARKETPLACE
+                    // 50% para Cotistas (Profit Pool)
+                    const profitShare = totalFee * 0.5;
+
+                    // 50% para a Empresa (Sistema) dividida em 4 reservas
+                    const systemShare = totalFee * 0.5;
+                    const taxPart = systemShare * QUOTA_FEE_TAX_SHARE; // 25% do systemShare
+                    const operPart = systemShare * QUOTA_FEE_OPERATIONAL_SHARE;
+                    const ownerPart = systemShare * QUOTA_FEE_OWNER_SHARE;
+                    const investPart = systemShare * QUOTA_FEE_INVESTMENT_SHARE;
 
                     await client.query(`
                         UPDATE system_config SET 
-                            total_tax_reserve = total_tax_reserve + $1,
-                            total_operational_reserve = total_operational_reserve + $2,
-                            total_owner_profit = total_owner_profit + $3,
-                            investment_reserve = COALESCE(investment_reserve, 0) + $4
-                        `, [taxPart, operPart, ownerPart, investPart]
+                            profit_pool = profit_pool + $1,
+                            total_tax_reserve = total_tax_reserve + $2,
+                            total_operational_reserve = total_operational_reserve + $3,
+                            total_owner_profit = total_owner_profit + $4,
+                            investment_reserve = COALESCE(investment_reserve, 0) + $5
+                        `, [profitShare, taxPart, operPart, ownerPart, investPart]
                     );
                 }
 
@@ -563,7 +570,12 @@ export class MarketplaceOrdersController {
                         await createTransaction(client, order.courier_id, 'LOGISTIC_EARN', courierPart, `Entrega realizada: ${order.title}`, 'APPROVED', { orderId });
                     }
 
-                    await client.query('UPDATE system_config SET profit_pool = profit_pool + $1', [systemPart]);
+                    // DIVISÃO DA TAXA DE LOGÍSTICA (15%)
+                    // Metade para Cotistas (Profit Pool) e Metade para a Empresa (System Balance)
+                    const profitShare = systemPart / 2;
+                    const companyShare = systemPart / 2;
+
+                    await client.query('UPDATE system_config SET profit_pool = profit_pool + $1, system_balance = system_balance + $2', [profitShare, companyShare]);
                 }
 
                 // 4. Se foi no crediário, o dinheiro sai do caixa do sistema para o vendedor + courier

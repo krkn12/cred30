@@ -36,7 +36,7 @@ const createVideoSchema = z.object({
     requireSubscribe: z.boolean().default(false),
     minScoreRequired: z.number().min(0).max(1000).default(0),
     verifiedOnly: z.boolean().default(false),
-    paymentMethod: z.enum(['BALANCE', 'PIX']).default('BALANCE'),
+    paymentMethod: z.enum(['BALANCE']).default('BALANCE'),
 });
 
 export class PromoVideosController {
@@ -435,40 +435,8 @@ export class PromoVideosController {
                 });
             }
 
-            // PIX Manual
             if (data.paymentMethod === 'PIX') {
-                await pool.query(`
-                    INSERT INTO promo_videos (
-                        user_id, title, description, video_url, thumbnail_url, platform, tag,
-                        duration_seconds, price_per_view, min_watch_seconds, budget, budget_gross, spent, target_views, status, is_active,
-                        require_like, require_comment, require_subscribe,
-                        min_score_required, verified_only,
-                        external_initial_likes, external_current_likes,
-                        external_initial_comments, external_current_comments,
-                        external_initial_subscribers, external_current_subscribers
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 0, $13, 'PENDING', FALSE, $14, $15, $16, $17, $18, $19, $19, $20, $20, $21, $21)
-                `, [
-                    userPayload.id, data.title, data.description, data.videoUrl, data.thumbnailUrl, data.platform, data.tag || 'OUTROS',
-                    data.durationSeconds, grossPPV, data.minWatchSeconds || 20, viewerPool, data.budget, targetViews,
-                    data.requireLike, data.requireComment, data.requireSubscribe,
-                    data.minScoreRequired, data.verifiedOnly,
-                    initialStats.likes, initialStats.comments, initialStats.subscribers
-                ]);
-
-                return c.json({
-                    success: true,
-                    message: 'Campanha criada! Realize a transferência PIX para ativar.',
-                    data: {
-                        manualPix: {
-                            key: ADMIN_PIX_KEY,
-                            owner: 'Cred30',
-                            amount: data.budget,
-                            description: `Transferência para campanha: ${data.title}`
-                        },
-                        targetViews,
-                        viewerEarningPoints: Math.floor(grossPPV * VIEWER_SHARE * POINTS_PER_REAL)
-                    }
-                });
+                return c.json({ success: false, message: 'Pagamento via PIX direto descontinuado. Por favor, faça um depósito e use seu saldo.' }, 400);
             }
 
             return c.json({ success: false, message: 'Opção inválida' }, 400);
@@ -721,42 +689,5 @@ export class PromoVideosController {
         }
     }
 
-    /**
-     * Buscar dados de pagamento de uma campanha PENDING (PIX Manual)
-     */
-    static async getPaymentInfo(c: Context) {
-        try {
-            const userPayload = c.get('user');
-            const videoId = c.req.param('id');
-            const pool = getDbPool(c);
 
-            const videoResult = await pool.query(
-                'SELECT * FROM promo_videos WHERE id = $1 AND user_id = $2',
-                [videoId, userPayload.id]
-            );
-
-            if (videoResult.rows.length === 0) {
-                return c.json({ success: false, message: 'Campanha não encontrada.' }, 404);
-            }
-
-            const video = videoResult.rows[0];
-
-            return c.json({
-                success: true,
-                data: {
-                    status: video.status,
-                    budgetGross: parseFloat(video.budget_gross),
-                    manualPix: {
-                        key: ADMIN_PIX_KEY,
-                        owner: 'Cred30',
-                        amount: parseFloat(video.budget_gross),
-                        description: `Transferência para campanha: ${video.title}`
-                    }
-                }
-            });
-        } catch (error: any) {
-            console.error('[PROMO-VIDEOS] Erro ao buscar pagamento:', error);
-            return c.json({ success: false, message: error.message || 'Erro ao buscar pagamento' }, 500);
-        }
-    }
 }

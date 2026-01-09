@@ -12,13 +12,13 @@ interface InvestViewProps {
 export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) => {
     void isPro;
     const [qty, setQty] = useState(1);
-    const [method] = useState<'BALANCE' | 'PIX'>('BALANCE');
+    const [method] = useState<'BALANCE'>('BALANCE');
     const [showConfirm, setShowConfirm] = useState(false);
     const [acceptedTerms, setAcceptedTerms] = useState(false);
     const [showTermsModal, setShowTermsModal] = useState(false);
 
     const baseAmount = qty * QUOTA_PRICE;
-    const { total, fee } = calculateTotalToPay(baseAmount, method.toLowerCase() as any);
+    const { total } = calculateTotalToPay(baseAmount, method.toLowerCase() as any);
 
     const handlePurchase = () => {
         if (!acceptedTerms) return;
@@ -138,13 +138,7 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
                             <div className="space-y-4 mb-8">
                                 <SummaryItem label={`Capital Social (${qty}x)`} value={qty * QUOTA_SHARE_VALUE} />
                                 <SummaryItem label="Taxa Operacional" value={qty * QUOTA_ADM_FEE} />
-                                {fee > 0 && (
-                                    <SummaryItem
-                                        label={`Encargos ${method === 'PIX' ? 'Gateway' : 'Processamento'}`}
-                                        value={fee}
-                                        highlight
-                                    />
-                                )}
+
                                 <div className="pt-4 mt-4 border-t border-white/5">
                                     <div className="flex justify-between items-baseline">
                                         <span className="text-sm font-black text-white uppercase tracking-wider">Total Final</span>
@@ -275,12 +269,7 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
                                 <span className="text-zinc-600">Subtotal Aporte</span>
                                 <span className="text-white">{baseAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                             </div>
-                            {fee > 0 && (
-                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-primary-500/70">
-                                    <span>Taxas Externas</span>
-                                    <span>+{fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                                </div>
-                            )}
+
                             <div className="h-px bg-white/5 my-2"></div>
                             <div className="flex justify-between items-end">
                                 <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest mb-1">Total Final</span>
@@ -290,18 +279,28 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
 
                         <div className="space-y-4">
                             {userBalance < total ? (
-                                <button
-                                    onClick={() => window.location.href = '/app/dashboard'} // Ou redirecionar para depósito
-                                    className="w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] bg-zinc-800 text-zinc-600 cursor-not-allowed shadow-none"
-                                >
-                                    SALDO INSUFICIENTE
-                                </button>
+                                <div className="space-y-3">
+                                    <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-center">
+                                        <p className="text-red-400 text-xs font-bold uppercase tracking-wider mb-1">Saldo Insuficiente</p>
+                                        <p className="text-zinc-500 text-[10px]">Você precisa depositar para continuar.</p>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setShowConfirm(false);
+                                            // Redireciona via React Router (ideal) ou location
+                                            window.location.hash = '#/app/dashboard'; // Ou abrir modal de depósito
+                                        }}
+                                        className="w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] bg-white text-black hover:bg-zinc-200 transition-all shadow-xl active:scale-95"
+                                    >
+                                        FAZER DEPÓSITO AGORA
+                                    </button>
+                                </div>
                             ) : (
                                 <button
                                     onClick={handlePurchase}
                                     className="w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl bg-primary-500 text-black hover:bg-primary-400 shadow-primary-500/20 active:scale-[0.98]"
                                 >
-                                    PAGAR COM MEU SALDO
+                                    CONFIRMAR E PAGAR COM SALDO
                                     <ArrowRight size={18} />
                                 </button>
                             )}
