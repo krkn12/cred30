@@ -251,7 +251,7 @@ export const LogisticsView = () => {
             <div className="flex gap-2 mb-8 bg-zinc-900/50 p-2 rounded-[2rem] border border-white/5 backdrop-blur-xl">
                 {[
                     { id: 'available' as Tab, label: 'Disponíveis', icon: Package },
-                    { id: 'active' as Tab, label: 'Minhas Ativas', icon: Truck },
+                    { id: 'active' as Tab, label: 'Ativas', icon: Truck },
                     { id: 'history' as Tab, label: 'Histórico', icon: Clock },
                 ].map(tab => (
                     <button
@@ -286,7 +286,7 @@ export const LogisticsView = () => {
                     <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
                 </div>
             ) : activeTab === 'available' ? (
-                <div className="h-[75vh] w-full rounded-3xl overflow-hidden border border-white/10 relative shadow-2xl">
+                <div className="h-[70vh] w-full rounded-3xl overflow-hidden border border-white/10 relative shadow-2xl bg-zinc-900">
                     <AvailableDeliveriesMap
                         deliveries={visibleDeliveries.map(d => ({
                             id: d.orderId.toString(),
@@ -306,10 +306,8 @@ export const LogisticsView = () => {
                         }))}
                         onAccept={async (deliveryId) => {
                             await handleAccept(parseInt(deliveryId));
-                            // Map não fecha, apenas recarrega dados e muda aba
                             await loadData();
                             setActiveTab('active');
-                            // Hack UX:
                             const acceptedDelivery = visibleDeliveries.find(d => d.orderId.toString() === deliveryId);
                             if (acceptedDelivery) {
                                 setTrackingOrder({
@@ -319,256 +317,159 @@ export const LogisticsView = () => {
                             }
                         }}
                         onIgnore={(id) => handleIgnore(parseInt(id))}
-                        onClose={() => { }} // Sem ação de fechar pois é a view principal
+                        onClose={() => { }}
                         isEmbedded={true}
                     />
                 </div>
             ) : (
                 myDeliveries.length === 0 ? (
-                    <div key={delivery.orderId} className="glass p-5 rounded-2xl">
-                        <div className="flex gap-4">
-                            {delivery.imageUrl ? (
-                                <img
-                                    src={delivery.imageUrl}
-                                    alt={delivery.itemTitle}
-                                    className="w-20 h-20 object-cover rounded-xl flex-shrink-0"
-                                />
-                            ) : (
-                                <div className="w-20 h-20 bg-zinc-800 rounded-xl flex items-center justify-center flex-shrink-0">
-                                    <Package className="text-zinc-600" size={32} />
-                                </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                                <h3 className="text-white font-bold truncate">{delivery.itemTitle}</h3>
-                                <p className="text-zinc-500 text-sm">Valor: {formatCurrency(delivery.itemPrice)}</p>
-
-                                <div className="mt-3 space-y-1">
-                                    <div className="flex items-start gap-2 text-sm">
-                                        <Store size={14} className="text-blue-400 mt-0.5 flex-shrink-0" />
-                                        <span className="text-zinc-400">
-                                            <span className="text-zinc-500">Coletar em:</span> {delivery.pickupAddress}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-start gap-2 text-sm">
-                                        <Navigation size={14} className="text-emerald-400 mt-0.5 flex-shrink-0" />
-                                        <span className="text-zinc-400">
-                                            <span className="text-zinc-500">Entregar em:</span> {delivery.deliveryAddress}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
-                            <div>
-                                <p className="text-xs text-zinc-500">Você ganha</p>
-                                <p className="text-xl font-bold text-emerald-400">{formatCurrency(delivery.courierEarnings)}</p>
-                                <p className="text-[10px] text-zinc-600">Taxa: {formatCurrency(delivery.deliveryFee)} (90% p/ você)</p>
-                            </div>
-                            <button
-                                onClick={() => handleAccept(delivery.orderId)}
-                                disabled={actionLoading === delivery.orderId}
-                                className="bg-primary-500 hover:bg-primary-400 text-black font-black uppercase tracking-widest py-4 px-8 rounded-2xl transition-all flex items-center gap-3 shadow-xl shadow-primary-500/10 hover:shadow-primary-500/30 active:scale-95 disabled:opacity-50 text-[10px]"
-                            >
-                                {actionLoading === delivery.orderId ? (
-                                    <Loader2 size={18} className="animate-spin" />
-                                ) : (
-                                    <>
-                                        ACEITAR AGORA
-                                        <ArrowRight size={18} />
-                                    </>
-                                )}
-                            </button>
-                        </div>
+                    <div className="text-center py-20">
+                        <Truck size={48} className="text-zinc-600 mx-auto mb-4" />
+                        <p className="text-zinc-400">
+                            {activeTab === 'active' ? 'Nenhuma entrega ativa' : 'Nenhuma entrega no histórico'}
+                        </p>
                     </div>
-                ))}
+                ) : (
+                    <div className="space-y-4">
+                        {myDeliveries.map(delivery => (
+                            <div key={delivery.orderId} className="glass p-5 rounded-2xl">
+                                <div className="flex items-start justify-between mb-3">
+                                    <div>
+                                        <h3 className="text-white font-bold">{delivery.itemTitle}</h3>
+                                        <p className="text-xs text-zinc-500">Pedido #{delivery.orderId}</p>
+                                    </div>
+                                    {getStatusBadge(delivery.deliveryStatus || delivery.orderStatus || 'UNKNOWN')}
+                                </div>
+
+                                <div className="space-y-2 mb-4">
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <Store size={14} className="text-blue-400" />
+                                        <span className="text-zinc-500">Vendedor:</span>
+                                        <span className="text-zinc-300">{delivery.sellerName}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <User size={14} className="text-emerald-400" />
+                                        <span className="text-zinc-500">Comprador:</span>
+                                        <span className="text-zinc-300">{delivery.buyerName}</span>
+                                    </div>
+                                    {delivery.contactPhone && (
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <Phone size={14} className="text-primary-400" />
+                                            <span className="text-zinc-400">{delivery.contactPhone}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center justify-between">
+                                    <p className="text-emerald-400 font-bold">{formatCurrency(delivery.courierEarnings)}</p>
+                                    <div className="flex gap-2">
+                                        {delivery.deliveryStatus === 'ACCEPTED' && (
+                                            <>
+                                                <button
+                                                    onClick={() => setTrackingOrder(delivery)}
+                                                    className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all flex items-center justify-center"
+                                                    title="Ver no Mapa"
+                                                >
+                                                    <MapIcon size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleCancel(delivery.orderId)}
+                                                    disabled={actionLoading === delivery.orderId}
+                                                    className="text-red-400 hover:text-red-300 text-sm font-bold py-2 px-4 rounded-lg border border-red-500/20 transition-colors"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                                <button
+                                                    onClick={() => handlePickup(delivery.orderId)}
+                                                    disabled={actionLoading === delivery.orderId}
+                                                    className="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
+                                                >
+                                                    {actionLoading === delivery.orderId ? (
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                    ) : (
+                                                        'Coletei o Produto'
+                                                    )}
+                                                </button>
+                                            </>
+                                        )}
+                                        {delivery.deliveryStatus === 'IN_TRANSIT' && (
+                                            <>
+                                                <button
+                                                    onClick={() => setTrackingOrder(delivery)}
+                                                    className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all flex items-center justify-center mr-1"
+                                                    title="Ver no Mapa"
+                                                >
+                                                    <MapIcon size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelivered(delivery.orderId)}
+                                                    disabled={actionLoading === delivery.orderId}
+                                                    className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
+                                                >
+                                                    {actionLoading === delivery.orderId ? (
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <CheckCircle size={16} />
+                                                            Entreguei
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </>
+                                        )}
+                                        {delivery.deliveryStatus === 'DELIVERED' && (
+                                            <span className="text-xs text-yellow-400 bg-yellow-500/10 px-3 py-2 rounded-lg">
+                                                ⏳ Aguardando confirmação do comprador
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )
+            )}
+
+            {/* Info Box */}
+            <div className="mt-8 bg-zinc-900 border border-white/5 rounded-2xl p-5">
+                <h3 className="text-white font-bold mb-3">💡 Como funciona?</h3>
+                <ul className="space-y-2 text-sm text-zinc-400">
+                    <li className="flex items-start gap-2">
+                        <span className="text-primary-400 font-bold">1.</span>
+                        Escolha uma entrega disponível e clique em "Aceitar"
+                    </li>
+                    <li className="flex items-start gap-2">
+                        <span className="text-primary-400 font-bold">2.</span>
+                        Vá até o vendedor e colete o produto
+                    </li>
+                    <li className="flex items-start gap-2">
+                        <span className="text-primary-400 font-bold">3.</span>
+                        Leve até o endereço do comprador e marque como entregue
+                    </li>
+                    <li className="flex items-start gap-2">
+                        <span className="text-primary-400 font-bold">4.</span>
+                        Quando o comprador confirmar, você recebe <span className="text-emerald-400 font-bold">90%</span> do valor do frete
+                    </li>
+                </ul>
+            </div>
+            {/* Tracking Modal */}
+            {trackingOrder && (
+                <OrderTrackingMap
+                    orderId={trackingOrder.orderId.toString()}
+                    onClose={() => setTrackingOrder(null)}
+                    userRole="courier"
+                />
+            )}
         </div>
-    ) : (
-        myDeliveries.length === 0 ? (
-            <div className="text-center py-20">
-                <Truck size={48} className="text-zinc-600 mx-auto mb-4" />
-                <p className="text-zinc-400">
-                    {activeTab === 'active' ? 'Nenhuma entrega ativa' : 'Nenhuma entrega no histórico'}
-                </p>
-            </div>
-        ) : (
-            <div className="space-y-4">
-                {myDeliveries.map(delivery => (
-                    <div key={delivery.orderId} className="glass p-5 rounded-2xl">
-                        <div className="flex items-start justify-between mb-3">
-                            <div>
-                                <h3 className="text-white font-bold">{delivery.itemTitle}</h3>
-                                <p className="text-xs text-zinc-500">Pedido #{delivery.orderId}</p>
-                            </div>
-                            {getStatusBadge(delivery.deliveryStatus || delivery.orderStatus || 'UNKNOWN')}
-                        </div>
-
-                        <div className="space-y-2 mb-4">
-                            <div className="flex items-center gap-2 text-sm">
-                                <Store size={14} className="text-blue-400" />
-                                <span className="text-zinc-500">Vendedor:</span>
-                                <span className="text-zinc-300">{delivery.sellerName}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                                <User size={14} className="text-emerald-400" />
-                                <span className="text-zinc-500">Comprador:</span>
-                                <span className="text-zinc-300">{delivery.buyerName}</span>
-                            </div>
-                            {delivery.contactPhone && (
-                                <div className="flex items-center gap-2 text-sm">
-                                    <Phone size={14} className="text-primary-400" />
-                                    <span className="text-zinc-400">{delivery.contactPhone}</span>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <p className="text-emerald-400 font-bold">{formatCurrency(delivery.courierEarnings)}</p>
-                            <div className="flex gap-2">
-                                {delivery.deliveryStatus === 'ACCEPTED' && (
-                                    <>
-                                        <button
-                                            onClick={() => setTrackingOrder(delivery)}
-                                            className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all flex items-center justify-center"
-                                            title="Ver no Mapa"
-                                        >
-                                            <MapIcon size={18} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleCancel(delivery.orderId)}
-                                            disabled={actionLoading === delivery.orderId}
-                                            className="text-red-400 hover:text-red-300 text-sm font-bold py-2 px-4 rounded-lg border border-red-500/20 transition-colors"
-                                        >
-                                            Cancelar
-                                        </button>
-                                        <button
-                                            onClick={() => handlePickup(delivery.orderId)}
-                                            disabled={actionLoading === delivery.orderId}
-                                            className="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
-                                        >
-                                            {actionLoading === delivery.orderId ? (
-                                                <Loader2 size={16} className="animate-spin" />
-                                            ) : (
-                                                'Coletei o Produto'
-                                            )}
-                                        </button>
-                                    </>
-                                )}
-                                {delivery.deliveryStatus === 'IN_TRANSIT' && (
-                                    <>
-                                        <button
-                                            onClick={() => setTrackingOrder(delivery)}
-                                            className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all flex items-center justify-center mr-1"
-                                            title="Ver no Mapa"
-                                        >
-                                            <MapIcon size={18} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelivered(delivery.orderId)}
-                                            disabled={actionLoading === delivery.orderId}
-                                            className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
-                                        >
-                                            {actionLoading === delivery.orderId ? (
-                                                <Loader2 size={16} className="animate-spin" />
-                                            ) : (
-                                                <>
-                                                    <CheckCircle size={16} />
-                                                    Entreguei
-                                                </>
-                                            )}
-                                        </button>
-                                    </>
-                                )}
-                                {delivery.deliveryStatus === 'DELIVERED' && (
-                                    <span className="text-xs text-yellow-400 bg-yellow-500/10 px-3 py-2 rounded-lg">
-                                        ⏳ Aguardando confirmação do comprador
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        )
-    )
-}
-
-{/* Info Box */ }
-<div className="mt-8 bg-zinc-900 border border-white/5 rounded-2xl p-5">
-    <h3 className="text-white font-bold mb-3">💡 Como funciona?</h3>
-    <ul className="space-y-2 text-sm text-zinc-400">
-        <li className="flex items-start gap-2">
-            <span className="text-primary-400 font-bold">1.</span>
-            Escolha uma entrega disponível e clique em "Aceitar"
-        </li>
-        <li className="flex items-start gap-2">
-            <span className="text-primary-400 font-bold">2.</span>
-            Vá até o vendedor e colete o produto
-        </li>
-        <li className="flex items-start gap-2">
-            <span className="text-primary-400 font-bold">3.</span>
-            Leve até o endereço do comprador e marque como entregue
-        </li>
-        <li className="flex items-start gap-2">
-            <span className="text-primary-400 font-bold">4.</span>
-            Quando o comprador confirmar, você recebe <span className="text-emerald-400 font-bold">90%</span> do valor do frete
-        </li>
-    </ul>
-</div>
-{/* Tracking Modal */ }
-{
-    trackingOrder && (
-        <OrderTrackingMap
-            orderId={trackingOrder.orderId.toString()}
-            onClose={() => setTrackingOrder(null)}
-            userRole="courier"
-        />
-    )
-}
-
-{/* Available Deliveries Map */ }
-{
-    showAvailableMap && (
-        <AvailableDeliveriesMap
-            deliveries={visibleDeliveries.map(d => ({
-                id: d.orderId.toString(),
-                delivery_fee: d.deliveryFee,
-                delivery_address: d.deliveryAddress,
-                pickup_address: d.pickupAddress,
-                pickup_lat: d.pickupLat || null,
-                pickup_lng: d.pickupLng || null,
-                delivery_lat: d.deliveryLat || null,
-                delivery_lng: d.deliveryLng || null,
-                item_title: d.itemTitle,
-                image_url: d.imageUrl || null,
-                seller_name: d.sellerName,
-                buyer_name: d.buyerName,
-                buyer_phone: d.contactPhone || '',
-                seller_phone: ''
-            }))}
-            onAccept={async (deliveryId) => {
-                await handleAccept(parseInt(deliveryId));
-                setShowAvailableMap(false);
-                await loadData();
-
-                // Fluxo Uber: Mudar para aba Ativas e Abrir Rastreio
-                setActiveTab('active');
-                // Encontrar a entrega recém aceita (pode precisar de um pequeno delay se o backend demorar a indexar, mas loadData deve resolver)
-                // Como loadData atualiza myDeliveries (state), precisamos esperar o update. 
-                // Mas podemos setar o trackingOrder com um objeto parcial ou esperar.
-                // Melhor: forçar fetch da entrega específica ou confiar que loadData trouxe.
-
-                // Hack UX: setar trackingOrder com os dados que já temos do 'visibleDeliveries'
-                const acceptedDelivery = visibleDeliveries.find(d => d.orderId.toString() === deliveryId);
                 if (acceptedDelivery) {
-                    setTrackingOrder({
-                        ...acceptedDelivery,
-                        deliveryStatus: 'ACCEPTED' // Forçar status visualmente
-                    });
-                }
-            }}
-            onIgnore={(id) => handleIgnore(parseInt(id))}
-            onClose={() => setShowAvailableMap(false)}
+        setTrackingOrder({
+            ...acceptedDelivery,
+            deliveryStatus: 'ACCEPTED' // Forçar status visualmente
+        });
+    }
+}}
+onIgnore = {(id) => handleIgnore(parseInt(id))}
+onClose = {() => setShowAvailableMap(false)}
         />
     )
 }
