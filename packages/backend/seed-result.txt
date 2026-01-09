@@ -1,0 +1,5 @@
+[dotenv@17.2.3] injecting env (15) from .env -- tip: ÔÜÖ´©Å  write to custom object with { processEnv: myObject }
+­ƒî▒ SEED COMPLETO: Cotas, Empr├®stimos, V├¡deos e Academy
+
+­ƒÆÄ 1. Criando COTAS...
+ÔØî Erro: column "value" of relation "quotas" does not exist

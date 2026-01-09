@@ -1,0 +1,7 @@
+[dotenv@17.2.3] injecting env (15) from .env -- tip: ÔÜÖ´©Å  override existing env vars with { override: true }
+­ƒî▒ SEED DIRETO NO BANCO...
+
+Colunas da tabela quotas: vesting_start, user_id, purchase_price, current_value, purchase_date, id, yield_rate, value, status
+
+­ƒÆÄ Inserindo COTAS...
+ÔØî Erro: null value in column "current_value" of relation "quotas" violates not-null constraint
