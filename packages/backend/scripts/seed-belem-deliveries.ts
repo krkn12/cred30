@@ -96,7 +96,7 @@ async function seed() {
                 INSERT INTO marketplace_orders
                 (id, buyer_id, listing_id, seller_id, amount, fee_amount, seller_amount, status, delivery_type, delivery_status, delivery_fee, created_at, 
                  pickup_lat, pickup_lng, delivery_lat, delivery_lng)
-                VALUES ($1, $2, $3, $4, $5, $10, $11, 'PAID', 'DELIVERY', 'AVAILABLE', 5.00, NOW(), $6, $7, $8, $9)
+                VALUES ($1, $2, $3, $4, $5, $10, $11, 'WAITING_SHIPPING', 'DELIVERY', 'AVAILABLE', 5.00, NOW(), $6, $7, $8, $9)
             `, [nextOrderId, buyerId, listId, sellerId, amount, pickup.lat, pickup.lng, delivery.lat, delivery.lng, fee, sellerAmt]);
 
             console.log(`Order ${nextOrderId} criado: ${prod.title}`);
