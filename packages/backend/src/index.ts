@@ -67,18 +67,25 @@ app.onError((err, c) => {
 });
 
 async function startServer() {
+  const port = process.env.PORT || 3001;
+
   try {
-    // Inicialização do Banco de Dados e Tabelas
-    console.log('--- Iniciando Cred30 Backend ---');
-    await initializeDatabase();
+    console.log('--- [BOOT] Iniciando Cred30 Backend ---');
+    console.log(`--- [BOOT] Node version: ${process.version} ---`);
+    console.log(`--- [BOOT] Porta configurada: ${port} ---`);
 
-    // Inicializar Firebase Admin
-    initializeFirebaseAdmin();
+    // 1. Inicializar o Servidor HTTP IMEDIATAMENTE
+    // Isso evita o Timeout do Render pois ele já consegue dar o "ping" na porta
+    const serverInstance = serve({
+      fetch: app.fetch,
+      port: Number(port),
+    }, (info) => {
+      console.log(`🚀 [SERVER] Servidor rodando em http://localhost:${info.port}`);
+    });
 
-    // Inicialização do Agendador (Scheduler)
-    initializeScheduler(pool);
+    console.log('--- [BOOT] Servidor HTTP iniciado, procedendo com infraestrutura... ---');
 
-    // Mapeamento de Rotas
+    // 2. Mapeamento de Rotas (precisa ser feito antes ou logo após o boot)
     app.route('/api/auth', authRoutes);
     app.route('/api/users', userRoutes);
     app.route('/api/quotas', quotaRoutes);
@@ -99,33 +106,42 @@ async function startServer() {
     app.route('/api/seller', sellerRoutes);
     app.route('/api/logistics', logisticsRoutes);
 
-    // Rota raiz para evitar 404 em monitoramentos e pings de wakeup
+    // Rota raiz para o Health Check do Render
     app.get('/', (c: Context) => c.json({
       message: 'Cred30 API Online',
       version: packageJson.version,
-      docs: '/api/health'
+      booting: true
     }));
 
-    // Rota de health check
     app.get('/api/health', (c: Context) => {
       return c.json({
         status: 'ok',
         version: packageJson.version,
-        db: 'connected',
+        db: pool ? 'connected' : 'connecting',
         timestamp: new Date().toISOString()
       });
     });
 
-    const port = process.env.PORT || 3001;
-    console.log(`🚀 Servidor pronto na porta ${port}`);
-
-    serve({
-      fetch: app.fetch,
-      port: Number(port),
+    // 3. Inicialização Pesada (async)
+    // Se isso der erro, o servidor já está rodando e podemos logar o erro sem sumir
+    console.log('--- [DB] Conectando ao Banco de Dados... ---');
+    await initializeDatabase().catch(err => {
+      console.error('❌ [DB ERROR] Falha ao inicializar tabelas:', err);
     });
+
+    console.log('--- [FIREBASE] Inicializando Admin... ---');
+    initializeFirebaseAdmin();
+
+    console.log('--- [SCHEDULER] Iniciando tarefas agendadas... ---');
+    initializeScheduler(pool);
+
+    console.log('✅ [BOOT] Sistema totalmente operacional!');
+
   } catch (error) {
-    console.error('❌ Erro fatal no boot do servidor:', error);
-    process.exit(1);
+    console.error('❌ [FATAL] Erro catastrófico no boot do servidor:', error);
+    // No Render, se falhar, queremos que o processo morra para ele tentar de novo
+    // mas com o log acima agora sabemos o porquê.
+    setTimeout(() => process.exit(1), 1000);
   }
 }
 
