@@ -4,20 +4,26 @@
 
 @layer base {
 
+    :root {
+        --safe-top: env(safe-area-inset-top, 0px);
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
     html,
     body,
     #root {
         height: 100%;
         min-height: 100dvh;
+        overflow-x: hidden;
     }
 
     body {
-        @apply bg-background text-white;
+        @apply bg-background text-white select-none; /* Evita seleção acidental de texto no mobile */
         -webkit-tap-highlight-color: transparent;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         overscroll-behavior-y: none;
-        /* Evita o efeito de elástico no topo/fundo */
+        padding-top: var(--safe-top);
     }
 
     /* Evitar zoom em inputs no iOS */
@@ -25,11 +31,12 @@
     select,
     textarea {
         font-size: 16px !important;
+        @apply bg-surface border-surfaceHighlight focus:ring-2 focus:ring-primary-500/50 transition-all;
     }
 
     /* Safe area para dispositivos com notch */
     .pb-safe {
-        padding-bottom: env(safe-area-inset-bottom, 0);
+        padding-bottom: calc(var(--safe-bottom) + 1rem);
     }
 }
 
@@ -124,6 +131,20 @@
         50% {
             transform: translateY(-10px);
         }
+    }
+
+    /* Toque suave e Feedback */
+    .active-scale {
+        @apply active:scale-95 transition-transform duration-200;
+    }
+
+    /* Scroll Horizontal Suave para Cards */
+    .h-scroll {
+        @apply flex overflow-x-auto snap-x snap-mandatory no-scrollbar gap-4 px-4;
+    }
+
+    .h-scroll-item {
+        @apply snap-center shrink-0;
     }
 }
 
