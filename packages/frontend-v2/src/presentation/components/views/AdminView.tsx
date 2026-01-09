@@ -39,6 +39,15 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const [isLoading, setIsLoading] = useState(false);
     const [confirmMP, setConfirmMP] = useState<{ id: string, tid: string } | null>(null);
 
+    // Early return se o usuário ainda não carregou
+    if (!state?.currentUser) {
+        return (
+            <div className="flex items-center justify-center min-h-[50vh]">
+                <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
+            </div>
+        );
+    }
+
     // Lógica robusta para determinar o papel do usuário
     const userRole = (() => {
         if (state.currentUser?.isAdmin) return 'ADMIN';
