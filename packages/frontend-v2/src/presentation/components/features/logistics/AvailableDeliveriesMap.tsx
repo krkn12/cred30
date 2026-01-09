@@ -162,7 +162,10 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                 if (pickupCoords) {
                     const pickupMarker = L.marker([pickupCoords.lat, pickupCoords.lng], { icon: pickupIcon })
                         .addTo(mapRef.current!)
-                        .on('click', () => setSelectedDelivery(delivery));
+                        .on('click', () => {
+                            console.log('📍 Marcador de Coleta clicado:', delivery.item_title);
+                            setSelectedDelivery(delivery);
+                        });
 
                     markersRef.current.push(pickupMarker);
                     bounds.push([pickupCoords.lat, pickupCoords.lng]);
@@ -171,7 +174,10 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                 if (deliveryCoords) {
                     const deliveryMarker = L.marker([deliveryCoords.lat, deliveryCoords.lng], { icon: deliveryIcon })
                         .addTo(mapRef.current!)
-                        .on('click', () => setSelectedDelivery(delivery));
+                        .on('click', () => {
+                            console.log('📍 Marcador de Entrega clicado:', delivery.item_title);
+                            setSelectedDelivery(delivery);
+                        });
 
                     markersRef.current.push(deliveryMarker);
                     bounds.push([deliveryCoords.lat, deliveryCoords.lng]);
@@ -216,7 +222,7 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
     return (
         <div className="fixed inset-0 z-[200] bg-black animate-in fade-in duration-300 flex flex-col">
             {/* Header */}
-            <div className="p-4 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800 flex items-center justify-between">
+            <div className="p-4 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800 flex items-center justify-between z-[201] relative">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-primary-500/20 rounded-xl flex items-center justify-center border border-primary-500/20">
                         <Navigation className="text-primary-400" size={20} />
@@ -235,11 +241,11 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
             </div>
 
             {/* Map Area */}
-            <div className="flex-1 relative">
+            <div className="flex-1 relative z-0">
                 <div ref={mapContainerRef} className="w-full h-full bg-zinc-900" />
 
                 {/* Legenda - Mais compacta em mobile */}
-                <div className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-zinc-900/90 backdrop-blur-md border border-zinc-800 p-2 sm:p-3 rounded-xl shadow-2xl">
+                <div className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-zinc-900/90 backdrop-blur-md border border-zinc-800 p-2 sm:p-3 rounded-xl shadow-2xl z-[100]">
                     <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
                         <div className="w-4 h-4 sm:w-6 sm:h-6 bg-amber-500 rounded-full" />
                         <span className="text-[10px] sm:text-xs text-white font-medium">Coleta</span>
@@ -252,7 +258,7 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
 
                 {/* Informação se não houver entregas */}
                 {deliveries.length === 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/50 backdrop-blur-sm">
+                    <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/50 backdrop-blur-sm z-[10]">
                         <div className="text-center space-y-4">
                             <Truck className="w-16 h-16 text-zinc-700 mx-auto" />
                             <p className="text-zinc-400 font-bold text-sm">Nenhuma entrega disponível no momento</p>
@@ -263,8 +269,8 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
 
             {/* Modal de Detalhes da Entrega */}
             {selectedDelivery && (
-                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-[10] animate-in fade-in duration-200">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md max-h-[80vh] overflow-y-auto animate-in slide-in-from-bottom duration-300">
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-[9999] animate-in fade-in duration-200" onClick={() => setSelectedDelivery(null)}>
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md max-h-[80vh] overflow-y-auto animate-in slide-in-from-bottom duration-300 shadow-2xl" onClick={(e) => e.stopPropagation()}>
                         {/* Header do Modal */}
                         <div className="p-6 border-b border-zinc-800 flex items-start justify-between">
                             <div className="flex items-start gap-4">
