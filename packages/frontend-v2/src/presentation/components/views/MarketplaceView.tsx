@@ -238,6 +238,12 @@ ListingCard.displayName = 'ListingCard';
 
 export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: MarketplaceViewProps) => {
     const navigate = useNavigate();
+
+    // Defensive check
+    if (!state) {
+        return <LoadingScreen message="Carregando marketplace..." />;
+    }
+
     const [view, setView] = useState<'browse' | 'create' | 'my-orders' | 'details' | 'missions' | 'offline' | 'cart'>('browse');
     const [pendingOfflineSales, setPendingOfflineSales] = useState<any[]>(() => {
         const saved = localStorage.getItem('cred30_offline_sales');

@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from '../components/layout/main-layout.component';
 import { UpdateNotification } from '../components/ui/update-notification.component';
-import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, changePassword, apiService, requestDeposit, requestWithdrawal } from '../../application/services/storage.service';
+import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, changePassword, apiService, requestDeposit, requestWithdrawal, upgradePro } from '../../application/services/storage.service';
 import { syncService } from '../../application/services/sync.service';
 import { AppState } from '../../domain/types/common.types';
 import { Check, X as XIcon, RefreshCw, AlertTriangle, Users, Copy, TrendingUp } from 'lucide-react';
@@ -363,6 +363,30 @@ export default function App() {
     }
   };
 
+  const handleUpgradePro = async (method: 'pix' | 'balance') => {
+    try {
+      const result = await upgradePro(method);
+      if (result.success) {
+        if (result.data?.manualPix) {
+          setPixModalData({
+            isOpen: true,
+            qrCode: '',
+            qrCodeBase64: '',
+            amount: result.data.finalCost,
+            description: result.data.manualPix.description
+          });
+        } else {
+          setShowSuccess({ isOpen: true, title: 'Sucesso', message: result.message });
+          refreshState();
+        }
+      } else {
+        setShowError({ isOpen: true, title: 'Erro', message: result.message });
+      }
+    } catch (e: any) {
+      setShowError({ isOpen: true, title: 'Erro', message: e.message });
+    }
+  };
+
   if (state.isLoading) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
@@ -494,22 +518,40 @@ export default function App() {
                 } />
                 <Route path="marketplace" element={
                   <Suspense fallback={null}>
-                    <MarketplaceView />
+                    <MarketplaceView
+                      state={state}
+                      onRefresh={refreshState}
+                      onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                      onError={(title, message) => setShowError({ isOpen: true, title, message })}
+                    />
                   </Suspense>
                 } />
                 <Route path="earn" element={
                   <Suspense fallback={null}>
-                    <EarnView />
+                    <EarnView
+                      state={state}
+                      onBack={() => navigate(-1)}
+                      onRefresh={refreshState}
+                      onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                      onError={(title, message) => setShowError({ isOpen: true, title, message })}
+                      onUpgrade={handleUpgradePro}
+                    />
                   </Suspense>
                 } />
                 <Route path="games" element={
                   <Suspense fallback={null}>
-                    <GamesView />
+                    <GamesView onBack={() => navigate(-1)} />
                   </Suspense>
                 } />
                 <Route path="education" element={
                   <Suspense fallback={null}>
-                    <EducationView />
+                    <EducationView
+                      onBack={() => navigate(-1)}
+                      onRefresh={refreshState}
+                      onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                      onError={(title, message) => setShowError({ isOpen: true, title, message })}
+                      userBalance={state.currentUser?.balance || 0}
+                    />
                   </Suspense>
                 } />
                 <Route path="faq" element={
@@ -519,17 +561,34 @@ export default function App() {
                 } />
                 <Route path="voting" element={
                   <Suspense fallback={null}>
-                    <VotingView />
+                    <VotingView
+                      appState={state}
+                      onBack={() => navigate(-1)}
+                      onRefresh={refreshState}
+                      onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                      onError={(title, message) => setShowError({ isOpen: true, title, message })}
+                    />
                   </Suspense>
                 } />
                 <Route path="promo-videos" element={
                   <Suspense fallback={null}>
-                    <PromoVideosView />
+                    <PromoVideosView
+                      userBalance={state.currentUser?.balance || 0}
+                      onRefresh={refreshState}
+                      onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                      onError={(title, message) => setShowError({ isOpen: true, title, message })}
+                      onFarm={() => navigate('/app/view-farm')}
+                    />
                   </Suspense>
                 } />
                 <Route path="view-farm" element={
                   <Suspense fallback={null}>
-                    <ViewFarmView />
+                    <ViewFarmView
+                      onBack={() => navigate(-1)}
+                      onRefresh={refreshState}
+                      onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                      onError={(title, message) => setShowError({ isOpen: true, title, message })}
+                    />
                   </Suspense>
                 } />
                 <Route path="seller-registration" element={
@@ -539,7 +598,11 @@ export default function App() {
                 } />
                 <Route path="my-bug-reports" element={
                   <Suspense fallback={null}>
-                    <MyBugReportsView />
+                    <MyBugReportsView
+                      onBack={() => navigate(-1)}
+                      onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                      onError={(title, message) => setShowError({ isOpen: true, title, message })}
+                    />
                   </Suspense>
                 } />
                 <Route path="logistics" element={
@@ -549,12 +612,25 @@ export default function App() {
                 } />
                 <Route path="rewards-shop" element={
                   <Suspense fallback={null}>
-                    <RewardsShopView />
+                    <RewardsShopView
+                      state={state}
+                      onBack={() => navigate(-1)}
+                      onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                      onError={(title, message) => setShowError({ isOpen: true, title, message })}
+                      onRefresh={refreshState}
+                    />
                   </Suspense>
                 } />
                 <Route path="services" element={
                   <Suspense fallback={null}>
-                    <ServicesView />
+                    <ServicesView
+                      userBalance={state.currentUser?.balance || 0}
+                      isVerified={state.currentUser?.is_verified || false}
+                      isPro={state.currentUser?.membership_type === 'PRO'}
+                      onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                      onError={(title, message) => setShowError({ isOpen: true, title, message })}
+                      onRefresh={refreshState}
+                    />
                   </Suspense>
                 } />
                 <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
