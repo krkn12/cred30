@@ -474,10 +474,11 @@ export default function App() {
                 <Route path="admin" element={
                   <Suspense fallback={<div className="flex justify-center p-12"><RefreshCw className="animate-spin text-primary-500" /></div>}>
                     <AdminView
-                      users={state.users}
-                      quotas={state.quotas}
-                      loans={state.loans}
-                      transactions={state.transactions}
+                      state={state}
+                      onRefresh={refreshState}
+                      onLogout={handleLogout}
+                      onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                      onError={(title, message) => setShowError({ isOpen: true, title, message })}
                     />
                   </Suspense>
                 } />
