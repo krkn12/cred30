@@ -40,28 +40,30 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
   }
 
   return (
-    <div className="min-h-screen bg-background text-zinc-100 flex flex-col md:flex-row font-sans">
-      {/* Mobile Header com Saldo */}
-      <div className="md:hidden bg-surface border-b border-surfaceHighlight p-4 flex justify-between items-center sticky top-0 z-20 shadow-md">
-        <h1 className="text-xl font-bold flex items-center gap-3">
-          <img src="/pwa-192x192.png" alt="Cred30 Logo" className="w-8 h-8 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.4)]" />
-          <span className="text-white tracking-tighter">Cred<span className="text-primary-400">30</span></span>
-        </h1>
-
-        {user && (
-          <div className="flex items-center gap-2">
-            <div className="bg-zinc-800 px-3 py-1.5 rounded-full border border-zinc-700 flex items-center gap-2">
-              <span className="text-xs text-zinc-400">Saldo</span>
-              <span className="text-sm font-bold text-emerald-400">
-                {user.balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-              </span>
-            </div>
-            <button onClick={() => {
-              const aside = document.querySelector('aside');
-              if (aside) aside.classList.toggle('hidden');
-            }} className="text-zinc-400 p-1" title="Menu"><Settings size={20} /></button>
+    <div className="min-h-screen bg-background text-zinc-100 flex flex-col md:flex-row font-sans overflow-x-hidden">
+      {/* Mobile Top Bar - Ultra Clean */}
+      <div className="md:hidden bg-background/80 backdrop-blur-xl border-b border-white/5 p-4 flex justify-between items-center sticky top-0 z-40">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-primary-500/10 rounded-xl flex items-center justify-center border border-primary-500/20 shadow-lg shadow-primary-500/10">
+            <img src="/pwa-192x192.png" alt="Cred30" className="w-7 h-7 rounded-lg" />
           </div>
-        )}
+          <h1 className="text-xl font-black text-white tracking-tighter">Cred<span className="text-primary-400">30</span></h1>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest leading-none mb-1">Saldo</span>
+            <span className="text-sm font-black text-emerald-400">
+              {user.balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </span>
+          </div>
+          <button
+            onClick={() => handleNavigation('settings')}
+            className={`p-2 rounded-xl transition-all ${currentView === 'settings' ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20' : 'bg-white/5 text-zinc-400 border border-white/5'}`}
+          >
+            <Settings size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Sidebar Desktop */}
@@ -72,42 +74,39 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
             Cred<span className="text-primary-400">30</span>
           </h1>
         </div>
-        <nav className="flex-1 px-4 space-y-2 overflow-y-auto custom-scrollbar">
+        <nav className="flex-1 px-4 space-y-2 overflow-y-auto no-scrollbar">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => handleNavigation(item.id)}
               className={`w-full flex items-center gap-4 px-4 py-4 text-sm font-medium rounded-xl transition-all duration-200 ${currentView === item.id
                 ? 'bg-primary-400/10 text-primary-400 border border-primary-400/20'
-                : 'text-zinc-400 hover:bg-surfaceHighlight hover:text-white'
+                : 'text-zinc-400 hover:bg-surfaceHighlight hover:text-white group'
                 }`}
             >
-              <item.icon size={22} className={currentView === item.id ? 'stroke-[2.5px]' : ''} />
+              <item.icon size={22} className={currentView === item.id ? 'stroke-[2.5px]' : 'group-hover:scale-110 transition-transform'} />
               {item.label}
             </button>
           ))}
-
-
-          {/* AdBanner removido para limpeza de UI */}
         </nav>
         <div className="p-4 border-t border-surfaceHighlight">
           <button
             onClick={() => handleNavigation('settings')}
-            className={`w-full flex items-center gap-4 px-4 py-3 text-sm font-medium rounded-xl transition-colors mb-4 ${currentView === 'settings' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
+            className={`w-full flex items-center gap-4 px-4 py-3 text-sm font-medium rounded-xl transition-colors mb-4 ${currentView === 'settings' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-200'
               }`}
           >
             <Settings size={20} />
             Configurações
           </button>
-          <div className="flex items-center gap-3 px-4 py-3 bg-surfaceHighlight/50 rounded-xl border border-surfaceHighlight">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center font-bold text-primary-400 border border-zinc-700">
+          <div className="flex items-center gap-3 px-4 py-3 bg-surfaceHighlight/30 rounded-2xl border border-white/5 backdrop-blur-sm">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500/20 to-zinc-900 flex items-center justify-center font-black text-primary-400 border border-primary-500/20">
               {user.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-white truncate">{user.name}</p>
+              <p className="text-sm font-black text-white truncate">{user.name}</p>
               <p className="text-xs text-zinc-500 truncate">{user.email}</p>
             </div>
-            <button onClick={onLogout} className="text-zinc-500 hover:text-red-400 transition" title="Sair" aria-label="Sair">
+            <button onClick={onLogout} className="text-zinc-500 hover:text-red-400 transition-colors p-2 rounded-lg hover:bg-red-400/10" title="Sair">
               <LogOut size={18} />
             </button>
           </div>
@@ -115,46 +114,60 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto bg-background">
-        <div className="max-w-6xl mx-auto space-y-8 pb-32">
+      <main className="flex-1 min-h-0 overflow-y-auto bg-background no-scrollbar">
+        <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-8 pb-32 sm:pb-8">
           {children}
 
-          <footer className="mt-16 pt-8 border-t border-surfaceHighlight text-center space-y-2">
-            <p className="text-xs text-zinc-400">Cred30 © 2024 • Sistema de Cooperação Associativa Mutuária</p>
-            <div className="flex justify-center gap-4 text-[10px] text-zinc-400">
-              <button onClick={() => navigate('/terms')} className="hover:text-primary-400">Termos de Uso</button>
-              <span>•</span>
-              <button onClick={() => navigate('/terms')} className="hover:text-primary-400">Política de Privacidade</button>
+          <footer className="mt-16 pt-8 border-t border-white/5 text-center space-y-4">
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest leading-relaxed">
+                Cred30 © 2024 • Sistema de Cooperação Mutuária
+              </p>
+              <div className="flex justify-center gap-6">
+                <button onClick={() => navigate('/terms')} className="text-[10px] text-zinc-400 hover:text-primary-400 font-bold uppercase transition-colors">Termos</button>
+                <button onClick={() => navigate('/privacy')} className="text-[10px] text-zinc-400 hover:text-primary-400 font-bold uppercase transition-colors">Privacidade</button>
+              </div>
             </div>
-            <p className="text-[9px] text-zinc-500 max-w-md mx-auto italic">O Cred30 não é uma instituição financeira regulada pelo BACEN ou uma corretora de valores mobiliários (CVM). As operações de suporte mútuo e participações são baseadas no Código Civil Brasileiro (Sociedade em Conta de Participação e Mútua Privada).</p>
+            <p className="text-[9px] text-zinc-600 max-w-lg mx-auto leading-relaxed italic px-4">
+              O Cred30 baseia-se no Código Civil Brasileiro (Artigos 991-996). Não realizamos intermediação financeira restrita a instituições bancárias.
+            </p>
           </footer>
         </div>
       </main>
 
-      {/* Mobile Bottom Nav - Floating Dock Premium */}
-      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-sm bg-black/60 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] flex justify-around items-center px-4 py-4 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] z-30 ring-1 ring-white/5">
-        {navItems.filter(i => ['dashboard', 'marketplace', 'promo-videos', 'invest', 'loans'].includes(i.id)).map((item) => (
-          <button
-            key={item.id}
-            onClick={() => handleNavigation(item.id)}
-            className={`flex flex-col items-center gap-1 transition-all duration-300 relative ${currentView === item.id
-              ? 'text-primary-400 -translate-y-1 scale-110'
-              : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-          >
-            <div className={`p-2 rounded-2xl transition-all duration-500 ${currentView === item.id
-              ? 'bg-primary-500/10 shadow-[0_0_20px_rgba(34,211,238,0.2)] ring-1 ring-primary-500/20'
-              : 'hover:bg-white/5'}`}>
-              <item.icon size={20} strokeWidth={currentView === item.id ? 2.5 : 2} />
-            </div>
-            {currentView === item.id && (
-              <span className="absolute -bottom-2 w-1.5 h-1.5 bg-primary-400 rounded-full animate-in zoom-in duration-300 shadow-[0_0_10px_rgba(34,211,238,1)]"></span>
-            )}
-          </button>
-        ))}
+      {/* Mobile Bottom Nav - Premium Floating Dock */}
+      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-50">
+        <div className="bg-black/40 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] flex justify-between items-center px-2 py-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/5">
+          {[
+            { id: 'dashboard', label: 'Início', icon: Home },
+            { id: 'invest', label: 'Investir', icon: TrendingUp },
+            { id: 'marketplace', label: 'Clube', icon: ShoppingBag },
+            { id: 'earn', label: 'Ganhos', icon: DollarSign },
+            { id: 'withdraw', label: 'Saque', icon: ArrowUpFromLine },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => handleNavigation(item.id)}
+              className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 transition-all duration-300 relative ${currentView === item.id
+                ? 'text-primary-400'
+                : 'text-zinc-500'
+                }`}
+            >
+              <div className={`p-2 rounded-2xl transition-all duration-500 ${currentView === item.id
+                ? 'bg-primary-500/15 shadow-[0_0_20px_rgba(34,211,238,0.15)] scale-110 active-scale'
+                : 'hover:bg-white/5 active-scale'}`}>
+                <item.icon size={20} strokeWidth={currentView === item.id ? 2.5 : 2} />
+              </div>
+              <span className={`text-[9px] font-black uppercase tracking-tighter transition-all duration-300 ${currentView === item.id ? 'opacity-100' : 'opacity-0 scale-75'}`}>
+                {item.label}
+              </span >
+              {currentView === item.id && (
+                <div className="absolute -bottom-1 w-1 h-1 bg-primary-400 rounded-full shadow-[0_0_10px_rgba(34,211,238,1)] animate-pulse" />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
-
-      {/* Removido Sticky Ad Footer para melhorar experiência mobile */}
     </div>
   );
 };
