@@ -34,13 +34,31 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
         iconAnchor: [24, 24]
     });
 
+    // Ícone de COLETA (Vendedor) = SACOLA 🛍️
+    const pickupIcon = L.divIcon({
+        html: `<div class="relative w-10 h-10 flex items-center justify-center">
+                <div class="absolute inset-0 bg-amber-500/30 animate-pulse rounded-full"></div>
+                <div class="relative z-10 bg-amber-500 p-2 rounded-full shadow-lg border-2 border-white">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <path d="M16 10a4 4 0 0 1-8 0"/>
+                    </svg>
+                </div>
+              </div>`,
+        className: 'bg-transparent',
+        iconSize: [40, 40],
+        iconAnchor: [20, 40]
+    });
+
+    // Ícone de ENTREGA (Comprador) = BANDEIRA DE CHEGADA 🏁
     const destinationIcon = L.divIcon({
         html: `<div class="relative w-10 h-10 flex items-center justify-center">
-                <div class="absolute inset-0 bg-red-500/30 animate-pulse rounded-full"></div>
-                <div class="relative z-10 bg-red-600 p-2 rounded-full shadow-lg border-2 border-white">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.5">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                        <circle cx="12" cy="10" r="3" />
+                <div class="absolute inset-0 bg-emerald-500/30 animate-pulse rounded-full"></div>
+                <div class="relative z-10 bg-emerald-500 p-2 rounded-full shadow-lg border-2 border-white">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+                        <line x1="4" y1="22" x2="4" y2="15"/>
                     </svg>
                 </div>
               </div>`,
@@ -220,28 +238,26 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
         }
 
         // Configurar Ponto de Destino
-        // Status ACCEPTED = ir até o PICKUP (vendedor)
-        // Status IN_TRANSIT = ir até o DELIVERY (comprador)
+        // Status ACCEPTED = ir até o PICKUP (vendedor) = ícone SACOLA
+        // Status IN_TRANSIT = ir até o DELIVERY (comprador) = ícone BANDEIRA
         let destLat: number | null = null;
         let destLng: number | null = null;
-        let targetIcon = L.divIcon({
-            html: `<div class="bg-amber-500 p-2 rounded-full shadow-lg border-2 border-white"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg></div>`,
-            className: '', iconSize: [32, 32], iconAnchor: [16, 16]
-        });
+        let targetIcon = pickupIcon; // Default: Sacola (coleta)
 
         const isInTransit = data.delivery_status === 'IN_TRANSIT' || data.status === 'IN_TRANSIT';
 
         if (isInTransit) {
-            // Destino é o endereço de ENTREGA
+            // Destino é o endereço de ENTREGA (comprador)
             destLat = data.delivery_lat ? parseFloat(data.delivery_lat) : null;
             destLng = data.delivery_lng ? parseFloat(data.delivery_lng) : null;
-            targetIcon = destinationIcon;
-            console.log('[MAP] Modo IN_TRANSIT - Destino: delivery', destLat, destLng);
+            targetIcon = destinationIcon; // Bandeira de chegada
+            console.log('[MAP] Modo IN_TRANSIT - Destino: delivery (bandeira)', destLat, destLng);
         } else {
-            // Destino é o endereço de COLETA (pickup)
+            // Destino é o endereço de COLETA (vendedor)
             destLat = data.pickup_lat ? parseFloat(data.pickup_lat) : null;
             destLng = data.pickup_lng ? parseFloat(data.pickup_lng) : null;
-            console.log('[MAP] Modo ACCEPTED - Destino: pickup', destLat, destLng);
+            targetIcon = pickupIcon; // Sacola
+            console.log('[MAP] Modo ACCEPTED - Destino: pickup (sacola)', destLat, destLng);
         }
 
         // Se não temos coords, tentar geocode
