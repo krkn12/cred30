@@ -326,13 +326,12 @@ export const buyQuota = async (quantity: number, useBalance: boolean = false, pa
   return await apiService.buyQuotas(quantity, useBalance, paymentMethod);
 };
 
-export const sellQuota = async (quotaId: string): Promise<void> => {
-  await apiService.sellQuota(quotaId);
+export const sellQuota = async (quotaId: string): Promise<any> => {
+  return await apiService.sellQuota(quotaId);
 };
 
-export const sellAllQuotas = async (): Promise<number> => {
-  const result = await apiService.sellAllQuotas();
-  return result.totalReceived || 0;
+export const sellAllQuotas = async (): Promise<any> => {
+  return await apiService.sellAllQuotas();
 };
 
 export const requestLoan = async (
@@ -360,8 +359,8 @@ export const repayInstallment = async (loanId: string, amount: number, useBalanc
   return await apiService.repayInstallment(loanId, amount, useBalance, paymentMethod);
 };
 
-export const requestWithdrawal = async (amount: number, pixKey: string): Promise<void> => {
-  await apiService.requestWithdrawal(amount, pixKey);
+export const requestWithdrawal = async (amount: number, pixKey: string): Promise<any> => {
+  return await apiService.requestWithdrawal(amount, pixKey);
 };
 
 export const claimAdReward = async (): Promise<any> => {
@@ -402,8 +401,8 @@ export const registerUser = async (
     cpf
   );
   return {
-    user: convertApiUserToUser(response.user),
-    twoFactor: response.twoFactor
+    user: convertApiUserToUser(response.data?.user),
+    twoFactor: response.data?.twoFactor
   };
 };
 
@@ -418,15 +417,15 @@ export const loginUser = async (
   twoFactorCode?: string
 ): Promise<any> => {
   const response = await apiService.login(email, password, secretPhrase, twoFactorCode);
-  if (response.requires2FA) return response;
-  return convertApiUserToUser(response.user);
+  if (response.data?.requires2FA) return response.data;
+  return convertApiUserToUser(response.data?.user);
 };
 
 export const loginWithGoogle = async (idToken: string): Promise<any> => {
   const response = await apiService.loginWithGoogle(idToken);
   return {
-    user: convertApiUserToUser(response.user),
-    isNewUser: response.isNewUser
+    user: convertApiUserToUser(response.data?.user),
+    isNewUser: response.data?.isNewUser
   };
 };
 
@@ -448,8 +447,8 @@ export const getCurrentUser = async (): Promise<User | null> => {
       return null;
     }
 
-    const userProfile = await apiService.getUserProfile();
-    return convertApiUserToUser(userProfile.user);
+    const response = await apiService.getUserProfile();
+    return convertApiUserToUser(response.data?.user);
   } catch (error) {
     console.error('Erro ao obter usuário atual:', error);
     return null;

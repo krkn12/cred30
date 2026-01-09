@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Download, X, Smartphone, Monitor, Lock, AlertTriangle } from 'lucide-react';
+import { Download, X, Smartphone, Lock, AlertTriangle } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
     prompt: () => Promise<void>;
@@ -150,9 +150,11 @@ export const PWAEnforcer: React.FC<PWAEnforcerProps> = ({ isAdmin, children }) =
                         {isInstallable ? (
                             <button
                                 onClick={promptInstall}
-                                className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl text-sm flex items-center justify-center gap-3 transition shadow-lg shadow-primary-500/20 mb-4"
+                                className="w-full bg-gradient-to-r from-primary-500 to-emerald-500 hover:from-primary-400 hover:to-emerald-400 text-black font-black py-5 rounded-[2rem] text-sm flex items-center justify-center gap-3 transition-all duration-500 shadow-xl shadow-primary-500/20 hover:shadow-primary-500/40 hover:scale-[1.02] active:scale-[0.98] uppercase tracking-[0.2em] group"
                             >
-                                <Download size={20} />
+                                <div className="p-2 bg-black/10 rounded-xl group-hover:rotate-12 transition-transform">
+                                    <Download size={20} />
+                                </div>
                                 INSTALAR APLICATIVO CRED30
                             </button>
                         ) : (
@@ -229,8 +231,12 @@ export const PWAInstallBanner: React.FC<{ onDismiss?: () => void }> = ({ onDismi
     });
     const isMobile = isMobileDevice();
 
+    // No iOS, isInstallable será sempre falso. Vamos mostrar o banner mesmo assim.
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
     // Não mostra em desktop (já está bloqueado pelo PWAEnforcer)
-    if (!isMobile || isInstalled || !isInstallable || dismissed) {
+    // No mobile, mostra se não estiver instalado e (seja instalável OU seja iOS)
+    if (!isMobile || isInstalled || (!isInstallable && !isIOS) || dismissed) {
         return null;
     }
 
@@ -240,23 +246,32 @@ export const PWAInstallBanner: React.FC<{ onDismiss?: () => void }> = ({ onDismi
         onDismiss?.();
     };
 
+    const handleInstallClick = () => {
+        if (isInstallable) {
+            promptInstall();
+        } else if (isIOS) {
+            alert('Para instalar no iOS: toque no ícone de compartilhar (seta para cima) e selecione "Adicionar à Tela de Início".');
+        }
+    };
+
     return (
         <div className="fixed top-0 left-0 right-0 z-[9998] p-3 bg-gradient-to-r from-primary-600 to-emerald-600 shadow-lg">
             <div className="max-w-md mx-auto flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                     <Download size={20} className="text-white shrink-0" />
                     <p className="text-white text-sm font-medium">
-                        Adicione à tela inicial para acesso rápido!
+                        {isIOS ? 'Adicione o Cred30 à sua tela de início!' : 'Adicione à tela inicial para acesso rápido!'}
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                     <button
-                        onClick={promptInstall}
-                        className="bg-white text-primary-600 px-4 py-1.5 rounded-lg text-xs font-bold shadow-lg"
+                        onClick={handleInstallClick}
+                        className="bg-white text-black px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-zinc-100 transition-all active:scale-95 flex items-center gap-2"
                     >
-                        Instalar
+                        <Download size={12} strokeWidth={3} />
+                        {isIOS ? 'Como Instalar' : 'Instalar'}
                     </button>
-                    <button onClick={handleDismiss} className="text-white/80 hover:text-white p-1">
+                    <button onClick={handleDismiss} className="text-white/60 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-all">
                         <X size={18} />
                     </button>
                 </div>

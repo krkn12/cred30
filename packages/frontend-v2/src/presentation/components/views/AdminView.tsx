@@ -189,16 +189,16 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as TabType)}
                             className={`
-                                relative flex items-center gap-3 px-6 sm:px-8 py-3.5 sm:py-4 rounded-[1.5rem] text-xs sm:text-sm font-bold transition-all duration-500 whitespace-nowrap
+                                relative flex items-center gap-3 px-6 sm:px-10 py-4 sm:py-5 rounded-[2rem] text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] transition-all duration-500 whitespace-nowrap group
                                 ${activeTab === tab.id
-                                    ? 'bg-zinc-800 text-white shadow-2xl border border-zinc-700/50 scale-[1.02]'
-                                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/30'}
+                                    ? 'bg-zinc-800 text-primary-400 shadow-2xl shadow-black border border-white/5 scale-[1.02]'
+                                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}
                             `}
                         >
-                            <tab.icon size={20} className={activeTab === tab.id ? "text-primary-400" : ""} />
+                            <tab.icon size={20} className={activeTab === tab.id ? "text-primary-400 animate-pulse" : "group-hover:scale-110 transition-transform"} />
                             {tab.name}
                             {tab.count !== undefined && tab.count > 0 && (
-                                <span className="flex h-5 w-5 items-center justify-center bg-primary-500 text-zinc-900 text-[10px] font-black rounded-full shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+                                <span className="flex h-5 w-5 items-center justify-center bg-primary-500 text-zinc-900 text-[10px] font-black rounded-full shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-bounce">
                                     {tab.count}
                                 </span>
                             )}

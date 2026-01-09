@@ -80,15 +80,15 @@ export const LogisticsView = () => {
         setError(null);
         try {
             if (activeTab === 'available') {
-                const data = await apiService.getAvailableDeliveries();
-                setAvailableDeliveries(data);
+                const response = await apiService.getAvailableDeliveries();
+                setAvailableDeliveries(response.data || []);
             } else {
                 const status = activeTab === 'active' ? 'active' : 'completed';
-                const result = await apiService.getMyDeliveries(status);
-                setMyDeliveries(result.deliveries);
+                const response = await apiService.getMyDeliveries(status);
+                setMyDeliveries(response.data?.deliveries || []);
             }
-            const statsData = await apiService.getDeliveryStats();
-            setStats(statsData);
+            const statsResponse = await apiService.getDeliveryStats();
+            setStats(statsResponse.data);
         } catch (err: any) {
             setError(err.message || 'Erro ao carregar dados');
         } finally {
@@ -248,7 +248,7 @@ export const LogisticsView = () => {
             )}
 
             {/* Tabs */}
-            <div className="flex gap-2 mb-6 bg-surface p-1 rounded-xl">
+            <div className="flex gap-2 mb-8 bg-zinc-900/50 p-2 rounded-[2rem] border border-white/5 backdrop-blur-xl">
                 {[
                     { id: 'available' as Tab, label: 'Disponíveis', icon: Package },
                     { id: 'active' as Tab, label: 'Minhas Ativas', icon: Truck },
@@ -257,12 +257,12 @@ export const LogisticsView = () => {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === tab.id
-                            ? 'bg-primary-500 text-black'
-                            : 'text-zinc-400 hover:text-white'
+                        className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all duration-500 ${activeTab === tab.id
+                            ? 'bg-zinc-800 text-primary-400 shadow-2xl shadow-black border border-white/5 scale-[1.02]'
+                            : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
                             }`}
                     >
-                        <tab.icon size={16} />
+                        <tab.icon size={16} className={activeTab === tab.id ? "animate-pulse" : ""} />
                         {tab.label}
                     </button>
                 ))}
@@ -290,10 +290,10 @@ export const LogisticsView = () => {
                     {/* View on Map Button - Always visible */}
                     <button
                         onClick={() => setShowAvailableMap(true)}
-                        className="w-full bg-primary-500 hover:bg-primary-400 text-black px-4 py-3 rounded-xl font-black text-sm transition-all shadow-xl shadow-primary-500/20 flex items-center justify-center gap-2 uppercase tracking-wider"
+                        className="w-full bg-gradient-to-r from-primary-600 to-emerald-600 hover:from-primary-500 hover:to-emerald-500 text-white px-4 py-5 rounded-[2.5rem] font-black text-xs transition-all duration-500 shadow-2xl shadow-primary-900/20 flex items-center justify-center gap-3 uppercase tracking-[0.3em] hover:scale-[1.01] active:scale-[0.98] border border-white/10"
                     >
                         <MapIcon size={20} />
-                        VER TODAS NO MAPA
+                        EXPLORAR MAPA DE ENTREGAS
                     </button>
 
                     {visibleDeliveries.length === 0 ? (
@@ -347,13 +347,13 @@ export const LogisticsView = () => {
                                     <button
                                         onClick={() => handleAccept(delivery.orderId)}
                                         disabled={actionLoading === delivery.orderId}
-                                        className="bg-primary-500 hover:bg-primary-400 text-black font-bold py-3 px-6 rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+                                        className="bg-primary-500 hover:bg-primary-400 text-black font-black uppercase tracking-widest py-4 px-8 rounded-2xl transition-all flex items-center gap-3 shadow-xl shadow-primary-500/10 hover:shadow-primary-500/30 active:scale-95 disabled:opacity-50 text-[10px]"
                                     >
                                         {actionLoading === delivery.orderId ? (
                                             <Loader2 size={18} className="animate-spin" />
                                         ) : (
                                             <>
-                                                Aceitar
+                                                ACEITAR AGORA
                                                 <ArrowRight size={18} />
                                             </>
                                         )}

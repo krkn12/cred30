@@ -16,8 +16,8 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ onSuccess, onError }
 
     const fetchPayoutQueue = async () => {
         try {
-            const data = await apiService.getPayoutQueue();
-            setPayoutQueue(data || { transactions: [], loans: [] });
+            const response = await apiService.getPayoutQueue();
+            setPayoutQueue(response.data || { transactions: [], loans: [] });
         } catch (e) {
             console.error('Erro ao buscar fila de pagamentos:', e);
         }

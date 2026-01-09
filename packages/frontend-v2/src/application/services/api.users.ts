@@ -1,14 +1,12 @@
 import { ApiBase, ApiResponse } from './api.base';
 
 export class UsersApi extends ApiBase {
-    async getUserProfile(): Promise<any> {
-        const response = await this.request<any>('/users/profile');
-        return response.data;
+    async getUserProfile(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/users/profile');
     }
 
-    async getUserBalance(): Promise<{ balance: number }> {
-        const response = await this.request<{ balance: number }>('/users/balance');
-        return response.data!;
+    async getUserBalance(): Promise<ApiResponse<{ balance: number }>> {
+        return await this.request<{ balance: number }>('/users/balance');
     }
 
     async getUserTransactions(options?: { limit?: number, offset?: number }): Promise<ApiResponse<any>> {
@@ -19,50 +17,45 @@ export class UsersApi extends ApiBase {
         return await this.request<any>(`/users/transactions?${query.toString()}`);
     }
 
-    async updateCpf(cpf: string): Promise<{ success: boolean; message: string }> {
-        const response = await this.request<{ success: boolean; message: string }>('/users/update-cpf', {
+    async updateCpf(cpf: string): Promise<ApiResponse<any>> {
+        return await this.request<any>('/users/update-cpf', {
             method: 'POST',
             body: JSON.stringify({ cpf }),
         });
-        return response.data || { success: true, message: 'CPF atualizado com sucesso!' };
     }
 
-    async updatePhone(phone: string): Promise<{ success: boolean; message: string }> {
-        const response = await this.request<{ success: boolean; message: string }>('/users/update-phone', {
+    async updatePhone(phone: string): Promise<ApiResponse<any>> {
+        return await this.request<any>('/users/update-phone', {
             method: 'POST',
             body: JSON.stringify({ phone }),
         });
-        return response.data || { success: true, message: 'Telefone atualizado com sucesso!' };
     }
 
-    async updateUserProfile(data: any): Promise<any> {
-        return this.put<any>('/users/profile', data);
+    async updateUserProfile(data: any): Promise<ApiResponse<any>> {
+        return await this.put<any>('/users/profile', data);
     }
 
-    async changePassword(oldPassword: string, newPassword: string): Promise<any> {
-        return this.post<any>('/users/change-password', { oldPassword, newPassword });
+    async changePassword(oldPassword: string, newPassword: string): Promise<ApiResponse<any>> {
+        return await this.post<any>('/users/change-password', { oldPassword, newPassword });
     }
 
-    async deleteAccount(twoFactorCode?: string): Promise<any> {
-        return this.delete<any>('/users/me', { twoFactorCode });
+    async deleteAccount(twoFactorCode?: string): Promise<ApiResponse<any>> {
+        return await this.delete<any>('/users/me', { twoFactorCode });
     }
 
-    async checkTitleEligibility(): Promise<any> {
-        const response = await this.request<any>('/users/title-eligibility');
-        return response.data;
+    async checkTitleEligibility(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/users/title-eligibility');
     }
 
-    async downloadTitle(): Promise<any> {
-        return this.post<any>('/users/title-download', {});
+    async downloadTitle(): Promise<ApiResponse<any>> {
+        return await this.post<any>('/users/title-download', {});
     }
 
-    async getWelcomeBenefit(): Promise<any> {
-        const response = await this.request<any>('/users/welcome-benefit');
-        return response.data;
+    async getWelcomeBenefit(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/users/welcome-benefit');
     }
 
-    async claimAdReward(): Promise<any> {
-        const response = await this.post<any>('/users/reward-ad', {});
-        return response.data;
+    async claimAdReward(): Promise<ApiResponse<any>> {
+        return await this.post<any>('/users/reward-ad', {});
     }
 }
