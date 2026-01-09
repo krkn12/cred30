@@ -46,8 +46,8 @@ export const MAINTENANCE_OWNER_SHARE = 0.05;    // 5% para Seu Pró-labore (Sal�
 // --- Taxas de Monetização (Caixa da Cooperativa) ---
 export const QUOTA_PURCHASE_FEE_RATE = 0.0; // Desativado (Substituído pela taxa fixa QUOTA_ADM_FEE)
 export const LOAN_ORIGINATION_FEE_RATE = 0.03; // 3% de taxa de originação (seguro)
-export const WITHDRAWAL_FIXED_FEE = 2.00; // Taxa fixa de R$ 2,00 por saque
-export const MIN_WITHDRAWAL_AMOUNT = 50.00; // Valor mínimo para saque
+export const WITHDRAWAL_FIXED_FEE = 3.50; // Taxa fixa de R$ 3,50 por saque (se não tiver cotas suficientes)
+export const MIN_WITHDRAWAL_AMOUNT = 1.00; // Valor mínimo para saque = R$ 1,00
 export const MARKETPLACE_ESCROW_FEE_RATE = 0.12; // 12% de taxa de garantia (Escrow) para verificados
 export const MARKETPLACE_NON_VERIFIED_FEE_RATE = 0.275; // 27.5% de taxa para vendedores não verificados
 export const MARKET_CREDIT_INTEREST_RATE = 0.015; // 1.5% ao mês (Mais barato que o apoio mútuo padrão)

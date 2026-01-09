@@ -15,7 +15,7 @@ import {
 } from '../../../shared/constants/business.constants';
 import { twoFactorService } from '../../../application/services/two-factor.service';
 import { notificationService } from '../../../application/services/notification.service';
-import { getWelcomeBenefit, consumeWelcomeBenefitUse } from '../../../application/services/welcome-benefit.service';
+
 import { UserContext } from '../../../shared/types/hono.types';
 
 // Esquemas de validação
@@ -68,19 +68,18 @@ export class WithdrawalsController {
             );
             const totalQuotaValue = parseFloat(quotasResult.rows[0].total_quota_value);
 
-            const welcomeBenefit = await getWelcomeBenefit(pool, user.id);
-            const effectiveFixedFee = welcomeBenefit.withdrawalFee;
+            // NOVA REGRA SIMPLIFICADA DE TAXA:
+            // Se valor das cotas >= valor do saque: GRÁTIS
+            // Senão: R$ 3,50 de taxa
+            let feeAmount = 0;
+            let feeReason = '';
 
-            const { isPriority } = withdrawalSchema.extend({ isPriority: z.boolean().optional().default(false) }).parse(body);
-            let feeAmount = effectiveFixedFee;
-
-            if (isPriority) {
-                feeAmount = Math.max(PRIORITY_WITHDRAWAL_FEE, amount * 0.02);
-            } else if (totalQuotaValue < amount) {
-                const feePercentage = 0.02;
-                const feeFixed = 5.00;
-                const extraFee = Math.max(amount * feePercentage, feeFixed);
-                feeAmount += extraFee;
+            if (totalQuotaValue >= amount) {
+                feeAmount = 0;
+                feeReason = 'Grátis (cotas cobrem o valor)';
+            } else {
+                feeAmount = WITHDRAWAL_FIXED_FEE; // R$ 3,50
+                feeReason = 'Taxa fixa (sem cotas suficientes)';
             }
 
             const netAmount = amount - feeAmount;
@@ -159,7 +158,7 @@ export class WithdrawalsController {
                     user.id,
                     'WITHDRAWAL',
                     amount,
-                    `Solicitação de Saque - R$ ${netAmount.toFixed(2)} (Taxa: R$ ${feeAmount.toFixed(2)}${welcomeBenefit.hasDiscount ? ' - Benefício aplicado' : ''})`,
+                    `Solicitação de Saque - R$ ${netAmount.toFixed(2)} (Taxa: R$ ${feeAmount.toFixed(2)} - ${feeReason})`,
                     'PENDING_CONFIRMATION',
                     {
                         pixKey,
@@ -169,18 +168,13 @@ export class WithdrawalsController {
                         availableCredit,
                         type: 'CREDIT_WITHDRAWAL',
                         balanceDeducted: true,
-                        welcomeBenefitApplied: welcomeBenefit.hasDiscount,
-                        originalFee: WITHDRAWAL_FIXED_FEE,
-                        discountedFee: effectiveFixedFee
+                        feeReason,
+                        hasQuotaCoverage: totalQuotaValue >= amount
                     }
                 );
 
                 if (!transactionResult.success) {
                     throw new Error(transactionResult.error);
-                }
-
-                if (welcomeBenefit.hasDiscount) {
-                    await consumeWelcomeBenefitUse(client, user.id, 'WITHDRAWAL');
                 }
 
                 return {
@@ -189,14 +183,16 @@ export class WithdrawalsController {
                     feeAmount,
                     netAmount,
                     availableCredit,
-                    welcomeBenefitApplied: welcomeBenefit.hasDiscount,
-                    welcomeBenefitUsesRemaining: welcomeBenefit.hasDiscount ? welcomeBenefit.usesRemaining - 1 : 0
+                    feeReason,
+                    hasQuotaCoverage: totalQuotaValue >= amount
                 };
             });
 
             let successMessage = 'Solicitação criada! Use seu autenticador para confirmar o saque.';
-            if (welcomeBenefit.hasDiscount) {
-                successMessage += ` 🎁 Taxa reduzida de R$ ${feeAmount.toFixed(2)} aplicada (Benefício de Boas-Vindas). Usos restantes: ${welcomeBenefit.usesRemaining - 1}/3`;
+            if (feeAmount === 0) {
+                successMessage += ' ✅ Saque GRÁTIS! Suas cotas cobrem o valor.';
+            } else {
+                successMessage += ` Taxa de R$ ${feeAmount.toFixed(2)} será cobrada (você não tem cotas suficientes).`;
             }
 
             return c.json({
@@ -210,8 +206,8 @@ export class WithdrawalsController {
                     availableCredit: result.data?.availableCredit,
                     pixKey,
                     requiresConfirmation: true,
-                    welcomeBenefitApplied: result.data?.welcomeBenefitApplied,
-                    welcomeBenefitUsesRemaining: result.data?.welcomeBenefitUsesRemaining
+                    feeReason: result.data?.feeReason,
+                    hasQuotaCoverage: result.data?.hasQuotaCoverage
                 },
             });
         } catch (error) {
