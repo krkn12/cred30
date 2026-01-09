@@ -186,21 +186,21 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                         </button>
                     )}
 
-                    {/* Comprador: Confirmar Recebimento */}
-                    {order.buyer_id === currentUser?.id && order.status === 'IN_TRANSIT' && (
+                    {/* Comprador: Confirmar Recebimento - Aparece quando entregador marcou como entregue */}
+                    {order.buyer_id === currentUser?.id && (order.delivery_status === 'DELIVERED' || order.status === 'IN_TRANSIT') && order.status !== 'COMPLETED' && (
                         <button
                             onClick={() => {
                                 setConfirmData({
                                     isOpen: true,
                                     title: 'Confirmar Recebimento?',
-                                    message: 'Ao confirmar, o dinheiro será liberado para o vendedor. Faça isso apenas se já estiver com o produto em mãos.',
+                                    message: 'Ao confirmar, o dinheiro será liberado para o vendedor e o entregador. Faça isso apenas se já estiver com o produto em mãos.',
                                     confirmText: 'CONFIRMAR RECEBIMENTO',
                                     type: 'success',
                                     onConfirm: async () => {
                                         try {
-                                            const res = await apiService.post(`/marketplace/order/${order.id}/confirm-receipt`, {});
+                                            const res = await apiService.post(`/marketplace/order/${order.id}/receive`, {});
                                             if (res.success) {
-                                                onSuccess('Sucesso!', 'Pedido concluído e dinheiro liberado.');
+                                                onSuccess('Sucesso!', 'Pedido concluído! Vendedor e entregador receberam o pagamento.');
                                                 fetchData();
                                                 setConfirmData(null);
                                             }
@@ -210,9 +210,9 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                                     }
                                 });
                             }}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black px-4 py-2 rounded-lg transition-all uppercase tracking-widest shadow-lg shadow-emerald-600/20"
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black px-4 py-2 rounded-lg transition-all uppercase tracking-widest shadow-lg shadow-emerald-600/20 flex items-center gap-1"
                         >
-                            Confirmar Recebimento
+                            ✅ Confirmar Recebimento
                         </button>
                     )}
                 </div>
