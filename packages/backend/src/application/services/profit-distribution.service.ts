@@ -23,7 +23,20 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
         // 1. Histórico de Pagamento (Loans Paid) -> Ganha peso
         // 2. Volume de Gastos (Total Spent) -> Ganha peso
         // 3. Ativação (2FA, PRO) -> Ganha peso
+        // 4. NOVO: Só quem GEROU RECEITA (pagou taxas/juros) é elegível
         // ---------------------------------------------------------------------
+
+        // Tipos de transação que GERAM RECEITA para a plataforma:
+        // - LOAN_INTEREST: Juros de empréstimo
+        // - MARKET_SALE: Vendeu no marketplace (pagou taxa)
+        // - MARKET_BOOST: Impulsionou anúncio
+        // - MEMBERSHIP_UPGRADE: Virou PRO
+        // - WITHDRAWAL: Sacou (pagou taxa)
+        // - QUOTA_PURCHASE: Comprou cota (pagou taxa)
+        // - MARKET_PURCHASE: Comprou no marketplace (taxa vai pro vendedor/sistema)
+        // - REPUTATION_CONSULT: Consultou reputação (serviço pago)
+        // - GAME_BET: Apostou (house edge)
+        // - LOGISTIC_DELIVERY: Pagou frete
 
         const eligibleUsersQuery = `
             SELECT 
@@ -34,22 +47,59 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
                 COALESCE((SELECT COUNT(*) FROM loans l WHERE l.user_id = q.user_id AND l.status = 'PAID'), 0) as paid_loans,
                 COALESCE((SELECT SUM(amount) FROM transactions t 
                  WHERE t.user_id = q.user_id 
-                 AND t.type IN ('MARKET_PURCHASE', 'MARKET_PURCHASE_CREDIT', 'GAME_BET', 'PREMIUM_PURCHASE', 'MEMBERSHIP_UPGRADE', 'REPUTATION_CONSULT')
-                ), 0) as total_spent
+                 AND t.type IN ('MARKET_PURCHASE', 'MARKET_PURCHASE_CREDIT', 'GAME_BET', 'MEMBERSHIP_UPGRADE', 'REPUTATION_CONSULT', 'MARKET_BOOST')
+                ), 0) as total_spent,
+                -- Calcular receita total gerada por este usuário
+                COALESCE((
+                    SELECT SUM(CASE 
+                        WHEN t.type = 'WITHDRAWAL' THEN 2.00  -- Taxa fixa de saque
+                        WHEN t.type = 'QUOTA_PURCHASE' THEN t.amount * 0.02  -- 2% taxa de compra de cota
+                        WHEN t.type = 'MEMBERSHIP_UPGRADE' THEN t.amount  -- 100% PRO vai pro sistema
+                        WHEN t.type = 'MARKET_BOOST' THEN t.amount  -- 100% boost vai pro sistema
+                        WHEN t.type = 'REPUTATION_CONSULT' THEN t.amount  -- 100% consulta vai pro sistema
+                        WHEN t.type = 'GAME_BET' THEN t.amount * 0.05  -- ~5% house edge
+                        WHEN t.type = 'MARKET_PURCHASE' THEN t.amount * 0.12  -- ~12% taxa marketplace
+                        WHEN t.type = 'MARKET_PURCHASE_CREDIT' THEN t.amount * 0.15  -- ~15% juros+taxa crediário
+                        ELSE 0
+                    END)
+                    FROM transactions t 
+                    WHERE t.user_id = q.user_id 
+                    AND t.status = 'APPROVED'
+                ), 0) +
+                -- Adicionar juros de empréstimos pagos
+                COALESCE((
+                    SELECT SUM(l.total_repayment - l.amount) 
+                    FROM loans l 
+                    WHERE l.user_id = q.user_id 
+                    AND l.status = 'PAID'
+                ), 0) as total_revenue_generated
             FROM quotas q
             JOIN users u ON u.id = q.user_id
             WHERE q.status = 'ACTIVE'
             AND (
-                -- Mantém a regra básica de elegibilidade mínima (ter interagido)
-                EXISTS (SELECT 1 FROM loans l WHERE l.user_id = q.user_id AND l.status IN ('APPROVED', 'PAYMENT_PENDING', 'PAID'))
+                -- NOVO: Só quem GEROU RECEITA para a plataforma é elegível
+                -- Pagou empréstimo (gerou juros)
+                EXISTS (SELECT 1 FROM loans l WHERE l.user_id = q.user_id AND l.status = 'PAID')
                 OR 
+                -- Vendeu no marketplace (pagou taxa de venda)
+                EXISTS (SELECT 1 FROM marketplace_orders mo WHERE mo.seller_id = q.user_id AND mo.status = 'COMPLETED')
+                OR 
+                -- Fez transações que geram receita
                 EXISTS (
                     SELECT 1 FROM transactions t 
                     WHERE t.user_id = q.user_id 
-                    AND t.type IN ('GAME_BET', 'AD_REWARD', 'EDUCATION_REWARD', 'MARKET_PURCHASE', 'MEMBERSHIP_UPGRADE')
+                    AND t.status = 'APPROVED'
+                    AND t.type IN (
+                        'WITHDRAWAL',          -- Pagou taxa de saque
+                        'MEMBERSHIP_UPGRADE',  -- Pagou PRO
+                        'MARKET_BOOST',        -- Pagou impulsionamento
+                        'REPUTATION_CONSULT',  -- Pagou consulta de reputação
+                        'GAME_BET',            -- Apostou (house edge)
+                        'MARKET_PURCHASE',     -- Comprou no marketplace (taxa vai pro sistema)
+                        'MARKET_PURCHASE_CREDIT', -- Crediário (juros + taxa)
+                        'QUOTA_PURCHASE'       -- Comprou cota (taxa administrativa)
+                    )
                 )
-                OR
-                EXISTS (SELECT 1 FROM voting_votes vv WHERE vv.user_id = q.user_id)
             )
             GROUP BY q.user_id, u.two_factor_enabled, u.membership_type
         `;
@@ -73,9 +123,15 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
             // Bônus 3: Grande Gastador (+10% a cada R$ 500 gastos, limitado a +200%)
             const spent = parseFloat(user.total_spent || 0);
             if (spent > 0) {
-                // Exemplo: 500 gastos = +0.1. 1000 gastos = +0.2
-                const spendBonus = Math.min(spent / 5000, 2.0); // Cap de 2x (precisa gastar 10k)
-                multiplier += (spent / 500) * 0.1;
+                const spendBonus = Math.min(spent / 500, 2.0); // +0.1 a cada 500, max 2.0
+                multiplier += spendBonus * 0.1;
+            }
+
+            // Bônus 4: GERADOR DE RECEITA (+20% a cada R$ 100 de lucro deixado na casa)
+            const revenue = parseFloat(user.total_revenue_generated || 0);
+            if (revenue > 0) {
+                const revenueBonus = Math.min(revenue / 100, 3.0); // +0.2 a cada 100, max 3.0 (300%)
+                multiplier += revenueBonus * 0.2;
             }
 
             // Apply weighting
@@ -86,7 +142,8 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
                 ...user,
                 raw_quotas: rawQuotas,
                 multiplier: multiplier,
-                weighted_quotas: weightedQuotas
+                weighted_quotas: weightedQuotas,
+                revenue_generated: revenue
             };
         });
 
@@ -122,7 +179,7 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
         const userAmounts = usersWithQuotas.map(u => Number((u.weighted_quotas * dividendPerWeightedQuota).toFixed(2)));
         const userDescriptions = usersWithQuotas.map(u => {
             const extra = ((u.multiplier - 1) * 100).toFixed(0);
-            return `Distribuição de Lucro (${u.raw_quotas} cotas + ${extra}% bônus de engajamento)`;
+            return `Excedente Social (${u.raw_quotas} cotas + ${extra}% bônus de reciprocidade)`;
         });
 
         // Executar atualização em massa
