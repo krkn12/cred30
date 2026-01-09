@@ -68,12 +68,17 @@ export class MarketplaceOrdersController {
             const listing = listingResult.rows[0];
             if (listing.seller_id === user.id) return c.json({ success: false, message: 'Você não pode comprar de si mesmo.' }, 400);
 
-            // Buscar endereço do vendedor para coleta
+            // Detectar se é item digital
+            const isDigitalItem = listing.item_type === 'DIGITAL';
+            const digitalContent = listing.digital_content;
+
+            // Buscar endereço do vendedor para coleta (só para itens físicos)
             const sellerRes = await pool.query('SELECT address FROM users WHERE id = $1', [listing.seller_id]);
             const finalPickupAddress = body.pickupAddress || sellerRes.rows[0]?.address || 'A combinar com o vendedor';
 
             const price = parseFloat(listing.price);
-            const baseAmountToCharge = price + offeredDeliveryFee;
+            // Items digitais não têm taxa de entrega
+            const baseAmountToCharge = isDigitalItem ? price : price + offeredDeliveryFee;
 
             // Se o pagamento for via saldo
             if (paymentMethod === 'BALANCE') {
@@ -87,7 +92,7 @@ export class MarketplaceOrdersController {
                 // Se o comprador tem benefício, aplica 50% de desconto sobre a taxa base
                 const effectiveEscrowRate = welcomeBenefit.hasDiscount ? baseFeeRate * 0.5 : baseFeeRate;
 
-                console.log(`[MARKETPLACE] Vendedor ${isVerified ? 'VERIFICADO' : 'NÃO VERIFICADO'}. Comprador ${user.id} - Benefício: ${welcomeBenefit.hasDiscount ? 'ATIVO' : 'INATIVO'}, Taxa Escrow Final: ${(effectiveEscrowRate * 100).toFixed(1)}%`);
+                console.log(`[MARKETPLACE] ${isDigitalItem ? 'DIGITAL' : 'FÍSICO'} | Vendedor ${isVerified ? 'VERIFICADO' : 'NÃO VERIFICADO'}. Comprador ${user.id} - Benefício: ${welcomeBenefit.hasDiscount ? 'ATIVO' : 'INATIVO'}, Taxa Escrow Final: ${(effectiveEscrowRate * 100).toFixed(1)}%`);
 
                 const fee = price * effectiveEscrowRate;
                 const sellerAmount = price - fee;
@@ -99,13 +104,15 @@ export class MarketplaceOrdersController {
                     await updateUserBalance(client, user.id, baseAmountToCharge, 'debit');
                     await client.query('UPDATE marketplace_listings SET status = $1 WHERE id = $2', ['SOLD', listingId]);
 
-                    const deliveryStatus = deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE';
+                    // Itens digitais são completados instantaneamente
+                    const orderStatus = isDigitalItem ? 'COMPLETED' : 'WAITING_SHIPPING';
+                    const deliveryStatus = isDigitalItem ? 'DELIVERED' : (deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE');
                     const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
                     const orderResult = await client.query(
                         `INSERT INTO marketplace_orders (listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, status, payment_method, delivery_address, pickup_address, contact_phone, offline_token, delivery_status, delivery_fee, pickup_code)
                          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
-                        [listingId, user.id, listing.seller_id, price, fee, sellerAmount, 'WAITING_SHIPPING', 'BALANCE', deliveryAddress, finalPickupAddress, contactPhone, offlineToken, deliveryStatus, offeredDeliveryFee, pickupCode]
+                        [listingId, user.id, listing.seller_id, price, fee, sellerAmount, orderStatus, 'BALANCE', deliveryAddress, isDigitalItem ? null : finalPickupAddress, contactPhone, offlineToken, deliveryStatus, isDigitalItem ? 0 : offeredDeliveryFee, pickupCode]
                     );
                     const orderId = orderResult.rows[0].id;
 
@@ -114,18 +121,32 @@ export class MarketplaceOrdersController {
                         await consumeWelcomeBenefitUse(client, user.id, 'MARKETPLACE');
                     }
 
-                    await createTransaction(client, user.id, 'MARKET_PURCHASE', price, `Compra: ${listing.title}${welcomeBenefit.hasDiscount ? ' (🎁 Taxa reduzida)' : ''}`, 'APPROVED', { orderId, listingId, welcomeBenefitApplied: welcomeBenefit.hasDiscount });
-                    return { orderId, welcomeBenefitApplied: welcomeBenefit.hasDiscount, usesRemaining: welcomeBenefit.hasDiscount ? welcomeBenefit.usesRemaining - 1 : 0 };
+                    // Para itens digitais, pagar vendedor imediatamente
+                    if (isDigitalItem) {
+                        await updateUserBalance(client, listing.seller_id, sellerAmount, 'credit');
+                        await createTransaction(client, listing.seller_id, 'MARKET_SALE', sellerAmount, `Venda Digital: ${listing.title}`, 'APPROVED', { orderId });
+                    }
+
+                    await createTransaction(client, user.id, 'MARKET_PURCHASE', price, `Compra${isDigitalItem ? ' Digital' : ''}: ${listing.title}${welcomeBenefit.hasDiscount ? ' (🎁 Taxa reduzida)' : ''}`, 'APPROVED', { orderId, listingId, welcomeBenefitApplied: welcomeBenefit.hasDiscount, isDigital: isDigitalItem });
+                    return { orderId, welcomeBenefitApplied: welcomeBenefit.hasDiscount, usesRemaining: welcomeBenefit.hasDiscount ? welcomeBenefit.usesRemaining - 1 : 0, isDigitalItem, digitalContent: isDigitalItem ? digitalContent : null };
                 });
 
                 if (!result.success) return c.json({ success: false, message: result.error }, 400);
 
-                let successMessage = 'Compra realizada!';
+                let successMessage = isDigitalItem ? 'Compra de item digital concluída!' : 'Compra realizada!';
                 if (result.data?.welcomeBenefitApplied) {
                     successMessage += ` 🎁 Taxa de ${(effectiveEscrowRate * 100).toFixed(1)}% aplicada (Benefício de Boas-Vindas). Usos restantes: ${result.data.usesRemaining}/3`;
                 }
 
-                return c.json({ success: true, message: successMessage, orderId: result.data?.orderId, welcomeBenefitApplied: result.data?.welcomeBenefitApplied });
+                return c.json({
+                    success: true,
+                    message: successMessage,
+                    orderId: result.data?.orderId,
+                    welcomeBenefitApplied: result.data?.welcomeBenefitApplied,
+                    // Para itens digitais, entregamos o conteúdo na resposta
+                    digitalContent: result.data?.digitalContent,
+                    isDigitalItem: result.data?.isDigitalItem
+                });
             }
 
             // Pagamento Externo (PIX ou CARTÃO) - Temporariamente desativado

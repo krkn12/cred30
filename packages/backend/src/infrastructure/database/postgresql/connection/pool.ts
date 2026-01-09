@@ -746,6 +746,10 @@ export const initializeDatabase = async () => {
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS is_boosted BOOLEAN DEFAULT FALSE;
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS boost_expires_at TIMESTAMP;
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS quota_id INTEGER REFERENCES quotas(id);
+      
+      -- Suporte a itens digitais
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS item_type VARCHAR(20) DEFAULT 'PHYSICAL'; -- PHYSICAL, DIGITAL
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS digital_content TEXT; -- Link/código/conteúdo digital (criptografado, só revelado após compra)
     `);
 
     // Tabela de Pedidos / Escrow (Garantia Cred30)
