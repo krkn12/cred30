@@ -623,7 +623,7 @@ export default function App() {
                 } />
                 <Route path="logistics" element={
                   <Suspense fallback={null}>
-                    <LogisticsView />
+                    <LogisticsView currentUser={state.currentUser} />
                   </Suspense>
                 } />
                 <Route path="rewards-shop" element={

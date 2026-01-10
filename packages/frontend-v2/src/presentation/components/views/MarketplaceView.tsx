@@ -454,7 +454,17 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
                 {view !== 'details' && (
                     <button
-                        onClick={() => setView('create')}
+                        onClick={() => {
+                            const userQuotas = state.quotas.filter(q => q.userId === state.currentUser?.id).length;
+                            const userScore = state.currentUser?.score || 0;
+                            const isSeller = state.currentUser?.is_seller;
+
+                            if (!isSeller && userQuotas < 1 && userScore < 300) {
+                                onError('Requisito de Confiança', 'Para proteger a comunidade, apenas Membros Investidores (1+ Cotas) ou com Alto Score (>300) podem criar anúncios.');
+                                return;
+                            }
+                            setView('create');
+                        }}
                         className="bg-primary-500 hover:bg-primary-400 text-black px-6 py-3 rounded-2xl font-black text-xs transition-all shadow-xl shadow-primary-500/20 active:scale-95 flex items-center gap-2 uppercase tracking-widest"
                     >
                         <Plus size={18} /> ANUNCIAR
@@ -682,7 +692,20 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 <div className="col-span-full py-12 text-center">
                                     <Tag size={48} className="text-zinc-800 mx-auto mb-4" />
                                     <p className="text-zinc-500 text-sm">Nenhum item anunciado no momento.</p>
-                                    <button onClick={() => setView('create')} className="text-primary-400 text-xs font-bold mt-2">Clique aqui para ser o primeiro!</button>
+                                    <button
+                                        onClick={() => {
+                                            const userQuotas = state.quotas.filter(q => q.userId === state.currentUser?.id).length;
+                                            const userScore = state.currentUser?.score || 0;
+                                            if (userQuotas < 1 && userScore < 300) {
+                                                onError('Requisito de Confiança', 'Para proteger a comunidade, apenas Membros Investidores (1+ Cotas) ou com Alto Score (>300) podem criar anúncios.');
+                                                return;
+                                            }
+                                            setView('create');
+                                        }}
+                                        className="text-primary-400 text-xs font-bold mt-2"
+                                    >
+                                        Clique aqui para ser o primeiro!
+                                    </button>
                                 </div>
                             );
                         }
