@@ -34,6 +34,9 @@ userRoutes.post('/update-cpf', authMiddleware, UsersController.updateCpf);
 // Atualizar Telefone
 userRoutes.post('/update-phone', authMiddleware, UsersController.updatePhone);
 
+// Atualizar Chave PIX
+userRoutes.post('/update-pix-key', authMiddleware, UsersController.updatePixKey);
+
 // Recompensa Ad
 userRoutes.post('/reward-ad', authMiddleware, UsersController.rewardAd);
 

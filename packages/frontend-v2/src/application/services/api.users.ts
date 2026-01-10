@@ -31,6 +31,13 @@ export class UsersApi extends ApiBase {
         });
     }
 
+    async updatePixKey(pixKey: string): Promise<ApiResponse<any>> {
+        return await this.request<any>('/users/update-pix-key', {
+            method: 'POST',
+            body: JSON.stringify({ pixKey }),
+        });
+    }
+
     async updateUserProfile(data: any): Promise<ApiResponse<any>> {
         return await this.put<any>('/users/profile', data);
     }

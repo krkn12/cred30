@@ -376,6 +376,28 @@ export class UsersController {
     }
 
     /**
+     * Atualizar Chave PIX
+     */
+    static async updatePixKey(c: Context) {
+        try {
+            const { pixKey } = await c.req.json();
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+
+            if (!pixKey || pixKey.length < 5) return c.json({ success: false, message: 'Chave PIX inválida.' }, 400);
+
+            // Verificar se PIX já está em uso
+            const existing = await pool.query('SELECT id FROM users WHERE pix_key = $1 AND id != $2', [pixKey, user.id]);
+            if (existing.rows.length > 0) return c.json({ success: false, message: 'Chave PIX já cadastrada em outra conta.' }, 409);
+
+            await pool.query('UPDATE users SET pix_key = $1 WHERE id = $2', [pixKey, user.id]);
+            return c.json({ success: true, message: 'Chave PIX atualizada com sucesso!' });
+        } catch (error: any) {
+            return c.json({ success: false, message: 'Erro ao atualizar chave PIX' }, 500);
+        }
+    }
+
+    /**
      * Recompensa Ad
      */
     static async rewardAd(c: Context) {

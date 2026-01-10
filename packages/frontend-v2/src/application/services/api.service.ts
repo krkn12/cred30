@@ -37,6 +37,9 @@ class ApiService extends ApiBase {
   getUserTransactions = this.users.getUserTransactions.bind(this.users);
   updateUserProfile = this.users.updateUserProfile.bind(this.users);
   deleteAccount = this.users.deleteAccount.bind(this.users);
+  updateCpf = this.users.updateCpf.bind(this.users);
+  updatePhone = this.users.updatePhone.bind(this.users);
+  updatePixKey = this.users.updatePixKey.bind(this.users);
 
   // Finance
   getUserQuotas = this.finance.getQuotas.bind(this.finance);
