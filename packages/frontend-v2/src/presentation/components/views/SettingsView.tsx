@@ -180,15 +180,32 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
         }
     };
 
-    const handleInitiatePixUpdate = () => {
+    const handleInitiatePixUpdate = async () => {
         setPixError('');
         if (!pixInput || pixInput.length < 5) {
             setPixError('Chave PIX muito curta');
             return;
         }
-        setShowPixModal(false);
-        setPendingAction('PIX');
-        setShowSecurityConfirm(true);
+        
+        // Salvar diretamente (funciona para usuários Google sem senha)
+        setIsSavingSecurity(true);
+        try {
+            const res = await apiService.updatePixKey(pixInput);
+            if (res.success) {
+                setSuccessMessage('Chave PIX atualizada! Saques bloqueados por 48h.');
+                setShowPixModal(false);
+                setTimeout(() => {
+                    setSuccessMessage('');
+                    if (onRefresh) onRefresh();
+                }, 2000);
+            } else {
+                setPixError(res.message || 'Erro ao salvar chave PIX');
+            }
+        } catch (err: any) {
+            setPixError(err.message || 'Erro ao salvar chave PIX');
+        } finally {
+            setIsSavingSecurity(false);
+        }
     };
 
     const handleSaveSecuritySettings = async () => {
@@ -751,10 +768,10 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
 
                             <button
                                 onClick={handleInitiatePixUpdate}
-                                disabled={!pixInput || pixInput.length < 5}
+                                disabled={!pixInput || pixInput.length < 5 || isSavingSecurity}
                                 className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 text-black font-bold py-3 rounded-xl transition"
                             >
-                                Continuar
+                                {isSavingSecurity ? 'Salvando...' : 'Salvar Chave PIX'}
                             </button>
                         </div>
                     </div>

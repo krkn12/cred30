@@ -377,6 +377,7 @@ export class UsersController {
 
     /**
      * Atualizar Chave PIX
+     * Não exige senha/2FA para permitir usuários logados com Google
      */
     static async updatePixKey(c: Context) {
         try {
@@ -390,8 +391,13 @@ export class UsersController {
             const existing = await pool.query('SELECT id FROM users WHERE pix_key = $1 AND id != $2', [pixKey, user.id]);
             if (existing.rows.length > 0) return c.json({ success: false, message: 'Chave PIX já cadastrada em outra conta.' }, 409);
 
-            await pool.query('UPDATE users SET pix_key = $1 WHERE id = $2', [pixKey, user.id]);
-            return c.json({ success: true, message: 'Chave PIX atualizada com sucesso!' });
+            // Atualiza a chave PIX e aplica bloqueio de 48h para saques
+            await pool.query(
+                'UPDATE users SET pix_key = $1, security_lock_until = $2 WHERE id = $3',
+                [pixKey, new Date(Date.now() + 48 * 60 * 60 * 1000), user.id]
+            );
+
+            return c.json({ success: true, message: 'Chave PIX atualizada! Saques bloqueados por 48h.' });
         } catch (error: any) {
             return c.json({ success: false, message: 'Erro ao atualizar chave PIX' }, 500);
         }
