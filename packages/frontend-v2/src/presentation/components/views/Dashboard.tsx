@@ -222,27 +222,27 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                     </div>
 
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
-                        <div>
-                            <p className="text-zinc-500 font-bold text-sm mb-1 uppercase tracking-widest flex items-center gap-2">
+                        <div className="w-full sm:w-auto">
+                            <p className="text-zinc-500 font-bold text-[10px] sm:text-sm mb-1 uppercase tracking-widest flex items-center gap-2">
                                 {new Date().getHours() < 12 ? 'Bom dia' : new Date().getHours() < 18 ? 'Boa tarde' : 'Boa noite'}
                                 <span className="w-1 h-1 rounded-full bg-zinc-700" />
                                 {new Date().toLocaleDateString('pt-BR', { weekday: 'long' })}
                             </p>
-                            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-none text-gradient">
+                            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-none text-gradient truncate">
                                 {user.name.split(' ')[0]}<span className="text-white">.</span>
                             </h1>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
                             <NotificationBell />
-                            <div className="text-right">
-                                <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-1">Boost de Resultado</p>
+                            <div className="text-right flex-1 sm:flex-none">
+                                <p className="text-[8px] sm:text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-1">Boost de Resultado</p>
                                 <div
-                                    className="cursor-help flex items-center gap-2 glass px-4 py-2 rounded-2xl hover:bg-white/10 transition-all border border-emerald-500/20"
+                                    className="cursor-help flex items-center gap-2 glass px-3 sm:px-4 py-2 rounded-2xl hover:bg-white/10 transition-all border border-emerald-500/20"
                                     title="Seu multiplicador de excedentes baseado em engajamento (2FA + PRO + Atividade)"
                                 >
-                                    <TrendingUp size={16} className="text-emerald-400" />
-                                    <span className="text-xl font-black text-white">
+                                    <TrendingUp size={14} className="text-emerald-400" />
+                                    <span className="text-lg sm:text-xl font-black text-white">
                                         {(1.0 + (user.two_factor_enabled ? 0.1 : 0) + (user.membership_type === 'PRO' ? 0.2 : 0)).toFixed(1)}x
                                     </span>
                                 </div>
@@ -251,9 +251,9 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                                 title="Configurações"
                                 aria-label="Configurações"
                                 onClick={() => navigate('/app/settings')}
-                                className="w-14 h-14 glass glass-hover rounded-2xl flex items-center justify-center group"
+                                className="w-12 h-12 sm:w-14 sm:h-14 glass glass-hover rounded-2xl flex items-center justify-center group shrink-0"
                             >
-                                <Settings size={24} className="text-zinc-400 group-hover:text-white transition-colors" />
+                                <Settings size={20} className="text-zinc-400 group-hover:text-white transition-colors" />
                             </button>
                         </div>
                     </div>
@@ -347,31 +347,31 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                             {showValues ? formatCurrency(user.balance) : '••••••'}
                         </h2>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                             <button
                                 onClick={() => onDeposit()}
-                                className="bg-white text-black hover:scale-[1.02] transition-all duration-500 text-[9px] font-black uppercase tracking-[0.25em] py-5 rounded-3xl shadow-2xl flex flex-col items-center justify-center gap-3 active:scale-95 border border-white/20 group"
+                                className="bg-white text-black hover:scale-[1.02] transition-all duration-500 text-[9px] font-black uppercase tracking-[0.25em] py-4 sm:py-5 rounded-3xl shadow-2xl flex flex-col items-center justify-center gap-2 sm:gap-3 active:scale-95 border border-white/20 group"
                             >
-                                <div className="p-2 bg-emerald-500/10 rounded-xl group-hover:rotate-12 transition-transform">
-                                    <ArrowDownLeft size={24} className="text-emerald-600" />
+                                <div className="p-1.5 sm:p-2 bg-emerald-500/10 rounded-xl group-hover:rotate-12 transition-transform">
+                                    <ArrowDownLeft size={20} className="sm:size-24 text-emerald-600" />
                                 </div>
                                 <span className="opacity-80">DEPOSITAR</span>
                             </button>
                             <button
                                 onClick={onWithdraw}
-                                className="bg-zinc-900/40 hover:bg-zinc-900 text-white text-[9px] font-black uppercase tracking-[0.25em] py-5 rounded-3xl backdrop-blur-md transition-all duration-500 flex flex-col items-center justify-center gap-3 border border-white/5 active:scale-95 group"
+                                className="bg-zinc-900/40 hover:bg-zinc-900 text-white text-[9px] font-black uppercase tracking-[0.25em] py-4 sm:py-5 rounded-3xl backdrop-blur-md transition-all duration-500 flex flex-col items-center justify-center gap-2 sm:gap-3 border border-white/5 active:scale-95 group"
                             >
-                                <div className="p-2 bg-white/5 rounded-xl group-hover:-rotate-12 transition-transform">
-                                    <ArrowUpFromLine size={24} className="text-primary-400" />
+                                <div className="p-1.5 sm:p-2 bg-white/5 rounded-xl group-hover:-rotate-12 transition-transform">
+                                    <ArrowUpFromLine size={20} className="sm:size-24 text-primary-400" />
                                 </div>
                                 <span className="opacity-60 group-hover:opacity-100 transition-opacity">SACAR</span>
                             </button>
                             <button
                                 onClick={onBuyQuota}
-                                className="col-span-2 sm:col-span-1 bg-white/5 hover:bg-white/10 text-white text-[9px] font-black uppercase tracking-[0.25em] py-5 rounded-3xl backdrop-blur-md transition-all duration-500 flex flex-col items-center justify-center gap-3 border border-white/5 active:scale-95 group"
+                                className="col-span-2 sm:col-span-1 bg-white/5 hover:bg-white/10 text-white text-[9px] font-black uppercase tracking-[0.25em] py-4 sm:py-5 rounded-3xl backdrop-blur-md transition-all duration-500 flex flex-col items-center justify-center gap-2 sm:gap-3 border border-white/5 active:scale-95 group"
                             >
-                                <div className="p-2 bg-primary-500/10 rounded-xl group-hover:scale-110 transition-transform">
-                                    <TrendingUp size={24} className="text-primary-400" />
+                                <div className="p-1.5 sm:p-2 bg-primary-500/10 rounded-xl group-hover:scale-110 transition-transform">
+                                    <TrendingUp size={20} className="sm:size-24 text-primary-400" />
                                 </div>
                                 <span className="opacity-60 group-hover:opacity-100 transition-opacity">LICENÇAS</span>
                             </button>
