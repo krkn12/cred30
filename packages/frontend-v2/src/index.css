@@ -7,6 +7,10 @@
     :root {
         --safe-top: env(safe-area-inset-top, 0px);
         --safe-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-left: env(safe-area-inset-left, 0px);
+        --safe-right: env(safe-area-inset-right, 0px);
+        --header-height: 72px;
+        --dock-height: 80px;
     }
 
     html,
@@ -15,18 +19,22 @@
         height: 100%;
         min-height: 100dvh;
         overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
     }
 
     body {
-        @apply bg-background text-white select-none; /* Evita seleção acidental de texto no mobile */
+        @apply bg-background text-white select-none;
         -webkit-tap-highlight-color: transparent;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         overscroll-behavior-y: none;
-        padding-top: var(--safe-top);
+        /* Garante que o conteúdo não fique escondido sob a status bar em PWAs instalados */
+        padding-top: var(--safe-top); 
+        padding-left: var(--safe-left);
+        padding-right: var(--safe-right);
     }
 
-    /* Evitar zoom em inputs no iOS */
+    /* Evitar zoom automático em inputs no iOS (font-size < 16px causa zoom) */
     input,
     select,
     textarea {
@@ -34,10 +42,11 @@
         @apply bg-surface border-surfaceHighlight focus:ring-2 focus:ring-primary-500/50 transition-all;
     }
 
-    /* Safe area para dispositivos com notch */
-    .pb-safe {
-        padding-bottom: calc(var(--safe-bottom) + 1rem);
-    }
+    /* Safe area Helpers */
+    .pt-safe { padding-top: var(--safe-top); }
+    .pb-safe { padding-bottom: calc(var(--safe-bottom) + 1rem); }
+    .mb-safe { margin-bottom: var(--safe-bottom); }
+    .mt-safe { margin-top: var(--safe-top); }
 }
 
 @layer utilities {

@@ -217,34 +217,34 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
 
             {/* Modal: Termo de Ciência e Sustentabilidade Financeira */}
             {showTermsModal && (
-                <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[700] flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
-                    <div className="bg-zinc-900 border border-white/10 rounded-[2.5rem] p-6 sm:p-10 w-full max-w-sm max-h-[85vh] overflow-y-auto relative shadow-2xl ring-1 ring-white/10 scrollbar-hide">
-                        <button onClick={() => setShowTermsModal(false)} className="absolute top-6 right-6 text-zinc-600 hover:text-white bg-white/5 p-2 rounded-full transition-colors"><XIcon size={20} /></button>
+                <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[700] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300" onClick={(e) => { if (e.target === e.currentTarget) setShowTermsModal(false); }}>
+                    <div className="bg-[#0A0A0A] border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-10 w-full max-w-sm max-h-[90vh] overflow-y-auto relative shadow-2xl ring-1 ring-white/10 scrollbar-hide pb-[calc(2rem+var(--safe-bottom))] sm:pb-10">
+                        <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-8 sm:hidden opacity-50" />
+                        <button onClick={() => setShowTermsModal(false)} className="absolute top-6 right-6 text-zinc-600 hover:text-white bg-zinc-900/50 p-2 rounded-full hidden sm:block transition-colors outline-none"><XIcon size={20} /></button>
 
                         <div className="text-center mb-8">
-                            <div className="w-20 h-20 bg-primary-500/10 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-primary-500/20 shadow-xl shadow-primary-900/20">
-                                <Building2 size={40} className="text-primary-500" />
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary-500/10 rounded-[1.5rem] sm:rounded-3xl flex items-center justify-center mx-auto mb-6 border border-primary-500/20 shadow-xl shadow-primary-900/20">
+                                <Building2 className="w-8 h-8 sm:w-10 sm:h-10 text-primary-500" />
                             </div>
-                            <h3 className="text-2xl font-black text-white tracking-tight uppercase">Termo de Ciência do Cooperado</h3>
-                            <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mt-2 px-2 leading-tight">Sustentabilidade e Transparência Cred30</p>
+                            <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase">Termo de Ciência</h3>
+                            <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mt-2 px-2 leading-tight">Sustentabilidade e Transparência</p>
                         </div>
 
-                        <div className="space-y-4 text-xs text-zinc-500 leading-relaxed font-medium">
-                            <p className="text-black font-black bg-emerald-500 p-4 rounded-2xl text-center shadow-lg shadow-emerald-500/20 uppercase tracking-tighter">Economia Circular Cooperativa</p>
+                        <div className="space-y-3 sm:space-y-4 text-[11px] sm:text-xs text-zinc-500 leading-relaxed font-medium">
+                            <p className="text-black font-black bg-emerald-500 p-3 sm:p-4 rounded-2xl text-center shadow-lg shadow-emerald-500/20 uppercase tracking-tighter">Economia Circular Cooperativa</p>
 
                             <TermItem num="01" text="Natureza Associativa: O Cred30 é um sistema de suporte mútuo privado. Você não está comprando um 'investimento', mas sim integralizando capital em uma Sociedade Cooperativa Digital." />
-                            <TermItem num="02" text="Sustentabilidade Real: A receita da plataforma provém de serviços reais de marketing (vídeos), taxas de marketplace e contribuições de apoio social. Não depende da entrada de novos membros para pagar os antigos." highlight />
-                            <TermItem num="03" text="Rentabilidade Variável: A distribuição de lucros (excedentes) é variável e depende exclusivamente do faturamento real da comunidade. Não existe qualquer promessa de rendimento fixo ou garantido." highlight />
-                            <TermItem num="04" text="Circulação de Valor: Para o crescimento do grupo, o capital social é utilizado para fomentar o apoio interno entre associados, gerando riqueza que volta para você na forma de bônus e excedentes." />
-                            <TermItem num="05" text="Carência e Segurança: O resgate integral (100%) é liberado após 365 dias da primeira cota. Se resgatado antes, a multa de 40% é revertida inteiramente para o excedente dos outros associados ativos." />
-                            <TermItem num="06" text="Anti-Fraude: Tentativas de burlar missões sociais ou criar contas falsas resultam em perda imediata do bônus pendente e suspensão do selo de confiança." />
+                            <TermItem num="02" text="Sustentabilidade Real: A receita da plataforma provém de serviços reais de marketing (vídeos), taxas de marketplace e contribuições de apoio social." highlight />
+                            <TermItem num="03" text="Rentabilidade Variável: A distribuição de lucros (excedentes) é variável e depende exclusivamente do faturamento real da comunidade." highlight />
+                            <TermItem num="04" text="Circulação de Valor: O capital social é utilizado para fomentar o apoio interno entre associados, gerando riqueza que volta para você." />
+                            <TermItem num="05" text="Carência e Segurança: O resgate integral (100%) é liberado após 365 dias da primeira cota. Antes disso, há multa de 40% em prol da cooperativa." />
                         </div>
 
                         <button
                             onClick={() => { setAcceptedTerms(true); setShowTermsModal(false); }}
-                            className="w-full bg-white text-black font-black py-5 rounded-2xl mt-8 text-xs uppercase tracking-[0.2em] hover:scale-[1.02] transition-all shadow-xl active:scale-95"
+                            className="w-full bg-white text-black font-black py-4 sm:py-5 rounded-2xl mt-8 text-[10px] sm:text-xs uppercase tracking-[0.2em] hover:scale-[1.02] transition-all shadow-xl active:scale-95 outline-none"
                         >
-                            ENTENDI E ACEITO OS RISCOS E REGRAS
+                            ENTENDI E ACEITO OS TERMOS
                         </button>
                     </div>
                 </div>
@@ -252,13 +252,13 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
 
             {showConfirm && (
                 <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-500" onClick={(e) => { if (e.target === e.currentTarget) setShowConfirm(false); }}>
-                    <div className="bg-[#0A0A0A] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[2.5rem] p-10 w-full sm:max-w-sm relative shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300 ring-1 ring-white/10">
+                    <div className="bg-[#0A0A0A] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[2.5rem] p-8 sm:p-10 w-full sm:max-w-sm relative shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300 ring-1 ring-white/10 pb-[calc(2rem+var(--safe-bottom))] sm:pb-10">
                         <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-8 sm:hidden opacity-50" />
-                        <button title="Fechar" onClick={() => setShowConfirm(false)} className="absolute top-6 right-6 text-zinc-600 hover:text-white bg-zinc-900/50 p-2 rounded-full hidden sm:block transition-colors"><XIcon size={20} /></button>
+                        <button title="Fechar" onClick={() => setShowConfirm(false)} className="absolute top-6 right-6 text-zinc-600 hover:text-white bg-zinc-900/50 p-2 rounded-full hidden sm:block transition-colors outline-none"><XIcon size={20} /></button>
 
                         <div className="text-center mb-10">
-                            <div className="w-20 h-20 bg-primary-500/10 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary-900/20 ring-1 ring-primary-500/20">
-                                <CheckCircle2 size={40} className="text-primary-500" strokeWidth={2.5} />
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary-500/10 rounded-[1.5rem] sm:rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary-900/20 ring-1 ring-primary-500/20">
+                                <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-primary-500" strokeWidth={2.5} />
                             </div>
                             <h3 className="text-2xl font-black text-white tracking-tight">Confirmar Adesão</h3>
                             <p className="text-zinc-500 text-sm mt-3 font-medium tracking-tight">Integralização de <span className="text-white font-bold">{qty} cota(s)-parte</span></p>
@@ -287,10 +287,9 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
                                     <button
                                         onClick={() => {
                                             setShowConfirm(false);
-                                            // Redireciona via React Router (ideal) ou location
-                                            window.location.hash = '#/app/dashboard'; // Ou abrir modal de depósito
+                                            window.location.hash = '#/app/dashboard';
                                         }}
-                                        className="w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] bg-white text-black hover:bg-zinc-200 transition-all shadow-xl active:scale-95"
+                                        className="w-full py-4 sm:py-5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] bg-white text-black hover:bg-zinc-200 transition-all shadow-xl active:scale-95 outline-none"
                                     >
                                         FAZER DEPÓSITO AGORA
                                     </button>
@@ -298,17 +297,17 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
                             ) : (
                                 <button
                                     onClick={handlePurchase}
-                                    className="w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl bg-primary-500 text-black hover:bg-primary-400 shadow-primary-500/20 active:scale-[0.98]"
+                                    className="w-full py-4 sm:py-5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl bg-primary-500 text-black hover:bg-primary-400 shadow-primary-500/20 active:scale-[0.98] outline-none"
                                 >
-                                    CONFIRMAR E PAGAR COM SALDO
+                                    CONFIRMAR E PAGAR
                                     <ArrowRight size={18} />
                                 </button>
                             )}
                             <button
                                 onClick={() => setShowConfirm(false)}
-                                className="w-full py-4 text-zinc-700 hover:text-zinc-400 text-[10px] font-black uppercase tracking-[0.3em] transition-all"
+                                className="w-full py-3 sm:py-4 text-zinc-700 hover:text-zinc-400 text-[10px] font-black uppercase tracking-[0.3em] transition-all outline-none"
                             >
-                                CANCELAR E VOLTAR
+                                CANCELAR
                             </button>
                         </div>
                     </div>

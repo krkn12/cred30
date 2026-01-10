@@ -41,7 +41,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
   return (
     <div className="min-h-screen bg-background text-zinc-100 flex flex-col md:flex-row font-sans overflow-x-hidden">
       {/* Mobile Top Bar - Ultra Clean */}
-      <div className="md:hidden bg-background/80 backdrop-blur-xl border-b border-white/5 p-4 flex justify-between items-center sticky top-0 z-40 px-6">
+      <div className="md:hidden bg-background/80 backdrop-blur-xl border-b border-white/5 p-4 flex justify-between items-center sticky top-0 z-40 px-6 pt-[calc(var(--safe-top)+1rem)]">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-primary-500/10 rounded-2xl flex items-center justify-center border border-primary-500/20 shadow-lg shadow-primary-500/10">
             <img src="/pwa-192x192.png" alt="Cred30" className="w-8 h-8 rounded-lg" />
@@ -56,7 +56,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
           {isAdmin && currentView !== 'admin' && (
             <button
               onClick={() => handleNavigation('admin')}
-              className="p-2.5 rounded-xl bg-primary-500/10 text-primary-400 border border-primary-500/20 active:scale-95 transition-all"
+              className="p-2.5 rounded-xl bg-primary-500/10 text-primary-400 border border-primary-500/20 active:scale-95 transition-all outline-none"
               title="Painel Admin"
             >
               <ShieldCheck size={20} />
@@ -66,7 +66,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
             title="Configurações"
             aria-label="Configurações"
             onClick={() => handleNavigation('settings')}
-            className={`p-2.5 rounded-xl transition-all ${currentView === 'settings' ? 'bg-zinc-800 text-white border border-white/10' : 'bg-white/5 text-zinc-400 border border-white/5'}`}
+            className={`p-2.5 rounded-xl transition-all outline-none ${currentView === 'settings' ? 'bg-zinc-800 text-white border border-white/10' : 'bg-white/5 text-zinc-400 border border-white/5'}`}
           >
             <Settings size={20} />
           </button>
@@ -143,7 +143,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
       </main>
 
       {/* Mobile Bottom Nav - Premium Floating Dock */}
-      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[94%] max-w-sm z-50">
+      <div className="md:hidden fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 w-[94%] max-w-sm z-50 mb-[var(--safe-bottom)]">
         <div className="bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[2.8rem] flex justify-between items-center px-2 py-2.5 shadow-[0_25px_60px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
           {[
             { id: 'dashboard', label: 'Início', icon: Home },
@@ -155,7 +155,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
             <button
               key={item.id}
               onClick={() => handleNavigation(item.id)}
-              className={`flex-1 flex flex-col items-center gap-1.5 py-2 transition-all duration-300 relative ${currentView === item.id
+              className={`flex-1 flex flex-col items-center gap-1.5 py-2 transition-all duration-300 relative outline-none ${currentView === item.id
                 ? 'text-primary-400'
                 : 'text-zinc-500'
                 }`}
@@ -174,8 +174,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
             </button>
           ))}
         </div>
-        {/* iOS Home Indicator Spacer */}
-        <div className="h-[env(safe-area-inset-bottom)]" />
       </div>
     </div>
   );
