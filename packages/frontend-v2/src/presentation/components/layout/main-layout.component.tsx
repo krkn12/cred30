@@ -122,7 +122,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
           <footer className="mt-16 pt-8 border-t border-white/5 text-center space-y-4">
             <div className="flex flex-col items-center gap-2">
               <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest leading-relaxed">
-                Cred30 © 2024 • Sistema de Cooperação Mutuária
+                Cred30 © 2026 • Sistema de Cooperação Mutuária
               </p>
               <div className="flex justify-center gap-6">
                 <button onClick={() => navigate('/terms')} className="text-[10px] text-zinc-400 hover:text-primary-400 font-bold uppercase transition-colors">Termos</button>

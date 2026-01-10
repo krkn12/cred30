@@ -21,7 +21,7 @@ const updateUserSchema = z.object({
     panicPhrase: z.string().min(3).optional(),
     safeContactPhone: z.string().min(8).optional(),
     confirmationCode: z.string().optional(),
-    password: z.string().min(1).optional(),
+    password: z.string().optional(),
 });
 
 export class UsersController {
@@ -180,10 +180,12 @@ export class UsersController {
                 if (securityData.two_factor_enabled) {
                     if (!validatedData.confirmationCode) return c.json({ success: false, message: 'Código de autenticação necessário para alterar dados sensíveis.' }, 403);
                     if (!twoFactorService.verifyToken(validatedData.confirmationCode, securityData.two_factor_secret)) return c.json({ success: false, message: 'Código inválido.' }, 401);
-                } else {
+                } else if (securityData.password_hash) {
+                    // Usuário tem senha, deve fornecê-la
                     if (!validatedData.password) return c.json({ success: false, message: 'Senha necessária para alterar dados sensíveis.' }, 403);
                     if (!await bcrypt.compare(validatedData.password, securityData.password_hash)) return c.json({ success: false, message: 'Senha incorreta.' }, 401);
                 }
+                // Se não tem 2FA e não tem password_hash (usuário Google), permitimos a alteração (ou poderíamos exigir que ele crie uma senha primeiro)
             }
 
             if (validatedData.secretPhrase) {
@@ -231,7 +233,7 @@ export class UsersController {
 
             const result = await pool.query(`
                 WITH user_stats AS (
-                    SELECT u.balance, u.score, u.membership_type, u.is_verified, u.is_seller, u.security_lock_until, u.video_points, COALESCE(u.ad_points, 0) as ad_points, u.phone, u.cpf, u.pix_key, u.address, u.referred_by, COALESCE(u.total_dividends_earned, 0) as total_dividends_earned, u.last_login_at,
+                    SELECT u.balance, u.score, u.membership_type, u.is_verified, u.is_seller, u.security_lock_until, u.video_points, COALESCE(u.ad_points, 0) as ad_points, u.phone, u.cpf, u.pix_key, u.address, u.referred_by, COALESCE(u.total_dividends_earned, 0) as total_dividends_earned, u.last_login_at, u.safe_contact_phone,
                     (SELECT COUNT(*) FROM quotas WHERE user_id = u.id AND status = 'ACTIVE') as quota_count,
                     (SELECT COALESCE(SUM(total_repayment), 0) FROM loans WHERE user_id = u.id AND status IN ('APPROVED', 'PAYMENT_PENDING')) as debt_total
                     FROM users u WHERE u.id = $1
@@ -281,6 +283,7 @@ export class UsersController {
                         pixKey: stats.pix_key || null,
                         address: stats.address || null,
                         referred_by: stats.referred_by || null,
+                        safeContactPhone: stats.safe_contact_phone || null,
                         total_dividends_earned: parseFloat(stats.total_dividends_earned || '0'),
                         last_login_at: stats.last_login_at
                     },
