@@ -61,14 +61,14 @@ export const AdminMetrics = () => {
                                     <Activity size={18} className="text-emerald-400" />
                                     <span className="text-sm font-bold text-zinc-300">Latência do Banco</span>
                                 </div>
-                                <span className="text-xl font-black text-white">{healthMetrics?.health?.dbLatency ?? 'N/A'}</span>
+                                <span className="text-xl font-black text-white">{healthMetrics.data?.health?.dbLatency ?? 'N/A'}</span>
                             </div>
                             <div className="flex justify-between items-center p-4 bg-black/20 rounded-2xl border border-zinc-800">
                                 <div className="flex items-center gap-3">
                                     <Clock size={18} className="text-primary-400" />
                                     <span className="text-sm font-bold text-zinc-300">Uptime do Servidor</span>
                                 </div>
-                                <span className="text-xl font-black text-white">{healthMetrics?.health?.uptime ?? 'N/A'}</span>
+                                <span className="text-xl font-black text-white">{healthMetrics.data?.health?.uptime ?? 'N/A'}</span>
                             </div>
                             <div className="p-6 bg-black/20 rounded-2xl border border-zinc-800">
                                 <div className="flex items-center gap-3 mb-4">
@@ -78,11 +78,11 @@ export const AdminMetrics = () => {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Heap Usado</p>
-                                        <p className="text-lg font-bold text-white">{healthMetrics?.health?.memory?.heapUsed ?? 'N/A'}</p>
+                                        <p className="text-lg font-bold text-white">{healthMetrics.data?.health?.memory?.heapUsed ?? 'N/A'}</p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Total RSS</p>
-                                        <p className="text-lg font-bold text-white">{healthMetrics?.health?.memory?.rss ?? 'N/A'}</p>
+                                        <p className="text-lg font-bold text-white">{healthMetrics.data?.health?.memory?.rss ?? 'N/A'}</p>
                                     </div>
                                 </div>
                             </div>
@@ -98,27 +98,27 @@ export const AdminMetrics = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="p-4 bg-black/20 rounded-2xl border border-zinc-800">
                                 <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Membros</p>
-                                <p className="text-xl font-bold text-white">{healthMetrics?.database?.total_users ?? 0}</p>
+                                <p className="text-xl font-bold text-white">{healthMetrics.data?.database?.total_users ?? 0}</p>
                             </div>
                             <div className="p-4 bg-black/20 rounded-2xl border border-zinc-800">
                                 <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Transações</p>
-                                <p className="text-xl font-bold text-white">{healthMetrics?.database?.total_transactions ?? 0}</p>
+                                <p className="text-xl font-bold text-white">{healthMetrics.data?.database?.total_transactions ?? 0}</p>
                             </div>
                             <div className="p-4 bg-black/20 rounded-2xl border border-zinc-800">
                                 <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Licenças (Cotas)</p>
-                                <p className="text-xl font-bold text-white">{healthMetrics?.database?.total_quotas ?? 0}</p>
+                                <p className="text-xl font-bold text-white">{healthMetrics.data?.database?.total_quotas ?? 0}</p>
                             </div>
                             <div className="p-4 bg-black/20 rounded-2xl border border-zinc-800">
                                 <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Apoios Mútuos</p>
-                                <p className="text-xl font-bold text-white">{healthMetrics?.database?.total_loans ?? 0}</p>
+                                <p className="text-xl font-bold text-white">{healthMetrics.data?.database?.total_loans ?? 0}</p>
                             </div>
                             <div className="p-4 bg-black/20 rounded-2xl border border-zinc-800">
                                 <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Logs Administrativos</p>
-                                <p className="text-xl font-bold text-white">{healthMetrics?.database?.total_admin_logs ?? 0}</p>
+                                <p className="text-xl font-bold text-white">{healthMetrics.data?.database?.total_admin_logs ?? 0}</p>
                             </div>
                             <div className="p-4 bg-black/20 rounded-2xl border border-zinc-800">
                                 <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Custos Sistêmicos</p>
-                                <p className="text-xl font-bold text-white">{healthMetrics?.database?.total_system_costs ?? 0}</p>
+                                <p className="text-xl font-bold text-white">{healthMetrics.data?.database?.total_system_costs ?? 0}</p>
                             </div>
                         </div>
                         <div className="mt-8 p-6 bg-primary-500/5 rounded-2xl border border-primary-500/10">
@@ -129,11 +129,11 @@ export const AdminMetrics = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="flex justify-between items-center bg-black/40 p-3 rounded-xl">
                                     <span className="text-[10px] text-zinc-500 font-black uppercase">Novos Usuários</span>
-                                    <span className="text-lg font-black text-white">+{healthMetrics?.activity?.new_users_24h ?? 0}</span>
+                                    <span className="text-lg font-black text-white">+{healthMetrics.data?.activity?.new_users_24h ?? 0}</span>
                                 </div>
                                 <div className="flex justify-between items-center bg-black/40 p-3 rounded-xl">
                                     <span className="text-[10px] text-zinc-500 font-black uppercase">Transações</span>
-                                    <span className="text-lg font-black text-white">+{healthMetrics?.activity?.trans_24h ?? 0}</span>
+                                    <span className="text-lg font-black text-white">+{healthMetrics.data?.activity?.trans_24h ?? 0}</span>
                                 </div>
                             </div>
                         </div>
