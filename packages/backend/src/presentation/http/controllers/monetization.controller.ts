@@ -85,9 +85,11 @@ export class MonetizationController {
                 }
 
                 await client.query(
-                    'UPDATE users SET ad_points = COALESCE(ad_points, 0) + $1, score = score + $2, last_reward_at = NOW() WHERE id = $3',
-                    [REWARD_POINTS, REWARD_SCORE, user.id]
+                    'UPDATE users SET ad_points = COALESCE(ad_points, 0) + $1, last_reward_at = NOW() WHERE id = $2',
+                    [REWARD_POINTS, user.id]
                 );
+
+                await updateScore(client, user.id, REWARD_SCORE, 'Recompensa por vídeo (Farm)');
 
                 const conversion = await autoConvertPoints(client, user.id);
                 const updatedRes = await client.query('SELECT ad_points FROM users WHERE id = $1', [user.id]);
@@ -313,9 +315,11 @@ export class MonetizationController {
                 }
 
                 await client.query(
-                    'UPDATE users SET ad_points = COALESCE(ad_points, 0) + $1, score = score + $2, last_checkin_at = NOW() WHERE id = $3',
-                    [CHECKIN_POINTS, CHECKIN_SCORE, user.id]
+                    'UPDATE users SET ad_points = COALESCE(ad_points, 0) + $1, last_checkin_at = NOW() WHERE id = $2',
+                    [CHECKIN_POINTS, user.id]
                 );
+
+                await updateScore(client, user.id, CHECKIN_SCORE, 'Check-in diário (Farm)');
 
                 const conversion = await autoConvertPoints(client, user.id);
                 const updatedRes = await client.query('SELECT ad_points FROM users WHERE id = $1', [user.id]);
