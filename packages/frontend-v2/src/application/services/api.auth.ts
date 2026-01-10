@@ -1,4 +1,4 @@
-import { ApiBase } from './api.base';
+import { ApiBase, ApiResponse } from './api.base';
 
 export interface AuthResponse {
     user: {
