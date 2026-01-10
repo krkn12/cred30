@@ -225,6 +225,18 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
                         <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
                             <div className="bg-emerald-500 h-full" style={{ width: '100%' }}></div>
                         </div>
+                        {state.stats?.quotasCount ? (
+                            <div className="flex justify-between items-center mt-2">
+                                <span className="text-[10px] text-zinc-500 font-bold uppercase">
+                                    {state.stats.quotasCount} Cotas Ativas
+                                </span>
+                                <span className="text-[10px] text-emerald-400 font-bold">
+                                    ~ {formatCurrency(state.profitPool / state.stats.quotasCount)} / cota
+                                </span>
+                            </div>
+                        ) : (
+                            <p className="text-[9px] text-zinc-600 mt-2 text-right">Sem cotas ativas para divisão.</p>
+                        )}
                     </div>
                 </div>
 
