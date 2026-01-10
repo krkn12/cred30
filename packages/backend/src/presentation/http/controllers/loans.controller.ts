@@ -52,7 +52,7 @@ export class LoansController {
             const pool = getDbPool(c);
 
             const result = await pool.query(
-                `SELECT l.*,
+                `SELECT l.*, u.name as requester_name,
                 COALESCE(
                   (SELECT json_agg(json_build_object(
                     'id', li.id,
@@ -65,7 +65,8 @@ export class LoansController {
                   '[]'
                 ) as installments_json
          FROM loans l
-         WHERE l.user_id = $1
+         LEFT JOIN users u ON u.id = l.user_id
+         WHERE l.user_id = $1 OR l.metadata->>'guarantorId' = $1
          ORDER BY l.created_at DESC`,
                 [user.id]
             );
@@ -90,7 +91,9 @@ export class LoansController {
                     totalPaid,
                     remainingAmount,
                     paidInstallmentsCount: paidInstallments.length,
-                    isFullyPaid: totalPaid >= parseFloat(loan.total_repayment)
+                    isFullyPaid: totalPaid >= parseFloat(loan.total_repayment),
+                    requesterName: loan.requester_name || null,
+                    isGuarantor: loan.metadata?.guarantorId === user.id
                 };
             });
 
@@ -166,10 +169,12 @@ export class LoansController {
             const amountToDisburse = amount - originationFee;
             const totalRepayment = amount * (1 + finalInterestRate);
 
+            const initialStatus = guarantorId ? 'WAITING_GUARANTOR' : 'PENDING';
+
             const result = await executeInTransaction(pool, async (client: PoolClient) => {
                 const loanResult = await client.query(
                     `INSERT INTO loans (user_id, amount, total_repayment, installments, interest_rate, penalty_rate, status, due_date, term_days, metadata)
-           VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', $7, $8, $9)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
            RETURNING id`,
                     [
                         user.id,
@@ -178,6 +183,7 @@ export class LoansController {
                         installments,
                         finalInterestRate,
                         PENALTY_RATE,
+                        initialStatus,
                         new Date(Date.now() + (installments * ONE_MONTH_MS)),
                         installments * 30,
                         JSON.stringify({
@@ -224,7 +230,7 @@ export class LoansController {
 
                     const liquidity = (systemBalance * 0.7) - totalLoaned;
 
-                    if (amount <= liquidity) {
+                    if (amount <= liquidity && initialStatus === 'PENDING') {
                         await processLoanApproval(client, newLoanId.toString(), 'APPROVE');
                         return { loanId: newLoanId, autoApproved: true };
                     }
@@ -245,7 +251,9 @@ export class LoansController {
                 success: true,
                 message: isAutoApproved
                     ? `Apoio aprovado! R$ ${amountToDisburse.toFixed(2)} já disponível. Garantia de ${offer.guaranteePercentage}% vinculada.`
-                    : `Solicitação enviada! Aguardando recursos no caixa do Clube Cred30.`,
+                    : guarantorId
+                        ? `Solicitação enviada! O fiador ${offer.guarantorName} precisa aprovar na conta dele para prosseguir.`
+                        : `Solicitação enviada! Aguardando recursos no caixa do Clube Cred30.`,
                 data: {
                     loanId: result.data?.loanId,
                     totalRepayment,
@@ -413,6 +421,73 @@ export class LoansController {
             if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
             console.error('Erro ao pagar parcela:', error);
             return c.json({ success: false, message: 'Erro interno' }, 500);
+        }
+    }
+
+    /**
+     * Fiador responde à solicitação (Aceitar/Recusar)
+     */
+    static async respondToGuarantorRequest(c: Context) {
+        try {
+            const body = await c.req.json();
+            const { loanId, action } = z.object({
+                loanId: z.union([z.string(), z.number()]).transform(v => v.toString()),
+                action: z.enum(['APPROVE', 'REJECT'])
+            }).parse(body);
+
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+
+            const loanRes = await pool.query(
+                `SELECT * FROM loans WHERE id = $1 AND (metadata->>'guarantorId' = $2 OR metadata->>'guarantor_id' = $2) AND status = 'WAITING_GUARANTOR'`,
+                [loanId, user.id]
+            );
+
+            if (loanRes.rows.length === 0) {
+                return c.json({ success: false, message: 'Solicitação de fiança não encontrada ou já processada.' }, 404);
+            }
+
+            const loan = loanRes.rows[0];
+
+            if (action === 'REJECT') {
+                await pool.query("UPDATE loans SET status = 'REJECTED' WHERE id = $1", [loanId]);
+                return c.json({ success: true, message: 'Solicitação de fiança recusada.' });
+            }
+
+            // Atualizar para PENDING para que possa ser aprovado
+            await pool.query("UPDATE loans SET status = 'PENDING' WHERE id = $1", [loanId]);
+
+            // Tentar auto-aprovação agora que o fiador aceitou
+            const result = await executeInTransaction(pool, async (client) => {
+                try {
+                    const configRes = await client.query('SELECT system_balance FROM system_config LIMIT 1');
+                    const systemBalance = parseFloat(configRes.rows[0].system_balance);
+                    const loansRes = await client.query("SELECT COALESCE(SUM(amount), 0) as total FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING')");
+                    const totalLoaned = parseFloat(loansRes.rows[0].total);
+
+                    const liquidity = (systemBalance * 0.7) - totalLoaned;
+
+                    if (parseFloat(loan.amount) <= liquidity) {
+                        await processLoanApproval(client, loanId, 'APPROVE');
+                        return { autoApproved: true };
+                    }
+                } catch (e) {
+                    console.error('Erro auto-aprovação pós-fiança:', e);
+                }
+                return { autoApproved: false };
+            });
+
+            return c.json({
+                success: true,
+                message: result.data?.autoApproved
+                    ? 'Fiança aceita e apoio aprovado!'
+                    : 'Fiança aceita! A solicitação agora aguarda análise ou recursos no caixa.'
+            });
+
+        } catch (error) {
+            if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos' }, 400);
+            console.error('Erro ao responder fiança:', error);
+            return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
         }
     }
 }

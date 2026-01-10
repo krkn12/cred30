@@ -219,16 +219,19 @@ export class TransactionsController {
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
             const body = await c.req.json();
-            const { amount } = z.object({ amount: z.number().positive() }).parse(body);
+            const { amount, senderName } = z.object({
+                amount: z.number().positive(),
+                senderName: z.string().min(3).optional()
+            }).parse(body);
 
             const result = await createTransaction(
                 pool,
                 user.id,
                 'DEPOSIT',
                 amount,
-                'Depósito manual pendente de confirmação',
+                `Depósito manual pendente (Depositante: ${senderName || 'Não informado'})`,
                 'PENDING',
-                { method: 'MANUAL_PIX' }
+                { method: 'MANUAL_PIX', senderName }
             );
 
             if (!result.success) throw new Error(result.error);

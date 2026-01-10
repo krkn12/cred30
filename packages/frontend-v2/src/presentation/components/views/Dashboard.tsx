@@ -72,7 +72,9 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
     const isPro = user?.membership_type === 'PRO';
 
     const { userQuotas, totalInvested, totalCurrentValue, totalEarnings, earningsPercentage } = useMemo(() => {
-        const quotas = state.quotas?.filter((q: Quota) => q.userId === user.id) ?? [];
+        const quotas = state.quotas?.filter((q: Quota) =>
+            q.userId === user.id && (q.status === 'ACTIVE' || !q.status)
+        ) ?? [];
         const invested = quotas.reduce((acc: number, q: Quota) => acc + q.purchasePrice, 0);
         const current = quotas.reduce((acc: number, q: Quota) => acc + (q.currentValue || q.purchasePrice), 0);
         const earnings = current - invested;

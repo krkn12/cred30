@@ -63,7 +63,7 @@ export async function lockUserBalance(
 ): Promise<{ success: boolean; currentBalance?: number; error?: string }> {
   try {
     const result = await client.query(
-      'SELECT balance FROM users WHERE id = $1 FOR UPDATE',
+      'SELECT balance, security_lock_until FROM users WHERE id = $1 FOR UPDATE',
       [userId]
     );
 
@@ -71,7 +71,17 @@ export async function lockUserBalance(
       return { success: false, error: 'Usuário não encontrado' };
     }
 
-    const currentBalance = parseFloat(result.rows[0].balance);
+    const userData = result.rows[0];
+    const currentBalance = parseFloat(userData.balance);
+    const lockUntil = userData.security_lock_until;
+
+    // Trava de Segurança Global (Anti-Gasto de Saldo Suspeito / Lavagem Interna)
+    if (lockUntil && new Date(lockUntil) > new Date()) {
+      return {
+        success: false,
+        error: `Seu saldo está sob proteção temporária e não pode ser usado no momento. Liberado em: ${new Date(lockUntil).toLocaleString('pt-BR')}`
+      };
+    }
 
     if (currentBalance < amount) {
       return {
@@ -715,11 +725,42 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
   // DEPÓSITO (Crédito real no saldo do usuário)
   if (transaction.type === 'DEPOSIT') {
     const depositAmount = parseFloat(transaction.amount);
+    let metadata: any = transaction.metadata || {};
+    if (typeof metadata === 'string') {
+      try { metadata = JSON.parse(metadata); } catch { metadata = {}; }
+    }
 
     // 1. Creditar saldo no usuário
     await updateUserBalance(client, transaction.user_id, depositAmount, 'credit');
 
-    // 2. Adicionar ao saldo real do sistema
+    // 2. Atualizar data do último depósito para controle de carência anti-fraude (72h)
+    await client.query('UPDATE users SET last_deposit_at = NOW() WHERE id = $1', [transaction.user_id]);
+
+    // 3. Verificação de Divergência de Nome (Anti-Lavagem Interna)
+    const userRes = await client.query('SELECT name FROM users WHERE id = $1', [transaction.user_id]);
+    const userName = userRes.rows[0]?.name;
+    const senderName = metadata.senderName;
+
+    if (senderName && userName) {
+      const normalizedSender = senderName.trim().toLowerCase();
+      const normalizedOwner = userName.trim().toLowerCase();
+
+      // Se o nome for diferente, aplicamos uma trava de gasto de 24h por segurança
+      if (normalizedSender !== normalizedOwner) {
+        const lockUntil = new Date();
+        lockUntil.setHours(lockUntil.getHours() + 24);
+
+        await client.query('UPDATE users SET security_lock_until = $1 WHERE id = $2', [lockUntil, transaction.user_id]);
+        console.log(`[SECURITY] Divergência de nome detectada (${senderName} vs ${userName}). Saldo travado por 24h para o usuário ${transaction.user_id}`);
+
+        await client.query(
+          "UPDATE transactions SET metadata = metadata || $1::jsonb, description = description || ' [⚠️ NOME DIVERGENTE - TRAVA 24H APLICADA]' WHERE id = $2",
+          [JSON.stringify({ name_mismatch: true, lock_applied: true }), transaction.id]
+        );
+      }
+    }
+
+    // 4. Adicionar ao saldo real do sistema
     await client.query(
       'UPDATE system_config SET system_balance = system_balance + $1',
       [depositAmount]

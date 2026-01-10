@@ -3,12 +3,13 @@ import { Wallet, ArrowDownLeft, ShieldCheck, ChevronRight, Copy, CheckCircle2 } 
 import { ADMIN_PIX_KEY } from '../../../shared/constants/app.constants';
 
 interface DepositViewProps {
-    onDeposit: (amount: number) => void;
+    onDeposit: (amount: number, senderName?: string) => void;
     onBack: () => void;
 }
 
 export const DepositView: React.FC<DepositViewProps> = ({ onDeposit, onBack }) => {
     const [amount, setAmount] = useState<string>('');
+    const [senderName, setSenderName] = useState<string>('');
     const [step, setStep] = useState<1 | 2>(1);
     const [copied, setCopied] = useState(false);
 
@@ -18,12 +19,16 @@ export const DepositView: React.FC<DepositViewProps> = ({ onDeposit, onBack }) =
             alert('Valor mínimo para depósito é R$ 10,00');
             return;
         }
+        if (!senderName || senderName.trim().length < 3) {
+            alert('Por favor, informe o nome do titular da conta que fará o PIX para agilizar sua aprovação.');
+            return;
+        }
         setStep(2);
     };
 
     const handleConfirm = () => {
         const val = parseFloat(amount.replace(',', '.'));
-        onDeposit(val);
+        onDeposit(val, senderName);
     };
 
     const handleCopy = () => {
@@ -46,14 +51,14 @@ export const DepositView: React.FC<DepositViewProps> = ({ onDeposit, onBack }) =
                             <div className="w-20 h-20 bg-primary-500/10 rounded-3xl flex items-center justify-center text-primary-400 mx-auto mb-6 border border-primary-500/20 shadow-xl shadow-primary-900/20">
                                 <ArrowDownLeft size={40} strokeWidth={2.5} />
                             </div>
-                            <h2 className="text-3xl font-black text-white tracking-tight">Adesão Social</h2>
-                            <p className="text-zinc-500 text-sm font-medium mt-2">Adicione saldo para ativar licenças ou apoiar o marketplace.</p>
+                            <h2 className="text-3xl font-black text-white tracking-tight">Depósito Social</h2>
+                            <p className="text-zinc-500 text-sm font-medium mt-2">Agilize sua aprovação informando o nome de quem fará o PIX.</p>
                         </div>
 
                         <div className="space-y-6">
                             <div>
                                 <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-4 mb-2 block">Quanto deseja aportar?</label>
-                                <div className="relative group">
+                                <div className="relative group mb-6">
                                     <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-zinc-600 group-focus-within:text-primary-400 transition-colors">R$</span>
                                     <input
                                         type="text"
@@ -63,7 +68,20 @@ export const DepositView: React.FC<DepositViewProps> = ({ onDeposit, onBack }) =
                                         className="w-full bg-black/40 border-2 border-white/5 focus:border-primary-500/50 rounded-3xl py-6 pl-16 pr-6 text-3xl font-black text-white outline-none transition-all placeholder:text-zinc-800"
                                     />
                                 </div>
-                                <p className="text-[10px] text-zinc-600 mt-3 ml-4 font-bold uppercase tracking-widest text-center">Mínimo de integralização: R$ 10,00</p>
+
+                                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-4 mb-2 block">Nome do Titular do PIX</label>
+                                <div className="relative group">
+                                    <input
+                                        type="text"
+                                        placeholder="Nome impresso no comprovante"
+                                        value={senderName}
+                                        onChange={(e) => setSenderName(e.target.value)}
+                                        className="w-full bg-black/40 border-2 border-white/5 focus:border-primary-500/50 rounded-2xl py-4 px-6 text-base font-bold text-white outline-none transition-all placeholder:text-zinc-800"
+                                    />
+                                </div>
+                                <p className="text-[9px] text-zinc-600 mt-3 ml-4 font-bold uppercase tracking-tight text-center leading-relaxed">
+                                    🛡️ Para sua segurança, depósitos feitos por terceiros passam por análise rigorosa de 24h.
+                                </p>
                             </div>
 
                             <div className="grid grid-cols-3 gap-3">

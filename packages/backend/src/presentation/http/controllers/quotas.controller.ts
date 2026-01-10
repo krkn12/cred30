@@ -54,7 +54,7 @@ export class QuotasController {
             const pool = getDbPool(c);
 
             const result = await pool.query(
-                'SELECT id, user_id, purchase_price, current_value, purchase_date FROM quotas WHERE user_id = $1',
+                'SELECT id, user_id, purchase_price, current_value, purchase_date, status FROM quotas WHERE user_id = $1',
                 [user.id]
             );
 

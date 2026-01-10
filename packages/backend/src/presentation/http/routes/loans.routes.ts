@@ -24,4 +24,7 @@ loanRoutes.post('/repay', authMiddleware, LoansController.repayLoan);
 // Pagar parcela
 loanRoutes.post('/repay-installment', authMiddleware, LoansController.repayInstallment);
 
+// Responder à solicitação de fiança
+loanRoutes.post('/guarantor-respond', authMiddleware, LoansController.respondToGuarantorRequest);
+
 export { loanRoutes };

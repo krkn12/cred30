@@ -31,7 +31,16 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             </div>
             <div className="flex-1">
                 <div className="flex justify-between items-start">
-                    <h4 className="font-bold text-white text-sm">{order.listing_title}</h4>
+                    <div className="flex flex-col gap-0.5">
+                        <h4 className="font-bold text-white text-sm">
+                            {order.is_lote ? `Lote: ${order.listing_title} + ${order.listing_ids.length - 1} itens` : order.listing_title}
+                        </h4>
+                        {order.is_lote && (
+                            <span className="text-[8px] text-primary-400 font-black uppercase tracking-widest">
+                                📦 {order.listing_ids.length} ITENS DO MESMO VENDEDOR
+                            </span>
+                        )}
+                    </div>
                     <span className={`text-[10px] font-black px-2 py-0.5 rounded ${order.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-primary-500/10 text-primary-400'}`}>
                         {order.status}
                     </span>

@@ -317,8 +317,8 @@ export const distributeMonthlyDividends = async () => {
 
 // --- User Logic ---
 
-export const requestDeposit = async (amount: number): Promise<any> => {
-  return await apiService.requestDeposit(amount);
+export const requestDeposit = async (amount: number, senderName?: string): Promise<any> => {
+  return await apiService.requestDeposit(amount, senderName);
 };
 
 export const buyQuota = async (quantity: number, useBalance: boolean = false, paymentMethod?: 'pix'): Promise<any> => {
@@ -339,12 +339,17 @@ export const sellAllQuotas = async (): Promise<any> => {
 export const requestLoan = async (
   amount: number,
   installments: number,
-  guaranteePercentage: number = 100
+  guaranteePercentage: number = 100,
+  guarantorId?: string
 ): Promise<any> => {
   if (!navigator.onLine) {
-    return await syncService.enqueue('REQUEST_LOAN', { amount, installments, guaranteePercentage });
+    return await syncService.enqueue('REQUEST_LOAN', { amount, installments, guaranteePercentage, guarantorId });
   }
-  return await apiService.requestLoan(amount, installments, guaranteePercentage);
+  return await apiService.requestLoan(amount, installments, guaranteePercentage, guarantorId);
+};
+
+export const respondToGuarantorRequest = async (loanId: string, action: 'APPROVE' | 'REJECT'): Promise<any> => {
+  return await apiService.respondToGuarantorRequest(loanId, action);
 };
 
 export const repayLoan = async (loanId: string, useBalance: boolean, paymentMethod?: 'pix'): Promise<any> => {

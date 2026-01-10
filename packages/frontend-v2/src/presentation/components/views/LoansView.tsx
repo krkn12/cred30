@@ -6,17 +6,19 @@ import { createContractData, downloadLoanContract } from '../../../application/s
 
 interface LoansViewProps {
     loans: Loan[];
-    onRequest: (amount: number, installments: number, guaranteePercentage: number) => void;
+    onRequest: (amount: number, installments: number, guaranteePercentage: number, guarantorId?: string) => void;
+    onGuarantorRespond: (loanId: string, action: 'APPROVE' | 'REJECT') => void;
     onPay: (loanId: string, full: boolean, method?: 'pix') => void;
     onPayInstallment: (loanId: string, amount: number, full: boolean, method?: 'pix') => void;
     userBalance: number;
     currentUser: User | null;
 }
 
-export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalance, currentUser }: LoansViewProps) => {
+export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayInstallment, userBalance, currentUser }: LoansViewProps) => {
     const [amount, setAmount] = useState(500);
     const [months, setMonths] = useState(3);
     const [guaranteePercentage, setGuaranteePercentage] = useState(100);
+    const [guarantorId, setGuarantorId] = useState('');
     const [payModalId, setPayModalId] = useState<string | null>(null);
 
     const [viewDetailsId, setViewDetailsId] = useState<string | null>(null);
@@ -59,7 +61,9 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
     const totalRepay = amount * (1 + interestRate);
     const monthlyPayment = totalRepay / months;
 
-    const activeLoans = loans.filter(l => l.status === 'APPROVED' || l.status === 'PENDING' || l.status === 'PAYMENT_PENDING');
+    const myLoans = loans.filter(l => !l.isGuarantor && (l.status === 'APPROVED' || l.status === 'PENDING' || l.status === 'PAYMENT_PENDING' || l.status === 'WAITING_GUARANTOR'));
+    const guarantorRequests = loans.filter(l => l.isGuarantor && l.status === 'WAITING_GUARANTOR');
+    const activeLoans = myLoans.filter(l => l.status === 'APPROVED' || l.status === 'PAYMENT_PENDING');
     const selectedLoan = activeLoans.find(l => l.id === payModalId);
 
     // Helper: Calculate installment value
@@ -73,6 +77,44 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
 
     return (
         <div className="space-y-8 pb-32">
+            {/* Solicitações de Fiança para este usuário */}
+            {guarantorRequests.length > 0 && (
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2 pl-1">
+                        <AlertTriangle className="text-yellow-500" size={20} />
+                        <h3 className="text-lg font-bold text-white">Solicitações de Fiança</h3>
+                    </div>
+                    {guarantorRequests.map(req => (
+                        <div key={req.id} className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-5 animate-pulse-slow">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                <div>
+                                    <p className="text-yellow-500 text-xs font-bold uppercase mb-1">Ação Requerida</p>
+                                    <p className="text-white text-sm">
+                                        <span className="font-bold">{req.requesterName}</span> solicitou que você seja fiador de um apoio de
+                                        <span className="font-bold text-yellow-400 ml-1">{req.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>.
+                                    </p>
+                                    <p className="text-zinc-500 text-xs mt-1 italic">* Suas cotas serão usadas como garantia se você aceitar.</p>
+                                </div>
+                                <div className="flex gap-2 w-full sm:w-auto">
+                                    <button
+                                        onClick={() => onGuarantorRespond(req.id, 'REJECT')}
+                                        className="flex-1 sm:flex-none px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded-lg transition"
+                                    >
+                                        Recusar
+                                    </button>
+                                    <button
+                                        onClick={() => onGuarantorRespond(req.id, 'APPROVE')}
+                                        className="flex-1 sm:flex-none px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-bold rounded-lg transition"
+                                    >
+                                        Aceitar Fiança
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             {/* Active Loan Card - Adaptado para responsividade */}
             <div className="bg-surface border border-surfaceHighlight rounded-2xl p-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-5">
@@ -223,6 +265,20 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                             </div>
 
                             <div>
+                                <label className="text-xs text-zinc-400 font-medium mb-2 block">Deseja adicionar um Fiador? (Opcional)</label>
+                                <input
+                                    type="text"
+                                    value={guarantorId}
+                                    onChange={(e) => setGuarantorId(e.target.value)}
+                                    placeholder="ID ou Email do Fiador"
+                                    className="w-full bg-background border border-surfaceHighlight rounded-xl py-4 px-4 text-white text-sm focus:border-primary-500 outline-none transition"
+                                />
+                                <p className="text-[10px] text-zinc-500 mt-2">
+                                    As cotas do fiador somam ao seu limite. Ele precisará aprovar a solicitação.
+                                </p>
+                            </div>
+
+                            <div>
                                 <label className="text-xs text-zinc-400 font-medium mb-2 block">Deseja parcelar em quantas vezes?</label>
                                 <div className="relative">
                                     <input
@@ -278,7 +334,7 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                             </div>
 
                             <button
-                                onClick={() => onRequest(amount, months, guaranteePercentage)}
+                                onClick={() => onRequest(amount, months, guaranteePercentage, guarantorId)}
                                 disabled={!amount || amount <= 0 || creditLimit?.totalLimit === 0}
                                 className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-xl mt-6 transition shadow-lg shadow-emerald-500/20"
                             >
@@ -293,13 +349,13 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
             <div className="space-y-4">
                 <h3 className="text-lg font-bold text-white pl-1">Seus Compromissos Sociais</h3>
 
-                {activeLoans.length === 0 && (
+                {myLoans.length === 0 && (
                     <div className="text-center py-12 bg-surface/50 rounded-3xl border border-surfaceHighlight border-dashed">
                         <p className="text-zinc-500">Nenhum apoio mútuo ativo no momento.</p>
                     </div>
                 )}
 
-                {activeLoans.map(loan => {
+                {myLoans.map(loan => {
                     const daysUntilDue = loan.dueDate ? Math.ceil((new Date(loan.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
                     const isOverdue = daysUntilDue < 0;
                     const isUrgent = daysUntilDue <= 3 && daysUntilDue >= 0;
@@ -325,9 +381,13 @@ export const LoansView = ({ loans, onRequest, onPay, onPayInstallment, userBalan
                                         <div className="flex items-center gap-2">
                                             <span className={`text-xs px-2 py-0.5 rounded-full ${loan.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400' :
                                                 loan.status === 'PENDING' ? 'bg-yellow-500/10 text-yellow-400' :
-                                                    'bg-zinc-800 text-zinc-400'
+                                                    loan.status === 'WAITING_GUARANTOR' ? 'bg-blue-500/10 text-blue-400' :
+                                                        'bg-zinc-800 text-zinc-400'
                                                 }`}>
-                                                {loan.status === 'APPROVED' ? 'Aprovado' : loan.status === 'PENDING' ? 'Em Análise' : loan.status}
+                                                {loan.status === 'APPROVED' ? 'Aprovado' :
+                                                    loan.status === 'PENDING' ? 'Em Análise' :
+                                                        loan.status === 'WAITING_GUARANTOR' ? 'Aguardando Fiador' :
+                                                            loan.status}
                                             </span>
                                             {isOverdue && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full flex items-center gap-1"><AlertTriangle size={10} /> Atrasado</span>}
                                         </div>

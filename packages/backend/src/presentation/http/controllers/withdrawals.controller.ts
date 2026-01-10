@@ -42,7 +42,7 @@ export class WithdrawalsController {
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
 
-            // Verificação de valor mínimo
+            // 0. Verificação de valor mínimo
             if (amount < MIN_WITHDRAWAL_AMOUNT) {
                 return c.json({
                     success: false,
@@ -51,13 +51,52 @@ export class WithdrawalsController {
                 }, 400);
             }
 
-            // Verificação de Lock de Segurança
-            const securityCheck = await pool.query('SELECT security_lock_until FROM users WHERE id = $1', [user.id]);
-            const lockUntil = securityCheck.rows[0].security_lock_until;
+            // 1. Verificação de Titularidade (CPF Match)
+            const userFullDataRes = await pool.query('SELECT cpf, name, last_deposit_at FROM users WHERE id = $1', [user.id]);
+            const userFullData = userFullDataRes.rows[0];
+
+            if (!userFullData.cpf) {
+                return c.json({
+                    success: false,
+                    message: 'Você precisa cadastrar seu CPF no perfil antes de realizar saques para sua segurança.',
+                    errorCode: 'CPF_REQUIRED'
+                }, 400);
+            }
+
+            // Normalizar CPF (remover pontos e traços)
+            const normalizedUserCpf = userFullData.cpf.replace(/\D/g, '');
+            const normalizedPixKey = pixKey.replace(/\D/g, '');
+
+            // Se a chave PIX tiver 11 dígitos, tratamos como CPF
+            if (normalizedPixKey.length === 11 && normalizedPixKey !== normalizedUserCpf) {
+                return c.json({
+                    success: false,
+                    message: 'Segurança Cred30: Só é permitido sacar para uma chave PIX vinculada ao SEU próprio CPF cadastrado.',
+                    errorCode: 'CPF_MISMATCH'
+                }, 403);
+            }
+
+            // 2. Verificação de Carência de 72h (Anti-Lavagem)
+            if (userFullData.last_deposit_at) {
+                const lastDeposit = new Date(userFullData.last_deposit_at);
+                const hoursSinceDeposit = (new Date().getTime() - lastDeposit.getTime()) / (1000 * 60 * 60);
+
+                if (hoursSinceDeposit < 72) {
+                    const remainingHours = Math.ceil(72 - hoursSinceDeposit);
+                    return c.json({
+                        success: false,
+                        message: `Segurança Contra Lavagem: Seu último depósito foi recente. Saques serão liberados em ${remainingHours} horas (Carência de 72h).`,
+                        errorCode: 'DEPOSIT_VESTING'
+                    }, 403);
+                }
+            }
+
+            // 3. Verificação de Lock de Segurança Manual (Selo Azul, Coação, etc)
+            const lockUntil = userFullData.security_lock_until;
             if (lockUntil && new Date(lockUntil) > new Date()) {
                 return c.json({
                     success: false,
-                    message: `Sua conta está sob proteção temporária devido a mudanças recentes de segurança. Saques liberados em: ${new Date(lockUntil).toLocaleString('pt-BR')}`,
+                    message: `Sua conta está sob proteção temporária. Saques liberados em: ${new Date(lockUntil).toLocaleString('pt-BR')}`,
                     errorCode: 'SECURITY_LOCK'
                 }, 403);
             }
@@ -289,6 +328,25 @@ export class WithdrawalsController {
                 return c.json({
                     success: true,
                     message: 'Saque confirmado e processado automaticamente com sucesso!'
+                });
+            }
+
+            // 4. Verificação de Primeiro Saque (Análise Manual Obrigatória)
+            const withdrawalCountRes = await pool.query(
+                "SELECT COUNT(*) FROM transactions WHERE user_id = $1 AND type = 'WITHDRAWAL' AND status = 'APPROVED'",
+                [user.id]
+            );
+            const isFirstWithdrawal = parseInt(withdrawalCountRes.rows[0].count) === 0;
+
+            if (isFirstWithdrawal) {
+                console.log(`[ANALYSIS] Primeiro saque detectado para usuário ${user.id}. Encaminhando para análise manual.`);
+                await pool.query(
+                    "UPDATE transactions SET status = 'PENDING', description = '(PRIMEIRO SAQUE - ANÁLISE MANUAL) ' || description WHERE id = $1",
+                    [transactionId]
+                );
+                return c.json({
+                    success: true,
+                    message: 'Como este é seu primeiro saque, ele passará por uma rápida análise de segurança manual (até 24h úteis).'
                 });
             }
 
