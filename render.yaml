@@ -1,0 +1,30 @@
+# Configuração Recomendada para Cred30 no Render
+# Caso você use "Render Blueprints", este arquivo garante a atualização do PWA.
+
+services:
+  - type: web
+    name: cred30-frontend
+    runtime: static
+    buildCommand: npm install && npm run build
+    publishPath: packages/frontend-v2/dist
+    routes:
+      # 🛡️ REGRA CRÍTICA: Nunca cachear o Service Worker
+      - type: rewrite
+        source: /sw.js
+        destination: /sw.js
+        headers:
+          - key: Cache-Control
+            value: no-cache, no-store, must-revalidate
+            
+      # 🛡️ REGRA CRÍTICA: Nunca cachear o manifest
+      - type: rewrite
+        source: /manifest.webmanifest
+        destination: /manifest.webmanifest
+        headers:
+          - key: Cache-Control
+            value: no-cache, no-store, must-revalidate
+
+      # SPA Routing: Redireciona tudo para o index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html

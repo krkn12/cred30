@@ -10,7 +10,19 @@ export const UpdateNotification: React.FC = () => {
         updateServiceWorker,
     } = useRegisterSW({
         onRegistered(r) {
-            // SW Registered
+            if (r) {
+                // Checar atualizações a cada 30 minutos (proativo)
+                setInterval(() => {
+                    r.update();
+                }, 1000 * 60 * 30);
+
+                // Checar sempre que o usuário volta para o App (foreground)
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') {
+                        r.update();
+                    }
+                });
+            }
         },
         onRegisterError(error) {
             console.error('SW registration error', error);

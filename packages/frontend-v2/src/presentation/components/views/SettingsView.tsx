@@ -1,6 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, Copy, Lock, ChevronRight, LogOut, Trash2, X as XIcon, ShieldCheck, QrCode, AlertCircle, Check, Bug, FileText, Phone, Store, Truck } from 'lucide-react';
+import { Star, Copy, Lock, ChevronRight, LogOut, Trash2, X as XIcon, ShieldCheck, QrCode, AlertCircle, Check, Bug, FileText, Phone, Store, Truck, RefreshCw } from 'lucide-react';
 import { User } from '../../../domain/types/common.types';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { get2FASetup, verify2FA } from '../../../application/services/storage.service';
@@ -536,6 +536,45 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                         </span>
                         <ChevronRight size={16} className="text-zinc-600 group-hover:text-white transition-colors" />
                     </button>
+                </div>
+            </div>
+
+            <div className="pt-8">
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest ml-1 mb-4">Sistema</h3>
+                <div className="bg-zinc-900/40 border border-white/5 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-primary-500/10 rounded-xl flex items-center justify-center text-primary-400">
+                                <Bug size={20} />
+                            </div>
+                            <div>
+                                <p className="text-white text-xs font-bold">Build do App</p>
+                                <p className="text-[10px] text-zinc-500 font-mono">v1.0.434 (Master)</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => {
+                                if (confirm('Isso irá recarregar o App e limpar o cache técnico para garantir que você tenha a última versão. Deseja continuar?')) {
+                                    if ('serviceWorker' in navigator) {
+                                        navigator.serviceWorker.getRegistrations().then(registrations => {
+                                            for (const registration of registrations) {
+                                                registration.unregister();
+                                            }
+                                            window.location.reload();
+                                        });
+                                    } else {
+                                        window.location.reload();
+                                    }
+                                }
+                            }}
+                            className="bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl border border-primary-500/20 transition-all active:scale-95 flex items-center gap-2"
+                        >
+                            <RefreshCw size={12} /> REFORÇAR
+                        </button>
+                    </div>
+                    <p className="text-[9px] text-zinc-600 italic leading-relaxed">
+                        Se o App não estiver refletindo as últimas mudanças, clique em REFORÇAR para forçar o carregamento do servidor.
+                    </p>
                 </div>
             </div>
 
