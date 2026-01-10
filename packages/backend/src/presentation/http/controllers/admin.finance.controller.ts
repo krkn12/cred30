@@ -92,13 +92,23 @@ export class AdminFinanceController {
                 const cost = costRes.rows[0];
                 const amount = parseFloat(cost.amount);
 
-                // 2. Subtrair do saldo do sistema
+                // 2. Subtrair do saldo do sistema e das reservas (Modelo Lucro Líquido)
                 const configRes = await client.query('SELECT system_balance FROM system_config LIMIT 1');
                 if (parseFloat(configRes.rows[0].system_balance) < amount) {
                     throw new Error('Saldo do sistema insuficiente para realizar este pagamento.');
                 }
 
-                await client.query('UPDATE system_config SET system_balance = system_balance - $1', [amount]);
+                // Importar VIDEO_QUOTA_HOLDERS_SHARE se necessário, ou usar hardcoded 0.25 por padrão se a constante não estiver acessível aqui
+                const QUOTA_HOLDERS_SHARE = 0.25;
+
+                const quotaShare = amount * QUOTA_HOLDERS_SHARE;
+                const ownerShare = amount - quotaShare;
+
+                // Deduz do balanço geral E das reservas específicas (Cotistas e Empresa)
+                await client.query(
+                    'UPDATE system_config SET system_balance = system_balance - $1, profit_pool = profit_pool - $2, total_owner_profit = total_owner_profit - $3',
+                    [amount, quotaShare, ownerShare]
+                );
 
                 // 3. Remover o custo (como solicitado: "as dívidas somem")
                 await client.query('DELETE FROM system_costs WHERE id = $1', [id]);
