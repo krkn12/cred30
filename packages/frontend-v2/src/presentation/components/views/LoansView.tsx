@@ -57,8 +57,8 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
         return 0.10;
     };
 
-    const interestRate = getInterestRate(guaranteePercentage);
-    const totalRepay = amount * (1 + interestRate);
+    const effectiveInterestRate = guarantorId ? 0.10 : getInterestRate(guaranteePercentage);
+    const totalRepay = amount * (1 + effectiveInterestRate);
     const monthlyPayment = totalRepay / months;
 
     const myLoans = loans.filter(l => !l.isGuarantor && (l.status === 'APPROVED' || l.status === 'PENDING' || l.status === 'PAYMENT_PENDING' || l.status === 'WAITING_GUARANTOR'));
@@ -273,9 +273,15 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                     placeholder="ID ou Email do Fiador"
                                     className="w-full bg-background border border-surfaceHighlight rounded-xl py-4 px-4 text-white text-sm focus:border-primary-500 outline-none transition"
                                 />
-                                <p className="text-[10px] text-zinc-500 mt-2">
-                                    As cotas do fiador somam ao seu limite. Ele precisará aprovar a solicitação.
-                                </p>
+                                {guarantorId ? (
+                                    <p className="text-[10px] text-emerald-400 mt-2 font-bold animate-pulse">
+                                        ✓ Modo Fiador Ativo: A garantia será de 100% das cotas do fiador.
+                                    </p>
+                                ) : (
+                                    <p className="text-[10px] text-zinc-500 mt-2">
+                                        As cotas do fiador somam ao seu limite. Ele precisará aprovar a solicitação.
+                                    </p>
+                                )}
                             </div>
 
                             <div>
@@ -318,7 +324,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                         <span className="text-white font-medium">{amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-zinc-500">Taxa de Manutenção ({(interestRate * 100).toFixed(0)}%)</span>
+                                        <span className="text-zinc-500">Taxa de Manutenção ({(effectiveInterestRate * 100).toFixed(0)}%)</span>
                                         <span className="text-red-400 font-medium">{(totalRepay - amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
@@ -334,11 +340,18 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                             </div>
 
                             <button
-                                onClick={() => onRequest(amount, months, guaranteePercentage, guarantorId)}
-                                disabled={!amount || amount <= 0 || creditLimit?.totalLimit === 0}
-                                className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-xl mt-6 transition shadow-lg shadow-emerald-500/20"
+                                onClick={() => onRequest(amount, months, guarantorId ? 100 : guaranteePercentage, guarantorId)}
+                                disabled={!amount || amount <= 0 || (creditLimit?.totalLimit === 0 && !guarantorId) || creditLimit?.analysis?.details?.isCurrentlyGuarantor}
+                                className={`w-full font-bold py-4 rounded-xl mt-6 transition shadow-lg ${creditLimit?.analysis?.details?.isCurrentlyGuarantor
+                                    ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                                    : 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-500/20'
+                                    }`}
                             >
-                                {creditLimit?.totalLimit === 0 ? 'Ajuda Indisponível' : 'Solicitar Apoio Mútuo'}
+                                {creditLimit?.analysis?.details?.isCurrentlyGuarantor
+                                    ? 'Bloqueado: Você é Fiador Ativo'
+                                    : (creditLimit?.totalLimit === 0 && !guarantorId)
+                                        ? 'Ajuda Indisponível'
+                                        : 'Solicitar Apoio Mútuo'}
                             </button>
                         </div>
                     </div>

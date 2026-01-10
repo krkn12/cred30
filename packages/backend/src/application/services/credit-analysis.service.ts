@@ -112,30 +112,46 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         // Limite = 80% do gasto + 50% do valor das cotas
         const maxLoanAmount = Math.floor((totalSpent * LIMIT_PERCENTAGE_OF_SPENT) + (quotasValue * LIMIT_PERCENTAGE_OF_QUOTAS));
 
-        const details = { score, quotasCount, quotasValue, marketplaceTransactions, accountAgeDays, hasOverdue, totalSpent, maxLoanAmount };
+        // NOVA VERIFICAÇÃO: O usuário já é fiador de alguém?
+        const isGuarantorResult = await pool.query(`
+            SELECT COUNT(*) FROM loans 
+            WHERE status IN ('APPROVED', 'PAYMENT_PENDING') 
+            AND (metadata->>'guarantorId' = $1 OR metadata->>'guarantor_id' = $1)
+        `, [userId]);
+        const isCurrentlyGuarantor = parseInt(isGuarantorResult.rows[0].count) > 0;
+
+        const details = { score, quotasCount, quotasValue, marketplaceTransactions, accountAgeDays, hasOverdue, totalSpent, maxLoanAmount, isCurrentlyGuarantor };
 
         // Verificações
         if (hasOverdue) {
             return { eligible: false, reason: 'Você possui empréstimos em atraso.', details };
         }
+        if (isCurrentlyGuarantor) {
+            return { eligible: false, reason: 'Você não pode solicitar apoio enquanto for fiador ativo de outro membro.', details };
+        }
         if (score < MIN_SCORE_FOR_LOAN) {
             return { eligible: false, reason: `Score mínimo de ${MIN_SCORE_FOR_LOAN} necessário. Seu: ${score}`, details };
         }
+
+        // Se NÃO tem fiador, exige pelo menos 1 cota.
+        // Se TEM fiador, a verificação de quotasCount deve ser tratada no calculateLoanOffer.
+        // Por padrão no checkLoanEligibility (que alimenta a UI de limite), mantemos o aviso se for 0.
+
         if (quotasCount < 1) {
             const pendingQuotas = parseInt(userData.pending_quotas || 0);
             if (pendingQuotas > 0) {
                 return { eligible: false, reason: 'Sua participação está aguardando aprovação bancária. O limite será liberado assim que confirmarmos seu PIX.', details };
             }
-            return { eligible: false, reason: 'Você precisa ter pelo menos 1 participação ativa no Clube para liberar o Apoio Mútuo.', details };
+            // Retornamos true mas com aviso no reason se o limite for 0, ou deixamos o controller tratar.
+            // Para manter a UI funcional, se o limite for 0 mas o usuário quiser usar fiador, o calculateLoanOffer cuidará disso.
+            return { eligible: true, reason: 'Você não possui participações. Para solicitar apoio, você precisará de um Fiador.', details };
         }
+
         if (marketplaceTransactions < MIN_MARKETPLACE_TRANSACTIONS) {
             return { eligible: false, reason: `Você precisa de pelo menos ${MIN_MARKETPLACE_TRANSACTIONS} transações concluídas no Marketplace.`, details };
         }
         if (accountAgeDays < MIN_ACCOUNT_AGE_DAYS) {
             return { eligible: false, reason: `Seu perfil está em análise de segurança. Disponível em ${MIN_ACCOUNT_AGE_DAYS - accountAgeDays} dias.`, details };
-        }
-        if (totalSpent <= 0 && quotasCount <= 0) {
-            return { eligible: false, reason: 'É necessário ter movimentação na plataforma ou capital social (cotas) para gerar limite.', details };
         }
 
         return { eligible: true, details };
@@ -187,8 +203,9 @@ export const calculateLoanOffer = async (
 
         const { quotasValue: userQuotasValue, maxLoanAmount } = eligibility.details;
 
-        // Verificar se o valor solicitado está dentro do limite
-        if (requestedAmount > maxLoanAmount) {
+        // Se NÃO tem fiador, o valor solicitado deve respeitar o limite individual.
+        // Se TEM fiador, o limite é expandido pelas cotas do fiador.
+        if (!guarantorId && requestedAmount > maxLoanAmount) {
             return { approved: false, reason: `Valor máximo disponível: R$ ${maxLoanAmount.toFixed(2)} (Baseado no seu gasto anterior e capital acumulado)` };
         }
 
@@ -198,35 +215,45 @@ export const calculateLoanOffer = async (
 
         // Se tiver fiador, somar garantia dele
         if (guarantorId) {
+            // Regra 2.0: Se tiver fiador, a garantia é AUTOMATICAMENTE 100% (mais seguro para o clube)
+            guaranteePercentage = 100;
+
             const guarantorRes = await pool.query(`
-                SELECT u.name,
-                COALESCE((SELECT SUM(current_value) FROM quotas WHERE user_id = $1 AND (status = 'ACTIVE' OR status IS NULL)), 0) as total_quotas
-                FROM users u WHERE u.id = $1
+                SELECT u.id, u.name,
+                COALESCE((SELECT SUM(current_value) FROM quotas WHERE user_id = u.id AND (status = 'ACTIVE' OR status IS NULL)), 0) as total_quotas,
+                (SELECT COUNT(*) FROM loans WHERE user_id = u.id AND status IN ('APPROVED', 'PAYMENT_PENDING')) as active_loans_count,
+                (SELECT COUNT(*) FROM loans WHERE (metadata->>'guarantorId' = u.id OR metadata->>'guarantor_id' = u.id) AND status IN ('APPROVED', 'PAYMENT_PENDING')) as active_guarantorships
+                FROM users u WHERE u.id = $1 OR u.email = $1 -- Permitir buscar por ID ou Email
             `, [guarantorId]);
 
             if (guarantorRes.rows.length === 0) {
-                return { approved: false, reason: 'Fiador não encontrado.' };
+                return { approved: false, reason: 'Fiador não encontrado. Verifique o ID ou Email informado.' };
             }
 
-            const guarantorQuotas = parseFloat(guarantorRes.rows[0].total_quotas);
+            const guarantorData = guarantorRes.rows[0];
+            const guarantorQuotas = parseFloat(guarantorData.total_quotas);
 
-            // Verificar se fiador tem bloqueios (empréstimos ativos ou outras fianças) faria parte de uma verificação mais complexa.
-            // Para simplificar, assumimos que todas as cotas ativas contam, mas o bloqueio de venda entra em vigor se o empréstimo for aprovado.
+            // TRAVA: Fiador não pode ter empréstimos ativos próprios
+            if (parseInt(guarantorData.active_loans_count) > 0) {
+                return { approved: false, reason: 'Este fiador não pode ser usado pois possui empréstimos ativos próprios.' };
+            }
+
+            // TRAVA: Fiador não pode já ser fiador de outra pessoa (um por vez)
+            if (parseInt(guarantorData.active_guarantorships) > 0) {
+                return { approved: false, reason: 'Este fiador já está apadrinhando outro membro no momento.' };
+            }
 
             totalGuaranteeValue += guarantorQuotas;
-            guarantorName = guarantorRes.rows[0].name;
-
-            console.log(`[CREDIT_ANALYSIS] Fiador ${guarantorName} adicionou R$ ${guarantorQuotas} de garantia.`);
+            guarantorName = guarantorData.name;
         }
 
         // A garantia necessária é baseada na porcentagem escolhida do valor do empréstimo
-        // Ex: Empréstimo de 1000 com 50% de garantia precisa de 500 reais em cotas.
         const requiredGuaranteeValue = requestedAmount * (guaranteePercentage / 100);
 
         if (totalGuaranteeValue < requiredGuaranteeValue) {
             return {
                 approved: false,
-                reason: `Garantia insuficiente. Suas cotas ${guarantorId ? '+ Fiador ' : ''}somam R$ ${totalGuaranteeValue.toFixed(2)}. Para ${guaranteePercentage}% de garantia, você precisa de R$ ${requiredGuaranteeValue.toFixed(2)}.`
+                reason: `Garantia insuficiente. Suas cotas ${guarantorId ? '+ Fiador ' : ''}somam R$ ${totalGuaranteeValue.toFixed(2)}. Para apoio de R$ ${requestedAmount.toFixed(2)} com ${guaranteePercentage}% de garantia, você precisa de R$ ${requiredGuaranteeValue.toFixed(2)} em capital social.`
             };
         }
 
