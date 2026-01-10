@@ -78,10 +78,10 @@ export class AuthApi extends ApiBase {
         return await this.request<any>('/auth/2fa/setup');
     }
 
-    async verify2FA(email: string, code: string): Promise<ApiResponse<any>> {
+    async verify2FA(token: string, secret: string): Promise<ApiResponse<any>> {
         return await this.request<any>('/auth/verify-2fa', {
             method: 'POST',
-            body: JSON.stringify({ email, code })
+            body: JSON.stringify({ token, secret })
         });
     }
 
