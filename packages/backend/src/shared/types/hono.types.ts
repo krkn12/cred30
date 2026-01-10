@@ -24,6 +24,7 @@ export interface UserContext {
   address?: string;
   total_dividends_earned?: number;
   last_login_at?: string;
+  passwordHash?: string | null; // Para verificar se usuário tem senha (usuários Google não têm)
 }
 
 // Estender o tipo de variáveis do Hono

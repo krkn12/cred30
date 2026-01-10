@@ -23,6 +23,7 @@ export interface User {
   ad_points?: number; // Pontos farm (1000 pts = R$ 0,03)
   is_verified?: boolean; // Selo de verificado
   is_seller?: boolean; // É vendedor no marketplace
+  passwordHash?: string | null; // Indica se usuário tem senha (usuários Google não têm)
 }
 
 export interface Quota {
