@@ -26,6 +26,7 @@ const convertApiUserToUser = (apiUser: any): User => {
     email: apiUser.email || '',
     secretPhrase: '', // Não é retornado pela API
     pixKey: apiUser.pixKey || apiUser.pix_key || '',
+    passwordHash: apiUser.passwordHash || apiUser.password_hash || '',
     balance: typeof apiUser.balance === 'string' ? parseFloat(apiUser.balance) : (apiUser.balance || 0),
     joinedAt: apiUser.joinedAt || apiUser.created_at || new Date().toISOString(),
     referralCode: apiUser.referralCode || apiUser.referral_code || '',
