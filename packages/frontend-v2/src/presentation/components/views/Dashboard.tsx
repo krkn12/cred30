@@ -427,7 +427,7 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-4 mb-10">
+                    <div className="flex overflow-x-auto no-scrollbar -mx-5 px-5 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-7 gap-4 mb-10 pb-4 sm:pb-0">
                         {[
                             { icon: Crown, label: 'Shopping', sub: 'VIP', act: () => navigate('/app/services'), color: 'text-pink-400', bg: 'bg-pink-500/10' },
                             { icon: Gift, label: 'Prêmios', sub: 'Resgatar', act: () => navigate('/app/rewards-shop'), color: 'text-amber-400', bg: 'bg-amber-500/10' },
@@ -440,7 +440,7 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                             <button
                                 key={idx}
                                 onClick={item.act}
-                                className="aspect-square glass glass-hover rounded-[2rem] flex flex-col items-center justify-center gap-2 group"
+                                className="min-w-[100px] aspect-square glass glass-hover rounded-[2rem] flex flex-col items-center justify-center gap-2 group shrink-0 sm:min-w-0"
                             >
                                 <div className={`w-12 h-12 ${item.bg} rounded-2xl flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform`}>
                                     <item.icon size={24} />

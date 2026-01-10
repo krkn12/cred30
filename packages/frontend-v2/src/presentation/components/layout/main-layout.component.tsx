@@ -1,4 +1,4 @@
-import { LogOut, Home, PieChart, DollarSign, Settings, TrendingUp, ArrowUpFromLine, ShoppingBag, HelpCircle, Play, ShieldCheck } from 'lucide-react';
+import { LogOut, Home, PieChart, DollarSign, Settings, TrendingUp, ArrowUpFromLine, ShoppingBag, HelpCircle, Play, ShieldCheck, Gift } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../../../domain/types/common.types';
 
@@ -41,26 +41,32 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
   return (
     <div className="min-h-screen bg-background text-zinc-100 flex flex-col md:flex-row font-sans overflow-x-hidden">
       {/* Mobile Top Bar - Ultra Clean */}
-      <div className="md:hidden bg-background/80 backdrop-blur-xl border-b border-white/5 p-4 flex justify-between items-center sticky top-0 z-40">
+      <div className="md:hidden bg-background/80 backdrop-blur-xl border-b border-white/5 p-4 flex justify-between items-center sticky top-0 z-40 px-6">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-primary-500/10 rounded-xl flex items-center justify-center border border-primary-500/20 shadow-lg shadow-primary-500/10">
-            <img src="/pwa-192x192.png" alt="Cred30" className="w-7 h-7 rounded-lg" />
+          <div className="w-10 h-10 bg-primary-500/10 rounded-2xl flex items-center justify-center border border-primary-500/20 shadow-lg shadow-primary-500/10">
+            <img src="/pwa-192x192.png" alt="Cred30" className="w-8 h-8 rounded-lg" />
           </div>
-          <h1 className="text-xl font-black text-white tracking-tighter">Cred<span className="text-primary-400">30</span></h1>
+          <div>
+            <h1 className="text-xl font-black text-white tracking-tighter leading-none">Cred<span className="text-primary-400">30</span></h1>
+            <span className="text-[8px] text-zinc-500 font-black uppercase tracking-[0.2em]">Associativo</span>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest leading-none mb-1">Saldo</span>
-            <span className="text-sm font-black text-emerald-400">
-              {user.balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </span>
-          </div>
+          {isAdmin && currentView !== 'admin' && (
+            <button
+              onClick={() => handleNavigation('admin')}
+              className="p-2.5 rounded-xl bg-primary-500/10 text-primary-400 border border-primary-500/20 active:scale-95 transition-all"
+              title="Painel Admin"
+            >
+              <ShieldCheck size={20} />
+            </button>
+          )}
           <button
             title="Configurações"
             aria-label="Configurações"
             onClick={() => handleNavigation('settings')}
-            className={`p-2 rounded-xl transition-all ${currentView === 'settings' ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20' : 'bg-white/5 text-zinc-400 border border-white/5'}`}
+            className={`p-2.5 rounded-xl transition-all ${currentView === 'settings' ? 'bg-zinc-800 text-white border border-white/10' : 'bg-white/5 text-zinc-400 border border-white/5'}`}
           >
             <Settings size={20} />
           </button>
@@ -137,37 +143,39 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
       </main>
 
       {/* Mobile Bottom Nav - Premium Floating Dock */}
-      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-50">
-        <div className="bg-black/40 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] flex justify-between items-center px-2 py-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/5">
+      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[94%] max-w-sm z-50">
+        <div className="bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[2.8rem] flex justify-between items-center px-2 py-2.5 shadow-[0_25px_60px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
           {[
             { id: 'dashboard', label: 'Início', icon: Home },
             { id: 'invest', label: 'Investir', icon: TrendingUp },
             { id: 'marketplace', label: 'Clube', icon: ShoppingBag },
-            { id: 'earn', label: 'Ganhos', icon: DollarSign },
+            { id: 'rewards-shop', label: 'Prêmios', icon: Gift },
             { id: 'withdraw', label: 'Saque', icon: ArrowUpFromLine },
           ].map((item) => (
             <button
               key={item.id}
               onClick={() => handleNavigation(item.id)}
-              className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 transition-all duration-300 relative ${currentView === item.id
+              className={`flex-1 flex flex-col items-center gap-1.5 py-2 transition-all duration-300 relative ${currentView === item.id
                 ? 'text-primary-400'
                 : 'text-zinc-500'
                 }`}
             >
-              <div className={`p-2 rounded-2xl transition-all duration-500 ${currentView === item.id
-                ? 'bg-primary-500/15 shadow-[0_0_20px_rgba(34,211,238,0.15)] scale-110 active-scale'
-                : 'hover:bg-white/5 active-scale'}`}>
-                <item.icon size={20} strokeWidth={currentView === item.id ? 2.5 : 2} />
+              <div className={`p-2.5 rounded-2xl transition-all duration-500 ${currentView === item.id
+                ? 'bg-primary-500/20 shadow-[0_0_25px_rgba(34,211,238,0.2)] scale-110'
+                : 'hover:bg-white/5 active:scale-95'}`}>
+                <item.icon size={22} strokeWidth={currentView === item.id ? 2.5 : 2} />
               </div>
-              <span className={`text-[9px] font-black uppercase tracking-tighter transition-all duration-300 ${currentView === item.id ? 'opacity-100' : 'opacity-0 scale-75'}`}>
+              <span className={`text-[8px] font-black uppercase tracking-tighter transition-all duration-300 ${currentView === item.id ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1 scale-75'}`}>
                 {item.label}
               </span >
               {currentView === item.id && (
-                <div className="absolute -bottom-1 w-1 h-1 bg-primary-400 rounded-full shadow-[0_0_10px_rgba(34,211,238,1)] animate-pulse" />
+                <div className="absolute -bottom-1 w-1 h-1 bg-primary-400 rounded-full shadow-[0_0_15px_rgba(34,211,238,1)]" />
               )}
             </button>
           ))}
         </div>
+        {/* iOS Home Indicator Spacer */}
+        <div className="h-[env(safe-area-inset-bottom)]" />
       </div>
     </div>
   );
