@@ -192,7 +192,7 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
     };
 
     const handleSaveSecuritySettings = async () => {
-        if (!securityPassword && !user.twoFactorEnabled) {
+        if (!securityPassword && !user.two_factor_enabled) {
             setError('Senha necessária para confirmar alterações');
             return;
         }
@@ -203,7 +203,7 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
         try {
             const payload: any = {
                 password: securityPassword,
-                confirmationCode: user.twoFactorEnabled ? verifyCode : undefined
+                confirmationCode: user.two_factor_enabled ? verifyCode : undefined
             };
 
             if (pendingAction === 'PIX') {
@@ -371,11 +371,11 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                         className="w-full bg-surfaceHighlight hover:bg-zinc-800 text-white border border-white/5 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group"
                     >
                         <span className="flex items-center gap-3">
-                            <ShieldCheck size={18} className={`${user.twoFactorEnabled ? 'text-emerald-400' : 'text-zinc-400'} group-hover:text-primary-400 transition-colors`} />
+                            <ShieldCheck size={18} className={`${user.two_factor_enabled ? 'text-emerald-400' : 'text-zinc-400'} group-hover:text-primary-400 transition-colors`} />
                             Autenticação 2FA
                         </span>
                         <div className="flex items-center gap-2">
-                            {!user.twoFactorEnabled ? (
+                            {!user.two_factor_enabled ? (
                                 <span className="text-[10px] bg-primary-500 text-black px-2 py-1 rounded-full font-extrabold animate-pulse">
                                     ATIVAR AGORA
                                 </span>
@@ -506,7 +506,7 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                 confirmText="Sim, Encerrar Conta"
                 type="danger"
             >
-                {user.twoFactorEnabled && (
+                {user.two_factor_enabled && (
                     <div className="mb-6 animate-in slide-in-from-top-2">
                         <label className="text-xs text-zinc-500 mb-2 block font-bold uppercase tracking-widest">Código 2FA para Confirmar</label>
                         <div className="relative">
@@ -780,7 +780,7 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                 type="danger"
             >
                 <div className="space-y-4 mb-4">
-                    {user.twoFactorEnabled ? (
+                    {user.two_factor_enabled ? (
                         <div>
                             <label className="text-xs text-zinc-500 mb-1.5 block">Código 2FA</label>
                             <input

@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from '../components/layout/main-layout.component';
 import { UpdateNotification } from '../components/ui/update-notification.component';
-import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, changePassword, apiService, requestDeposit, upgradePro } from '../../application/services/storage.service';
+import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, changePassword, apiService, requestDeposit, upgradePro, clearPendingItemsCache } from '../../application/services/storage.service';
 import { syncService } from '../../application/services/sync.service';
 import { AppState } from '../../domain/types/common.types';
 import { Check, X as XIcon, RefreshCw, AlertTriangle, Users, Copy, TrendingUp } from 'lucide-react';
@@ -203,6 +203,8 @@ export default function App() {
 
   const refreshState = async () => {
     try {
+      // Sempre limpar cache antes de buscar novos dados para garantir dados atualizados
+      clearPendingItemsCache();
       const newState = await loadState();
       setState(prev => ({ ...prev, ...newState, isLoading: false }));
     } catch (e) {
