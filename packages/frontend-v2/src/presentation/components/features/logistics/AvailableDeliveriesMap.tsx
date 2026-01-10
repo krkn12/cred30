@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { MapPin, X, Truck, Package, Phone, User, Navigation } from 'lucide-react';
+import { MapPin, X, Truck, Package, Phone, User } from 'lucide-react';
 
 interface DeliveryMission {
     id: string;
@@ -95,8 +95,8 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
             attributionControl: false
         }).setView([-14.235, -51.9253], 4); // Initial setView for Brazil
 
-        // Usar CartoDB Dark Matter para modo escuro premium
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        // Usar CartoDB Light para melhor visibilidade em operações de campo
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap &copy; CARTO',
             maxZoom: 20
         }).addTo(mapRef.current);
