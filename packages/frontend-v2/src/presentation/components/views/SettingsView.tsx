@@ -22,6 +22,9 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
     const [deleteCode, setDeleteCode] = useState('');
     const [error, setError] = useState('');
 
+    // Verificar se usuário tem senha (para usuários Google = não tem)
+    const hasPassword = !!user.passwordHash;
+    
     // CPF State
     const [showCpfModal, setShowCpfModal] = useState(false);
     const [cpfInput, setCpfInput] = useState('');
@@ -168,7 +171,8 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
 
         setIsSubmitting(true);
         try {
-            await onChangePassword(oldPassword, newPassword);
+            // Para usuários Google (sem senha), oldPassword pode ser qualquer valor
+            await onChangePassword(hasPassword ? oldPassword : 'google-user', newPassword);
             setShowChangePassword(false);
             setOldPassword('');
             setNewPassword('');
@@ -550,19 +554,28 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                     <div className="bg-surface border border-surfaceHighlight rounded-3xl p-6 w-full max-w-sm relative animate-fade-in shadow-2xl">
                         <button title="Fechar" onClick={() => setShowChangePassword(false)} className="absolute top-4 right-4 text-zinc-400 hover:text-white bg-zinc-800 p-1.5 rounded-full z-10"><XIcon size={24} /></button>
 
-                        <h3 className="text-xl font-bold text-white mb-4">Alterar Senha</h3>
+                        <h3 className="text-xl font-bold text-white mb-4">
+                            {hasPassword ? 'Alterar Senha' : 'Criar Senha'}
+                        </h3>
+                        {!hasPassword && (
+                            <p className="text-zinc-400 text-sm mb-4">
+                                Você logou com Google. Crie uma senha para acessar recursos de segurança.
+                            </p>
+                        )}
 
                         <form onSubmit={handlePasswordChange} className="space-y-4">
-                            <div>
-                                <label className="text-xs text-zinc-400 font-medium mb-1.5 block">Senha Atual</label>
-                                <input
-                                    type="password"
-                                    required
-                                    value={oldPassword}
-                                    onChange={(e) => setOldPassword(e.target.value)}
-                                    className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 px-4 text-white focus:border-primary-500 outline-none transition"
-                                />
-                            </div>
+                            {hasPassword && (
+                                <div>
+                                    <label className="text-xs text-zinc-400 font-medium mb-1.5 block">Senha Atual</label>
+                                    <input
+                                        type="password"
+                                        required
+                                        value={oldPassword}
+                                        onChange={(e) => setOldPassword(e.target.value)}
+                                        className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 px-4 text-white focus:border-primary-500 outline-none transition"
+                                    />
+                                </div>
+                            )}
                             <div>
                                 <label className="text-xs text-zinc-400 font-medium mb-1.5 block">Nova Senha</label>
                                 <input
@@ -595,13 +608,12 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                                 disabled={isSubmitting}
                                 className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 text-black font-bold py-3 rounded-xl mt-2 transition"
                             >
-                                {isSubmitting ? 'Alterando...' : 'Alterar Senha'}
+                                {isSubmitting ? 'Salvando...' : hasPassword ? 'Alterar Senha' : 'Criar Senha'}
                             </button>
                         </form>
                     </div>
                 </div>
             )}
-
             {/* 2FA Setup Modal */}
             {show2FASetup && (
                 <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[110] p-4 animate-in fade-in duration-300 backdrop-blur-md">
@@ -875,6 +887,6 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                     </div>
                 </div>
             )}
-        </div >
+        </div>
     );
 };

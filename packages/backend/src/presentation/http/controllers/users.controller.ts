@@ -311,6 +311,7 @@ export class UsersController {
 
     /**
      * Alterar Senha
+     * Permite criar senha para usuários Google (sem senha_hash)
      */
     static async changePassword(c: Context) {
         try {
@@ -321,14 +322,25 @@ export class UsersController {
             const result = await pool.query('SELECT password_hash FROM users WHERE id = $1', [user.id]);
             if (result.rows.length === 0) return c.json({ success: false, message: 'Usuário não encontrado' }, 404);
 
-            if (!await bcrypt.compare(oldPassword, result.rows[0].password_hash)) {
-                return c.json({ success: false, message: 'Senha atual incorreta' }, 401);
+            const hasPassword = !!result.rows[0].password_hash;
+
+            // Se usuário tem senha, verificar senha atual
+            if (hasPassword) {
+                if (!oldPassword) return c.json({ success: false, message: 'Senha atual necessária' }, 400);
+                if (!await bcrypt.compare(oldPassword, result.rows[0].password_hash)) {
+                    return c.json({ success: false, message: 'Senha atual incorreta' }, 401);
+                }
+            }
+            // Se usuário não tem senha (logou com Google), pode criar uma nova
+
+            if (!newPassword || newPassword.length < 6) {
+                return c.json({ success: false, message: 'Nova senha deve ter pelo menos 6 caracteres' }, 400);
             }
 
             const hashed = await bcrypt.hash(newPassword, 10);
             await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashed, user.id]);
 
-            return c.json({ success: true, message: 'Senha alterada com sucesso' });
+            return c.json({ success: true, message: hasPassword ? 'Senha alterada com sucesso' : 'Senha criada com sucesso' });
         } catch (error: any) {
             return c.json({ success: false, message: 'Erro ao alterar senha' }, 500);
         }

@@ -55,7 +55,7 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
       `SELECT id, name, email, balance, referral_code, referred_by, is_admin, role, status, score, 
        created_at, pix_key, two_factor_enabled, cpf, phone, security_lock_until, membership_type,
        is_verified, is_seller, video_points, COALESCE(ad_points, 0) as ad_points, address,
-       total_dividends_earned, last_login_at
+       total_dividends_earned, last_login_at, password_hash
        FROM users WHERE id = $1`,
       [decoded.userId]
     );
@@ -104,7 +104,8 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
       ad_points: parseInt(user.ad_points || '0'),
       address: user.address || undefined,
       total_dividends_earned: parseFloat(user.total_dividends_earned || '0'),
-      last_login_at: user.last_login_at || undefined
+      last_login_at: user.last_login_at || undefined,
+      passwordHash: user.password_hash || null
     };
 
     // Log para depuração
