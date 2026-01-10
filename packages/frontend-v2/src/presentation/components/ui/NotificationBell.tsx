@@ -37,11 +37,11 @@ export const NotificationBell: React.FC = () => {
                 id: Date.now().toString(),
                 title: data.title || 'Nova Notificação',
                 message: data.body || data.message || '',
-                type: data.type === 'PAYMENT' ? 'PAYMENT' : 
-                      data.type === 'ORDER' ? 'ORDER' : 
-                      data.type === 'DELIVERY' ? 'DELIVERY' :
-                      data.type === 'ALERT' ? 'WARNING' : 
-                      data.type === 'SUCCESS' ? 'SUCCESS' : 'INFO',
+                type: data.type === 'PAYMENT' ? 'PAYMENT' :
+                    data.type === 'ORDER' ? 'ORDER' :
+                        data.type === 'DELIVERY' ? 'DELIVERY' :
+                            data.type === 'ALERT' ? 'WARNING' :
+                                data.type === 'SUCCESS' ? 'SUCCESS' : 'INFO',
                 read: false,
                 date: Date.now()
             };
@@ -93,7 +93,7 @@ export const NotificationBell: React.FC = () => {
     };
 
     const markAsRead = (id: string) => {
-        const updated = notifications.map(n => 
+        const updated = notifications.map(n =>
             n.id === id ? { ...n, read: true } : n
         );
         setNotifications(updated);
@@ -133,8 +133,8 @@ export const NotificationBell: React.FC = () => {
                 onClick={() => setIsOpen(!isOpen)}
                 className={`
                     relative w-12 h-12 rounded-xl flex items-center justify-center transition-all active:scale-95
-                    ${hasUnread 
-                        ? 'bg-primary-500/20 border border-primary-500/30 text-primary-400 shadow-lg shadow-primary-500/20' 
+                    ${hasUnread
+                        ? 'bg-primary-500/20 border border-primary-500/30 text-primary-400 shadow-lg shadow-primary-500/20'
                         : 'bg-zinc-800/50 hover:bg-zinc-700/50 border border-white/5 text-zinc-400 hover:text-white'}
                 `}
             >
@@ -147,84 +147,113 @@ export const NotificationBell: React.FC = () => {
             </button>
 
             {isOpen && (
-                <div className="absolute right-2 sm:right-0 top-14 w-[calc(100vw-2rem)] sm:w-96 max-w-[calc(100vw-2rem)] sm:max-w-96 bg-[#0A0A0A] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                    <div className="p-4 border-b border-white/5 flex items-center justify-between bg-zinc-900/80 backdrop-blur-xl sticky top-0">
-                        <div className="flex items-center gap-2">
-                            <h3 className="text-base font-bold text-white">Notificações</h3>
-                            {hasUnread && (
-                                <span className="px-2 py-0.5 bg-primary-500/20 text-primary-400 text-[10px] font-bold rounded-full">
-                                    {unreadCount} nova{unreadCount > 1 ? 's' : ''}
-                                </span>
-                            )}
-                        </div>
-                        <div className="flex gap-2">
-                            {notifications.length > 0 && (
-                                <button 
-                                    onClick={clearAll} 
-                                    className="px-3 py-1.5 text-[11px] text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors flex items-center gap-1"
-                                >
-                                    <Trash2 size={12} /> Limpar
-                                </button>
-                            )}
-                            {hasUnread && (
-                                <button 
-                                    onClick={markAllRead} 
-                                    className="px-3 py-1.5 text-[11px] bg-primary-500/20 hover:bg-primary-500/30 text-primary-400 rounded-lg transition-colors font-bold"
-                                >
-                                    Marcar todas lidas
-                                </button>
-                            )}
-                        </div>
-                    </div>
+                <div className="fixed sm:absolute inset-0 sm:inset-auto sm:right-0 sm:top-14 w-full sm:w-96 h-full sm:h-auto bg-black/60 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-none z-[1000] sm:z-50 animate-in fade-in duration-300" onClick={() => setIsOpen(false)}>
+                    <div
+                        className="absolute bottom-0 sm:bottom-auto sm:top-0 w-full sm:w-96 max-h-[85vh] sm:max-h-[70vh] bg-[#0A0A0A] border-t sm:border border-white/10 rounded-t-[2rem] sm:rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-top-2 duration-500 sm:duration-300 flex flex-col pb-[var(--safe-bottom)] sm:pb-0"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Drag Handle for Mobile */}
+                        <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto my-3 sm:hidden opacity-50" />
 
-                    <div className="max-h-[70vh] overflow-y-auto custom-scrollbar">
-                        {notifications.length === 0 ? (
-                            <div className="p-10 text-center text-zinc-500 flex flex-col items-center">
-                                <div className="w-16 h-16 bg-zinc-800/50 rounded-full flex items-center justify-center mb-4">
-                                    <Bell size={32} className="opacity-30" />
-                                </div>
-                                <p className="text-sm">Nenhuma notificação ainda</p>
-                                <p className="text-[11px] text-zinc-600 mt-1">Você verá suas notificações aqui</p>
+                        <div className="p-4 border-b border-white/5 flex items-center justify-between bg-zinc-900/80 backdrop-blur-xl sticky top-0 z-10">
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-base font-bold text-white">Notificações</h3>
+                                {hasUnread && (
+                                    <span className="px-2 py-0.5 bg-primary-500/20 text-primary-400 text-[10px] font-bold rounded-full">
+                                        {unreadCount}
+                                    </span>
+                                )}
                             </div>
-                        ) : (
-                            <div className="divide-y divide-white/5">
-                                {notifications.map(notif => (
-                                    <div 
-                                        key={notif.id} 
-                                        onClick={() => markAsRead(notif.id)}
-                                        className={`
-                                            p-4 cursor-pointer transition-all duration-200
-                                            ${!notif.read ? 'bg-primary-500/5 hover:bg-primary-500/10' : 'hover:bg-white/5'}
-                                        `}
+                            <div className="flex gap-2">
+                                {notifications.length > 0 && (
+                                    <button
+                                        onClick={clearAll}
+                                        className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                        title="Limpar tudo"
                                     >
-                                        <div className="flex gap-3 items-start">
-                                            <div className={`
-                                                w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border
-                                                ${getTypeColor(notif.type)}
-                                            `}>
-                                                {getIcon(notif.type)}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex justify-between items-start gap-2 mb-1">
-                                                    <h4 className={`text-sm font-bold ${!notif.read ? 'text-white' : 'text-zinc-400'}`}>
-                                                        {notif.title}
-                                                    </h4>
-                                                    <span className="text-[10px] text-zinc-600 shrink-0">
-                                                        {new Date(notif.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    </span>
-                                                </div>
-                                                <p className="text-xs text-zinc-500 leading-relaxed line-clamp-2">
-                                                    {notif.message}
-                                                </p>
-                                            </div>
-                                            {!notif.read && (
-                                                <div className="w-2 h-2 rounded-full bg-primary-500 shrink-0 mt-1.5 shadow-[0_0_8px_rgba(168,85,247,0.6)]" />
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
+                                        <Trash2 size={16} />
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => setIsOpen(false)}
+                                    className="p-2 text-zinc-500 hover:text-white bg-white/5 rounded-lg sm:hidden"
+                                >
+                                    <X size={20} />
+                                </button>
+                                {hasUnread && (
+                                    <button
+                                        onClick={markAllRead}
+                                        className="hidden sm:block px-3 py-1.5 text-[11px] bg-primary-500/20 hover:bg-primary-500/30 text-primary-400 rounded-lg transition-colors font-bold"
+                                    >
+                                        Marcar lidas
+                                    </button>
+                                )}
                             </div>
-                        )}
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto custom-scrollbar">
+                            {notifications.length === 0 ? (
+                                <div className="p-16 text-center text-zinc-500 flex flex-col items-center">
+                                    <div className="w-20 h-20 bg-zinc-800/50 rounded-full flex items-center justify-center mb-4">
+                                        <Bell size={32} className="opacity-30" />
+                                    </div>
+                                    <p className="text-sm font-bold">Tudo limpo por aqui!</p>
+                                    <p className="text-[11px] text-zinc-600 mt-1 max-w-[200px] mx-auto">Você não tem notificações no momento.</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-white/5 pb-20 sm:pb-0">
+                                    {notifications.map(notif => (
+                                        <div
+                                            key={notif.id}
+                                            onClick={() => {
+                                                markAsRead(notif.id);
+                                                // setIsOpen(false); // Manter aberto para ler outras?
+                                            }}
+                                            className={`
+                                                p-4 cursor-pointer transition-all duration-200
+                                                ${!notif.read ? 'bg-primary-500/5 hover:bg-primary-500/10' : 'hover:bg-white/5'}
+                                            `}
+                                        >
+                                            <div className="flex gap-4 items-start">
+                                                <div className={`
+                                                    w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border shadow-lg
+                                                    ${getTypeColor(notif.type)}
+                                                `}>
+                                                    {getIcon(notif.type)}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-start gap-2 mb-1">
+                                                        <h4 className={`text-sm font-extrabold tracking-tight ${!notif.read ? 'text-white' : 'text-zinc-500'}`}>
+                                                            {notif.title}
+                                                        </h4>
+                                                        <span className="text-[10px] text-zinc-600 font-bold shrink-0">
+                                                            {new Date(notif.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </div>
+                                                    <p className={`text-[11px] leading-relaxed ${!notif.read ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                                                        {notif.message}
+                                                    </p>
+                                                </div>
+                                                {!notif.read && (
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-primary-500 shrink-0 mt-1.5 shadow-[0_0_12px_rgba(168,85,247,0.8)]" />
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {hasUnread && (
+                                        <div className="p-4 sm:hidden">
+                                            <button
+                                                onClick={markAllRead}
+                                                className="w-full py-4 bg-primary-500 text-black font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-primary-500/20 active:scale-95 transition-all"
+                                            >
+                                                Marcar Todas como Lidas
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
