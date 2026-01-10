@@ -303,11 +303,25 @@ export default function App() {
     }
   };
 
-  const handleRequestLoan = async (amount: number, installments: number = 12) => {
+  const handleRequestLoan = async (amount: number, installments: number = 12, guaranteePercentage: number = 100, guarantorId?: string) => {
     try {
-      const result = await requestLoan(amount, installments, 100);
+      const result = await requestLoan(amount, installments, guaranteePercentage, guarantorId);
       if (result.success) {
         setShowSuccess({ isOpen: true, title: 'Solicitado', message: result.message });
+        refreshState();
+      } else {
+        setShowError({ isOpen: true, title: 'Erro', message: result.message });
+      }
+    } catch (e: any) {
+      setShowError({ isOpen: true, title: 'Erro', message: e.message });
+    }
+  };
+
+  const handleGuarantorRespond = async (loanId: string, action: 'APPROVE' | 'REJECT') => {
+    try {
+      const result = await apiService.respondToGuarantorRequest(loanId, action);
+      if (result.success) {
+        setShowSuccess({ isOpen: true, title: 'Sucesso', message: result.message });
         refreshState();
       } else {
         setShowError({ isOpen: true, title: 'Erro', message: result.message });
@@ -333,13 +347,13 @@ export default function App() {
 
 
 
-  const handleDeposit = async (amount: number) => {
+  const handleDeposit = async (amount: number, senderName?: string) => {
     if (!amount || isNaN(amount) || amount <= 0) {
       setShowError({ isOpen: true, title: 'Erro', message: 'Por favor, insira um valor válido para depósito (mínimo R$ 10,00).' });
       return;
     }
     try {
-      const result = await requestDeposit(amount);
+      const result = await requestDeposit(amount, senderName);
       if (result.success) {
         setPixModalData({
           isOpen: true,
@@ -483,8 +497,9 @@ export default function App() {
                 <Route path="loans" element={
                   <Suspense fallback={null}>
                     <LoansView
-                      loans={state.loans.filter(l => l.userId === state.currentUser?.id)}
-                      onRequest={(amount, installments, _guaranteePercentage) => handleRequestLoan(amount, installments)}
+                      loans={state.loans}
+                      onRequest={handleRequestLoan}
+                      onGuarantorRespond={handleGuarantorRespond}
                       onPay={(loanId, _full, _method) => handleRepayLoan(loanId)}
                       onPayInstallment={() => { }}
                       userBalance={state.currentUser?.balance || 0}

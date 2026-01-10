@@ -74,8 +74,8 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
             SELECT 
                 u.score, 
                 u.created_at,
-                (SELECT COUNT(*) FROM quotas WHERE user_id = $1 AND status = 'ACTIVE') as quotas_count,
-                (SELECT COALESCE(SUM(current_value), 0) FROM quotas WHERE user_id = $1 AND status = 'ACTIVE') as total_quotas_value,
+                (SELECT COUNT(*) FROM quotas WHERE user_id = $1 AND (status = 'ACTIVE' OR status IS NULL)) as quotas_count,
+                (SELECT COALESCE(SUM(current_value), 0) FROM quotas WHERE user_id = $1 AND (status = 'ACTIVE' OR status IS NULL)) as total_quotas_value,
                 (SELECT COUNT(*) FROM marketplace_orders WHERE buyer_id = $1 AND status = 'COMPLETED') as purchases,
                 (SELECT COUNT(*) FROM marketplace_orders mo JOIN marketplace_listings ml ON mo.listing_id = ml.id WHERE ml.seller_id = $1 AND mo.status = 'COMPLETED') as sales,
                 (SELECT COUNT(*) FROM loans WHERE user_id = $1 AND status = 'APPROVED' AND due_date < NOW()) as overdue_loans,
@@ -86,7 +86,7 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
                     WHERE user_id = $1 AND status = 'APPROVED' 
                     AND type IN ('MEMBERSHIP_UPGRADE', 'BUY_VERIFIED_BADGE', 'BUY_SCORE_PACKAGE', 'MARKET_BOOST')
                 ), 0) as platform_spent,
-                (SELECT COUNT(*) FROM transactions WHERE user_id = $1 AND type = 'QUOTA_PURCHASE' AND status = 'PENDING') as pending_quotas
+                (SELECT COUNT(*) FROM transactions WHERE user_id = $1 AND type = 'BUY_QUOTA' AND status = 'PENDING') as pending_quotas
             FROM users u
             WHERE u.id = $1
         `, [userId]);
@@ -157,6 +157,7 @@ export const calculateLoanOffer = async (
 ): Promise<{
     approved: boolean;
     reason?: string;
+    requiresGuarantorApproval?: boolean;
     offer?: {
         amount: number;
         guaranteePercentage: number;
@@ -199,7 +200,7 @@ export const calculateLoanOffer = async (
         if (guarantorId) {
             const guarantorRes = await pool.query(`
                 SELECT u.name,
-                COALESCE((SELECT SUM(current_value) FROM quotas WHERE user_id = $1 AND status = 'ACTIVE'), 0) as total_quotas
+                COALESCE((SELECT SUM(current_value) FROM quotas WHERE user_id = $1 AND (status = 'ACTIVE' OR status IS NULL)), 0) as total_quotas
                 FROM users u WHERE u.id = $1
             `, [guarantorId]);
 
@@ -260,6 +261,7 @@ export const calculateLoanOffer = async (
 
         return {
             approved: true,
+            requiresGuarantorApproval: !!guarantorId,
             offer: {
                 amount: requestedAmount,
                 guaranteePercentage,

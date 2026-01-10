@@ -52,6 +52,7 @@ class ApiService extends ApiBase {
   requestDeposit = this.finance.requestDeposit.bind(this.finance);
   submitReview = this.finance.submitReview.bind(this.finance);
   getAvailableLimit = this.finance.getAvailableLimit.bind(this.finance);
+  respondToGuarantorRequest = this.finance.respondToGuarantorRequest.bind(this.finance);
 
   // Marketplace
   getMarketplaceListings = this.marketplace.getListings.bind(this.marketplace);
@@ -112,6 +113,18 @@ class ApiService extends ApiBase {
 
   getDeliveryStats = async () => {
     return await this.get<any>('/logistics/stats');
+  };
+
+  // Bug Reports
+  getMyBugReports = this.misc.getMyBugReports.bind(this.misc);
+
+  // Portfolio / Titles
+  checkTitleEligibility = async (titleId: string) => {
+    return await this.get<any>(`/finance/titles/${titleId}/eligibility`);
+  };
+
+  downloadTitle = async (titleId: string) => {
+    return await this.get<any>(`/finance/titles/${titleId}/download`);
   };
 
   // Premium Features

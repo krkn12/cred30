@@ -6,7 +6,6 @@ import {
     Image as ImageIcon,
     Zap,
     Sparkles,
-    ChevronRight,
     ArrowLeft,
     ShieldCheck,
     Share2,
@@ -33,7 +32,22 @@ import {
     Wrench,
     Shirt,
     AlertTriangle,
+    Bike,
 } from 'lucide-react';
+
+const VEHICLE_ICONS: Record<string, any> = {
+    'BIKE': Bike,
+    'MOTO': Zap,
+    'CAR': Car,
+    'TRUCK': Truck
+};
+
+const DELIVERY_MIN_FEES: Record<string, number> = {
+    'BIKE': 5.00,
+    'MOTO': 10.00,
+    'CAR': 30.00,
+    'TRUCK': 80.00
+};
 
 const CATEGORY_ICONS: Record<string, any> = {
     'TODOS': LayoutGrid,
@@ -66,7 +80,11 @@ interface MarketplaceViewProps {
 
 
 
-const ListingCard = memo(({ item, currentUserId, formatCurrency, onBoost, onDetails, onAddToCart }: any) => {
+const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+};
+
+const ListingCard = memo(({ item, currentUserId, onBoost, onDetails, onAddToCart }: any) => {
     const isOwner = item.seller_id === currentUserId;
 
     // Formatação da data (ex: Hoje, 14:30 ou 05 Jan)
@@ -106,14 +124,19 @@ const ListingCard = memo(({ item, currentUserId, formatCurrency, onBoost, onDeta
                     {item.category === 'PARTICIPAÇÕES' ? '🎫 COTA' : item.category}
                 </div>
 
-                {/* Badge Superior Direito (Destaque/Verificado) */}
+                {/* Badge Superior Direito (Destaque/Tipo Veículo) */}
                 <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end">
                     {item.is_boosted && (
                         <div className="bg-primary-500 text-black text-[8px] px-2 py-1 rounded-full font-black flex items-center gap-1 shadow-lg shadow-primary-500/20 animate-pulse">
                             <Zap size={10} /> DESTAQUE
                         </div>
                     )}
-
+                    {item.item_type !== 'DIGITAL' && (
+                        <div className="bg-zinc-900/80 backdrop-blur-md text-white text-[8px] px-2 py-1 rounded-full font-black flex items-center gap-1 border border-white/10 shadow-lg">
+                            {React.createElement(VEHICLE_ICONS[item.required_vehicle || 'MOTO'] || Zap, { size: 10 })}
+                            {item.required_vehicle || 'MOTO'}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -206,19 +229,15 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const LIMIT = 20;
     const [confirmData, setConfirmData] = useState<any>(null);
-    const [offlineVoucher, setOfflineVoucher] = useState<{ code: string, amount: number, item: string } | null>(null);
     const [redeemCode, setRedeemCode] = useState('');
     const [paymentMethod] = useState<'BALANCE'>('BALANCE');
     const [cart, setCart] = useState<{ sellerId: string | null; sellerName: string | null; items: any[] }>(() => {
         const saved = localStorage.getItem('cred30_cart');
         return saved ? JSON.parse(saved) : { sellerId: null, sellerName: null, items: [] };
     });
+    const [invitedCourierId, setInvitedCourierId] = useState('');
 
     const [trackingOrder, setTrackingOrder] = useState<any>(null);
-
-    useEffect(() => {
-        localStorage.setItem('cred30_cart', JSON.stringify(cart));
-    }, [cart]);
 
     const addToCart = (item: any) => {
         if (cart.sellerId && cart.sellerId !== item.seller_id) {
@@ -270,13 +289,22 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         }
     }, [selectedUF]);
 
-    const [newListing, setNewListing] = useState({
+    const [newListing, setNewListing] = useState<{
+        title: string;
+        description: string;
+        price: string;
+        category: string;
+        image_url: string;
+        quotaId: number | null;
+        requiredVehicle: 'BIKE' | 'MOTO' | 'CAR' | 'TRUCK';
+    }>({
         title: '',
         description: '',
         price: '',
         category: 'ELETRÔNICOS',
         image_url: '',
-        quotaId: null as number | null
+        quotaId: null,
+        requiredVehicle: 'MOTO'
     });
 
     const categories = ['PARTICIPAÇÕES', 'ELETRÔNICOS', 'VEÍCULOS', 'IMÓVEIS', 'SERVIÇOS', 'MODA', 'OUTROS'];
@@ -387,6 +415,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 price: parseFloat(newListing.price),
                 category: newListing.category,
                 imageUrl: newListing.image_url || undefined,
+                requiredVehicle: newListing.requiredVehicle,
                 ...(gpsLocation ? gpsLocation : {})
             };
 
@@ -399,7 +428,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
             if (response.success) {
                 onSuccess('Sucesso', newListing.quotaId ? 'Sua cota-parte foi listada para repasse!' : 'Anúncio publicado!');
                 setView('browse');
-                setNewListing({ title: '', description: '', price: '', category: 'ELETRÔNICOS', image_url: '', quotaId: null });
+                setNewListing({ title: '', description: '', price: '', category: 'ELETRÔNICOS', image_url: '', quotaId: null, requiredVehicle: 'MOTO' });
                 onRefresh();
             }
         } catch (error: any) {
@@ -435,21 +464,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         });
     };
 
-    const generateOfflineVoucher = (item: any) => {
-        // Criar um código baseado no tempo e IDs (apenas para exibição, a segurança real é no sync posterior)
-        const code = `CR30-${Math.random().toString(36).substring(2, 7).toUpperCase()}-${item.id}`;
-        setOfflineVoucher({ code, amount: item.price, item: item.title });
 
-        // Registrar no sync service que esta compra foi iniciada offline
-        import('../../../application/services/sync.service').then(({ syncService }) => {
-            syncService.enqueue('BUY_MARKETPLACE', {
-                listingId: item.id,
-                offlineToken: code
-            });
-        });
-
-        onSuccess('Voucher Gerado', 'Mostre este código ao vendedor para confirmar a compra offline.');
-    };
 
     const handleRedeemOfflineCode = async () => {
         if (!redeemCode) return;
@@ -469,9 +484,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     };
     void handleRedeemOfflineCode;
 
-    const formatCurrency = (val: number) => {
-        return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    };
+
 
     const handleUseMyLocation = () => {
         if (!navigator.geolocation) {
@@ -983,48 +996,43 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
                                     <button
                                         onClick={() => {
+                                            const total = cart.items.reduce((acc, i) => acc + parseFloat(i.price), 0);
+
                                             setConfirmData({
                                                 isOpen: true,
-                                                title: 'Finalizar Compra em Massa',
-                                                message: `Confirmar compra de ${cart.items.length} itens da loja ${cart.sellerName}? Total: ${formatCurrency(cart.items.reduce((acc, i) => acc + parseFloat(i.price), 0))}`,
-                                                confirmText: `PAGAR ${formatCurrency(cart.items.reduce((acc, i) => acc + parseFloat(i.price), 0))}`,
+                                                title: 'Finalizar Pedido (Lote)',
+                                                message: `Confirmar compra de ${cart.items.length} itens da loja ${cart.sellerName}? Total: ${formatCurrency(total)}`,
+                                                confirmText: `PAGAR ${formatCurrency(total)}`,
                                                 type: 'success',
                                                 onConfirm: async () => {
                                                     setIsLoading(true);
-                                                    setConfirmData(null); // Fechar modal
+                                                    setConfirmData(null);
 
-                                                    let successCount = 0;
-                                                    let failCount = 0;
+                                                    try {
+                                                        const res = await apiService.post('/marketplace/buy', {
+                                                            listingIds: cart.items.map(i => i.id),
+                                                            deliveryType: 'SELF_PICKUP', // No carrinho simplificamos para retirada ou o usuário compra avulso para frete complexo
+                                                            paymentMethod: 'BALANCE',
+                                                            deliveryAddress: 'A combinar (Lote)',
+                                                            contactPhone: (state.currentUser as any)?.phone || '000000000'
+                                                        });
 
-                                                    for (const item of cart.items) {
-                                                        try {
-                                                            await apiService.post('/marketplace/buy', {
-                                                                listingId: item.id,
-                                                                deliveryType: 'SELF_PICKUP', // Default simples
-                                                                paymentMethod: 'BALANCE',
-                                                                deliveryAddress: 'Combinar com Vendedor'
-                                                            });
-                                                            successCount++;
-                                                        } catch (e) {
-                                                            console.error(e);
-                                                            failCount++;
+                                                        if (res.success) {
+                                                            onSuccess('Sucesso!', 'Seu lote de itens foi processado com sucesso!');
+                                                            clearCart();
+                                                            setView('my-orders');
                                                         }
-                                                    }
-
-                                                    setIsLoading(false);
-                                                    if (successCount > 0) {
-                                                        onSuccess('Sucesso Parcial', `${successCount} itens comprados com sucesso! ${failCount > 0 ? `${failCount} falharam.` : ''}`);
-                                                        clearCart();
-                                                        setView('my-orders');
-                                                    } else {
-                                                        onError('Erro', 'Falha ao processar compras. Tente novamente.');
+                                                    } catch (e: any) {
+                                                        onError('Erro no Lote', e.message);
+                                                    } finally {
+                                                        setIsLoading(false);
                                                     }
                                                 }
                                             });
                                         }}
                                         className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-xl uppercase tracking-widest shadow-lg shadow-primary-500/20 active:scale-95 transition"
                                     >
-                                        FINALIZAR COMPRA
+                                        PAGAR LOTE AGORA
                                     </button>
                                 </div>
                             </div>
@@ -1117,6 +1125,38 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 </select>
                             </div>
                         </div>
+
+                        {/* VEÍCULO REQUERIDO PARA ENTREGA */}
+                        {newListing.category !== 'PARTICIPAÇÕES' && (
+                            <div className="bg-zinc-800/30 border border-zinc-700/50 rounded-2xl p-4 space-y-3">
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
+                                    <Truck size={12} className="text-primary-400" /> Veículo necessário para o frete
+                                </label>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {(['BIKE', 'MOTO', 'CAR', 'TRUCK'] as const).map((v) => {
+                                        const Icon = VEHICLE_ICONS[v];
+                                        const isSelected = newListing.requiredVehicle === v;
+                                        return (
+                                            <button
+                                                key={v}
+                                                type="button"
+                                                onClick={() => {
+                                                    setNewListing({ ...newListing, requiredVehicle: v });
+                                                    // Sugerir frete mínimo se já estiver no checkout, mas aqui é criação
+                                                }}
+                                                className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${isSelected ? 'bg-primary-500/10 border-primary-500 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-600 hover:border-zinc-700'}`}
+                                            >
+                                                <Icon size={16} />
+                                                <span className="text-[8px] font-black uppercase">{v}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <p className="text-[9px] text-zinc-500 italic mt-1 leading-tight">
+                                    Isso ajuda o entregador a saber se o item cabe no veículo dele.
+                                </p>
+                            </div>
+                        )}
 
                         <div>
                             <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1 mb-1 block">Foto do Produto (Automático)</label>
@@ -1251,6 +1291,18 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className="text-[10px] font-black bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded uppercase tracking-widest">TRANSPORTE</span>
+                                            {(() => {
+                                                const VehicleIcon = VEHICLE_ICONS[mission.required_vehicle as keyof typeof VEHICLE_ICONS] || Truck;
+                                                return (
+                                                    <div className="flex items-center gap-1 bg-zinc-800 px-2 py-0.5 rounded border border-zinc-700">
+                                                        <VehicleIcon size={10} className="text-primary-400" />
+                                                        <span className="text-[9px] text-zinc-400 font-bold uppercase">{mission.required_vehicle || 'MOTO'}</span>
+                                                    </div>
+                                                );
+                                            })()}
+                                            {mission.invited_courier_id === state.currentUser?.id && (
+                                                <span className="text-[10px] font-black bg-amber-500 text-black px-2 py-0.5 rounded uppercase tracking-widest animate-pulse">CONVITE</span>
+                                            )}
                                             <span className="text-[10px] text-zinc-500 font-bold uppercase">• {new Date(mission.created_at).toLocaleDateString()}</span>
                                         </div>
                                         <h4 className="font-bold text-white text-base">{mission.item_title}</h4>
@@ -1284,7 +1336,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                             if (res.success) {
                                                                 onSuccess('Missão Aceita!', `Dirija-se ao local de coleta. O vendedor lhe fornecerá o código de segurança para validar a retirada.`);
                                                                 setConfirmData(null);
-                                                                fetchData(); // refresh
+                                                                onRefresh();
                                                             }
                                                         } catch (err: any) {
                                                             onError('Erro', err.message);
@@ -1303,6 +1355,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                     )}
                 </div>
             )}
+
             {view === 'offline' && (
                 <OfflineMarketplaceView
                     user={state.currentUser}
@@ -1312,11 +1365,9 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 />
             )}
 
-
             {view === 'details' && selectedItem && (
                 <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl animate-in fade-in duration-300 overflow-y-auto">
                     <div className="max-w-xl mx-auto min-h-screen bg-zinc-950 flex flex-col">
-                        {/* Header Fixo de Detalhes */}
                         <div className="sticky top-0 z-10 p-4 flex items-center justify-between bg-zinc-950/80 backdrop-blur-md border-b border-white/5">
                             <button onClick={() => setView('browse')} className="p-2 bg-zinc-900 rounded-xl text-zinc-400 hover:text-white transition">
                                 <ArrowLeft size={20} />
@@ -1327,7 +1378,6 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                             </div>
                         </div>
 
-                        {/* Galeria de Imagem (Estilo OLX) */}
                         <div className="aspect-square bg-zinc-900 relative">
                             {selectedItem.image_url ? (
                                 <img src={selectedItem.image_url} alt={selectedItem.title} className="w-full h-full object-cover" />
@@ -1337,7 +1387,6 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     <span className="text-xs font-bold uppercase mt-2">Sem imagem disponível</span>
                                 </div>
                             )}
-                            {/* Overlay de Preço na Imagem */}
                             <div className="absolute bottom-6 left-6 right-6">
                                 <div className="bg-black/60 backdrop-blur-xl p-4 rounded-2xl border border-white/10 inline-block">
                                     <p className="text-2xl font-black text-primary-400 tabular-nums">
@@ -1348,7 +1397,6 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                         </div>
 
                         <div className="p-6 space-y-8 pb-32">
-                            {/* Título e Tags */}
                             <div>
                                 <div className="flex flex-wrap gap-2 mb-3">
                                     <span className="text-[9px] font-black bg-primary-500/10 text-primary-400 px-2 py-1 rounded-lg border border-primary-500/20 uppercase tracking-widest leading-none">
@@ -1361,8 +1409,6 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     )}
                                 </div>
                                 <h1 className="text-2xl font-black text-white tracking-tight leading-tight">{selectedItem.title}</h1>
-
-                                {/* Info de Localização e Data */}
                                 <div className="flex items-center gap-4 mt-3 text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
                                     <div className="flex items-center gap-1.5">
                                         <MapPin size={12} className="text-primary-500" />
@@ -1375,7 +1421,6 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 </div>
                             </div>
 
-                            {/* Cartão do Vendedor (Estilo Profissional) */}
                             <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center border border-white/5 relative">
@@ -1401,7 +1446,6 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 <button className="text-[10px] font-black text-primary-400 hover:text-white transition uppercase tracking-widest">Ver Perfil</button>
                             </div>
 
-                            {/* Descrição */}
                             <div className="space-y-4">
                                 <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
                                     <Package size={14} className="text-primary-400" /> Descrição Completa
@@ -1409,7 +1453,6 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 <p className="text-sm text-zinc-400 leading-relaxed whitespace-pre-wrap">{selectedItem.description}</p>
                             </div>
 
-                            {/* Contato P2P Direto via WhatsApp */}
                             {selectedItem.seller_id !== state.currentUser?.id && selectedItem.type !== 'AFFILIATE' && (
                                 <div className="bg-gradient-to-br from-emerald-900/30 to-emerald-950/40 border border-emerald-500/20 rounded-3xl p-5 space-y-3">
                                     <div className="flex items-center justify-between">
@@ -1436,8 +1479,8 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                         if (res.success && res.data.whatsapp) {
                                                             window.open(res.data.whatsapp, '_blank');
                                                             onSuccess('Chat Aberto', 'O WhatsApp do vendedor foi aberto. Negocie diretamente!');
-                                                            onRefresh(); // Atualizar saldo de pontos
                                                             setConfirmData(null);
+                                                            onRefresh();
                                                         } else {
                                                             onError('Indisponível', 'O vendedor não informou telefone de contato.');
                                                         }
@@ -1449,17 +1492,9 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                         }}
                                         className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-3 uppercase text-xs tracking-widest"
                                     >
-                                        <div className="flex flex-col items-center">
-                                            <div className="flex items-center gap-2">
-                                                <Phone size={18} />
-                                                <span>Liberar WhatsApp</span>
-                                            </div>
-                                            <span className="text-[8px] opacity-70 mt-1">Custo: 3 Pontos de Farm</span>
-                                        </div>
+                                        <Phone size={18} />
+                                        <span>Liberar WhatsApp</span>
                                     </button>
-                                    <p className="text-[8px] text-zinc-600 text-center">
-                                        ⚠️ Transação P2P sem garantias da plataforma
-                                    </p>
                                 </div>
                             )}
 
@@ -1468,10 +1503,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     <Truck size={14} className="text-primary-400" /> Opções de Entrega
                                 </h4>
                                 <div className="grid grid-cols-1 gap-2">
-                                    <button
-                                        onClick={() => setDeliveryOption('SELF_PICKUP')}
-                                        className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${deliveryOption === 'SELF_PICKUP' ? 'bg-primary-500/10 border-primary-500/50' : 'bg-zinc-900/50 border-zinc-800'}`}
-                                    >
+                                    <button onClick={() => setDeliveryOption('SELF_PICKUP')} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${deliveryOption === 'SELF_PICKUP' ? 'bg-primary-500/10 border-primary-500/50' : 'bg-zinc-900/50 border-zinc-800'}`}>
                                         <div className="flex items-center gap-3">
                                             <div className="p-2 bg-zinc-800 rounded-lg text-zinc-400"><Store size={18} /></div>
                                             <div className="text-left">
@@ -1481,11 +1513,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                         </div>
                                         {deliveryOption === 'SELF_PICKUP' && <CheckCircle size={16} className="text-primary-400" />}
                                     </button>
-
-                                    <button
-                                        onClick={() => setDeliveryOption('COURIER_REQUEST')}
-                                        className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${deliveryOption === 'COURIER_REQUEST' ? 'bg-primary-500/10 border-primary-500/50' : 'bg-zinc-900/50 border-zinc-800'}`}
-                                    >
+                                    <button onClick={() => setDeliveryOption('COURIER_REQUEST')} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${deliveryOption === 'COURIER_REQUEST' ? 'bg-primary-500/10 border-primary-500/50' : 'bg-zinc-900/50 border-zinc-800'}`}>
                                         <div className="flex items-center gap-3">
                                             <div className="p-2 bg-zinc-800 rounded-lg text-zinc-400"><Truck size={18} /></div>
                                             <div className="text-left">
@@ -1495,80 +1523,64 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                         </div>
                                         {deliveryOption === 'COURIER_REQUEST' && <CheckCircle size={16} className="text-primary-400" />}
                                     </button>
-
-                                    <button
-                                        onClick={() => setDeliveryOption('EXTERNAL_SHIPPING')}
-                                        className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${deliveryOption === 'EXTERNAL_SHIPPING' ? 'bg-primary-500/10 border-primary-500/50' : 'bg-zinc-900/50 border-zinc-800'}`}
-                                    >
+                                    <button onClick={() => setDeliveryOption('EXTERNAL_SHIPPING')} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${deliveryOption === 'EXTERNAL_SHIPPING' ? 'bg-primary-500/10 border-primary-500/50' : 'bg-zinc-900/50 border-zinc-800'}`}>
                                         <div className="flex items-center gap-3">
                                             <div className="p-2 bg-zinc-800 rounded-lg text-zinc-400"><Package size={18} /></div>
                                             <div className="text-left">
                                                 <p className="text-xs font-black text-white uppercase">Envio Nacional</p>
-                                                <p className="text-[10px] text-zinc-500">Correios ou Transportadoras (Interstadual).</p>
+                                                <p className="text-[10px] text-zinc-500">Correios ou Transportadoras.</p>
                                             </div>
                                         </div>
                                         {deliveryOption === 'EXTERNAL_SHIPPING' && <CheckCircle size={16} className="text-primary-400" />}
                                     </button>
                                 </div>
 
+                                {deliveryOption === 'EXTERNAL_SHIPPING' && (
+                                    <div className="bg-amber-900/10 border border-amber-500/20 rounded-2xl p-4 space-y-2 animate-in slide-in-from-top-2">
+                                        <p className="text-[10px] text-amber-400 font-black uppercase tracking-widest">Aviso de Envio Nacional</p>
+                                        <p className="text-[9px] text-zinc-400 leading-relaxed">
+                                            A taxa de <span className="text-white">R$ 35,00</span> cobre o custo médio de postagem via Correios/Transportadora. O vendedor será responsável por postar o produto e informar o rastreio.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {deliveryOption === 'COURIER_REQUEST' && (
+                                    <div className="bg-indigo-900/10 border border-indigo-500/20 rounded-2xl p-4 space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">Ajuda de Custo (Frete)</label>
+                                            <span className="text-[9px] bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-lg font-black">
+                                                MÍNIMO: {formatCurrency(DELIVERY_MIN_FEES[selectedItem.required_vehicle || 'MOTO'] || 5.00)}
+                                            </span>
+                                        </div>
+                                        <input type="number" value={offeredFee} onChange={e => setOfferedFee(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white" />
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Convidar Entregador (Opcional)</label>
+                                            <input value={invitedCourierId} onChange={e => setInvitedCourierId(e.target.value)} placeholder="ID do entregador" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-[10px] text-white" />
+                                        </div>
+                                    </div>
+                                )}
+
                                 {deliveryOption !== 'SELF_PICKUP' && (
-                                    <div className="space-y-2 animate-in slide-in-from-top-2">
+                                    <div className="space-y-2">
                                         <label className="text-[10px] text-zinc-500 font-black uppercase">Endereço de Entrega</label>
-                                        <input
-                                            placeholder="Rua, Número, Bairro, Cidade - Estado"
-                                            value={deliveryAddress}
-                                            onChange={e => setDeliveryAddress(e.target.value)}
-                                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white"
-                                        />
+                                        <input placeholder="Endereço completo" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white" />
                                     </div>
                                 )}
                             </div>
 
-                            <div className="sticky bottom-6 mt-12 bg-black border border-zinc-800 p-4 rounded-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
-                                <div className="flex-1 space-y-4 mb-4">
-                                    <div className="space-y-2">
-                                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Método de Pagamento</p>
-                                        <div className="bg-primary-500/10 border border-primary-500/30 p-4 rounded-xl flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-2 h-2 rounded-full bg-primary-400 animate-pulse" />
-                                                <p className="text-[10px] font-black text-white uppercase tracking-widest">Saldo Interno</p>
-                                            </div>
-                                            <p className="text-[10px] font-bold text-primary-400">{formatCurrency(state.currentUser?.balance || 0)}</p>
-                                        </div>
-                                    </div>
-
-
-                                    <div className="flex justify-between items-end">
-                                        <div>
-                                            <p className="text-xl font-black text-white">
-                                                {(() => {
-                                                    const base = parseFloat(selectedItem.price) + (deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee || '0') : deliveryOption === 'EXTERNAL_SHIPPING' ? 35.00 : 0);
-                                                    return formatCurrency(base);
-                                                })()}
-                                            </p>
-                                        </div>
-                                    </div>
+                            <div className="sticky bottom-6 mt-12 bg-black border border-zinc-800 p-4 rounded-3xl">
+                                <div className="flex justify-between items-center mb-4">
+                                    <p className="text-[10px] text-zinc-500 font-bold uppercase">Total</p>
+                                    <p className="text-xl font-black text-white">
+                                        {formatCurrency(parseFloat(selectedItem.price) + (deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee || '0') : deliveryOption === 'EXTERNAL_SHIPPING' ? 35.00 : 0))}
+                                    </p>
                                 </div>
                                 <button
-                                    className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl transition shadow-lg shadow-primary-500/20 flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
-                                    onClick={() => {
-                                        if (!navigator.onLine) {
-                                            generateOfflineVoucher(selectedItem);
-                                            return;
-                                        }
-
-                                        // Se for afiliado, abre link
-                                        if (selectedItem.type === 'AFFILIATE') {
-                                            window.open(selectedItem.affiliate_url, '_blank');
-                                            onSuccess('Redirecionando', 'Aproveite a oferta do parceiro!');
-                                            return;
-                                        }
-
-                                        // Confirmação de Compra com Delivery
+                                    onClick={async () => {
                                         setConfirmData({
                                             isOpen: true,
-                                            title: deliveryOption === 'COURIER_REQUEST' ? 'Confirmar Compra + Entrega' : 'Confirmar Compra',
-                                            message: `Deseja comprar "${selectedItem.title}" via ${paymentMethod}?`,
+                                            title: 'Confirmar Compra',
+                                            message: `Deseja comprar "${selectedItem.title}"?`,
                                             confirmText: 'CONFIRMAR AGORA',
                                             type: 'success',
                                             onConfirm: async () => {
@@ -1577,12 +1589,13 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                         listingId: selectedItem.id,
                                                         deliveryType: deliveryOption,
                                                         offeredDeliveryFee: deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee) : deliveryOption === 'EXTERNAL_SHIPPING' ? 35.00 : 0,
-                                                        deliveryAddress: deliveryAddress || 'Endereço Principal',
-                                                        contactPhone: (state.currentUser as any)?.phone || '000000000',
+                                                        deliveryAddress: deliveryAddress || 'Principal',
+                                                        contactPhone: (state.currentUser as any).phone || '',
+                                                        invitedCourierId: invitedCourierId || undefined,
                                                         paymentMethod: 'BALANCE'
                                                     });
                                                     if (res.success) {
-                                                        onSuccess('Sucesso!', 'Compra realizada. Veja detalhes em Seus Pedidos.');
+                                                        onSuccess('Sucesso!', 'Compra realizada!');
                                                         setView('my-orders');
                                                         setConfirmData(null);
                                                     }
@@ -1592,81 +1605,22 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                             }
                                         });
                                     }}
+                                    className="w-full bg-primary-500 text-black font-black py-4 rounded-2xl uppercase tracking-widest text-xs"
                                 >
-                                    {!navigator.onLine ? 'GERAR VOUCHER OFFLINE' : (selectedItem.type === 'AFFILIATE' ? 'Ver Oferta Parceira' : 'Comprar Agora')}
-                                    <ChevronRight size={18} />
+                                    Comprar Agora
                                 </button>
-                            </div>
-
-                            {selectedItem.type !== 'AFFILIATE' && (
-                                <div className="mt-4 pt-4 border-t border-zinc-800 space-y-3">
-                                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Opções de Logística</p>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setDeliveryOption('SELF_PICKUP')}
-                                            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition ${deliveryOption === 'SELF_PICKUP' ? 'bg-zinc-800 border-zinc-600 text-white' : 'bg-transparent border-zinc-800 text-zinc-500'}`}
-                                        >
-                                            Vou Retirar
-                                        </button>
-                                        <button
-                                            onClick={() => setDeliveryOption('COURIER_REQUEST')}
-                                            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition ${deliveryOption === 'COURIER_REQUEST' ? 'bg-indigo-900/40 border-indigo-500/50 text-indigo-300' : 'bg-transparent border-zinc-800 text-zinc-500'}`}
-                                        >
-                                            Entregador
-                                        </button>
-                                        <button
-                                            onClick={() => setDeliveryOption('EXTERNAL_SHIPPING')}
-                                            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition ${deliveryOption === 'EXTERNAL_SHIPPING' ? 'bg-blue-900/40 border-blue-500/50 text-blue-300' : 'bg-transparent border-zinc-800 text-zinc-500'}`}
-                                        >
-                                            Envio Nacional
-                                        </button>
-                                    </div>
-
-                                    {deliveryOption === 'COURIER_REQUEST' && (
-                                        <div className="animate-in slide-in-from-top duration-300">
-                                            <label className="text-[9px] text-zinc-500 font-bold uppercase block mb-1">Oferta de Ajuda de Custo (R$)</label>
-                                            <input
-                                                type="number"
-                                                value={offeredFee}
-                                                onChange={(e) => setOfferedFee(e.target.value)}
-                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-white text-sm focus:border-indigo-500 outline-none"
-                                                placeholder="Valor para o entregador (Ex: 10.00)"
-                                            />
-                                            <p className="text-[9px] text-zinc-600 mt-1 italic">Este valor será pago integralmente ao membro que realizar a entrega.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {offlineVoucher && (
-                                <div className="mt-6 bg-primary-500/10 border border-primary-500/30 p-6 rounded-3xl animate-in zoom-in duration-300">
-                                    <div className="text-center space-y-2">
-                                        <p className="text-[10px] text-primary-400 font-black uppercase tracking-widest">Código de Pagamento Offline</p>
-                                        <p className="text-4xl font-black text-white font-mono tracking-tighter">{offlineVoucher.code}</p>
-                                        <p className="text-[11px] text-zinc-400 leading-tight">O vendedor deve digitar este código no "Modo Interior" do App dele para validar sua compra.</p>
-                                    </div>
-                                </div>
-                            )}
-                            <div className="flex items-center justify-center gap-4 mt-4 text-[10px] text-zinc-500 font-bold uppercase tracking-widest border-t border-zinc-800 pt-4">
-                                <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-500" /> Transação Segura</span>
-                                <span className="flex items-center gap-1"><Truck size={12} /> Entrega Combinada</span>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
 
+
             {confirmData && (
                 <ConfirmModal
                     isOpen={confirmData.isOpen}
                     onClose={() => setConfirmData(null)}
-                    onConfirm={() => {
-                        if (confirmData.showPaymentMethods) {
-                            confirmData.onConfirm(paymentMethod);
-                        } else {
-                            confirmData.onConfirm();
-                        }
-                    }}
+                    onConfirm={() => confirmData.onConfirm(paymentMethod)}
                     title={confirmData.title}
                     message={confirmData.message}
                     confirmText={confirmData.confirmText}
@@ -1674,20 +1628,10 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 >
                     {confirmData.showPaymentMethods && (
                         <div className="space-y-4 mb-6">
-                            <div className="space-y-2">
-                                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Método de Pagamento</p>
-                                <div className="bg-primary-500/10 border border-primary-500/30 p-2 rounded-lg text-center">
-                                    <p className="text-[9px] font-black text-primary-400 uppercase tracking-widest">Saldo Interno</p>
-                                </div>
-                            </div>
-
                             <div className="pt-2 border-t border-zinc-800">
-                                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Total a Pagar</p>
+                                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Saldo Interno</p>
                                 <p className="text-xl font-black text-white">
-                                    {(() => {
-                                        const base = confirmData.title.includes('Impulsionar') ? 5.00 : parseFloat(selectedItem?.price || '0');
-                                        return formatCurrency(base);
-                                    })()}
+                                    {formatCurrency(state.currentUser?.balance || 0)}
                                 </p>
                             </div>
                         </div>
@@ -1705,3 +1649,4 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         </div>
     );
 };
+

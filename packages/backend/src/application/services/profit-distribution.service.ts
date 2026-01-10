@@ -32,7 +32,7 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
         // - MARKET_BOOST: Impulsionou anúncio
         // - MEMBERSHIP_UPGRADE: Virou PRO
         // - WITHDRAWAL: Sacou (pagou taxa)
-        // - QUOTA_PURCHASE: Comprou cota (pagou taxa)
+        // - BUY_QUOTA: Comprou cota (pagou taxa)
         // - MARKET_PURCHASE: Comprou no marketplace (taxa vai pro vendedor/sistema)
         // - REPUTATION_CONSULT: Consultou reputação (serviço pago)
         // - LOGISTIC_DELIVERY: Pagou frete
@@ -44,27 +44,31 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
                 u.two_factor_enabled,
                 u.membership_type,
                 COALESCE((SELECT COUNT(*) FROM loans l WHERE l.user_id = q.user_id AND l.status = 'PAID'), 0) as paid_loans,
-                COALESCE((SELECT SUM(amount) FROM transactions t 
+                -- 1. Total Gasto em Toda a Plataforma (Consumo Real)
+                COALESCE((SELECT SUM(ABS(amount)) FROM transactions t 
                  WHERE t.user_id = q.user_id 
-                 AND t.type IN ('MARKET_PURCHASE', 'MARKET_PURCHASE_CREDIT', 'MEMBERSHIP_UPGRADE', 'REPUTATION_CONSULT', 'MARKET_BOOST')
+                 AND t.status = 'APPROVED'
+                 AND t.type NOT IN ('DEPOSIT', 'WITHDRAWAL', 'TRANSFER', 'BONUS', 'REFERRAL_BONUS')
                 ), 0) as total_spent,
-                -- Calcular receita total gerada por este usuário
+                -- 2. Receita Real Gerada para o Clube (Taxas e Juros)
                 COALESCE((
                     SELECT SUM(CASE 
-                        WHEN t.type = 'WITHDRAWAL' THEN 2.00  -- Taxa fixa de saque
-                        WHEN t.type = 'QUOTA_PURCHASE' THEN t.amount * 0.02  -- 2% taxa de compra de cota
-                        WHEN t.type = 'MEMBERSHIP_UPGRADE' THEN t.amount  -- 100% PRO vai pro sistema
-                        WHEN t.type = 'MARKET_BOOST' THEN t.amount  -- 100% boost vai pro sistema
-                        WHEN t.type = 'REPUTATION_CONSULT' THEN t.amount  -- 100% consulta vai pro sistema
-                        WHEN t.type = 'MARKET_PURCHASE' THEN t.amount * 0.12  -- ~12% taxa marketplace
-                        WHEN t.type = 'MARKET_PURCHASE_CREDIT' THEN t.amount * 0.15  -- ~15% juros+taxa crediário
+                        WHEN t.type = 'BUY_QUOTA' THEN COALESCE((t.metadata->>'serviceFee')::decimal, 0) -- Taxa Adm Fixa (R$ 8 por cota)
+                        WHEN t.type = 'MEMBERSHIP_UPGRADE' THEN ABS(t.amount) -- Upgrade PRO
+                        WHEN t.type = 'PREMIUM_PURCHASE' THEN ABS(t.amount)    -- Verificado/Score Boost
+                        WHEN t.type = 'MARKET_BOOST' THEN ABS(t.amount)       -- Impulsionamento
+                        WHEN t.type = 'REPUTATION_CONSULT' THEN ABS(t.amount) -- Consultas
+                        WHEN t.type = 'WITHDRAWAL' THEN 3.50                  -- Taxa de Saque
+                        WHEN t.type = 'MARKET_PURCHASE' THEN ABS(t.amount) * 0.12 -- Taxa Marketplace
+                        WHEN t.type = 'LOGISTIC_PAY' THEN ABS(t.amount) * 0.10    -- Taxa Logística
+                        WHEN t.type = 'PROMO_VIDEO_BUDGET' THEN ABS(t.amount) * 0.40 -- 40% (25% pool + 15% sist)
                         ELSE 0
                     END)
                     FROM transactions t 
                     WHERE t.user_id = q.user_id 
-                    AND t.status = 'APPROVED'
+                    AND t.status IN ('APPROVED', 'COMPLETED')
                 ), 0) +
-                -- Adicionar juros de empréstimos pagos
+                -- Juros de empréstimos (Diferença entre o que pagou e o que pegou)
                 COALESCE((
                     SELECT SUM(l.total_repayment - l.amount) 
                     FROM loans l 
@@ -73,7 +77,7 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
                 ), 0) as total_revenue_generated
             FROM quotas q
             JOIN users u ON u.id = q.user_id
-            WHERE q.status = 'ACTIVE'
+            WHERE (q.status = 'ACTIVE' OR q.status IS NULL)
             AND (
                 -- NOVO: Só quem GEROU RECEITA para a plataforma é elegível
                 -- Pagou empréstimo (gerou juros)
@@ -94,7 +98,7 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
                         'REPUTATION_CONSULT',  -- Pagou consulta de reputação
                         'MARKET_PURCHASE',     -- Comprou no marketplace (taxa vai pro sistema)
                         'MARKET_PURCHASE_CREDIT', -- Crediário (juros + taxa)
-                        'QUOTA_PURCHASE'       -- Comprou cota (taxa administrativa)
+                        'BUY_QUOTA'       -- Comprou cota (taxa administrativa)
                     )
                 )
             )

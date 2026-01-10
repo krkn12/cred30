@@ -108,7 +108,7 @@ export class AdminApprovalController {
                 `SELECT t.*, u.name as user_name, u.email as user_email, u.pix_key as user_pix, u.phone as user_phone
          FROM transactions t
          LEFT JOIN users u ON t.user_id = u.id
-         WHERE t.status = 'PENDING' 
+         WHERE t.status IN ('PENDING', 'PENDING_CONFIRMATION')
            AND t.payout_status = 'NONE'
          ORDER BY t.created_at ASC`
             );

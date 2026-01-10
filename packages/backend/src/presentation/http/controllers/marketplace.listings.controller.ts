@@ -14,6 +14,7 @@ const createListingSchema = z.object({
     quotaId: z.number().int().optional(),
     itemType: z.enum(['PHYSICAL', 'DIGITAL']).optional().default('PHYSICAL'),
     digitalContent: z.string().optional(), // Link/código para itens digitais
+    requiredVehicle: z.enum(['BIKE', 'MOTO', 'CAR', 'TRUCK']).optional().default('MOTO'),
 });
 
 export class MarketplaceListingsController {
@@ -37,7 +38,8 @@ export class MarketplaceListingsController {
             (SELECT l.id::text, l.title, l.description, l.price::float, l.image_url, l.category, 
                     u.name as seller_name, l.seller_id::text, l.is_boosted, l.created_at, l.status, 'P2P' as type,
                     u.seller_address_city as city, u.seller_address_state as uf,
-                    COALESCE(l.item_type, 'PHYSICAL') as item_type
+                    COALESCE(l.item_type, 'PHYSICAL') as item_type,
+                    COALESCE(l.required_vehicle, 'MOTO') as required_vehicle
              FROM marketplace_listings l 
              JOIN users u ON l.seller_id = u.id
              WHERE l.status = 'ACTIVE'
@@ -49,7 +51,7 @@ export class MarketplaceListingsController {
             UNION ALL
             (SELECT p.id::text, p.title, p.description, p.price::float, p.image_url, p.category, 
                     'Cred30 Parceiros' as seller_name, '0' as seller_id, true as is_boosted, p.created_at, 'ACTIVE' as status, 'AFFILIATE' as type,
-                    '' as city, '' as uf, 'PHYSICAL' as item_type
+                    '' as city, '' as uf, 'PHYSICAL' as item_type, 'MOTO' as required_vehicle
              FROM products p 
              WHERE p.active = true
              AND ($3::text IS NULL OR $3 = 'TODOS' OR p.category = $3)
@@ -91,7 +93,7 @@ export class MarketplaceListingsController {
                 }, 400);
             }
 
-            const { title, description, price, category, imageUrl, quotaId, itemType, digitalContent } = parseResult.data;
+            const { title, description, price, category, imageUrl, quotaId, itemType, digitalContent, requiredVehicle } = parseResult.data;
 
             // Itens digitais precisam de conteúdo digital
             if (itemType === 'DIGITAL' && !digitalContent) {
@@ -119,9 +121,9 @@ export class MarketplaceListingsController {
             }
 
             const result = await pool.query(
-                `INSERT INTO marketplace_listings (seller_id, title, description, price, category, image_url, quota_id, item_type, digital_content)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-                [user.id, title, description, price, category || (quotaId ? 'COTAS' : 'OUTROS'), imageUrl, quotaId, itemType || 'PHYSICAL', digitalContent]
+                `INSERT INTO marketplace_listings (seller_id, title, description, price, category, image_url, quota_id, item_type, digital_content, required_vehicle)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+                [user.id, title, description, price, category || (quotaId ? 'COTAS' : 'OUTROS'), imageUrl, quotaId, itemType || 'PHYSICAL', digitalContent, requiredVehicle]
             );
 
             return c.json({
@@ -146,7 +148,7 @@ export class MarketplaceListingsController {
             const pool = getDbPool(c);
 
             const result = await pool.query(
-                `SELECT id, title, description, price, category, image_url, status, is_boosted, created_at
+                `SELECT id, title, description, price, category, image_url, status, is_boosted, created_at, required_vehicle
          FROM marketplace_listings
          WHERE seller_id = $1
          ORDER BY created_at DESC`,

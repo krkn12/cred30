@@ -45,7 +45,9 @@ export interface Loan {
   totalRepayment: number;
   installments: number;
   interestRate: number;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID' | 'PAYMENT_PENDING';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID' | 'PAYMENT_PENDING' | 'WAITING_GUARANTOR';
+  isGuarantor?: boolean;
+  requesterName?: string | null;
   createdAt: string;
   dueDate?: string;
 

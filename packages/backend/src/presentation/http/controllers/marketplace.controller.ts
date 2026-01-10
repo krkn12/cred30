@@ -122,6 +122,7 @@ export class MarketplaceController {
                 JOIN users u_buyer ON o.buyer_id = u_buyer.id
                 WHERE o.delivery_status = 'AVAILABLE'
                 AND o.seller_id != $1 AND o.buyer_id != $1
+                AND (o.invited_courier_id IS NULL OR o.invited_courier_id = $1)
                 ORDER BY o.delivery_fee DESC
             `, [user.id]);
 
@@ -141,6 +142,14 @@ export class MarketplaceController {
             const pool = getDbPool(c);
             const orderId = c.req.param('id');
 
+            const missionCheck = await pool.query('SELECT invited_courier_id FROM marketplace_orders WHERE id = $1', [orderId]);
+            if (missionCheck.rows.length === 0) return c.json({ success: false, message: 'Missão não encontrada.' }, 404);
+
+            const invitedId = missionCheck.rows[0].invited_courier_id;
+            if (invitedId && invitedId !== user.id) {
+                return c.json({ success: false, message: 'Esta missão foi reservada para outro entregador.' }, 403);
+            }
+
             const result = await pool.query(
                 `UPDATE marketplace_orders 
                  SET delivery_status = 'ACCEPTED', courier_id = $1, updated_at = NOW()
@@ -149,7 +158,7 @@ export class MarketplaceController {
                 [user.id, orderId]
             );
 
-            if (result.rows.length === 0) return c.json({ success: false, message: 'Missão não disponível.' }, 404);
+            if (result.rows.length === 0) return c.json({ success: false, message: 'Missão não disponível ou já aceita.' }, 400);
 
             return c.json({
                 success: true,

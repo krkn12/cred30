@@ -23,8 +23,12 @@ export class FinanceApi extends ApiBase {
         return await this.request<any>('/loans');
     }
 
-    async requestLoan(amount: number, installments: number, guaranteePercentage: number = 100): Promise<ApiResponse<any>> {
-        return await this.post<any>('/loans/request', { amount, installments, guaranteePercentage });
+    async requestLoan(amount: number, installments: number, guaranteePercentage: number = 100, guarantorId?: string): Promise<ApiResponse<any>> {
+        return await this.post<any>('/loans/request', { amount, installments, guaranteePercentage, guarantorId });
+    }
+
+    async respondToGuarantorRequest(loanId: string, action: 'APPROVE' | 'REJECT'): Promise<ApiResponse<any>> {
+        return await this.post<any>('/loans/guarantor-respond', { loanId, action });
     }
 
     async repayLoan(loanId: string, useBalance: boolean, paymentMethod?: string): Promise<ApiResponse<any>> {
@@ -54,8 +58,8 @@ export class FinanceApi extends ApiBase {
     }
 
     // --- DEPOSITS ---
-    async requestDeposit(amount: number): Promise<ApiResponse<any>> {
-        return await this.post<any>('/transactions/deposit', { amount });
+    async requestDeposit(amount: number, senderName?: string): Promise<ApiResponse<any>> {
+        return await this.post<any>('/transactions/deposit', { amount, senderName });
     }
 
     async submitReview(transactionId: number, rating: number, comment: string, isPublic: boolean): Promise<ApiResponse<any>> {

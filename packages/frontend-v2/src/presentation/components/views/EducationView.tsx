@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, GraduationCap, Book, Video, ChevronRight, Plus, PlayCircle, Users, DollarSign, Star, X, Upload, Check, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, GraduationCap, Video, ChevronRight, Plus, PlayCircle, Users, DollarSign, X, Upload, Check, ShoppingCart } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 
 interface Course {

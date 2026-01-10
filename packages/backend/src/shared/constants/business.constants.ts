@@ -56,6 +56,13 @@ export const MARKET_CREDIT_MAX_INSTALLMENTS = 24; // Até 24x para facilitar com
 export const MARKET_CREDIT_MIN_SCORE = 450; // Score mínimo para comprar parcelado
 export const MARKET_CREDIT_MIN_QUOTAS = 1; // Mínimo de 1 cota ativa (Skin in the Game) para parcelar
 export const LOGISTICS_SUSTAINABILITY_FEE_RATE = 0.10; // 10% de taxa administrativa sobre o valor do frete para sustentabilidade do grupo
+export const DELIVERY_MIN_FEES: Record<string, number> = {
+    'BIKE': 5.00,
+    'MOTO': 10.00,
+    'CAR': 30.00,
+    'TRUCK': 80.00
+};
+export const DEFAULT_VEHICLE = 'MOTO';
 
 // --- Taxas de Movimentação de Vídeos (Watch to Earn) ---
 export const VIDEO_VIEWER_SHARE = 0.60;       // 60% para quem assiste
