@@ -461,7 +461,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
 export const get2FASetup = () => apiService.get2FASetup();
 
-export const verify2FA = (email: string, code: string) => apiService.verify2FA(email, code);
+export const verify2FA = (token: string, secret: string) => apiService.verify2FA(token, secret);
 
 export const confirmWithdrawal = (transactionId: number, code: string, password: string) => apiService.confirmWithdrawal(transactionId, code, password);
 

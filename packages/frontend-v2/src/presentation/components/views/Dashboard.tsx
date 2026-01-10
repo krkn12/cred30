@@ -431,7 +431,7 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                         {[
                             { icon: Crown, label: 'Shopping', sub: 'VIP', act: () => navigate('/app/services'), color: 'text-pink-400', bg: 'bg-pink-500/10' },
                             { icon: Gift, label: 'Prêmios', sub: 'Resgatar', act: () => navigate('/app/rewards-shop'), color: 'text-amber-400', bg: 'bg-amber-500/10' },
-                            { icon: Zap, label: 'Tarefas', sub: 'Ganhar', act: () => navigate('/app/promo-videos/farm'), color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
+                            { icon: Zap, label: 'Tarefas', sub: 'Ganhar', act: () => navigate('/app/promo-videos'), color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
                             { icon: Wallet, label: 'Apoio', sub: 'Mútuo', act: onLoans, color: 'text-zinc-400', bg: 'bg-zinc-500/10' },
                             { icon: BookOpen, label: 'Aprender', sub: 'Academy', act: onEducation, color: 'text-blue-400', bg: 'bg-blue-500/10' },
                             { icon: Users, label: 'Indicar', sub: 'Invite', act: onRefer, color: 'text-primary-400', bg: 'bg-primary-500/10' },
