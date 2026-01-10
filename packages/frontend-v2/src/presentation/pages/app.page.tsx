@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from '../components/layout/main-layout.component';
 import { UpdateNotification } from '../components/ui/update-notification.component';
-import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, changePassword, apiService, requestDeposit, upgradePro, clearPendingItemsCache } from '../../application/services/storage.service';
+import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, changePassword, apiService, requestDeposit, upgradePro, clearPendingItemsCache, deleteUserAccount } from '../../application/services/storage.service';
 import { syncService } from '../../application/services/sync.service';
 import { AppState } from '../../domain/types/common.types';
 import { Check, X as XIcon, RefreshCw, AlertTriangle, Users, Copy, TrendingUp } from 'lucide-react';
@@ -455,7 +455,15 @@ export default function App() {
                     <SettingsView
                       user={state.currentUser!}
                       onLogout={handleLogout}
-                      onDeleteAccount={() => { }}
+                      onDeleteAccount={async (code) => {
+                        const res = await deleteUserAccount(code);
+                        if (res.success) {
+                          setShowSuccess({ isOpen: true, title: 'Adeus!', message: 'Sua conta foi excluída com sucesso.' });
+                          navigate('/');
+                        } else {
+                          setShowError({ isOpen: true, title: 'Erro', message: res.message });
+                        }
+                      }}
                       onChangePassword={changePassword}
                       onRefresh={refreshState}
                     />

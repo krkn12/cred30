@@ -24,6 +24,8 @@ export interface User {
   is_verified?: boolean; // Selo de verificado
   is_seller?: boolean; // É vendedor no marketplace
   passwordHash?: string | null; // Indica se usuário tem senha (usuários Google não têm)
+  safeContactPhone?: string | null;
+  panicPhrase?: string | null;
 }
 
 export interface Quota {

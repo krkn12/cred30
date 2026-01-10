@@ -46,6 +46,7 @@ const convertApiUserToUser = (apiUser: any): User => {
     is_seller: apiUser.is_seller || false,
     total_dividends_earned: apiUser.total_dividends_earned || 0,
     last_login_at: apiUser.last_login_at,
+    safeContactPhone: apiUser.safeContactPhone || apiUser.safe_contact_phone || null,
   };
 };
 

@@ -1,6 +1,6 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, Copy, Lock, ChevronRight, LogOut, Trash2, X as XIcon, ShieldCheck, QrCode, AlertCircle, Check, Bug, FileText, Phone } from 'lucide-react';
+import { Star, Copy, Lock, ChevronRight, LogOut, Trash2, X as XIcon, ShieldCheck, QrCode, AlertCircle, Check, Bug, FileText, Phone, Store, Truck } from 'lucide-react';
 import { User } from '../../../domain/types/common.types';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { get2FASetup, verify2FA } from '../../../application/services/storage.service';
@@ -24,7 +24,7 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
 
     // Verificar se usuário tem senha (para usuários Google = não tem)
     const hasPassword = !!user.passwordHash;
-    
+
     // CPF State
     const [showCpfModal, setShowCpfModal] = useState(false);
     const [cpfInput, setCpfInput] = useState('');
@@ -45,6 +45,7 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
     const [verifyCode, setVerifyCode] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [panicPhrase, setPanicPhrase] = useState('');
+    const [secretPhrase, setSecretPhrase] = useState('');
     const [safeContactPhone, setSafeContactPhone] = useState('');
     const [isSavingSecurity, setIsSavingSecurity] = useState(false);
     const [securityPassword, setSecurityPassword] = useState('');
@@ -55,6 +56,11 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
     const [showPixModal, setShowPixModal] = useState(false);
     const [pixInput, setPixInput] = useState('');
     const [pixError, setPixError] = useState('');
+
+    // Efeito para carregar dados do usuário quando montado ou atualizado
+    useEffect(() => {
+        if (user.safeContactPhone) setSafeContactPhone(user.safeContactPhone);
+    }, [user.safeContactPhone]);
 
     // Format CPF: 000.000.000-00
     const formatCpf = (value: string) => {
@@ -184,14 +190,24 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
         }
     };
 
-    const handleInitiatePixUpdate = async () => {
+    const handleInitiatePixUpdate = () => {
         setPixError('');
         if (!pixInput || pixInput.length < 5) {
             setPixError('Chave PIX muito curta');
             return;
         }
-        
-        // Salvar diretamente (funciona para usuários Google sem senha)
+
+        // Se usuário tem senha ou 2FA, pedimos confirmação
+        if (hasPassword || user.two_factor_enabled) {
+            setPendingAction('PIX');
+            setShowSecurityConfirm(true);
+        } else {
+            // Se usuário Google sem 2FA, salva direto (o backend permite)
+            performPixUpdate();
+        }
+    };
+
+    const performPixUpdate = async () => {
         setIsSavingSecurity(true);
         try {
             const res = await apiService.updatePixKey(pixInput);
@@ -213,7 +229,7 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
     };
 
     const handleSaveSecuritySettings = async () => {
-        if (!securityPassword && !user.two_factor_enabled) {
+        if (!securityPassword && !user.two_factor_enabled && hasPassword) {
             setError('Senha necessária para confirmar alterações');
             return;
         }
@@ -232,33 +248,33 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
             } else {
                 // SECURITY update
                 payload.panicPhrase = panicPhrase;
+                payload.secretPhrase = secretPhrase;
                 payload.safeContactPhone = safeContactPhone;
             }
 
             const res = await apiService.updateUserProfile(payload);
 
             if (res.success) {
-                setSuccessMessage(pendingAction === 'PIX' ? 'Chave PIX atualizada!' : 'Configurações atualizadas!');
+                setSuccessMessage(pendingAction === 'PIX' ? 'Chave PIX atualizada! Saques bloqueados por 48h.' : 'Configurações atualizadas!');
                 setShowSecurityConfirm(false);
+                setShowPixModal(false);
                 setSecurityPassword('');
                 setVerifyCode('');
-                setPanicPhrase(''); // Limpa por segurança
+                setPanicPhrase('');
+                setSecretPhrase('');
                 setPendingAction(null);
 
                 setTimeout(() => {
                     setSuccessMessage('');
                     if (onRefresh) onRefresh();
                 }, 2000);
+            } else {
+                setError(res.message || 'Erro ao salvar configurações');
             }
         } catch (err: any) {
             setError(err.message || 'Erro ao salvar configurações');
-            setIsSavingSecurity(false);
         } finally {
-            if (pendingAction !== 'PIX') { // Se for PIX, mantemos loading até o refresh? Não, better to clear always
-                setIsSavingSecurity(false);
-            } else {
-                setIsSavingSecurity(false);
-            }
+            setIsSavingSecurity(false);
         }
     };
 
@@ -415,7 +431,21 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
 
                         <div className="space-y-3">
                             <div>
-                                <label className="text-[10px] text-zinc-500 font-bold uppercase mb-1.5 block">Código de Sincronização Externo</label>
+                                <label className="text-[10px] text-zinc-500 font-bold uppercase mb-1.5 block">Frase Secreta (Backup)</label>
+                                <input
+                                    type="text"
+                                    placeholder="Uma frase que só você sabe"
+                                    value={secretPhrase}
+                                    onChange={e => setSecretPhrase(e.target.value)}
+                                    className="w-full bg-black/20 border border-white/5 rounded-xl py-3 px-4 text-white text-sm focus:border-primary-500/50 outline-none transition"
+                                />
+                                <p className="text-[9px] text-zinc-600 mt-1 italic">
+                                    Usada para recuperação manual de conta se perder o acesso total.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] text-zinc-500 font-bold uppercase mb-1.5 block">Frase de Pânico (Emergência)</label>
                                 <input
                                     type="password"
                                     placeholder="••••••"
@@ -424,7 +454,7 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                                     className="w-full bg-black/20 border border-white/5 rounded-xl py-3 px-4 text-white text-sm focus:border-primary-500/50 outline-none transition"
                                 />
                                 <p className="text-[9px] text-zinc-600 mt-1 italic">
-                                    Gatilho de segurança para casos de perda total de acesso ou coação externa.
+                                    Gatilho de segurança para casos de coação ou perda total de acesso.
                                 </p>
                             </div>
 
@@ -438,12 +468,15 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                                     className="w-full bg-black/20 border border-white/5 rounded-xl py-3 px-4 text-white text-sm focus:border-primary-500/50 outline-none transition"
                                 />
                                 <p className="text-[9px] text-zinc-600 mt-1">
-                                    Número de backup para recebimento de alertas de segurança em tempo real.
+                                    Número de backup para recebimento de alertas de segurança.
                                 </p>
                             </div>
 
                             <button
-                                onClick={() => setShowSecurityConfirm(true)}
+                                onClick={() => {
+                                    setPendingAction('SECURITY');
+                                    setShowSecurityConfirm(true);
+                                }}
                                 disabled={isSavingSecurity}
                                 className="w-full bg-surfaceHighlight hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold py-3 rounded-xl transition-all border border-white/5"
                             >
@@ -455,16 +488,15 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
             </div>
 
             <div className="pt-8">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest ml-1 mb-4">Conta</h3>
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest ml-1 mb-4">Oportunidades de Ganhos</h3>
                 <div className="space-y-3">
-
-                    <button onClick={() => navigate('/app/seller-registration')} className="w-full bg-gradient-to-r from-primary-500/10 to-emerald-500/10 hover:from-primary-500/20 hover:to-emerald-500/20 text-white border border-primary-500/20 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group">
+                    <button onClick={() => navigate('/app/seller-registration')} className="w-full bg-gradient-to-r from-emerald-500/10 to-primary-500/10 hover:from-emerald-500/20 hover:to-primary-500/20 text-white border border-emerald-500/20 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group">
                         <span className="flex items-center gap-3">
-                            <ShieldCheck size={18} className="text-primary-400 group-hover:text-emerald-400 transition-colors" />
+                            <Store size={18} className="text-emerald-400 group-hover:text-primary-400 transition-colors" />
                             Tornar-se Lojista Verificado
                         </span>
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] bg-primary-500 text-black px-2 py-1 rounded-full font-extrabold">
+                            <span className="text-[10px] bg-emerald-500 text-black px-2 py-1 rounded-full font-extrabold">
                                 TAXA 12%
                             </span>
                             <ChevronRight size={16} className="text-zinc-600 group-hover:text-white transition-colors" />
@@ -473,7 +505,7 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
 
                     <button onClick={() => navigate('/app/logistics')} className="w-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 hover:from-blue-500/20 hover:to-purple-500/20 text-white border border-blue-500/20 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group">
                         <span className="flex items-center gap-3">
-                            <ShieldCheck size={18} className="text-blue-400 group-hover:text-purple-400 transition-colors" />
+                            <Truck size={18} className="text-blue-400 group-hover:text-purple-400 transition-colors" />
                             Ser Apoio Logístico da Comunidade
                         </span>
                         <div className="flex items-center gap-2">
@@ -483,12 +515,16 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                             <ChevronRight size={16} className="text-zinc-600 group-hover:text-white transition-colors" />
                         </div>
                     </button>
+                </div>
+            </div>
 
-
+            <div className="pt-8">
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest ml-1 mb-4">Ajuda e Suporte</h3>
+                <div className="space-y-3">
                     <button onClick={() => window.dispatchEvent(new CustomEvent('open-bug-report'))} className="w-full bg-surfaceHighlight hover:bg-zinc-800 text-white border border-white/5 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group">
                         <span className="flex items-center gap-3">
                             <Bug size={18} className="text-zinc-400 group-hover:text-red-400 transition-colors" />
-                            Reportar Problema
+                            Reportar Problema Técnico
                         </span>
                         <ChevronRight size={16} className="text-zinc-600 group-hover:text-white transition-colors" />
                     </button>
@@ -496,24 +532,30 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                     <button onClick={() => navigate('/app/my-bug-reports')} className="w-full bg-surfaceHighlight hover:bg-zinc-800 text-white border border-white/5 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group">
                         <span className="flex items-center gap-3">
                             <FileText size={18} className="text-zinc-400 group-hover:text-primary-400 transition-colors" />
-                            Meus Relatórios
+                            Meus Chamados e Relatórios
                         </span>
                         <ChevronRight size={16} className="text-zinc-600 group-hover:text-white transition-colors" />
                     </button>
+                </div>
+            </div>
 
+            <div className="pt-8">
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest ml-1 mb-4">Gerenciamento</h3>
+                <div className="space-y-3">
                     <button onClick={onLogout} className="w-full bg-surfaceHighlight hover:bg-zinc-800 text-white border border-white/5 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group">
                         <span className="flex items-center gap-3">
                             <LogOut size={18} className="text-zinc-400 group-hover:text-white transition-colors" />
-                            Sair do App
+                            Sair do Aplicativo
                         </span>
                         <ChevronRight size={16} className="text-zinc-600 group-hover:text-white transition-colors" />
                     </button>
 
-                    <button onClick={() => setShowConfirmDelete(true)} className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group">
+                    <button onClick={() => setShowConfirmDelete(true)} className="w-full bg-red-500/5 hover:bg-red-500/10 text-red-500/60 hover:text-red-500 border border-red-500/10 hover:border-red-500/30 py-4 rounded-xl font-bold transition flex items-center justify-between px-4 group">
                         <span className="flex items-center gap-3">
-                            <Trash2 size={18} className="text-red-500/60 group-hover:text-red-500 transition-colors" />
-                            Encerrar Conta
+                            <Trash2 size={18} className="opacity-60 group-hover:opacity-100 transition-opacity" />
+                            Encerrar Conta Permanentemente
                         </span>
+                        <ChevronRight size={16} className="opacity-20 group-hover:opacity-100 transition-opacity" />
                     </button>
                 </div>
             </div>
@@ -527,7 +569,7 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                 confirmText="Sim, Encerrar Conta"
                 type="danger"
             >
-                {user.two_factor_enabled && (
+                {user.two_factor_enabled ? (
                     <div className="mb-6 animate-in slide-in-from-top-2">
                         <label className="text-xs text-zinc-500 mb-2 block font-bold uppercase tracking-widest">Código 2FA para Confirmar</label>
                         <div className="relative">
@@ -544,6 +586,22 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                             />
                         </div>
                         <p className="text-[10px] text-zinc-500 mt-2">Por segurança, insira o código do seu autenticador.</p>
+                    </div>
+                ) : hasPassword && (
+                    <div className="mb-6 animate-in slide-in-from-top-2">
+                        <label className="text-xs text-zinc-500 mb-2 block font-bold uppercase tracking-widest">Sua Senha para Confirmar</label>
+                        <div className="relative">
+                            <Lock className="absolute left-3 top-3 text-zinc-500" size={18} />
+                            <input
+                                type="password"
+                                placeholder="••••••••"
+                                value={deleteCode}
+                                onChange={e => setDeleteCode(e.target.value)}
+                                className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 text-white focus:border-red-500 outline-none transition"
+                                autoFocus
+                            />
+                        </div>
+                        <p className="text-[10px] text-zinc-500 mt-2">Confirme sua senha para validar esta ação definitiva.</p>
                     </div>
                 )}
             </ConfirmModal>
@@ -790,8 +848,8 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                 </div>
             )}
 
-            <div className="pt-8 text-center">
-                <p className="text-zinc-600 text-xs font-mono">Versão 2.1.0 • Cred30</p>
+            <div className="pt-8 pb-12 text-center opacity-30">
+                <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.4em]">Versão 2.5.0 • Cred30</p>
             </div>
 
             {/* Security Confirmation Modal */}
