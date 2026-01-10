@@ -267,6 +267,7 @@ export class UsersController {
                 data: {
                     user: {
                         ...user,
+                        passwordHash: result.rows[0].password_hash || null, // Para detectar usuários Google
                         balance: parseFloat(stats.balance || '0'),
                         score: stats.score || 0,
                         membership_type: stats.membership_type || 'FREE',
