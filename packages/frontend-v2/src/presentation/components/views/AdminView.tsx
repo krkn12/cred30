@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import packageJson from '../../../../package.json';
 import {
-    ShieldCheck, RefreshCw, LogOut, Send, MessageSquare, PieChart, Activity, Settings as SettingsIcon, UserPlus, ShoppingBag as ShoppingBagIcon, Vote, Bug, TrendingUp, Truck
+    ShieldCheck, RefreshCw, LogOut, Send, MessageSquare, PieChart, Activity, Settings as SettingsIcon, UserPlus, ShoppingBag as ShoppingBagIcon, Vote, Bug, TrendingUp, Truck, Gift
 } from 'lucide-react';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { AppState } from '../../../domain/types/common.types';
@@ -21,6 +21,7 @@ import { AdminBugs } from '../features/admin/tabs/AdminBugs';
 import { AdminInvestments } from '../features/admin/tabs/AdminInvestments';
 import { AdminLogistics } from '../features/admin/tabs/AdminLogistics';
 import { AdminApprovals } from '../features/admin/tabs/AdminApprovals';
+import { AdminRewardsTab } from '../features/admin/tabs/AdminRewardsTab';
 
 // Existing Shared Components
 import { AdminStoreManager } from '../features/store/admin-store.component';
@@ -33,7 +34,7 @@ interface AdminViewProps {
     onError: (title: string, message: string) => void;
 }
 
-type TabType = 'overview' | 'approvals' | 'payouts' | 'system' | 'investments' | 'store' | 'referrals' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics';
+type TabType = 'overview' | 'approvals' | 'payouts' | 'system' | 'investments' | 'store' | 'rewards' | 'referrals' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics';
 
 export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: AdminViewProps) => {
     const [isLoading, setIsLoading] = useState(false);
@@ -126,7 +127,8 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         { id: 'system', name: 'Financeiro', icon: SettingsIcon, roles: ['ADMIN'] },
         { id: 'referrals', name: 'Indicações', icon: UserPlus, roles: ['ADMIN'] },
         { id: 'users', name: 'Usuários', icon: ShieldCheck, roles: ['ADMIN'] },
-        { id: 'store', name: 'Loja', icon: ShoppingBagIcon, roles: ['ADMIN'] },
+        { id: 'store', name: 'Afiliados', icon: ShoppingBagIcon, roles: ['ADMIN'] },
+        { id: 'rewards', name: 'Prêmios', icon: Gift, roles: ['ADMIN'] },
         { id: 'investments', name: 'Gestão de Capital', icon: TrendingUp, roles: ['ADMIN'] },
         { id: 'governance', name: 'Governança', icon: Vote, roles: ['ADMIN'] },
         { id: 'reviews', name: 'Depoimentos', icon: MessageSquare, count: pendingReviewsCount, roles: ['ADMIN'] },
@@ -217,6 +219,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                 {activeTab === 'referrals' && <AdminReferrals onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'users' && <AdminUsers onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'store' && <AdminStoreManager onSuccess={onSuccess} onError={onError} />}
+                {activeTab === 'rewards' && <AdminRewardsTab onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'investments' && <AdminInvestments onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'governance' && <AdminGovernance onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'reviews' && <AdminReviews onSuccess={onSuccess} onError={onError} />}

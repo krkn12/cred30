@@ -75,6 +75,10 @@ class ApiService extends ApiBase {
   processAction = this.admin.processAction.bind(this.admin);
   getMarketplaceCleanupStats = this.admin.getMarketplaceCleanupStats.bind(this.admin);
   cleanupOldListings = this.admin.cleanupOldListings.bind(this.admin);
+  getRewardsAdmin = this.admin.getRewardsAdmin.bind(this.admin);
+  saveRewardAdmin = this.admin.saveRewardAdmin.bind(this.admin);
+  addRewardInventoryAdmin = this.admin.addRewardInventoryAdmin.bind(this.admin);
+  getRewardRedemptionsAdmin = this.admin.getRewardRedemptionsAdmin.bind(this.admin);
 
 
   // Aliases required by AdminUserManagement.tsx

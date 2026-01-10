@@ -8,6 +8,7 @@ import { AdminUsersController } from '../controllers/admin.users.controller';
 import { AdminInvestmentsController } from '../controllers/admin.investments.controller';
 import { AdminMarketplaceController } from '../controllers/admin.marketplace.controller';
 import { AdminReferralController } from '../controllers/admin.referral.controller';
+import { AdminRewardsController } from '../controllers/admin.rewards.controller';
 
 const adminRoutes = new Hono();
 
@@ -70,6 +71,12 @@ adminRoutes.patch('/investments/:id', adminMiddleware, AdminInvestmentsControlle
 adminRoutes.post('/investments/:id/dividends', adminMiddleware, auditMiddleware('RECEIVE_DIVIDEND', 'INVESTMENT'), AdminInvestmentsController.receiveDividends);
 adminRoutes.post('/investments/:id/sell', adminMiddleware, auditMiddleware('SELL_INVESTMENT', 'INVESTMENT'), AdminInvestmentsController.sellInvestment);
 adminRoutes.post('/investments/reserve/add', adminMiddleware, auditMiddleware('MANUAL_INVESTMENT_DEPOSIT', 'INVESTMENT'), AdminInvestmentsController.addReserve);
+
+// --- GESTÃO DE RECOMPENSAS (GIFT CARDS) ---
+adminRoutes.get('/rewards', adminMiddleware, AdminRewardsController.listRewards);
+adminRoutes.post('/rewards', adminMiddleware, auditMiddleware('SAVE_REWARD', 'SYSTEM_CONFIG'), AdminRewardsController.saveReward);
+adminRoutes.post('/rewards/inventory', adminMiddleware, auditMiddleware('ADD_REWARD_INVENTORY', 'SYSTEM_CONFIG'), AdminRewardsController.addInventory);
+adminRoutes.get('/rewards/redemptions', adminMiddleware, AdminRewardsController.getRedemptions);
 
 export { adminRoutes };
 

@@ -61,4 +61,20 @@ export class AdminApi extends ApiBase {
     async getAllProductsAdmin(): Promise<any> {
         return await this.request<any>('/admin/products');
     }
+
+    async getRewardsAdmin(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/admin/rewards');
+    }
+
+    async saveRewardAdmin(data: any): Promise<ApiResponse<any>> {
+        return await this.post<any>('/admin/rewards', data);
+    }
+
+    async addRewardInventoryAdmin(rewardId: string, codes: string): Promise<ApiResponse<any>> {
+        return await this.post<any>('/admin/rewards/inventory', { rewardId, codes });
+    }
+
+    async getRewardRedemptionsAdmin(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/admin/rewards/redemptions');
+    }
 }

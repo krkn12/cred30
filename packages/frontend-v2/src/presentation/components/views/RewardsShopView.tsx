@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     Gift, ArrowLeft, ShoppingBag, Smartphone, Coffee,
     Music, Gamepad2, Film, Fuel, Zap, Crown,
-    ChevronRight, Loader2, Check, AlertTriangle, Star
+    ChevronRight, Loader2, Check, AlertTriangle, Star, X
 } from 'lucide-react';
 import { AppState } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
@@ -25,6 +25,7 @@ interface RewardItem {
     brand?: string;
     value?: number;
     canAfford?: boolean;
+    stock?: number;
 }
 
 // Mapeamento de ícones e cores por tipo/id
@@ -216,46 +217,58 @@ export const RewardsShopView = ({ state, onBack, onSuccess, onError, onRefresh }
                     const isLoading = loading === item.id;
                     const style = getRewardStyle(item.id, item.type);
                     const IconComponent = style.icon;
+                    const isOutOfStock = (item.type === 'GIFT_CARD' || item.type === 'COUPON') && (item.stock === 0);
 
                     return (
                         <div
                             key={item.id}
-                            className={`relative bg-zinc-900/50 border rounded-2xl overflow-hidden group transition-all ${canAfford ? 'border-zinc-800 hover:border-primary-500/50' : 'border-zinc-800/50 opacity-60'
+                            className={`relative bg-zinc-900/50 border rounded-3xl overflow-hidden group transition-all duration-500 ${!isOutOfStock && canAfford ? 'border-zinc-800 hover:border-primary-500/50 hover:shadow-2xl hover:shadow-primary-500/10' : 'border-zinc-800/50 opacity-60'
                                 }`}
                         >
+                            {/* Stock Badge */}
+                            {(item.type === 'GIFT_CARD' || item.type === 'COUPON') && (
+                                <div className={`absolute top-3 left-3 z-10 px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${isOutOfStock ? 'bg-red-500 text-white' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
+                                    }`}>
+                                    {isOutOfStock ? 'Esgotado' : `${item.stock} em estoque`}
+                                </div>
+                            )}
+
                             {/* Icon Area */}
-                            <div className={`p-6 ${style.bgColor} flex items-center justify-center`}>
-                                <IconComponent size={40} className={style.color} />
+                            <div className={`p-8 ${style.bgColor} flex items-center justify-center relative overflow-hidden`}>
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+                                <IconComponent size={44} className={`${style.color} group-hover:scale-110 transition-transform duration-500`} />
                             </div>
 
                             {/* Content */}
-                            <div className="p-4 space-y-3">
+                            <div className="p-5 space-y-4">
                                 <div>
-                                    <h4 className="text-sm font-bold text-white leading-tight">{item.name}</h4>
-                                    <p className="text-[10px] text-zinc-500 mt-0.5 line-clamp-2">
-                                        {item.description || (item.value ? `Valor: R$ ${item.value}` : '')}
+                                    <h4 className="text-sm font-black text-white leading-tight">{item.name}</h4>
+                                    <p className="text-[10px] text-zinc-500 mt-1 line-clamp-1 font-medium">
+                                        {item.description || (item.value ? `Valor Comercial: R$ ${item.value.toFixed(2)}` : '')}
                                     </p>
                                 </div>
 
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-[9px] text-zinc-600 uppercase font-bold">Custo</p>
-                                        <p className="text-sm font-black text-primary-400">
-                                            {item.pointsCost.toLocaleString()} pts
+                                <div className="flex items-center justify-between pt-1">
+                                    <div className="flex flex-col">
+                                        <p className="text-[9px] text-zinc-600 uppercase font-black tracking-widest">Custo</p>
+                                        <p className="text-base font-black text-primary-400">
+                                            {item.pointsCost.toLocaleString()} <span className="text-[10px] opacity-70">pts</span>
                                         </p>
                                     </div>
                                     <button
-                                        onClick={() => canAfford && setConfirmItem(item)}
-                                        disabled={!canAfford || isLoading}
-                                        className={`p-2.5 rounded-xl transition-all ${canAfford
-                                            ? 'bg-primary-500 text-black hover:bg-primary-400 active:scale-95'
-                                            : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+                                        onClick={() => !isOutOfStock && canAfford && setConfirmItem(item)}
+                                        disabled={isOutOfStock || !canAfford || isLoading}
+                                        className={`p-3 rounded-2xl transition-all duration-300 ${!isOutOfStock && canAfford
+                                            ? 'bg-primary-500 text-black hover:bg-primary-400 shadow-lg shadow-primary-500/20 active:scale-90'
+                                            : 'bg-zinc-800 text-zinc-600 cursor-not-allowed opacity-50'
                                             }`}
                                     >
                                         {isLoading ? (
-                                            <Loader2 size={16} className="animate-spin" />
+                                            <Loader2 size={18} className="animate-spin" />
+                                        ) : isOutOfStock ? (
+                                            <X size={18} />
                                         ) : (
-                                            <ChevronRight size={16} />
+                                            <ChevronRight size={18} />
                                         )}
                                     </button>
                                 </div>

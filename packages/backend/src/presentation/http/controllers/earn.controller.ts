@@ -246,69 +246,85 @@ export class EarnController {
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
             const body = await c.req.json();
-            const { rewardId, pointsCost: clientPointsCost } = body;
-
-            const reward = REWARDS_CATALOG[rewardId];
-            if (!reward) {
-                return c.json({ success: false, message: 'Recompensa não encontrada.' }, 404);
-            }
-
-            if (clientPointsCost !== reward.pointsCost) {
-                return c.json({ success: false, message: 'Custo de pontos inválido.' }, 400);
-            }
+            const { rewardId } = body;
 
             const result = await executeInTransaction(pool, async (client: PoolClient) => {
-                const userRes = await client.query('SELECT ad_points, balance, membership_type FROM users WHERE id = $1 FOR UPDATE', [user.id]);
+                // 1. Buscar a recompensa no catálogo dinâmico
+                const rewardRes = await client.query(
+                    'SELECT * FROM reward_catalog WHERE id = $1 AND is_active = TRUE FOR SHARE',
+                    [rewardId]
+                );
+                const reward = rewardRes.rows[0];
+
+                if (!reward) {
+                    throw new Error('Recompensa não encontrada ou inativa.');
+                }
+
+                // 2. Verificar pontos do usuário
+                const userRes = await client.query('SELECT ad_points, membership_type FROM users WHERE id = $1 FOR UPDATE', [user.id]);
                 const currentPoints = userRes.rows[0]?.ad_points || 0;
                 const currentMembership = userRes.rows[0]?.membership_type;
 
-                if (currentPoints < reward.pointsCost) {
-                    throw new Error(`Pontos insuficientes. Você tem ${currentPoints} pts, mas precisa de ${reward.pointsCost} pts.`);
+                if (currentPoints < reward.points_cost) {
+                    throw new Error(`Pontos insuficientes. Você tem ${currentPoints} pts, mas precisa de ${reward.points_cost} pts.`);
                 }
 
-                const newPoints = currentPoints - reward.pointsCost;
-                await client.query('UPDATE users SET ad_points = $1 WHERE id = $2', [newPoints, user.id]);
-
-                let code = '';
+                let deliveredCode = '';
                 let deliveryMessage = '';
 
-                switch (reward.type) {
-                    case 'GIFT_CARD':
-                    case 'COUPON':
-                        code = generateVoucherCode(reward.type === 'GIFT_CARD' ? 'GC' : 'CP');
-                        deliveryMessage = `Seu código: ${code}. Anote em local seguro!`;
+                // 3. Lógica específica por tipo
+                if (reward.type === 'GIFT_CARD' || reward.type === 'COUPON') {
+                    // Buscar código disponível no estoque
+                    const codeRes = await client.query(
+                        'SELECT id, code FROM reward_inventory WHERE reward_id = $1 AND is_used = FALSE LIMIT 1 FOR UPDATE SKIP LOCKED',
+                        [rewardId]
+                    );
 
+                    if (codeRes.rows.length === 0) {
+                        throw new Error('Estoque esgotado para este prêmio. Tente novamente mais tarde ou escolha outro.');
+                    }
+
+                    const inventoryItem = codeRes.rows[0];
+                    deliveredCode = inventoryItem.code;
+
+                    // Marcar código como usado
+                    await client.query(
+                        'UPDATE reward_inventory SET is_used = TRUE, used_by_user_id = $1, used_at = NOW() WHERE id = $2',
+                        [user.id, inventoryItem.id]
+                    );
+
+                    deliveryMessage = `Resgate realizado! Seu código: ${deliveredCode}.`;
+                } else if (reward.type === 'MEMBERSHIP') {
+                    if (currentMembership === 'PRO') {
                         await client.query(
-                            `INSERT INTO reward_redemptions (user_id, reward_id, reward_name, points_spent, code, status, created_at)
-                             VALUES ($1, $2, $3, $4, $5, 'PENDING_DELIVERY', NOW())`
-                        ).catch(() => {
-                            console.log('[REWARDS] Tabela reward_redemptions não existe, continuando sem log');
-                        });
-                        break;
-
-                    case 'PIX_CASHBACK':
-                        throw new Error('Esta recompensa não está mais disponível.');
-
-
-                    case 'MEMBERSHIP':
-                        if (currentMembership === 'PRO') {
-                            await client.query(
-                                `UPDATE users SET pro_expires_at = COALESCE(pro_expires_at, NOW()) + INTERVAL '30 days' WHERE id = $1`,
-                                [user.id]
-                            );
-                            deliveryMessage = 'Seu plano PRO foi estendido por mais 30 dias!';
-                        } else {
-                            await client.query(
-                                `UPDATE users SET membership_type = 'PRO', pro_expires_at = NOW() + INTERVAL '30 days' WHERE id = $1`,
-                                [user.id]
-                            );
-                            deliveryMessage = 'Você agora é Cred30 PRO por 30 dias!';
-                        }
-                        code = `PRO-${Date.now()}`;
-                        break;
+                            `UPDATE users SET pro_expires_at = COALESCE(pro_expires_at, NOW()) + INTERVAL '30 days' WHERE id = $1`,
+                            [user.id]
+                        );
+                        deliveryMessage = 'Seu plano PRO foi estendido por mais 30 dias!';
+                    } else {
+                        await client.query(
+                            `UPDATE users SET membership_type = 'PRO', pro_expires_at = NOW() + INTERVAL '30 days' WHERE id = $1`,
+                            [user.id]
+                        );
+                        deliveryMessage = 'Você agora é Cred30 PRO por 30 dias!';
+                    }
+                    deliveredCode = `PRO-${Date.now()}`;
+                } else {
+                    throw new Error('Tipo de recompensa não suportado.');
                 }
 
-                return { success: true, code, deliveryMessage, newPoints };
+                // 4. Deduzir pontos
+                const newPoints = currentPoints - reward.points_cost;
+                await client.query('UPDATE users SET ad_points = $1 WHERE id = $2', [newPoints, user.id]);
+
+                // 5. Registrar no histórico
+                await client.query(
+                    `INSERT INTO reward_redemptions (user_id, reward_id, reward_name, points_spent, code_delivered, status, created_at)
+                     VALUES ($1, $2, $3, $4, $5, 'COMPLETED', NOW())`,
+                    [user.id, reward.id, reward.name, reward.points_cost, deliveredCode]
+                );
+
+                return { success: true, code: deliveredCode, deliveryMessage, newPoints };
             });
 
             if (!result.success) {
@@ -336,12 +352,25 @@ export class EarnController {
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
 
-            const res = await pool.query('SELECT ad_points FROM users WHERE id = $1', [user.id]);
-            const currentPoints = res.rows[0]?.ad_points || 0;
+            const userRes = await pool.query('SELECT ad_points FROM users WHERE id = $1', [user.id]);
+            const currentPoints = userRes.rows[0]?.ad_points || 0;
 
-            const catalog = Object.values(REWARDS_CATALOG).map(r => ({
-                ...r,
-                canAfford: currentPoints >= r.pointsCost
+            const res = await pool.query(`
+                SELECT c.*, 
+                (SELECT COUNT(*) FROM reward_inventory i WHERE i.reward_id = c.id AND i.is_used = FALSE) as stock
+                FROM reward_catalog c
+                WHERE is_active = TRUE
+                ORDER BY points_cost ASC
+            `);
+
+            const catalog = res.rows.map(r => ({
+                id: r.id,
+                name: r.name,
+                pointsCost: r.points_cost,
+                type: r.type,
+                value: parseFloat(r.value),
+                stock: parseInt(r.stock),
+                canAfford: currentPoints >= r.points_cost
             }));
 
             return c.json({
