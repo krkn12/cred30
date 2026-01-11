@@ -170,8 +170,8 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                         stateUpdated = true;
                     }
 
-                    // Mostrar se estiver no raio de 2km e não tiver "passado"
-                    if (dist <= 2000 && !newPassed.has(pickupId)) {
+                    // Mostrar se estiver no raio de 4.5km e não tiver "passado"
+                    if (dist <= 4500 && !newPassed.has(pickupId)) {
                         const m = L.marker([pickupPos.lat, pickupPos.lng], {
                             icon: pickupIcon,
                             zIndexOffset: 1000
@@ -198,7 +198,7 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                         stateUpdated = true;
                     }
 
-                    if (dist <= 2000 && !newPassed.has(deliveryId)) {
+                    if (dist <= 4500 && !newPassed.has(deliveryId)) {
                         const m = L.marker([deliveryPos.lat, deliveryPos.lng], { icon: deliveryIcon })
                             .addTo(mapRef.current!)
                             .on('click', () => setSelectedDelivery(delivery));
