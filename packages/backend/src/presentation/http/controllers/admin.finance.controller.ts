@@ -513,7 +513,7 @@ export class AdminFinanceController {
             await pool.query(`UPDATE system_config SET ${setClause}, updated_at = NOW()`, values);
 
             // Limpar cache do dashboard para refletir as mudanças
-            CacheService.deleteAdminDashboard();
+            CacheService.invalidateAdminDashboard();
 
             return c.json({
                 success: true,
@@ -548,6 +548,7 @@ export class AdminFinanceController {
             }
 
             // 1. Volume Total Bruto (Tudo que entrou no sistema)
+            // Inclui depósitos, pagamentos de pedidos e compras de cotas
             const volumeRes = await pool.query(`
                 SELECT COALESCE(SUM(amount), 0) as total_volume
                 FROM transactions 
@@ -556,40 +557,52 @@ export class AdminFinanceController {
                 ${dateFilter}
             `, params);
 
-            // 2. Receita Própria (Sua base de cálculo de imposto)
-            const revenueRes = await pool.query(`
-                SELECT 
-                    COALESCE(SUM(CASE WHEN action = 'WITHDRAWAL_FEE' THEN 1 ELSE 0 END), 0) as withdrawal_fees_count,
-                    COALESCE(SUM(CASE WHEN action = 'MARKETPLACE_FEE' THEN 1 ELSE 0 END), 0) as marketplace_fees_count
-                FROM admin_logs 
-                WHERE 1=1 ${dateFilter.replace('created_at', 'created_at')}
+            // 2. Receita de Marketplace (Taxas descontadas dos vendedores)
+            const marketplaceRes = await pool.query(`
+                SELECT COALESCE(SUM(fee_amount), 0) as marketplace_fees
+                FROM marketplace_orders
+                WHERE status != 'CANCELED'
+                ${dateFilter}
             `, params);
 
-            // Buscar taxas reais em transactions (mais confiável para valores)
-            const transRevenueRes = await pool.query(`
-                SELECT COALESCE(SUM(amount), 0) as fees 
-                FROM transactions 
-                WHERE type IN ('FEE', 'SERVICE_TAX', 'WITHDRAWAL_FEE', 'MARKETPLACE_FEE') 
+            // 3. Taxas de Saque e Outras Taxas Diretas
+            const feesRes = await pool.query(`
+                SELECT COALESCE(SUM(amount), 0) as direct_fees
+                FROM transactions
+                WHERE type IN ('FEE', 'WITHDRAWAL_FEE', 'SERVICE_TAX')
                 AND status = 'APPROVED'
                 ${dateFilter}
             `, params);
 
-            // Buscar lucros acumulados das configurações (como fallback histórico)
-            const configProfitRes = await pool.query(`SELECT profit_pool, total_owner_profit FROM system_config LIMIT 1`);
-            const configProfit = configProfitRes.rows[0];
+            // 4. Lucro nas Entregas (27.5% de margem sobre o frete)
+            const logisticsProfitRes = await pool.query(`
+                SELECT COALESCE(SUM(delivery_fee * 0.275), 0) as logistics_profit
+                FROM marketplace_orders
+                WHERE delivery_status = 'DELIVERED'
+                ${dateFilter}
+            `, params);
 
-            const taxableRevenue = parseFloat(transRevenueRes.rows[0].fees || 0);
+            // 5. Lucros Acumulados do Sistema (Fallback para visão geral)
+            const configResult = await pool.query('SELECT profit_pool, total_owner_profit, system_balance FROM system_config LIMIT 1');
+            const config = configResult.rows[0] || {};
+
+            const taxableRevenue = parseFloat(marketplaceRes.rows[0].marketplace_fees) +
+                parseFloat(feesRes.rows[0].direct_fees) +
+                parseFloat(logisticsProfitRes.rows[0].logistics_profit);
 
             const fiscalSummary = {
-                period: isAllTime ? 'Todo o Período' : `${month}/${year}`,
+                period: isAllTime ? 'Histórico Completo' : `${month}/${year}`,
                 gross_volume: parseFloat(volumeRes.rows[0].total_volume),
-                taxable_revenue: taxableRevenue || (isAllTime ? parseFloat(configProfit?.total_owner_profit || 0) : 0),
+                taxable_revenue: taxableRevenue,
                 transitory_funds: parseFloat(volumeRes.rows[0].total_volume) - taxableRevenue,
                 details: {
-                    fees: taxableRevenue,
-                    config_profit_pool: parseFloat(configProfit?.profit_pool || 0),
-                    config_owner_profit: parseFloat(configProfit?.total_owner_profit || 0)
-                }
+                    marketplace_commissions: parseFloat(marketplaceRes.rows[0].marketplace_fees),
+                    logistics_margin: parseFloat(logisticsProfitRes.rows[0].logistics_profit),
+                    withdrawal_fees: parseFloat(feesRes.rows[0].direct_fees),
+                    accumulated_system_profit: parseFloat(config.total_owner_profit || 0),
+                    total_system_balance: parseFloat(config.system_balance || 0)
+                },
+                legal_notice: "Relatório baseado no Art. 653 do Código Civil (Mandato). Valores transientes não compõem faturamento próprio."
             };
 
             return c.json({
