@@ -5,7 +5,7 @@ import { apiService } from '../../../../../application/services/api.service';
 export const AdminFiscal = () => {
     const [loading, setLoading] = useState(true);
     const [report, setReport] = useState<any>(null);
-    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+    const [selectedMonth, setSelectedMonth] = useState(0);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
     useEffect(() => {
@@ -49,6 +49,7 @@ export const AdminFiscal = () => {
                             onChange={(e) => setSelectedMonth(Number(e.target.value))}
                             className="bg-transparent text-white font-bold text-sm focus:outline-none cursor-pointer"
                         >
+                            <option value={0} className="bg-zinc-900">Todo o Período</option>
                             {Array.from({ length: 12 }, (_, i) => (
                                 <option key={i + 1} value={i + 1} className="bg-zinc-900">
                                     {new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}

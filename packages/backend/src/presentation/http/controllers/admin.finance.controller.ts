@@ -533,11 +533,19 @@ export class AdminFinanceController {
     static async getFiscalReport(c: Context) {
         try {
             const pool = getDbPool(c);
-            const month = c.req.query('month') || new Date().getMonth() + 1;
-            const year = c.req.query('year') || new Date().getFullYear();
+            const month = c.req.query('month');
+            const year = c.req.query('year');
+            const isAllTime = month === '0' || !month;
 
-            const startDate = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
-            const endDate = new Date(Number(year), Number(month), 0).toISOString().split('T')[0] + ' 23:59:59';
+            let dateFilter = '';
+            let params: any[] = [];
+
+            if (!isAllTime) {
+                const startDate = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
+                const endDate = new Date(Number(year), Number(month), 0).toISOString().split('T')[0] + ' 23:59:59';
+                dateFilter = `AND created_at BETWEEN $1 AND $2`;
+                params = [startDate, endDate];
+            }
 
             // 1. Volume Total Bruto (Tudo que entrou no sistema)
             const volumeRes = await pool.query(`
@@ -545,47 +553,49 @@ export class AdminFinanceController {
                 FROM transactions 
                 WHERE status = 'APPROVED' 
                 AND type IN ('DEPOSIT', 'ORDER_PAYMENT', 'BUY_QUOTA', 'LOAN_REPAYMENT')
-                AND created_at BETWEEN $1 AND $2
-            `, [startDate, endDate]);
+                ${dateFilter}
+            `, params);
 
             // 2. Receita Própria (Sua base de cálculo de imposto)
-            // Inclui: Taxas de Marketplace, Juros de Empréstimo, Taxas de Saque, Upgrade Pro
             const revenueRes = await pool.query(`
                 SELECT 
-                    SUM(CASE WHEN type = 'WITHDRAWAL_FEE' THEN amount ELSE 0 END) as withdrawal_fees,
-                    SUM(CASE WHEN type = 'LOAN_INTEREST' THEN amount ELSE 0 END) as loan_interests,
-                    SUM(CASE WHEN type = 'MARKETPLACE_FEE' THEN amount ELSE 0 END) as marketplace_fees,
-                    SUM(CASE WHEN type = 'UPGRADE_PRO' THEN amount ELSE 0 END) as upgrades
+                    COALESCE(SUM(CASE WHEN action = 'WITHDRAWAL_FEE' THEN 1 ELSE 0 END), 0) as withdrawal_fees_count,
+                    COALESCE(SUM(CASE WHEN action = 'MARKETPLACE_FEE' THEN 1 ELSE 0 END), 0) as marketplace_fees_count
                 FROM admin_logs 
-                WHERE created_at BETWEEN $1 AND $2
-            `, [startDate, endDate]);
+                WHERE 1=1 ${dateFilter.replace('created_at', 'created_at')}
+            `, params);
 
-            // Alternativa: Se as taxas estiverem em transactions
+            // Buscar taxas reais em transactions (mais confiável para valores)
             const transRevenueRes = await pool.query(`
                 SELECT COALESCE(SUM(amount), 0) as fees 
                 FROM transactions 
-                WHERE type IN ('FEE', 'SERVICE_TAX') 
+                WHERE type IN ('FEE', 'SERVICE_TAX', 'WITHDRAWAL_FEE', 'MARKETPLACE_FEE') 
                 AND status = 'APPROVED'
-                AND created_at BETWEEN $1 AND $2
-            `, [startDate, endDate]);
+                ${dateFilter}
+            `, params);
+
+            // Buscar lucros acumulados das configurações (como fallback histórico)
+            const configProfitRes = await pool.query(`SELECT profit_pool, total_owner_profit FROM system_config LIMIT 1`);
+            const configProfit = configProfitRes.rows[0];
+
+            const taxableRevenue = parseFloat(transRevenueRes.rows[0].fees || 0);
 
             const fiscalSummary = {
-                period: { month, year },
+                period: isAllTime ? 'Todo o Período' : `${month}/${year}`,
                 gross_volume: parseFloat(volumeRes.rows[0].total_volume),
-                taxable_revenue: parseFloat(revenueRes.rows[0].marketplace_fees || 0) +
-                    parseFloat(revenueRes.rows[0].loan_interests || 0) +
-                    parseFloat(revenueRes.rows[0].withdrawal_fees || 0) +
-                    parseFloat(transRevenueRes.rows[0].fees || 0),
-                transitory_funds: parseFloat(volumeRes.rows[0].total_volume) -
-                    (parseFloat(revenueRes.rows[0].marketplace_fees || 0) +
-                        parseFloat(transRevenueRes.rows[0].fees || 0)),
-                details: revenueRes.rows[0]
+                taxable_revenue: taxableRevenue || (isAllTime ? parseFloat(configProfit?.total_owner_profit || 0) : 0),
+                transitory_funds: parseFloat(volumeRes.rows[0].total_volume) - taxableRevenue,
+                details: {
+                    fees: taxableRevenue,
+                    config_profit_pool: parseFloat(configProfit?.profit_pool || 0),
+                    config_owner_profit: parseFloat(configProfit?.total_owner_profit || 0)
+                }
             };
 
             return c.json({
                 success: true,
                 data: fiscalSummary,
-                message: "Este relatório separa o que é seu lucro (tributável) do que é apenas custódia de terceiros."
+                message: isAllTime ? "Relatório consolidado de todo o histórico do sistema." : "Relatório mensal detalhado."
             });
         } catch (error: any) {
             console.error('Erro ao gerar relatório fiscal:', error);
