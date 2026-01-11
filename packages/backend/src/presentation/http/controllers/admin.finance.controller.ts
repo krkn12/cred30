@@ -218,6 +218,7 @@ export class AdminFinanceController {
             config.total_operational_reserve = parseFloat(String(config.total_operational_reserve || 0));
             config.total_owner_profit = parseFloat(String(config.total_owner_profit || 0));
             config.investment_reserve = parseFloat(String(config.investment_reserve || 0));
+            config.courier_price_per_km = parseFloat(String(config.courier_price_per_km || '2.50'));
 
             const statsResult = await pool.query(`
         SELECT 
@@ -487,6 +488,108 @@ export class AdminFinanceController {
         } catch (error: any) {
             console.error('Erro ao adicionar custo manual:', error);
             return c.json({ success: false, message: error.message || 'Erro interno do servidor' }, 500);
+        }
+    }
+
+    /**
+     * Atualizar Configurações Gerais do Sistema
+     */
+    static async updateConfig(c: Context) {
+        try {
+            const body = await c.req.json();
+            const pool = getDbPool(c);
+
+            // Filtrar apenas campos permitidos para atualização via este endpoint
+            const allowedFields = ['courier_price_per_km', 'quota_price', 'loan_interest_rate', 'penalty_rate'];
+            const updates = Object.keys(body).filter(key => allowedFields.includes(key));
+
+            if (updates.length === 0) {
+                return c.json({ success: false, message: 'Nenhum campo válido para atualização' }, 400);
+            }
+
+            const setClause = updates.map((key, i) => `${key} = $${i + 1}`).join(', ');
+            const values = updates.map(key => body[key]);
+
+            await pool.query(`UPDATE system_config SET ${setClause}, updated_at = NOW()`, values);
+
+            // Limpar cache do dashboard para refletir as mudanças
+            CacheService.deleteAdminDashboard();
+
+            return c.json({
+                success: true,
+                message: 'Configurações atualizadas com sucesso!',
+                updatedFields: updates
+            });
+        } catch (error: any) {
+            console.error('Erro ao atualizar configurações:', error);
+            return c.json({ success: false, message: error.message || 'Erro interno do servidor' }, 500);
+        }
+    }
+
+    /**
+     * Relatório Fiscal (Auditoria para Declaração de Impostos)
+     * Separa Receita Bruta (Taxas) de Movimentação de Terceiros (Custódia)
+     */
+    static async getFiscalReport(c: Context) {
+        try {
+            const pool = getDbPool(c);
+            const month = c.req.query('month') || new Date().getMonth() + 1;
+            const year = c.req.query('year') || new Date().getFullYear();
+
+            const startDate = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
+            const endDate = new Date(Number(year), Number(month), 0).toISOString().split('T')[0] + ' 23:59:59';
+
+            // 1. Volume Total Bruto (Tudo que entrou no sistema)
+            const volumeRes = await pool.query(`
+                SELECT COALESCE(SUM(amount), 0) as total_volume
+                FROM transactions 
+                WHERE status = 'APPROVED' 
+                AND type IN ('DEPOSIT', 'ORDER_PAYMENT', 'BUY_QUOTA', 'LOAN_REPAYMENT')
+                AND created_at BETWEEN $1 AND $2
+            `, [startDate, endDate]);
+
+            // 2. Receita Própria (Sua base de cálculo de imposto)
+            // Inclui: Taxas de Marketplace, Juros de Empréstimo, Taxas de Saque, Upgrade Pro
+            const revenueRes = await pool.query(`
+                SELECT 
+                    SUM(CASE WHEN type = 'WITHDRAWAL_FEE' THEN amount ELSE 0 END) as withdrawal_fees,
+                    SUM(CASE WHEN type = 'LOAN_INTEREST' THEN amount ELSE 0 END) as loan_interests,
+                    SUM(CASE WHEN type = 'MARKETPLACE_FEE' THEN amount ELSE 0 END) as marketplace_fees,
+                    SUM(CASE WHEN type = 'UPGRADE_PRO' THEN amount ELSE 0 END) as upgrades
+                FROM admin_logs 
+                WHERE created_at BETWEEN $1 AND $2
+            `, [startDate, endDate]);
+
+            // Alternativa: Se as taxas estiverem em transactions
+            const transRevenueRes = await pool.query(`
+                SELECT COALESCE(SUM(amount), 0) as fees 
+                FROM transactions 
+                WHERE type IN ('FEE', 'SERVICE_TAX') 
+                AND status = 'APPROVED'
+                AND created_at BETWEEN $1 AND $2
+            `, [startDate, endDate]);
+
+            const fiscalSummary = {
+                period: { month, year },
+                gross_volume: parseFloat(volumeRes.rows[0].total_volume),
+                taxable_revenue: parseFloat(revenueRes.rows[0].marketplace_fees || 0) +
+                    parseFloat(revenueRes.rows[0].loan_interests || 0) +
+                    parseFloat(revenueRes.rows[0].withdrawal_fees || 0) +
+                    parseFloat(transRevenueRes.rows[0].fees || 0),
+                transitory_funds: parseFloat(volumeRes.rows[0].total_volume) -
+                    (parseFloat(revenueRes.rows[0].marketplace_fees || 0) +
+                        parseFloat(transRevenueRes.rows[0].fees || 0)),
+                details: revenueRes.rows[0]
+            };
+
+            return c.json({
+                success: true,
+                data: fiscalSummary,
+                message: "Este relatório separa o que é seu lucro (tributável) do que é apenas custódia de terceiros."
+            });
+        } catch (error: any) {
+            console.error('Erro ao gerar relatório fiscal:', error);
+            return c.json({ success: false, message: error.message }, 500);
         }
     }
 }

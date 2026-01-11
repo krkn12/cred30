@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import packageJson from '../../../../package.json';
 import {
-    ShieldCheck, RefreshCw, LogOut, Send, MessageSquare, PieChart, Activity, Settings as SettingsIcon, UserPlus, ShoppingBag as ShoppingBagIcon, Vote, Bug, TrendingUp, Truck, Gift
+    ShieldCheck, RefreshCw, LogOut, Send, MessageSquare, PieChart, Activity, Settings as SettingsIcon, UserPlus, ShoppingBag as ShoppingBagIcon, Vote, Bug, TrendingUp, Truck, Gift, FileText
 } from 'lucide-react';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { AppState } from '../../../domain/types/common.types';
@@ -23,6 +23,7 @@ import { AdminLogistics } from '../features/admin/tabs/AdminLogistics';
 import { AdminPartners } from '../features/admin/tabs/AdminPartners';
 import { AdminApprovals } from '../features/admin/tabs/AdminApprovals';
 import { AdminRewardsTab } from '../features/admin/tabs/AdminRewardsTab';
+import { AdminFiscal } from '../features/admin/tabs/AdminFiscal';
 
 // Existing Shared Components
 import { AdminStoreManager } from '../features/store/admin-store.component';
@@ -35,7 +36,7 @@ interface AdminViewProps {
     onError: (title: string, message: string) => void;
 }
 
-type TabType = 'overview' | 'approvals' | 'payouts' | 'system' | 'investments' | 'store' | 'rewards' | 'referrals' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics' | 'partners';
+type TabType = 'overview' | 'approvals' | 'payouts' | 'system' | 'investments' | 'store' | 'rewards' | 'referrals' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics' | 'partners' | 'fiscal';
 
 export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: AdminViewProps) => {
     const [isLoading, setIsLoading] = useState(false);
@@ -136,6 +137,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         { id: 'bugs', name: 'Bugs', icon: Bug, count: pendingBugsCount, roles: ['ADMIN'] },
         { id: 'logistics', name: 'Logística', icon: Truck, roles: ['ADMIN'] },
         { id: 'partners', name: 'Parceiros', icon: UserPlus, roles: ['ADMIN'] },
+        { id: 'fiscal', name: 'Fiscal', icon: FileText, roles: ['ADMIN'] },
     ].filter(tab => tab.roles.includes(userRole)), [userRole, pendingApprovalsCount, pendingPayoutsCount, pendingReviewsCount, pendingBugsCount]);
 
 
@@ -226,8 +228,9 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                 {activeTab === 'governance' && <AdminGovernance onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'reviews' && <AdminReviews onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'bugs' && <AdminBugs onSuccess={onSuccess} onError={onError} />}
-                {activeTab === 'logistics' && <AdminLogistics />}
+                {activeTab === 'logistics' && <AdminLogistics state={state} onRefresh={onRefresh} onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'partners' && <AdminPartners onSuccess={onSuccess} onError={onError} />}
+                {activeTab === 'fiscal' && <AdminFiscal />}
             </div>
 
             {confirmMP && (
