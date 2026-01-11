@@ -54,7 +54,8 @@ export class FinanceApi extends ApiBase {
     }
 
     async confirmWithdrawal(transactionId: number, code: string, password: string): Promise<ApiResponse<any>> {
-        return await this.post<any>('/withdrawals/confirm', { transactionId, code, password });
+        // code é mapeado para twoFactorCode para verificação 2FA em operações sensíveis
+        return await this.post<any>('/withdrawals/confirm', { transactionId, code, password, twoFactorCode: code });
     }
 
     // --- DEPOSITS ---
