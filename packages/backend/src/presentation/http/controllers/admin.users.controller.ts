@@ -68,11 +68,14 @@ export class AdminUsersController {
             const totalResult = await pool.query(`SELECT COUNT(*) as total ${baseQuery}`, params);
             const total = parseInt(totalResult.rows[0].total);
 
-            // Buscar dados paginados
+            // Buscar dados paginados com contagem e valor de cotas
             const dataQuery = `
-        SELECT id, name, email, role, status, balance, score, created_at, pix_key, membership_type
-        ${baseQuery}
-        ORDER BY created_at DESC 
+        SELECT 
+            u.id, u.name, u.email, u.role, u.status, u.balance, u.score, u.created_at, u.pix_key, u.membership_type,
+            (SELECT COUNT(*) FROM quotas q WHERE q.user_id = u.id AND (q.status = 'ACTIVE' OR q.status IS NULL)) as quotas_count,
+            (SELECT COALESCE(SUM(q.current_value), 0) FROM quotas q WHERE q.user_id = u.id AND (q.status = 'ACTIVE' OR q.status IS NULL)) as quotas_value
+        ${baseQuery.replace('FROM users', 'FROM users u')}
+        ORDER BY u.created_at DESC 
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;
             params.push(limitNum, offsetNum);

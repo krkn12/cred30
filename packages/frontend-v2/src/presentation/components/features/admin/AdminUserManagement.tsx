@@ -12,6 +12,8 @@ interface User {
     score: number;
     created_at: string;
     pix_key: string;
+    quotas_count: number;
+    quotas_value: number;
 }
 
 export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: any, onError: any }) => {
@@ -207,6 +209,11 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: any, on
                                         <td className="px-6 py-5 text-right">
                                             <div className="space-y-1">
                                                 <p className="text-sm font-bold text-white tracking-tight flex items-center justify-end gap-1"><DollarSign size={14} className="text-emerald-400" /> {user.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                                {user.quotas_count > 0 && (
+                                                    <p className="text-[10px] text-zinc-400 font-bold flex items-center justify-end gap-1 uppercase tracking-tighter">
+                                                        {user.quotas_count} Ativa(s) • R$ {Number(user.quotas_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </p>
+                                                )}
                                                 <p className="text-[11px] text-primary-400 font-black flex items-center justify-end gap-1"><Award size={12} /> {user.score} pts</p>
                                             </div>
                                         </td>
