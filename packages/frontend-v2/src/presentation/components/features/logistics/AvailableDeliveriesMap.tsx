@@ -140,7 +140,7 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
 
         const bounds: L.LatLngExpression[] = [];
 
-        // Adicionar localizaçao do usuário
+        // Adicionar localização do usuário e círculo de acurácia
         L.circleMarker([userCoords.lat, userCoords.lng], {
             radius: 8,
             fillColor: "#3b82f6",
@@ -149,6 +149,23 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
             opacity: 1,
             fillOpacity: 0.8
         }).addTo(mapRef.current).bindPopup("Sua localização");
+
+        // Círculo de Precisão (Acurácia)
+        const accuracyCircle = L.circle([userCoords.lat, userCoords.lng], {
+            radius: 300, // Raio inicial baseado no relato do Josias ou dinâmico
+            fillColor: "#3b82f6",
+            fillOpacity: 0.15,
+            color: "#3b82f6",
+            weight: 1,
+            dashArray: '5, 5'
+        }).addTo(mapRef.current);
+
+        // Se houver precisão vinda do navegador, usamos ela
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                accuracyCircle.setRadius(pos.coords.accuracy);
+            });
+        }
 
         const updateMarkers = async () => {
             const sortedDeliveries = [...deliveries];

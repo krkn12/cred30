@@ -313,7 +313,9 @@ export class LogisticsController {
                     ml.title as item_title,
                     ml.image_url,
                     seller.name as seller_name,
-                    buyer.name as buyer_name
+                    seller.phone as seller_phone,
+                    buyer.name as buyer_name,
+                    buyer.phone as buyer_phone
                 FROM marketplace_orders mo
                 LEFT JOIN marketplace_listings ml ON mo.listing_id = ml.id
                 LEFT JOIN users seller ON mo.seller_id = seller.id
@@ -351,7 +353,9 @@ export class LogisticsController {
                             deliveryStatus: row.delivery_status,
                             orderStatus: row.order_status,
                             sellerName: row.seller_name,
+                            sellerPhone: row.seller_phone,
                             buyerName: row.buyer_name,
+                            buyerPhone: row.buyer_phone,
                             createdAt: row.created_at,
                             pickedUpAt: row.picked_up_at,
                             deliveredAt: row.delivered_at,
