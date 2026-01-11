@@ -800,6 +800,15 @@ export const initializeDatabase = async () => {
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS pickup_lng DECIMAL(11, 8);
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_lat DECIMAL(10, 8);
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_lng DECIMAL(11, 8);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS courier_lat DECIMAL(10, 8);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS courier_lng DECIMAL(11, 8);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS courier_fee DECIMAL(10, 2);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS invited_courier_id UUID;
+      
+      -- Coluna para histórico de entregadores (quem pegou e cancelou)
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS previous_couriers INTEGER[];
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_lat DECIMAL(10, 8);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_lng DECIMAL(11, 8);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
     `);

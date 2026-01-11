@@ -260,7 +260,10 @@ export class LogisticsController {
 
             await pool.query(
                 `UPDATE marketplace_orders 
-                 SET courier_id = NULL, delivery_status = 'AVAILABLE', updated_at = NOW()
+                 SET courier_id = NULL, 
+                     delivery_status = 'AVAILABLE', 
+                     previous_couriers = array_append(COALESCE(previous_couriers, '{}'), courier_id),
+                     updated_at = NOW()
                  WHERE id = $1`,
                 [orderId]
             );
@@ -292,7 +295,8 @@ export class LogisticsController {
             const pool = getDbPool(c);
             const status = c.req.query('status');
 
-            let whereClause = 'WHERE mo.courier_id = $1';
+            // Filtra se é o entregador atual OU se já foi um dos entregadores (histórico de cancelamento)
+            let whereClause = 'WHERE (mo.courier_id = $1 OR $1 = ANY(mo.previous_couriers))';
             if (status === 'active') {
                 whereClause += ` AND mo.delivery_status IN ('ACCEPTED', 'IN_TRANSIT', 'DELIVERED')`;
             } else if (status === 'completed') {
