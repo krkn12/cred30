@@ -119,15 +119,14 @@ export class MarketplaceOrdersController {
                     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
                     const distanceKm = R * c;
 
-                    // Pegar preço médio por KM ou preço do sistema (Base: R$ 2.00)
-                    // Josias quer: (Preço KM do Entregador) + 27.5% Lucro
-                    // Como não sabemos o entregador ainda, usamos a base do sistema R$ 2.50
-                    const systemBasePriceKm = 2.50;
+                    // Pegar preço por KM do sistema
+                    const configRes = await pool.query('SELECT courier_price_per_km FROM system_config LIMIT 1');
+                    const systemBasePriceKm = parseFloat(configRes.rows[0]?.courier_price_per_km || '2.50');
                     const baseFee = distanceKm * systemBasePriceKm;
 
                     // Aplicar margem de 27.5% de lucro para a plataforma
                     calculatedDeliveryFee = Math.max(minFee, baseFee * 1.275);
-                    console.log(`[LOGISTICS] Distância: ${distanceKm.toFixed(2)}km | Frete Calculado: R$ ${calculatedDeliveryFee.toFixed(2)}`);
+                    console.log(`[LOGISTICS] Distância: ${distanceKm.toFixed(2)}km | Preço/KM: R$ ${systemBasePriceKm.toFixed(2)} | Frete Calculado: R$ ${calculatedDeliveryFee.toFixed(2)}`);
                 } else {
                     calculatedDeliveryFee = Math.max(minFee, offeredDeliveryFee);
                 }
@@ -198,10 +197,10 @@ export class MarketplaceOrdersController {
                     return { orderId, welcomeBenefitApplied: welcomeBenefit.hasDiscount, usesRemaining: welcomeBenefit.hasDiscount ? welcomeBenefit.usesRemaining - 1 : 0, isDigitalItem: isDigitalLote, digitalContent: isDigitalLote ? listings[0].digital_content : null };
                 });
 
-                if (!result.success) return c.json({ success: false, message: result.error }, 400);
+                if (!result.success || !result.data) return c.json({ success: false, message: result.error || 'Erro ao processar pedido' }, 400);
 
                 let successMessage = result.data.isDigitalItem ? 'Compra realizada! O conteúdo digital está disponível em Seus Pedidos.' : 'Compra realizada! Aguarde o envio/retirada.';
-                if (result.data?.welcomeBenefitApplied) {
+                if (result.data.welcomeBenefitApplied) {
                     successMessage += ` 🎁 Taxa de ${(effectiveEscrowRate * 100).toFixed(1)}% aplicada (Benefício de Boas-Vindas). Usos restantes: ${result.data.usesRemaining}/3`;
                 }
 
@@ -306,11 +305,27 @@ export class MarketplaceOrdersController {
             }
 
             const minFee = DELIVERY_MIN_FEES[requiredVehicle] || 5.00;
-            const offeredFee = buyOnCreditSchema.parse(body).offeredDeliveryFee;
+            // --- CÁLCULO DE FRETE DINÂMICO NO CREDIÁRIO ---
+            let calculatedDeliveryFee = buyOnCreditSchema.parse(body).offeredDeliveryFee;
+            if (buyOnCreditSchema.parse(body).deliveryType === 'COURIER_REQUEST') {
+                const { deliveryLat, deliveryLng, pickupLat, pickupLng } = body;
+                if (deliveryLat && deliveryLng && pickupLat && pickupLng) {
+                    const R = 6371;
+                    const dLat = (deliveryLat - pickupLat) * Math.PI / 180;
+                    const dLon = (deliveryLng - pickupLng) * Math.PI / 180;
+                    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(pickupLat * Math.PI / 180) * Math.cos(deliveryLat * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                    const distanceKm = R * c;
 
-            if (buyOnCreditSchema.parse(body).deliveryType === 'COURIER_REQUEST' && offeredFee < minFee) {
-                return c.json({ success: false, message: `A oferta mínima de frete para este lote (${requiredVehicle}) é de R$ ${minFee.toFixed(2)}.` }, 400);
+                    const configRes = await pool.query('SELECT courier_price_per_km FROM system_config LIMIT 1');
+                    const systemBasePriceKm = parseFloat(configRes.rows[0]?.courier_price_per_km || '2.50');
+                    calculatedDeliveryFee = Math.max(minFee, (distanceKm * systemBasePriceKm) * 1.275);
+                } else {
+                    calculatedDeliveryFee = Math.max(minFee, calculatedDeliveryFee);
+                }
             }
+
+            const fee = calculatedDeliveryFee;
 
             // Determinar taxa base (Verificado vs Não Verificado)
             const isVerified = !!sellerRes.rows[0]?.asaas_wallet_id;
@@ -325,7 +340,6 @@ export class MarketplaceOrdersController {
             // Cálculo dos Juros do Crédito
             const interestAmount = totalPrice * MARKET_CREDIT_INTEREST_RATE * installments;
             const totalToPay = totalPrice + interestAmount;
-            const fee = offeredFee; // Frete é pago à parte ou embutido? Geralmente no crédito embutimos tudo
             const totalWithFee = totalToPay + fee;
 
             const installmentAmount = totalWithFee / installments;

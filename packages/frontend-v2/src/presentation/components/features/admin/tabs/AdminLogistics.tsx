@@ -2,10 +2,21 @@ import { useState, useEffect } from 'react';
 import { Truck, Package, Clock, Search, MapPin, User, Store } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
-export const AdminLogistics = () => {
+interface AdminLogisticsProps {
+    state: any;
+    onRefresh: () => void;
+    onSuccess: (title: string, message: string) => void;
+    onError: (title: string, message: string) => void;
+}
+
+export const AdminLogistics = ({ state, onRefresh, onSuccess, onError }: AdminLogisticsProps) => {
     const [deliveries, setDeliveries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Configurações Locais
+    const [globalKmPrice, setGlobalKmPrice] = useState(state.stats?.systemConfig?.courier_price_per_km?.toString() || '2.50');
+    const [isUpdatingConfig, setIsUpdatingConfig] = useState(false);
 
     useEffect(() => {
         fetchDeliveries();
@@ -14,15 +25,37 @@ export const AdminLogistics = () => {
     const fetchDeliveries = async () => {
         setLoading(true);
         try {
-            // Reutilizando endpoint de listagem, mas o admin verá todos
-            // No futuro, criar um endpoint específico /admin/logistics
             const response = await apiService.get<any>('/logistics/my-deliveries');
-            // Mocking some data for admin view if the above doesn't return all
             setDeliveries(response.data?.deliveries || []);
         } catch (error) {
             console.error('Error fetching logistics:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleUpdateConfig = async () => {
+        const price = parseFloat(globalKmPrice);
+        if (isNaN(price) || price <= 0) {
+            onError("Erro", "Insira um preço por KM válido.");
+            return;
+        }
+
+        setIsUpdatingConfig(true);
+        try {
+            const res = await apiService.patch<any>('/admin/config', {
+                courier_price_per_km: price
+            });
+            if (res.success) {
+                onSuccess("Configuração Atualizada", "O preço base por KM foi alterado para toda a plataforma.");
+                onRefresh();
+            } else {
+                onError("Erro", res.message);
+            }
+        } catch (e: any) {
+            onError("Erro ao salvar", e.message);
+        } finally {
+            setIsUpdatingConfig(false);
         }
     };
 
@@ -38,34 +71,72 @@ export const AdminLogistics = () => {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-xl font-bold text-white">Gestão de Logística</h2>
-                    <p className="text-xs text-zinc-500 uppercase font-black tracking-widest mt-1">Monitoramento de Entregas da Comunidade</p>
+        <div className="space-y-8 animate-in fade-in duration-500">
+            {/* Seção de Configurações Globais */}
+            <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl overflow-hidden relative group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/5 rounded-full blur-2xl -mr-16 -mt-16"></div>
+
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-primary-500/10 rounded-2xl flex items-center justify-center border border-primary-500/20">
+                            <Truck className="text-primary-400" size={24} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-white">Configuração Global de Frete</h3>
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Define o custo base do quilômetro para toda a plataforma</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 bg-black/40 p-2 rounded-2xl border border-zinc-800">
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-bold text-xs">R$</span>
+                            <input
+                                type="number"
+                                step="0.10"
+                                value={globalKmPrice}
+                                onChange={(e) => setGlobalKmPrice(e.target.value)}
+                                className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-10 pr-4 py-3 text-white font-black text-sm outline-none focus:border-primary-500/50 transition-all w-32"
+                            />
+                        </div>
+                        <span className="text-zinc-600 font-bold">/ KM</span>
+                        <button
+                            onClick={handleUpdateConfig}
+                            disabled={isUpdatingConfig}
+                            className="bg-primary-500 hover:bg-primary-400 disabled:opacity-50 text-black font-black px-6 py-3 rounded-xl transition-all uppercase tracking-widest text-[10px]"
+                        >
+                            {isUpdatingConfig ? 'Salvando...' : 'Salvar'}
+                        </button>
+                    </div>
                 </div>
-                <div className="relative">
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-xl font-bold text-white">Monitoramento</h2>
+                    <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mt-1">Status em tempo real das entregas</p>
+                </div>
+                <div className="relative w-full sm:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
                     <input
                         type="text"
                         placeholder="Buscar entrega..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-primary-500"
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary-500"
                     />
                 </div>
             </div>
 
             {loading ? (
                 <div className="flex items-center justify-center py-20">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 shadow-[0_0_15px_rgba(6,182,212,0.3)]"></div>
                 </div>
             ) : (
                 <div className="grid gap-4">
                     {deliveries.length === 0 ? (
                         <div className="text-center py-20 bg-zinc-900/50 border border-zinc-800 rounded-3xl">
-                            <Truck size={48} className="text-zinc-800 mx-auto mb-4" />
-                            <p className="text-zinc-500">Nenhuma entrega registrada no sistema.</p>
+                            <Truck size={48} className="text-zinc-800 mx-auto mb-4 opacity-20" />
+                            <p className="text-zinc-500 font-bold uppercase text-xs tracking-widest">Nenhuma entrega registrada no sistema.</p>
                         </div>
                     ) : (
                         deliveries.filter(d =>
@@ -73,9 +144,9 @@ export const AdminLogistics = () => {
                             d.sellerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             d.buyerName.toLowerCase().includes(searchTerm.toLowerCase())
                         ).map((delivery) => (
-                            <div key={delivery.orderId} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-zinc-700 transition-all">
+                            <div key={delivery.orderId} className="bg-zinc-900/50 border border-zinc-800/50 rounded-2xl p-5 hover:border-zinc-700 hover:bg-zinc-900 transition-all group">
                                 <div className="flex flex-col md:flex-row gap-6">
-                                    <div className="w-16 h-16 bg-zinc-950 rounded-xl overflow-hidden shrink-0 border border-zinc-800">
+                                    <div className="w-16 h-16 bg-black rounded-2xl overflow-hidden shrink-0 border border-zinc-800/50 group-hover:scale-105 transition-transform">
                                         {delivery.imageUrl ? (
                                             <img src={delivery.imageUrl} alt={delivery.itemTitle} className="w-full h-full object-cover" />
                                         ) : (
@@ -85,45 +156,45 @@ export const AdminLogistics = () => {
                                         )}
                                     </div>
                                     <div className="flex-1">
-                                        <div className="flex items-start justify-between mb-2">
+                                        <div className="flex items-start justify-between mb-4">
                                             <div>
-                                                <h4 className="font-bold text-white text-lg">{delivery.itemTitle}</h4>
-                                                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">Pedido #{delivery.orderId}</p>
+                                                <h4 className="font-bold text-white text-lg group-hover:text-primary-400 transition-colors">{delivery.itemTitle}</h4>
+                                                <p className="text-[9px] text-zinc-600 font-black uppercase tracking-widest mt-1">Cod: {delivery.orderId.substring(0, 8)}...</p>
                                             </div>
-                                            <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md border ${getStatusColor(delivery.deliveryStatus)}`}>
+                                            <span className={`text-[9px] font-black uppercase px-3 py-1.5 rounded-lg border shadow-sm ${getStatusColor(delivery.deliveryStatus)}`}>
                                                 {delivery.deliveryStatus}
                                             </span>
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                                            <div className="space-y-2">
-                                                <div className="flex items-center gap-2 text-xs text-zinc-400">
-                                                    <Store size={14} className="text-blue-400" />
-                                                    <span className="font-bold text-zinc-500">De:</span> {delivery.sellerName}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="bg-black/20 p-3 rounded-xl border border-zinc-800/30">
+                                                <div className="flex items-center gap-2 text-[10px] text-zinc-500 mb-1">
+                                                    <Store size={12} className="text-blue-400" />
+                                                    <span className="font-black uppercase tracking-tighter">Retirada:</span> {delivery.sellerName}
                                                 </div>
-                                                <div className="flex items-center gap-2 text-[10px] text-zinc-500 pl-6">
-                                                    <MapPin size={10} /> {delivery.pickupAddress}
+                                                <div className="text-[10px] text-zinc-400 pl-5 line-clamp-1 italic">
+                                                    {delivery.pickupAddress}
                                                 </div>
                                             </div>
-                                            <div className="space-y-2">
-                                                <div className="flex items-center gap-2 text-xs text-zinc-400">
-                                                    <User size={14} className="text-emerald-400" />
-                                                    <span className="font-bold text-zinc-500">Para:</span> {delivery.buyerName}
+                                            <div className="bg-black/20 p-3 rounded-xl border border-zinc-800/30">
+                                                <div className="flex items-center gap-2 text-[10px] text-zinc-500 mb-1">
+                                                    <User size={12} className="text-emerald-400" />
+                                                    <span className="font-black uppercase tracking-tighter">Entrega:</span> {delivery.buyerName}
                                                 </div>
-                                                <div className="flex items-center gap-2 text-[10px] text-zinc-500 pl-6">
-                                                    <MapPin size={10} /> {delivery.deliveryAddress}
+                                                <div className="text-[10px] text-zinc-400 pl-5 line-clamp-1 italic">
+                                                    {delivery.deliveryAddress}
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex flex-col items-end justify-between border-t md:border-t-0 md:border-l border-zinc-800 pt-4 md:pt-0 md:pl-6 min-w-[120px]">
+                                    <div className="flex flex-col items-end justify-between border-t md:border-t-0 md:border-l border-zinc-800 pt-4 md:pt-0 md:pl-6 min-w-[140px]">
                                         <div className="text-right">
-                                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Frete</p>
-                                            <p className="text-xl font-black text-white">R$ {delivery.deliveryFee.toFixed(2)}</p>
+                                            <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Frete Acordado</p>
+                                            <p className="text-2xl font-black text-white tracking-tighter">R$ {parseFloat(delivery.deliveryFee).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                                         </div>
-                                        <div className="flex items-center gap-2 text-[10px] text-zinc-500">
+                                        <div className="flex items-center gap-2 text-[10px] text-zinc-600 font-bold uppercase">
                                             <Clock size={12} />
-                                            {new Date(delivery.createdAt).toLocaleDateString()}
+                                            {new Date(delivery.createdAt).toLocaleDateString('pt-BR')}
                                         </div>
                                     </div>
                                 </div>

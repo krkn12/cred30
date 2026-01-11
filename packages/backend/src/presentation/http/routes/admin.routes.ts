@@ -23,12 +23,14 @@ adminRoutes.delete('/costs/:id', adminMiddleware, auditMiddleware('DELETE_COST',
 adminRoutes.post('/costs/:id/pay', adminMiddleware, auditMiddleware('PAY_COST', 'SYSTEM'), AdminFinanceController.payCost);
 adminRoutes.get('/finance-history', adminMiddleware, AdminFinanceController.getFinanceHistory);
 adminRoutes.get('/dashboard', adminMiddleware, AdminFinanceController.getDashboard);
+adminRoutes.get('/fiscal/report', adminMiddleware, AdminFinanceController.getFiscalReport);
 adminRoutes.get('/metrics/health', attendantMiddleware, AdminFinanceController.getHealthMetrics);
 adminRoutes.post('/system-balance', adminMiddleware, AdminFinanceController.systemBalanceInfo);
 adminRoutes.post('/profit-pool', adminMiddleware, auditMiddleware('MANUAL_PROFIT_ADD', 'SYSTEM_CONFIG'), AdminFinanceController.addProfitPool);
 adminRoutes.post('/manual-cost', adminMiddleware, auditMiddleware('ADD_MANUAL_COST', 'SYSTEM_CONFIG'), AdminFinanceController.addManualCost);
 adminRoutes.post('/distribute-dividends', adminMiddleware, auditMiddleware('DISTRIBUTE_DIVIDENDS', 'SYSTEM_CONFIG'), AdminFinanceController.distributeDividends);
 adminRoutes.post('/simulate-mp-payment', adminMiddleware, AdminFinanceController.simulatePayment);
+adminRoutes.patch('/config', adminMiddleware, auditMiddleware('UPDATE_SYSTEM_CONFIG', 'SYSTEM_CONFIG'), AdminFinanceController.updateConfig);
 
 // --- APROVAÇÕES E FILAS ---
 adminRoutes.post('/process-action', adminMiddleware, auditMiddleware('PROCESS_ACTION', 'TRANSACTION_LOAN'), AdminApprovalController.processAction);
