@@ -64,7 +64,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const [missions, setMissions] = useState<any[]>([]);
     const [deliveryOption, setDeliveryOption] = useState<'SELF_PICKUP' | 'COURIER_REQUEST' | 'EXTERNAL_SHIPPING'>('SELF_PICKUP');
     const [offeredFee, setOfferedFee] = useState<string>('5.00');
-    const [gpsLocation, setGpsLocation] = useState<{ city: string, state: string, neighborhood: string } | null>(null);
+    const [gpsLocation, setGpsLocation] = useState<{ city: string, state: string, neighborhood: string, accuracy?: number } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -406,7 +406,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         setIsLoading(true);
         navigator.geolocation.getCurrentPosition(async (position) => {
             try {
-                const { latitude, longitude } = position.coords;
+                const { latitude, longitude, accuracy } = position.coords;
                 const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
                 const data = await response.json();
 
@@ -424,9 +424,15 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                         setGpsLocation({
                             city: cityName,
                             state: foundUF.sigla,
-                            neighborhood: neighborhood || ''
+                            neighborhood: neighborhood || '',
+                            accuracy: accuracy
                         });
-                        onSuccess('Localização Definida', `Seu anúncio será em: ${neighborhood ? neighborhood + ' - ' : ''}${cityName}/${foundUF.sigla}`);
+
+                        if (accuracy > 100) {
+                            onSuccess('GPS Oscilando', `Localização capturada, mas com baixa precisão (${Math.round(accuracy)}m). Você pode ajustar manualmente se estiver errado.`);
+                        } else {
+                            onSuccess('Localização Definida', `Seu anúncio será em: ${neighborhood ? neighborhood + ' - ' : ''}${cityName}/${foundUF.sigla}`);
+                        }
                     } else {
                         onError('Erro', 'Não conseguimos identificar sua cidade/estado com precisão.');
                     }
@@ -441,7 +447,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
             console.warn(err);
             setIsLoading(false);
             onError('Erro', 'Permissão de localização negada.');
-        });
+        }, { enableHighAccuracy: true, timeout: 10000 });
     };
 
     // Loading principal
