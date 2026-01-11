@@ -711,10 +711,12 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                     </div>
                 </div>
             )}
-            {/* 2FA Setup Modal */}
+            {/* 2FA Setup Modal - Bottom Sheet on Mobile */}
             {show2FASetup && (
-                <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[110] p-4 animate-in fade-in duration-300 backdrop-blur-md">
-                    <div className="bg-zinc-950 border border-zinc-800 rounded-[2.5rem] p-6 md:p-8 w-full max-w-md relative shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center z-[110] p-0 sm:p-4 animate-in fade-in duration-300" onClick={() => setShow2FASetup(false)}>
+                    <div className="bg-[#0A0A0A] border-t sm:border border-zinc-800 rounded-t-[2rem] sm:rounded-3xl p-6 sm:p-8 w-full sm:max-w-md relative shadow-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300" onClick={(e) => e.stopPropagation()}>
+                        {/* Drag Handle for Mobile */}
+                        <div className="w-12 h-1.5 bg-zinc-700 rounded-full mx-auto mb-4 sm:hidden opacity-50" />
                         <button onClick={() => setShow2FASetup(false)} className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors z-10"><XIcon size={24} /></button>
 
                         <div className="text-center mb-8">
