@@ -7,11 +7,61 @@ interface MissionsViewProps {
     currentUserId: string;
     formatCurrency: (value: number) => string;
     onAccept: (mission: any) => void;
+    pricePerKm?: number;
+    onUpdatePrice?: (newPrice: number) => void;
 }
 
-export const MissionsView = ({ missions, currentUserId, formatCurrency, onAccept }: MissionsViewProps) => {
+export const MissionsView = ({ missions, currentUserId, formatCurrency, onAccept, pricePerKm = 2.00, onUpdatePrice }: MissionsViewProps) => {
+    const [editingPrice, setEditingPrice] = React.useState(false);
+    const [tempPrice, setTempPrice] = React.useState(pricePerKm.toString());
+
     return (
         <div className="space-y-4 animate-in fade-in duration-300">
+            {/* Painel de Configuração do Entregador */}
+            <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h3 className="text-white font-bold flex items-center gap-2">
+                        <Truck size={18} className="text-primary-400" /> Seu Perfil de Entregador
+                    </h3>
+                    <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mt-1">Configurações de Ganhos</p>
+                </div>
+
+                <div className="flex items-center gap-3 bg-zinc-950 p-2 pl-4 rounded-2xl border border-zinc-800 w-full md:w-auto">
+                    <div className="flex-1 md:flex-none">
+                        <p className="text-[9px] text-zinc-500 font-bold uppercase">Preço por KM</p>
+                        {editingPrice ? (
+                            <input
+                                type="number"
+                                value={tempPrice}
+                                onChange={(e) => setTempPrice(e.target.value)}
+                                className="bg-transparent text-white font-black text-lg w-20 outline-none border-b border-primary-500"
+                                autoFocus
+                            />
+                        ) : (
+                            <p className="text-lg font-black text-white">{formatCurrency(pricePerKm)} <span className="text-[10px] text-zinc-500 font-normal">/ km</span></p>
+                        )}
+                    </div>
+                    {editingPrice ? (
+                        <button
+                            onClick={() => {
+                                onUpdatePrice?.(parseFloat(tempPrice));
+                                setEditingPrice(false);
+                            }}
+                            className="bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[10px] px-4 py-2 rounded-xl uppercase transition"
+                        >
+                            Salvar
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => setEditingPrice(true)}
+                            className="bg-zinc-800 hover:bg-zinc-700 text-white font-black text-[10px] px-4 py-2 rounded-xl uppercase transition border border-zinc-700"
+                        >
+                            Alterar
+                        </button>
+                    )}
+                </div>
+            </div>
+
             <div className="bg-gradient-to-br from-indigo-900/40 to-indigo-600/10 border border-indigo-500/20 rounded-3xl p-6 relative overflow-hidden">
                 <div className="relative z-10">
                     <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Mural de Missões</h3>

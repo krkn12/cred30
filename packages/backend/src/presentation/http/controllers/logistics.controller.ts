@@ -413,7 +413,7 @@ export class LogisticsController {
             const pool = getDbPool(c);
 
             const result = await pool.query(
-                `SELECT is_courier, courier_status, courier_vehicle, courier_city, courier_state, courier_created_at 
+                `SELECT is_courier, courier_status, courier_vehicle, courier_city, courier_state, courier_created_at, courier_price_per_km 
                  FROM users WHERE id = $1`,
                 [user.id]
             );
@@ -428,6 +428,7 @@ export class LogisticsController {
                 city: userData?.courier_city || null,
                 state: userData?.courier_state || null,
                 registeredAt: userData?.courier_created_at || null,
+                pricePerKm: parseFloat(userData?.courier_price_per_km || '2.00'),
             });
         } catch (error: any) {
             console.error('[LOGISTICS] Erro ao buscar status do entregador:', error);
@@ -446,7 +447,6 @@ export class LogisticsController {
 
             const { cpf, phone, city, state, vehicle } = body;
 
-            // Validação de campos obrigatórios
             if (!cpf || !phone || !city || !state || !vehicle) {
                 return c.json({
                     success: false,
@@ -454,7 +454,6 @@ export class LogisticsController {
                 }, 400);
             }
 
-            // Validação de veículo
             const validVehicles = ['BIKE', 'MOTO', 'CAR', 'TRUCK'];
             if (!validVehicles.includes(vehicle)) {
                 return c.json({
@@ -463,20 +462,11 @@ export class LogisticsController {
                 }, 400);
             }
 
-            // Verificar se já é entregador
-            const existingCheck = await pool.query(
-                `SELECT is_courier FROM users WHERE id = $1`,
-                [user.id]
-            );
-
+            const existingCheck = await pool.query(`SELECT is_courier FROM users WHERE id = $1`, [user.id]);
             if (existingCheck.rows[0]?.is_courier) {
-                return c.json({
-                    success: false,
-                    message: 'Você já é um entregador registrado'
-                }, 400);
+                return c.json({ success: false, message: 'Você já é um entregador registrado' }, 400);
             }
 
-            // Registrar entregador com status pendente (admin aprova)
             await pool.query(
                 `UPDATE users SET 
                     is_courier = TRUE,
@@ -486,25 +476,49 @@ export class LogisticsController {
                     courier_cpf = $3,
                     courier_city = $4,
                     courier_state = $5,
+                    courier_price_per_km = $6,
                     courier_created_at = CURRENT_TIMESTAMP
-                 WHERE id = $6`,
-                [vehicle, phone, cpf, city, state, user.id]
+                 WHERE id = $7`,
+                [vehicle, phone, cpf, city, state, body.pricePerKm || 2.00, user.id]
             );
 
             return c.json({
                 success: true,
-                message: 'Cadastro enviado para aprovação! Aguarde a liberação pelo administrador.',
-                courier: {
-                    status: 'pending',
-                    vehicle: vehicle
-                }
+                message: 'Cadastro enviado para aprovação!',
+                courier: { status: 'pending', vehicle: vehicle }
             });
         } catch (error: any) {
-            console.error('[LOGISTICS] Erro ao registrar entregador:', error);
-            return c.json({
-                success: false,
-                message: error.message || 'Erro ao criar cadastro de entregador'
-            }, 500);
+            console.error('[LOGISTICS] Erro ao registrar:', error);
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
+     * Atualizar preço por KM
+     */
+    static async updateCourierPrice(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+            const { pricePerKm } = await c.req.json();
+
+            if (!pricePerKm || isNaN(parseFloat(pricePerKm))) {
+                return c.json({ success: false, message: 'Preço por KM inválido' }, 400);
+            }
+
+            const result = await pool.query(
+                `UPDATE users SET courier_price_per_km = $1 WHERE id = $2 AND is_courier = TRUE RETURNING name`,
+                [parseFloat(pricePerKm), user.id]
+            );
+
+            if (result.rows.length === 0) {
+                return c.json({ success: false, message: 'Usuário não é entregador' }, 404);
+            }
+
+            return c.json({ success: true, message: 'Preço por KM atualizado!' });
+        } catch (error: any) {
+            console.error('[LOGISTICS] Erro ao atualizar preço:', error);
+            return c.json({ success: false, message: error.message }, 500);
         }
     }
 }

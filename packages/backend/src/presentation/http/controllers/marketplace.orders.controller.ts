@@ -102,12 +102,39 @@ export class MarketplaceOrdersController {
             }
 
             const minFee = DELIVERY_MIN_FEES[requiredVehicle] || 5.00;
-            if (deliveryType === 'COURIER_REQUEST' && offeredDeliveryFee < minFee) {
-                return c.json({ success: false, message: `A oferta mínima de frete para este lote (${requiredVehicle}) é de R$ ${minFee.toFixed(2)}.` }, 400);
+
+            // --- CÁLCULO DE FRETE DINÂMICO (NOVO) ---
+            let calculatedDeliveryFee = offeredDeliveryFee;
+            if (deliveryType === 'COURIER_REQUEST') {
+                const { deliveryLat, deliveryLng, pickupLat, pickupLng } = body;
+
+                if (deliveryLat && deliveryLng && pickupLat && pickupLng) {
+                    // Haversine no Backend para Cálculo de Frete
+                    const R = 6371; // km
+                    const dLat = (deliveryLat - pickupLat) * Math.PI / 180;
+                    const dLon = (deliveryLng - pickupLng) * Math.PI / 180;
+                    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                        Math.cos(pickupLat * Math.PI / 180) * Math.cos(deliveryLat * Math.PI / 180) *
+                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                    const distanceKm = R * c;
+
+                    // Pegar preço médio por KM ou preço do sistema (Base: R$ 2.00)
+                    // Josias quer: (Preço KM do Entregador) + 27.5% Lucro
+                    // Como não sabemos o entregador ainda, usamos a base do sistema R$ 2.50
+                    const systemBasePriceKm = 2.50;
+                    const baseFee = distanceKm * systemBasePriceKm;
+
+                    // Aplicar margem de 27.5% de lucro para a plataforma
+                    calculatedDeliveryFee = Math.max(minFee, baseFee * 1.275);
+                    console.log(`[LOGISTICS] Distância: ${distanceKm.toFixed(2)}km | Frete Calculado: R$ ${calculatedDeliveryFee.toFixed(2)}`);
+                } else {
+                    calculatedDeliveryFee = Math.max(minFee, offeredDeliveryFee);
+                }
             }
 
-            const isDigitalLote = containsDigital && listings.length === 1; // Só trata como digital se for item único digital
-            const baseAmountToCharge = isDigitalLote ? totalPrice : totalPrice + offeredDeliveryFee;
+            const isDigitalLote = containsDigital && listings.length === 1;
+            const baseAmountToCharge = isDigitalLote ? totalPrice : totalPrice + calculatedDeliveryFee;
 
             // Se o pagamento for via saldo
             if (paymentMethod === 'BALANCE') {
