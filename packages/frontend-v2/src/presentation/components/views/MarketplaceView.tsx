@@ -33,6 +33,7 @@ import { ListingCard } from '../marketplace/ListingCard';
 import { MissionsView } from '../marketplace/MissionsView';
 import { ItemDetailsView } from '../marketplace/ItemDetailsView';
 import { CreateListingView } from '../marketplace/CreateListingView';
+import { AvailableDeliveriesMap } from '../features/logistics/AvailableDeliveriesMap';
 
 interface MarketplaceViewProps {
     state: AppState;
@@ -84,6 +85,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
     const [trackingOrder, setTrackingOrder] = useState<any>(null);
     const [courierPricePerKm, setCourierPricePerKm] = useState<number>(2.0);
+    const [showMissionsMap, setShowMissionsMap] = useState(false);
 
     const addToCart = (item: any) => {
         if (cart.sellerId && cart.sellerId !== item.seller_id) {
@@ -972,46 +974,83 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
             )}
 
             {view === 'missions' && (
-                <MissionsView
-                    missions={missions}
-                    currentUserId={state.currentUser?.id || ''}
-                    formatCurrency={formatCurrency}
-                    pricePerKm={courierPricePerKm}
-                    onUpdatePrice={async (newPrice) => {
+                <div className="space-y-4">
+                    <div className="flex justify-end">
+                        <button
+                            onClick={() => setShowMissionsMap(true)}
+                            className="bg-primary-500 hover:bg-primary-400 text-black font-black text-[10px] px-4 py-2 rounded-xl uppercase transition flex items-center gap-2 shadow-lg shadow-primary-500/20"
+                        >
+                            <MapPin size={14} /> Ver Entregas no Mapa
+                        </button>
+                    </div>
+                    <MissionsView
+                        missions={missions}
+                        currentUserId={state.currentUser?.id || ''}
+                        formatCurrency={formatCurrency}
+                        pricePerKm={courierPricePerKm}
+                        onUpdatePrice={async (newPrice) => {
+                            try {
+                                const res = await apiService.post('/logistics/update-price', { pricePerKm: newPrice });
+                                if (res.success) {
+                                    setCourierPricePerKm(newPrice);
+                                    onSuccess('Sucesso', 'Preço por KM atualizado!');
+                                }
+                            } catch (err: any) {
+                                onError('Erro', err.message);
+                            }
+                        }}
+                        onAccept={(mission: any) => {
+                            setConfirmData({
+                                isOpen: true,
+                                title: 'Aceitar Missão?',
+                                message: 'Você se compromete a retirar o produto com o vendedor e entregar ao comprador. Ao aceitar, enviaremos o código de coleta.',
+                                confirmText: 'ACEITAR MISSÃO',
+                                type: 'info',
+                                onConfirm: async () => {
+                                    try {
+                                        const res = await apiService.post<any>(`/marketplace/logistic/mission/${mission.id}/accept`, {});
+                                        if (res.success) {
+                                            onSuccess('Missão Aceita!', 'Agora você pode ver os detalhes na aba Logística.');
+                                            fetchData();
+                                        }
+                                    } catch (err: any) {
+                                        onError('Erro', err.message);
+                                    } finally {
+                                        setConfirmData(null);
+                                    }
+                                }
+                            });
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* Mapa de Entregas Disponíveis */}
+            {showMissionsMap && (
+                <AvailableDeliveriesMap
+                    deliveries={missions.map(m => ({
+                        ...m,
+                        order_id: m.id // Mapiando mission id para order_id esperado pelo componente
+                    }))}
+                    onClose={() => setShowMissionsMap(false)}
+                    onAccept={async (id) => {
                         try {
-                            const res = await apiService.post('/logistics/update-price', { pricePerKm: newPrice });
+                            const res = await apiService.post<any>(`/marketplace/logistic/mission/${id}/accept`, {});
                             if (res.success) {
-                                setCourierPricePerKm(newPrice);
-                                onSuccess('Sucesso', 'Preço por KM atualizado!');
+                                onSuccess('Missão Aceita!', 'Siga para o ponto de coleta.');
+                                fetchData();
                             }
                         } catch (err: any) {
                             onError('Erro', err.message);
                         }
                     }}
-                    onAccept={(mission: any) => {
-                        setConfirmData({
-                            isOpen: true,
-                            title: 'Aceitar Missão?',
-                            message: 'Você se compromete a retirar o produto com o vendedor e entregar ao comprador. Ao aceitar, enviaremos o código de coleta.',
-                            confirmText: 'ACEITAR MISSÃO',
-                            type: 'info',
-                            onConfirm: async () => {
-                                try {
-                                    const res = await apiService.post<any>(`/marketplace/logistic/mission/${mission.id}/accept`, {});
-                                    if (res.success) {
-                                        onSuccess('Missão Aceita!', `Dirija-se ao local de coleta. O vendedor lhe fornecerá o código de segurança para validar a retirada.`);
-                                        setConfirmData(null);
-                                        onRefresh();
-                                    }
-                                } catch (err: any) {
-                                    onError('Erro', err.message);
-                                }
-                            }
-                        });
+                    onIgnore={(id) => {
+                        // Apenas remove da visualização local se desejar, ou ignora
+                        setMissions(prev => prev.filter(m => m.id !== id));
                     }}
                 />
             )}
-
+            {/* Visualização Offline */}
             {view === 'offline' && (
                 <OfflineMarketplaceView
                     user={state.currentUser}

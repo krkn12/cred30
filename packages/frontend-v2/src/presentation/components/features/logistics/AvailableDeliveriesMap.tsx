@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { MapPin, X, Truck, Package, Phone, User } from 'lucide-react';
+import { MapPin, X, Truck, Package, Phone, User, Navigation2 } from 'lucide-react';
 
 interface DeliveryMission {
     id: string;
@@ -336,8 +336,20 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                     </div>
                 </div>
 
-                {/* Informação se não houver entregas */}
-                {deliveries.length === 0 && (
+                {/* Mensagem de GPS ou sem entregas */}
+                {!userCoords ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/80 backdrop-blur-md z-[500]">
+                        <div className="text-center space-y-4 p-6">
+                            <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto animate-pulse">
+                                <Navigation2 className="text-blue-500" size={32} />
+                            </div>
+                            <h3 className="text-white font-bold text-lg">Aguardando seu GPS...</h3>
+                            <p className="text-zinc-500 text-xs max-w-xs mx-auto">
+                                Precisamos da sua localização para mostrar as entregas num raio de 4.5km. Certifique-se de que o GPS está ligado e você autorizou o acesso.
+                            </p>
+                        </div>
+                    </div>
+                ) : deliveries.length === 0 && (
                     <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/50 backdrop-blur-sm z-[10]">
                         <div className="text-center space-y-4">
                             <Truck className="w-16 h-16 text-zinc-700 mx-auto" />
