@@ -131,9 +131,13 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
 
     const handle2FASetup = async () => {
         try {
-            const data = await get2FASetup();
-            setTwoFactorData(data);
-            setShow2FASetup(true);
+            const response = await get2FASetup();
+            if (response.success && response.data) {
+                setTwoFactorData(response.data);
+                setShow2FASetup(true);
+            } else {
+                setError(response.message || 'Erro ao carregar dados 2FA');
+            }
         } catch (err: any) {
             setError(err.message || 'Erro ao carregar dados 2FA');
         }

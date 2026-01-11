@@ -28,6 +28,7 @@ const confirmWithdrawalSchema = z.object({
     transactionId: z.number(),
     code: z.string().length(6),
     password: z.string().min(6),
+    twoFactorCode: z.string().length(6).optional(), // Código 2FA opcional
 });
 
 export class WithdrawalsController {
@@ -264,7 +265,7 @@ export class WithdrawalsController {
     static async confirmWithdrawal(c: Context) {
         try {
             const body = await c.req.json();
-            const { transactionId, code, password } = confirmWithdrawalSchema.parse(body);
+            const { transactionId, code, password, twoFactorCode } = confirmWithdrawalSchema.parse(body);
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
 
@@ -316,6 +317,22 @@ export class WithdrawalsController {
 
             if (!userData.is_verified) {
                 return c.json({ success: false, message: 'Conta não verificada. Complete seu cadastro para realizar resgates.' }, 403);
+            }
+
+            // === VERIFICAÇÃO 2FA PARA SAQUES ===
+            if (userData.two_factor_enabled && userData.two_factor_secret) {
+                if (!twoFactorCode) {
+                    return c.json({
+                        success: false,
+                        message: 'Código 2FA obrigatório para saques.',
+                        requires2FA: true
+                    }, 401);
+                }
+
+                const is2FAValid = twoFactorService.verifyToken(twoFactorCode, userData.two_factor_secret);
+                if (!is2FAValid) {
+                    return c.json({ success: false, message: 'Código 2FA inválido ou expirado.' }, 401);
+                }
             }
 
             if (userData.two_factor_enabled) {

@@ -5,6 +5,7 @@ import {
     User as UserIcon, Store, Map as MapIcon, ShieldCheck
 } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
+import { useNavigate } from 'react-router-dom';
 import { OrderTrackingMap } from '../features/marketplace/OrderTrackingMap';
 import { AvailableDeliveriesMap } from '../features/logistics/AvailableDeliveriesMap';
 import { User } from '../../../domain/types/common.types';
@@ -48,6 +49,7 @@ interface DeliveryStats {
 type Tab = 'available' | 'active' | 'history';
 
 export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
+    const navigate = useNavigate();
     const isQualified = currentUser?.is_verified || (currentUser?.score || 0) >= 500;
     const [activeTab, setActiveTab] = useState<Tab>('available');
     const [availableDeliveries, setAvailableDeliveries] = useState<Delivery[]>([]);
@@ -222,7 +224,10 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                             <CheckCircle size={32} className="text-emerald-400 mb-3" />
                             <h3 className="font-bold text-white mb-1">Selo Verificado</h3>
                             <p className="text-xs text-zinc-500 mb-4">Adquira sua verificação de identidade</p>
-                            <button className="w-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 py-2 rounded-lg text-xs font-bold uppercase hover:bg-emerald-500 hover:text-white transition-all">
+                            <button
+                                onClick={() => navigate('/app/settings')}
+                                className="w-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 py-2 rounded-lg text-xs font-bold uppercase hover:bg-emerald-500 hover:text-white transition-all"
+                            >
                                 Obter Selo
                             </button>
                         </div>
