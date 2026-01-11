@@ -525,4 +525,37 @@ export class LogisticsController {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
+
+    /**
+     * Atualizar localização do entregador (GPS)
+     */
+    static async updateLocation(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+            const orderId = c.req.param('orderId');
+            const { lat, lng } = await c.req.json();
+
+            if (!lat || !lng) {
+                return c.json({ success: false, message: 'Coordenadas inválidas' }, 400);
+            }
+
+            // Atualiza apenas se for o entregador correto e a entrega estiver em andamento (ACCEPTED ou IN_TRANSIT)
+            const result = await pool.query(
+                `UPDATE marketplace_orders 
+                 SET courier_lat = $1, courier_lng = $2, updated_at = NOW()
+                 WHERE id = $3 AND courier_id = $4 AND delivery_status IN ('ACCEPTED', 'IN_TRANSIT')`,
+                [lat, lng, orderId, user.id]
+            );
+
+            if (result.rowCount === 0) {
+                return c.json({ success: false, message: 'Pedido não ativo para este entregador.' }, 403);
+            }
+
+            return c.json({ success: true });
+        } catch (error) {
+            console.error('[LOGISTICS] Erro ao atualizar GPS:', error);
+            return c.json({ success: false, message: 'Erro interno' }, 500);
+        }
+    }
 }

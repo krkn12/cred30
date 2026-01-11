@@ -177,7 +177,8 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
                     const { latitude, longitude } = pos.coords;
                     updateCourierMarker(latitude, longitude);
                     try {
-                        await apiService.post(`/marketplace/logistic/mission/${orderId}/location`, { lat: latitude, lng: longitude });
+                        // Usa rota específica de logística que aceita status 'ACCEPTED' e 'IN_TRANSIT'
+                        await apiService.post(`/logistics/location/${orderId}`, { lat: latitude, lng: longitude });
                     } catch (e) { }
                 },
                 (err) => console.error('GPS Error', err),
