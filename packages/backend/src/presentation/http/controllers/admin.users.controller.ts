@@ -241,4 +241,224 @@ export class AdminUsersController {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
+
+    /**
+     * Listar entregadores pendentes de aprovação
+     */
+    static async listPendingCouriers(c: Context) {
+        try {
+            const pool = getDbPool(c);
+            const status = c.req.query('status') || 'pending';
+
+            const result = await pool.query(`
+                SELECT 
+                    id, name, email, courier_vehicle, courier_phone, courier_cpf,
+                    courier_city, courier_state, courier_status, courier_created_at, score
+                FROM users 
+                WHERE is_courier = TRUE AND courier_status = $1
+                ORDER BY courier_created_at DESC
+            `, [status]);
+
+            return c.json({
+                success: true,
+                data: result.rows.map(r => ({
+                    id: r.id,
+                    name: r.name,
+                    email: r.email,
+                    vehicle: r.courier_vehicle,
+                    phone: r.courier_phone,
+                    cpf: r.courier_cpf,
+                    city: r.courier_city,
+                    state: r.courier_state,
+                    status: r.courier_status,
+                    score: r.score,
+                    createdAt: r.courier_created_at
+                }))
+            });
+        } catch (error: any) {
+            console.error('[ADMIN] Erro ao listar entregadores:', error);
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
+     * Aprovar entregador
+     */
+    static async approveCourier(c: Context) {
+        try {
+            const pool = getDbPool(c);
+            const { userId } = await c.req.json();
+
+            if (!userId) {
+                return c.json({ success: false, message: 'userId é obrigatório' }, 400);
+            }
+
+            const result = await pool.query(
+                `UPDATE users SET 
+                    courier_status = 'approved', 
+                    is_verified = TRUE 
+                 WHERE id = $1 AND is_courier = TRUE AND courier_status = 'pending'
+                 RETURNING name`,
+                [userId]
+            );
+
+            if (result.rows.length === 0) {
+                return c.json({ success: false, message: 'Entregador não encontrado ou já processado' }, 404);
+            }
+
+            return c.json({
+                success: true,
+                message: `Entregador ${result.rows[0].name} aprovado com sucesso!`
+            });
+        } catch (error: any) {
+            console.error('[ADMIN] Erro ao aprovar entregador:', error);
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
+     * Rejeitar entregador
+     */
+    static async rejectCourier(c: Context) {
+        try {
+            const pool = getDbPool(c);
+            const { userId, reason } = await c.req.json();
+
+            if (!userId) {
+                return c.json({ success: false, message: 'userId é obrigatório' }, 400);
+            }
+
+            const result = await pool.query(
+                `UPDATE users SET 
+                    courier_status = 'rejected',
+                    is_courier = FALSE
+                 WHERE id = $1 AND is_courier = TRUE AND courier_status = 'pending'
+                 RETURNING name`,
+                [userId]
+            );
+
+            if (result.rows.length === 0) {
+                return c.json({ success: false, message: 'Entregador não encontrado ou já processado' }, 404);
+            }
+
+            return c.json({
+                success: true,
+                message: `Cadastro de ${result.rows[0].name} rejeitado. Motivo: ${reason || 'Não especificado'}`
+            });
+        } catch (error: any) {
+            console.error('[ADMIN] Erro ao rejeitar entregador:', error);
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
+     * Listar vendedores por status
+     */
+    static async listPendingSellers(c: Context) {
+        try {
+            const pool = getDbPool(c);
+            const status = c.req.query('status') || 'pending';
+
+            const result = await pool.query(`
+                SELECT 
+                    id, name, email, seller_phone as phone, seller_cpf_cnpj as cpf,
+                    seller_address_city as city, seller_address_state as state,
+                    seller_company_name as company_name, seller_status as status, 
+                    seller_created_at as created_at, score
+                FROM users 
+                WHERE is_seller = TRUE AND seller_status = $1
+                ORDER BY seller_created_at DESC
+            `, [status]);
+
+            return c.json({
+                success: true,
+                data: result.rows.map(r => ({
+                    id: r.id,
+                    name: r.name,
+                    email: r.email,
+                    phone: r.phone,
+                    cpf: r.cpf,
+                    city: r.city,
+                    state: r.state,
+                    companyName: r.company_name,
+                    status: r.status,
+                    score: r.score,
+                    createdAt: r.created_at
+                }))
+            });
+        } catch (error: any) {
+            console.error('[ADMIN] Erro ao listar vendedores:', error);
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
+     * Aprovar vendedor
+     */
+    static async approveSeller(c: Context) {
+        try {
+            const pool = getDbPool(c);
+            const { userId } = await c.req.json();
+
+            if (!userId) {
+                return c.json({ success: false, message: 'userId é obrigatório' }, 400);
+            }
+
+            const result = await pool.query(
+                `UPDATE users SET 
+                    seller_status = 'approved', 
+                    is_verified = TRUE 
+                 WHERE id = $1 AND is_seller = TRUE AND seller_status = 'pending'
+                 RETURNING name`,
+                [userId]
+            );
+
+            if (result.rows.length === 0) {
+                return c.json({ success: false, message: 'Vendedor não encontrado ou já processado' }, 404);
+            }
+
+            return c.json({
+                success: true,
+                message: `Vendedor ${result.rows[0].name} aprovado com sucesso!`
+            });
+        } catch (error: any) {
+            console.error('[ADMIN] Erro ao aprovar vendedor:', error);
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
+     * Rejeitar vendedor
+     */
+    static async rejectSeller(c: Context) {
+        try {
+            const pool = getDbPool(c);
+            const { userId, reason } = await c.req.json();
+
+            if (!userId) {
+                return c.json({ success: false, message: 'userId é obrigatório' }, 400);
+            }
+
+            const result = await pool.query(
+                `UPDATE users SET 
+                    seller_status = 'rejected',
+                    is_seller = FALSE
+                 WHERE id = $1 AND is_seller = TRUE AND seller_status = 'pending'
+                 RETURNING name`,
+                [userId]
+            );
+
+            if (result.rows.length === 0) {
+                return c.json({ success: false, message: 'Vendedor não encontrado ou já processado' }, 404);
+            }
+
+            return c.json({
+                success: true,
+                message: `Cadastro de ${result.rows[0].name} rejeitado. Motivo: ${reason || 'Não especificado'}`
+            });
+        } catch (error: any) {
+            console.error('[ADMIN] Erro ao rejeitar vendedor:', error);
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
 }

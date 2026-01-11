@@ -107,6 +107,10 @@ class ApiService extends ApiBase {
   getMyDeliveries = this.marketplace.getMyDeliveries.bind(this.marketplace);
   cancelDelivery = this.marketplace.cancelDelivery.bind(this.marketplace);
 
+  // Courier Registration
+  getCourierStatus = this.marketplace.getCourierStatus.bind(this.marketplace);
+  registerCourier = this.marketplace.registerCourier.bind(this.marketplace);
+
   // Voting
   getProposals = this.misc.getProposals.bind(this.misc);
   vote = this.misc.vote.bind(this.misc);
