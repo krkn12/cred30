@@ -9,9 +9,10 @@ interface OrderTrackingMapProps {
     orderId: string;
     onClose: () => void;
     userRole: 'buyer' | 'courier' | 'seller';
+    embedded?: boolean;
 }
 
-export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onClose, userRole }) => {
+export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onClose, userRole, embedded = false }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<L.Map | null>(null);
     const courierMarkerRef = useRef<L.Marker | null>(null);
@@ -217,19 +218,21 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
     }, [courierPos, destinationPos]);
 
     return (
-        <div className="fixed inset-0 z-[150] bg-black animate-in fade-in duration-300 flex flex-col">
-            <div className="p-4 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center border border-indigo-500/20">
-                        <Navigation2 className="text-indigo-400 animate-pulse" size={20} />
+        <div className={`fixed inset-0 z-[150] bg-black animate-in fade-in duration-300 flex flex-col ${embedded ? 'absolute z-0 bg-transparent' : ''}`}>
+            {!embedded && (
+                <div className="p-4 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center border border-indigo-500/20">
+                            <Navigation2 className="text-indigo-400 animate-pulse" size={20} />
+                        </div>
+                        <div>
+                            <h2 className="text-white font-black text-sm uppercase tracking-tighter">Rastreio em Tempo Real</h2>
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase">Pedido #{orderId.toString().slice(-6)}</p>
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="text-white font-black text-sm uppercase tracking-tighter">Rastreio em Tempo Real</h2>
-                        <p className="text-[10px] text-zinc-500 font-bold uppercase">Pedido #{orderId.toString().slice(-6)}</p>
-                    </div>
+                    <button onClick={onClose} className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition"><X size={24} /></button>
                 </div>
-                <button onClick={onClose} className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition"><X size={24} /></button>
-            </div>
+            )}
 
             <div className="flex-1 relative">
                 <div ref={mapContainerRef} className="w-full h-full bg-zinc-900" />
@@ -243,7 +246,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
                 )}
             </div>
 
-            {!isLoading && trackingData && (
+            {!embedded && !isLoading && trackingData && (
                 <div className="p-6 bg-zinc-950 border-t border-zinc-800 space-y-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
