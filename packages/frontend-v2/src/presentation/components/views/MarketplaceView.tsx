@@ -34,6 +34,7 @@ import { MissionsView } from '../marketplace/MissionsView';
 import { ItemDetailsView } from '../marketplace/ItemDetailsView';
 import { CreateListingView } from '../marketplace/CreateListingView';
 import { AvailableDeliveriesMap } from '../features/logistics/AvailableDeliveriesMap';
+import { applyLocationCorrection } from '../../../application/utils/location_corrections';
 
 interface MarketplaceViewProps {
     state: AppState;
@@ -369,17 +370,22 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                     );
 
                     if (foundUF) {
-                        setSelectedUF(foundUF.sigla);
-                        // Delay para dar tempo de carregar as cidades (se necessário) ou apenas setar.
-                        // O hook useLocation limpa cidades quando UF muda?
-                        // Vamos setar com timeout para garantir.
+                        const originalAddress = {
+                            city: cityName || '',
+                            state: foundUF.sigla,
+                            neighborhood: suburb || ''
+                        };
+
+                        const corrected = applyLocationCorrection(latitude, longitude, originalAddress);
+
+                        setSelectedUF(corrected.state);
                         setTimeout(() => {
-                            if (cityName) setSelectedCity(cityName);
-                            if (suburb) setSelectedNeighborhood(suburb);
+                            if (corrected.city) setSelectedCity(corrected.city);
+                            if (corrected.neighborhood) setSelectedNeighborhood(corrected.neighborhood);
                         }, 800);
 
                         setShowFilters(true);
-                        onSuccess('Localização Definida', `${cityName || 'Cidade'} - ${foundUF.sigla}`);
+                        onSuccess('Localização Definida', `${corrected.neighborhood ? corrected.neighborhood + ' - ' : ''}${corrected.city}/${corrected.state}`);
                     } else {
                         onError('Ops', `Estado não reconhecido: ${stateName}`);
                     }
@@ -421,17 +427,21 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                     );
 
                     if (cityName && foundUF) {
-                        setGpsLocation({
+                        const originalAddress = {
                             city: cityName,
                             state: foundUF.sigla,
                             neighborhood: neighborhood || '',
                             accuracy: accuracy
-                        });
+                        };
 
-                        if (accuracy > 100) {
+                        const corrected = applyLocationCorrection(latitude, longitude, originalAddress);
+
+                        setGpsLocation(corrected);
+
+                        if (accuracy > 100 && !corrected.neighborhood.includes('Passagem Dois Amigos')) {
                             onSuccess('GPS Oscilando', `Localização capturada, mas com baixa precisão (${Math.round(accuracy)}m). Você pode ajustar manualmente se estiver errado.`);
                         } else {
-                            onSuccess('Localização Definida', `Seu anúncio será em: ${neighborhood ? neighborhood + ' - ' : ''}${cityName}/${foundUF.sigla}`);
+                            onSuccess('Localização Definida', `Seu anúncio será em: ${corrected.neighborhood ? corrected.neighborhood + ' - ' : ''}${corrected.city}/${corrected.state}`);
                         }
                     } else {
                         onError('Erro', 'Não conseguimos identificar sua cidade/estado com precisão.');
@@ -947,6 +957,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                     onCancel={() => setView('browse')}
                     onGetGPS={handleGetListingGPS}
                     gpsLocation={gpsLocation}
+                    setGpsLocation={setGpsLocation}
                     isSubmitting={isSubmitting}
                 />
             )}
