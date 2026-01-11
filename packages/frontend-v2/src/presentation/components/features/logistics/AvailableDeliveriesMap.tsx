@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { MapPin, X, Truck, Package, Phone, User, Navigation2, Info } from 'lucide-react';
-import { applyLocationCorrection, correctStoredAddress } from '../../../application/utils/location_corrections';
+import { applyLocationCorrection, correctStoredAddress } from '../../../../application/utils/location_corrections';
 
 interface DeliveryMission {
     id: string;
