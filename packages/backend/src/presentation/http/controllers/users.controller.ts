@@ -555,8 +555,52 @@ export class UsersController {
 
             return c.json({ success: true, message: 'Sua conta foi excluída definitivamente.' });
         } catch (error: any) {
-            console.error('Erro ao excluir conta:', error);
             return c.json({ success: false, message: 'Erro ao processar exclusão' }, 500);
+        }
+    }
+
+    /**
+     * Ranking de Farm (Top 3 + Posição do Usuário)
+     */
+    static async getFarmRanking(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+
+            // Buscar Top 3
+            const top3Res = await pool.query(`
+                SELECT id, name, COALESCE(ad_points, 0) as points 
+                FROM users 
+                ORDER BY COALESCE(ad_points, 0) DESC, name ASC 
+                LIMIT 3
+            `);
+
+            // Buscar Posição do Usuário
+            const rankRes = await pool.query(`
+                SELECT COUNT(*) + 1 as rank 
+                FROM users 
+                WHERE COALESCE(ad_points, 0) > (SELECT COALESCE(ad_points, 0) FROM users WHERE id = $1)
+            `, [user.id]);
+
+            const userPointsRes = await pool.query('SELECT COALESCE(ad_points, 0) as points FROM users WHERE id = $1', [user.id]);
+
+            return c.json({
+                success: true,
+                data: {
+                    top3: top3Res.rows.map(u => ({
+                        id: u.id,
+                        name: u.name,
+                        points: parseInt(u.points),
+                        isMe: u.id === user.id
+                    })),
+                    myRank: {
+                        position: parseInt(rankRes.rows[0].rank),
+                        points: parseInt(userPointsRes.rows[0].points)
+                    }
+                }
+            });
+        } catch (error: any) {
+            console.error('Erro ao buscar ranking:', error);
         }
     }
 }
