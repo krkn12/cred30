@@ -166,12 +166,14 @@ export class MarketplaceOrdersController {
                         `INSERT INTO marketplace_orders (
                             listing_id, listing_ids, is_lote, buyer_id, seller_id, amount, fee_amount, seller_amount, 
                             status, payment_method, delivery_address, pickup_address, contact_phone, 
-                            offline_token, delivery_status, delivery_fee, pickup_code, invited_courier_id
-                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING id`,
+                            offline_token, delivery_status, delivery_fee, pickup_code, invited_courier_id,
+                            pickup_lat, pickup_lng, delivery_lat, delivery_lng
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) RETURNING id`,
                         [
                             listings[0].id, idsToProcess, listings.length > 1, user.id, sellerId, totalPrice, fee, sellerAmount,
                             orderStatus, 'BALANCE', deliveryAddress, isDigitalLote ? null : finalPickupAddress, contactPhone,
-                            offlineToken, deliveryStatus, isDigitalLote ? 0 : offeredDeliveryFee, pickupCode, invitedCourierId
+                            offlineToken, deliveryStatus, isDigitalLote ? 0 : calculatedDeliveryFee, pickupCode, invitedCourierId,
+                            body.pickupLat || null, body.pickupLng || null, body.deliveryLat || null, body.deliveryLng || null
                         ]
                     );
                     const orderId = orderResult.rows[0].id;
@@ -355,12 +357,14 @@ export class MarketplaceOrdersController {
                     `INSERT INTO marketplace_orders (
                         listing_id, listing_ids, is_lote, buyer_id, seller_id, amount, fee_amount, seller_amount, 
                         status, payment_method, delivery_address, pickup_address, contact_phone, 
-                        delivery_status, delivery_fee, pickup_code, invited_courier_id
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id`,
+                        delivery_status, delivery_fee, pickup_code, invited_courier_id,
+                        pickup_lat, pickup_lng, delivery_lat, delivery_lng
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING id`,
                     [
                         listings[0].id, idsToProcess, listings.length > 1, user.id, sellerId, totalWithFee, escrowFee, sellerAmount,
                         'WAITING_SHIPPING', 'CRED30_CREDIT', deliveryAddress, finalPickupAddress, contactPhone,
-                        deliveryStatus, fee, pickupCode, invitedCourierId
+                        deliveryStatus, fee, pickupCode, invitedCourierId,
+                        body.pickupLat || null, body.pickupLng || null, body.deliveryLat || null, body.deliveryLng || null
                     ]
                 );
                 const orderId = orderResult.rows[0].id;

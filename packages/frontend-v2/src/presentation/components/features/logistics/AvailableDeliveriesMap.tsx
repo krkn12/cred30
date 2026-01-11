@@ -114,12 +114,22 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                     }
                 },
                 (error) => console.log('Location error:', error),
-                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 5000
+                }
             );
 
             return () => navigator.geolocation.clearWatch(watchId);
         }
     }, []);
+
+    const handleRecenter = () => {
+        if (mapRef.current && userCoords) {
+            mapRef.current.flyTo([userCoords.lat, userCoords.lng], 15);
+        }
+    };
 
     useEffect(() => {
         if (!mapRef.current || !userCoords) return;
@@ -170,8 +180,8 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                         stateUpdated = true;
                     }
 
-                    // Mostrar se estiver no raio de 4.5km e não tiver "passado"
-                    if (dist <= 4500 && !newPassed.has(pickupId)) {
+                    // Mostrar se estiver no raio de 30km e não tiver "passado"
+                    if (dist <= 30000 && !newPassed.has(pickupId)) {
                         const m = L.marker([pickupPos.lat, pickupPos.lng], {
                             icon: pickupIcon,
                             zIndexOffset: 1000
@@ -198,7 +208,7 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                         stateUpdated = true;
                     }
 
-                    if (dist <= 4500 && !newPassed.has(deliveryId)) {
+                    if (dist <= 30000 && !newPassed.has(deliveryId)) {
                         const m = L.marker([deliveryPos.lat, deliveryPos.lng], { icon: deliveryIcon })
                             .addTo(mapRef.current!)
                             .on('click', () => setSelectedDelivery(delivery));
@@ -301,19 +311,30 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
         <div className={`${isEmbedded ? 'w-full h-full relative' : 'fixed inset-0 z-[200] bg-black'} animate-in fade-in duration-300 flex flex-col`}>
             {/* Header */}
             <div className="absolute top-4 left-4 right-4 z-[400] flex justify-between items-start pointer-events-none">
-                <div className="bg-zinc-950/80 backdrop-blur-md p-3 rounded-2xl border border-zinc-800 shadow-xl pointer-events-auto">
-                    <h2 className="text-white font-black text-sm uppercase tracking-tighter flex items-center gap-2">
-                        <MapPin className="text-emerald-500" size={16} />
-                        Entregas Próximas
-                    </h2>
-                    <p className="text-[10px] text-zinc-500 font-bold uppercase mt-1">
-                        {deliveries.length} Disponíveis
-                    </p>
+                <div className="flex flex-col gap-2 pointer-events-auto">
+                    <div className="bg-zinc-950/80 backdrop-blur-md p-3 rounded-2xl border border-zinc-800 shadow-xl">
+                        <h2 className="text-white font-black text-sm uppercase tracking-tighter flex items-center gap-2">
+                            <MapPin className="text-emerald-500" size={16} />
+                            Entregas Próximas
+                        </h2>
+                        <p className="text-[10px] text-zinc-500 font-bold uppercase mt-1">
+                            {deliveries.length} Disponíveis (Raio 30km)
+                        </p>
+                    </div>
+                    {userCoords && (
+                        <button
+                            onClick={handleRecenter}
+                            className="w-10 h-10 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex items-center justify-center shadow-xl border border-blue-400/20 transition-all active:scale-95"
+                            title="Recentralizar Mapa"
+                        >
+                            <Navigation2 size={18} fill="white" />
+                        </button>
+                    )}
                 </div>
                 {!isEmbedded && (
                     <button
                         onClick={onClose}
-                        className="pointer-events-auto w-10 h-10 bg-zinc-950/80 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-zinc-800 shadow-xl"
+                        className="pointer-events-auto w-10 h-10 bg-zinc-950/80 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-zinc-800 shadow-xl hover:bg-zinc-800 transition-all"
                     >
                         <X size={20} />
                     </button>
@@ -344,12 +365,15 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                 {!userCoords ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/80 backdrop-blur-md z-[500]">
                         <div className="text-center space-y-4 p-6">
-                            <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto animate-pulse">
-                                <Navigation2 className="text-blue-500" size={32} />
+                            <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto relative">
+                                <Navigation2 className="text-blue-500 animate-bounce" size={40} />
+                                <div className="absolute inset-0 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
                             </div>
-                            <h3 className="text-white font-bold text-lg">Aguardando seu GPS...</h3>
-                            <p className="text-zinc-500 text-xs max-w-xs mx-auto">
-                                Precisamos da sua localização para mostrar as entregas num raio de 4.5km. Certifique-se de que o GPS está ligado e você autorizou o acesso.
+                            <h3 className="text-white font-black text-xl uppercase tracking-tighter">Sintonizando Satélites...</h3>
+                            <p className="text-zinc-500 text-sm max-w-xs mx-auto font-bold leading-relaxed">
+                                Precisamos da sua localização precisa para mostrar as entregas num raio de <span className="text-blue-400">30km</span>.
+                                <br /><br />
+                                <span className="text-[10px] uppercase opacity-70">Dica: Ficar em céu aberto ajuda na precisão.</span>
                             </p>
                         </div>
                     </div>
