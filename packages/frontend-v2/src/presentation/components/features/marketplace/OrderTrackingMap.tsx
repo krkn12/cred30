@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { MapPin, Truck, Navigation2, X, Package, Phone, User, Clock, CheckCircle2 } from 'lucide-react';
+import { MapPin, Truck, Navigation2, X } from 'lucide-react';
 import { apiService } from '../../../../application/services/api.service';
 import { correctStoredAddress } from '../../../../application/utils/location_corrections';
 
@@ -165,7 +165,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
                         updateCourierMarker(res.data.courier_lat, res.data.courier_lng);
                     }
                 } catch (e) { }
-            }, 10000);
+            }, 4000); // 4 segundos para movimentos mais fluídos
         }
 
         let watchId: number;
@@ -179,7 +179,11 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
                     } catch (e) { }
                 },
                 (err) => console.error('GPS Error', err),
-                { enableHighAccuracy: true }
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 10000
+                }
             );
         }
 
