@@ -296,7 +296,8 @@ export class LogisticsController {
             if (status === 'active') {
                 whereClause += ` AND mo.delivery_status IN ('ACCEPTED', 'IN_TRANSIT', 'DELIVERED')`;
             } else if (status === 'completed') {
-                whereClause += ` AND mo.status = 'COMPLETED'`;
+                // Histórico completo: Completadas, Canceladas ou Falhas
+                whereClause += ` AND (mo.status IN ('COMPLETED', 'CANCELLED') OR mo.delivery_status = 'CANCELLED')`;
             }
 
             const result = await pool.query(`

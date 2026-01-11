@@ -694,6 +694,9 @@ export class MarketplaceOrdersController {
                     if (!isCourierAnticipated) {
                         await updateUserBalance(client, order.courier_id, courierPart, 'credit');
                         await createTransaction(client, order.courier_id, 'LOGISTIC_EARN', courierPart, `Entrega realizada: ${order.title}`, 'APPROVED', { orderId });
+
+                        // Bonificar Entregador com Score pela eficiência
+                        await updateScore(client, order.courier_id, 10, `Entrega bem-sucedida #${orderId}`);
                     }
 
                     // DIVISÃO DA TAXA DE LOGÍSTICA (15%)
