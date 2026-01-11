@@ -38,8 +38,10 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
     useEffect(() => {
         const fetchLimit = async () => {
             try {
-                const data = await apiService.getAvailableLimit();
-                setCreditLimit(data);
+                const response = await apiService.getAvailableLimit();
+                if (response.success && response.data) {
+                    setCreditLimit(response.data);
+                }
             } catch (e) {
                 console.error('Erro ao buscar limite de apoio mútuo:', e);
             }
