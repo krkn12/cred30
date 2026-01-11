@@ -10,6 +10,7 @@ import { AppState, Transaction, Quota, Loan } from '../../../domain/types/common
 import { apiService } from '../../../application/services/api.service';
 import { LoadingScreen } from '../ui/LoadingScreen';
 import { NotificationBell } from '../ui/NotificationBell';
+import { RankingWidget } from '../features/gamification/RankingWidget';
 
 interface DashboardProps {
     state: AppState;
@@ -327,6 +328,9 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                     </div>
                 </div>
             )}
+
+            {/* RANKING DE FARM - TOP 3 */}
+            <RankingWidget />
 
             {/* 2. Card de Saldo Principal */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
