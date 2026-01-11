@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { AppState } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
+import { RankingWidget } from '../features/gamification/RankingWidget';
+
 
 interface EarnViewProps {
     state: AppState;
@@ -186,6 +188,10 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
                     <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Aumente sua Participação Social</p>
                 </div>
             </div>
+
+            {/* Ranking Global */}
+            <RankingWidget />
+
 
             {/* Rewarded Video Card */}
             <div className="bg-surface border border-surfaceHighlight rounded-3xl overflow-hidden relative">

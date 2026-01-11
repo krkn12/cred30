@@ -48,3 +48,6 @@ userRoutes.post('/title-download', authMiddleware, UsersController.titleDownload
 
 // Status de Benefício
 userRoutes.get('/welcome-benefit', authMiddleware, UsersController.getWelcomeBenefitStatus);
+
+// Ranking de Farm (Top 3)
+userRoutes.get('/ranking/farm', authMiddleware, UsersController.getFarmRanking);
