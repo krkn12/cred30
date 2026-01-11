@@ -136,20 +136,20 @@ export const AdminFiscal = () => {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-zinc-800">
                             <div className="p-8">
-                                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Taxas Marketplace</p>
-                                <p className="text-xl font-black text-white">{formatCurrency(report.details.marketplace_fees)}</p>
+                                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Comissões Marketplace</p>
+                                <p className="text-xl font-black text-white">{formatCurrency(report.details.marketplace_commissions)}</p>
                             </div>
                             <div className="p-8">
-                                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Juros de Empréstimo</p>
-                                <p className="text-xl font-black text-white">{formatCurrency(report.details.loan_interests)}</p>
+                                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Margem Logística (27.5%)</p>
+                                <p className="text-xl font-black text-white">{formatCurrency(report.details.logistics_margin)}</p>
                             </div>
                             <div className="p-8">
-                                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Taxas de Resgate</p>
+                                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Taxas de Saque</p>
                                 <p className="text-xl font-black text-white">{formatCurrency(report.details.withdrawal_fees)}</p>
                             </div>
                             <div className="p-8">
-                                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Outras Taxas</p>
-                                <p className="text-xl font-black text-white">{formatCurrency(report.details.upgrades)}</p>
+                                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Lucro Acumulado (Config)</p>
+                                <p className="text-xl font-black text-white">{formatCurrency(report.details.accumulated_system_profit)}</p>
                             </div>
                         </div>
                     </div>
