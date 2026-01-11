@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import {
     Truck, Package, Phone, Clock, CheckCircle, XCircle,
-    Loader2, DollarSign, Star, AlertCircle, RefreshCw,
-    User as UserIcon, Store, Map as MapIcon, ShieldCheck, MapPin
+    Loader2, DollarSign, Star, AlertCircle,
+    Map as MapIcon, ShieldCheck, MapPin, Navigation, ArrowRight
 } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 import { useNavigate } from 'react-router-dom';
 import { OrderTrackingMap } from '../features/marketplace/OrderTrackingMap';
 import { AvailableDeliveriesMap } from '../features/logistics/AvailableDeliveriesMap';
 import { User } from '../../../domain/types/common.types';
-import { correctStoredAddress } from '../../../application/utils/location_corrections';
+import { SwipeButton } from '../ui/SwipeButton';
 
 interface LogisticsViewProps {
     currentUser: User | null;
@@ -57,12 +57,13 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
     const [activeTab, setActiveTab] = useState<Tab>('available');
     const [availableDeliveries, setAvailableDeliveries] = useState<Delivery[]>([]);
     const [myDeliveries, setMyDeliveries] = useState<Delivery[]>([]);
+    const [activeMission, setActiveMission] = useState<Delivery | null>(null);
     const [stats, setStats] = useState<DeliveryStats | null>(null);
     const [loading, setLoading] = useState(true);
-    const [actionLoading, setActionLoading] = useState<number | null>(null);
+    // const [actionLoading, setActionLoading] = useState<number | null>(null); // Removed unused
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
-    const [trackingOrder, setTrackingOrder] = useState<Delivery | null>(null);
+
     // Filtro de ignorados (Local Storage)
     const [ignoredOrders, setIgnoredOrders] = useState<number[]>(() => {
         try {
@@ -70,7 +71,6 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
         } catch { return []; }
     });
 
-    // Filtra entregas ignoradas
     const visibleDeliveries = availableDeliveries.filter(d => !ignoredOrders.includes(d.orderId));
 
     const handleIgnore = (orderId: number) => {
@@ -91,10 +91,26 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
             if (activeTab === 'available') {
                 const response = await apiService.getAvailableDeliveries();
                 setAvailableDeliveries(response.data || []);
+                // Checar se tem entrega ativa mesmo estando na aba 'available' para redirecionar o foco
+                const activeResponse = await apiService.getMyDeliveries('active');
+                if (activeResponse.data?.deliveries?.length > 0) {
+                    setActiveMission(activeResponse.data.deliveries[0]);
+                    // Se tiver missão ativa, força a aba ativa
+                    if (activeTab === 'available') setActiveTab('active');
+                } else {
+                    setActiveMission(null);
+                }
             } else {
                 const status = activeTab === 'active' ? 'active' : 'completed';
                 const response = await apiService.getMyDeliveries(status);
-                setMyDeliveries(response.data?.deliveries || []);
+                const deliveries = response.data?.deliveries || [];
+                setMyDeliveries(deliveries);
+
+                if (activeTab === 'active' && deliveries.length > 0) {
+                    setActiveMission(deliveries[0]);
+                } else if (activeTab === 'active') {
+                    setActiveMission(null);
+                }
             }
             const statsResponse = await apiService.getDeliveryStats();
             setStats(statsResponse.data);
@@ -106,12 +122,12 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
     };
 
     const handleAccept = async (orderId: number): Promise<boolean> => {
-        setActionLoading(orderId);
+        // setActionLoading(orderId);
         setError(null);
         try {
             const result = await apiService.acceptDelivery(orderId);
             if (result.success) {
-                setSuccess(`Entrega aceita! Vá até ${result.data?.pickupAddress} para coletar.`);
+                setSuccess(`Entrega aceita! Inicie a missão.`);
                 return true;
             } else {
                 setError(result.message || 'Erro ao aceitar entrega');
@@ -121,17 +137,17 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
             setError(err.message || 'Erro ao aceitar entrega');
             return false;
         } finally {
-            setActionLoading(null);
+            // setActionLoading(null);
         }
     };
 
     const handlePickup = async (orderId: number) => {
-        setActionLoading(orderId);
+        // setActionLoading(orderId);
         setError(null);
         try {
             const result = await apiService.confirmPickup(orderId);
             if (result.success) {
-                setSuccess('Coleta confirmada! Agora leve até o comprador.');
+                setSuccess('Coleta confirmada! Rumo à entrega.');
                 loadData();
             } else {
                 setError(result.message || 'Erro ao confirmar coleta');
@@ -139,36 +155,39 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
         } catch (err: any) {
             setError(err.message || 'Erro ao confirmar coleta');
         } finally {
-            setActionLoading(null);
+            // setActionLoading(null);
         }
     };
 
     const handleDelivered = async (orderId: number) => {
-        setActionLoading(orderId);
+        // setActionLoading(orderId);
         setError(null);
         try {
             const result = await apiService.confirmDelivered(orderId);
             if (result.success) {
-                setSuccess('Entrega marcada como concluída! Aguardando confirmação do comprador.');
+                setSuccess('Entrega finalizada! Bom trabalho.');
                 loadData();
+                setActiveMission(null); // Sai do modo missão
             } else {
                 setError(result.message || 'Erro ao marcar entrega');
             }
         } catch (err: any) {
             setError(err.message || 'Erro ao marcar entrega');
         } finally {
-            setActionLoading(null);
+            // setActionLoading(null);
         }
     };
 
     const handleCancel = async (orderId: number) => {
-        if (!confirm('Tem certeza que deseja cancelar esta entrega?')) return;
-        setActionLoading(orderId);
+        if (!confirm('Tem certeza que deseja cancelar esta entrega? Isso afetará sua reputação.')) return;
+        // setActionLoading(orderId);
         setError(null);
         try {
             const result = await apiService.cancelDelivery(orderId);
             if (result.success) {
                 setSuccess('Entrega cancelada.');
+                setActiveMission(null);
+                setActiveTab('available'); // Volta pra busca
                 loadData();
             } else {
                 setError(result.message || 'Erro ao cancelar');
@@ -176,7 +195,7 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
         } catch (err: any) {
             setError(err.message || 'Erro ao cancelar');
         } finally {
-            setActionLoading(null);
+            // setActionLoading(null);
         }
     };
 
@@ -187,6 +206,7 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
             'IN_TRANSIT': { color: 'bg-purple-500/20 text-purple-400', label: 'Em Trânsito' },
             'DELIVERED': { color: 'bg-emerald-500/20 text-emerald-400', label: 'Entregue' },
             'COMPLETED': { color: 'bg-green-500/20 text-green-400', label: 'Concluído' },
+            'CANCELLED': { color: 'bg-red-500/20 text-red-400', label: 'Cancelado' },
         };
         const s = statusMap[status] || { color: 'bg-zinc-500/20 text-zinc-400', label: status };
         return <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${s.color}`}>{s.label}</span>;
@@ -196,6 +216,112 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
         const num = typeof value === 'string' ? parseFloat(value) : value;
         return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     };
+
+    // --- MODO MISSÃO (FULL SCREEN) ---
+    if (activeMission && activeTab === 'active') {
+        const isPickup = activeMission.deliveryStatus === 'ACCEPTED';
+        const isDelivery = activeMission.deliveryStatus === 'IN_TRANSIT';
+        // const isWaiting = activeMission.deliveryStatus === 'DELIVERED';
+
+        return (
+            <div className="fixed inset-0 z-50 bg-zinc-950 flex flex-col h-[100dvh]">
+                {/* 1. Header de Navegação */}
+                <div className="bg-zinc-900 border-b border-white/5 p-4 pt-safe-top">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${isPickup ? 'bg-amber-500 animate-pulse' : 'bg-zinc-700'}`} />
+                            <span className="text-xs text-zinc-400 font-bold uppercase">Coleta</span>
+                            <div className="w-8 h-[1px] bg-zinc-700" />
+                            <span className={`w-2 h-2 rounded-full ${isDelivery ? 'bg-purple-500 animate-pulse' : 'bg-zinc-700'}`} />
+                            <span className="text-xs text-zinc-400 font-bold uppercase">Entrega</span>
+                        </div>
+                        <button
+                            onClick={() => handleCancel(activeMission.orderId)}
+                            className="text-red-400 text-xs font-bold uppercase hover:text-red-300"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+
+                    <h2 className="text-xl font-bold text-white leading-tight flex items-center gap-2">
+                        {isPickup ? (
+                            <><MapPin className="text-amber-500 shrink-0" /> Ir para Coleta</>
+                        ) : isDelivery ? (
+                            <><Navigation className="text-purple-500 shrink-0" /> Levar ao Cliente</>
+                        ) : (
+                            <><CheckCircle className="text-emerald-500 shrink-0" /> Agaurdando...</>
+                        )}
+                    </h2>
+                    <p className="text-zinc-400 text-sm mt-1 truncate">
+                        {isPickup ? activeMission.pickupAddress : activeMission.deliveryAddress}
+                    </p>
+                </div>
+
+                {/* 2. Área do Mapa (Ocupa o resto) */}
+                <div className="flex-1 relative bg-zinc-900 w-full overflow-hidden">
+                    <OrderTrackingMap
+                        orderId={activeMission.orderId.toString()}
+                        onClose={() => { }} // Não fecha, é a view principal
+                        userRole="courier"
+                        embedded={true} // Nova prop para remover header/footer do mapa se necessário
+                    />
+
+                    {/* Floating Info Card */}
+                    <div className="absolute top-4 left-4 right-4 bg-black/60 backdrop-blur-md p-3 rounded-xl border border-white/10 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                            <Package className="text-white" size={20} />
+                        </div>
+                        <div>
+                            <p className="text-white font-bold text-sm">{activeMission.itemTitle}</p>
+                            <p className="text-emerald-400 text-xs font-bold">Ganhos: {formatCurrency(activeMission.courierEarnings)}</p>
+                        </div>
+                        <div className="ml-auto flex gap-2">
+                            {isPickup && activeMission.sellerPhone && (
+                                <a href={`https://wa.me/55${activeMission.sellerPhone.replace(/\D/g, '')}`} target="_blank" className="p-2 bg-green-500/20 text-green-400 rounded-lg">
+                                    <Phone size={18} />
+                                </a>
+                            )}
+                            {isDelivery && activeMission.buyerPhone && (
+                                <a href={`https://wa.me/55${activeMission.buyerPhone.replace(/\D/g, '')}`} target="_blank" className="p-2 bg-green-500/20 text-green-400 rounded-lg">
+                                    <Phone size={18} />
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3. Footer de Ação (Slide) */}
+                <div className="bg-zinc-900 border-t border-white/5 p-4 pb-safe-bottom">
+                    {activeMission.deliveryStatus === 'ACCEPTED' && (
+                        <SwipeButton
+                            onComplete={() => handlePickup(activeMission.orderId)}
+                            text="Deslize para Coletar"
+                            completedText="Coletado!"
+                            color="bg-amber-500"
+                        />
+                    )}
+                    {activeMission.deliveryStatus === 'IN_TRANSIT' && (
+                        <SwipeButton
+                            onComplete={() => handleDelivered(activeMission.orderId)}
+                            text="Deslize para Finalizar"
+                            completedText="Entregue!"
+                            color="bg-emerald-500"
+                        />
+                    )}
+                    {activeMission.deliveryStatus === 'DELIVERED' && (
+                        <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl text-center">
+                            <Clock className="w-8 h-8 text-yellow-500 mx-auto mb-2 animate-bounce" />
+                            <h3 className="text-yellow-500 font-bold">Aguardando Cliente</h3>
+                            <p className="text-yellow-500/70 text-sm">O cliente precisa confirmar o recebimento no app dele.</p>
+                            <button onClick={loadData} className="mt-4 text-sm text-yellow-500 underline">Verificar novamente</button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    // --- MODO PADRÃO (LISTA/BUSCA) ---
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-6 pb-24">
@@ -247,8 +373,8 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                                 <Truck className="w-6 h-6 text-primary-400" />
                             </div>
                             <div>
-                                <h1 className="text-2xl font-bold text-white">Entregas</h1>
-                                <p className="text-zinc-500 text-sm">Ganhe dinheiro entregando para a comunidade</p>
+                                <h1 className="text-2xl font-bold text-white">Central de Entregas</h1>
+                                <p className="text-zinc-500 text-sm">Conecte-se e ganhe</p>
                             </div>
                         </div>
                     </div>
@@ -303,7 +429,7 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                     <div className="flex gap-2 mb-8 bg-zinc-900/50 p-2 rounded-[2rem] border border-white/5 backdrop-blur-xl">
                         {[
                             { id: 'available' as Tab, label: 'Disponíveis', icon: Package },
-                            { id: 'active' as Tab, label: 'Ativas', icon: Truck },
+                            { id: 'active' as Tab, label: 'Missão Atual', icon: Navigation },
                             { id: 'history' as Tab, label: 'Histórico', icon: Clock },
                         ].map(tab => (
                             <button
@@ -318,18 +444,6 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                                 {tab.label}
                             </button>
                         ))}
-                    </div>
-
-                    {/* Refresh Button */}
-                    <div className="flex justify-end mb-4">
-                        <button
-                            onClick={loadData}
-                            disabled={loading}
-                            className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors"
-                        >
-                            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                            Atualizar
-                        </button>
                     </div>
 
                     {/* Content */}
@@ -358,28 +472,18 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                                     seller_phone: ''
                                 }))}
                                 onAccept={async (deliveryId) => {
-                                    // 1. Capturar o pedido ANTES de processar
                                     const deliveryToTrack = visibleDeliveries.find(d => d.orderId.toString() === deliveryId);
-
-                                    // 2. Tentar Aceitar no Backend
                                     const success = await handleAccept(parseInt(deliveryId));
-
-                                    if (!success) {
-                                        throw new Error('Falha ao aceitar entrega');
+                                    if (success) {
+                                        setActiveTab('active');
+                                        if (deliveryToTrack) {
+                                            setActiveMission({
+                                                ...deliveryToTrack,
+                                                deliveryStatus: 'ACCEPTED'
+                                            });
+                                        }
+                                        await loadData();
                                     }
-
-                                    // 3. Se sucesso, mudar aba e abrir rastreio
-                                    setActiveTab('active');
-
-                                    if (deliveryToTrack) {
-                                        setTrackingOrder({
-                                            ...deliveryToTrack,
-                                            deliveryStatus: 'ACCEPTED'
-                                        });
-                                    }
-
-                                    // 4. Atualizar lista em background
-                                    await loadData();
                                 }}
                                 onIgnore={(id) => handleIgnore(parseInt(id))}
                                 onClose={() => { }}
@@ -389,15 +493,18 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                     ) : (
                         myDeliveries.length === 0 ? (
                             <div className="text-center py-20">
-                                <Truck size={48} className="text-zinc-600 mx-auto mb-4" />
-                                <p className="text-zinc-400">
-                                    {activeTab === 'active' ? 'Nenhuma entrega ativa' : 'Nenhuma entrega no histórico'}
+                                <MapIcon size={48} className="text-zinc-600 mx-auto mb-4" />
+                                <h3 className="text-zinc-400 font-bold mb-2">Nada por aqui</h3>
+                                <p className="text-zinc-500 text-sm max-w-xs mx-auto">
+                                    {activeTab === 'active'
+                                        ? 'Você não tem nenhuma missão ativa no momento. Vá em "Disponíveis" para pegar uma!'
+                                        : 'Seu histórico está vazio. Comece a entregar para ver seus ganhos.'}
                                 </p>
                             </div>
                         ) : (
                             <div className="space-y-4">
                                 {myDeliveries.map(delivery => (
-                                    <div key={delivery.orderId} className="glass p-5 rounded-2xl">
+                                    <div key={delivery.orderId} className={`glass p-5 rounded-2xl ${delivery.deliveryStatus === 'CANCELLED' ? 'opacity-50 grayscale' : ''}`}>
                                         <div className="flex items-start justify-between mb-3">
                                             <div>
                                                 <h3 className="text-white font-bold">{delivery.itemTitle}</h3>
@@ -408,164 +515,35 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
 
                                         <div className="space-y-2 mb-4">
                                             <div className="flex items-start gap-2 text-sm">
-                                                <MapPin size={14} className="text-amber-500 mt-0.5 shrink-0" />
-                                                <div>
-                                                    <span className="text-zinc-500">Coleta:</span>
-                                                    <span className="text-zinc-300 ml-1">{correctStoredAddress(delivery.pickupLat || null, delivery.pickupLng || null, delivery.pickupAddress)}</span>
+                                                <MapPin size={14} className="text-zinc-500 mt-0.5 shrink-0" />
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] uppercase text-zinc-600 font-bold">Origem/Destino</span>
+                                                    <span className="text-zinc-400">{delivery.pickupAddress?.split(',')[0]} <ArrowRight className="inline w-3 h-3 mx-1" /> {delivery.deliveryAddress?.split(',')[0]}</span>
                                                 </div>
                                             </div>
-                                            <div className="flex items-start gap-2 text-sm">
-                                                <MapPin size={14} className="text-emerald-500 mt-0.5 shrink-0" />
-                                                <div>
-                                                    <span className="text-zinc-500">Entrega:</span>
-                                                    <span className="text-zinc-300 ml-1">{correctStoredAddress(delivery.deliveryLat || null, delivery.deliveryLng || null, delivery.deliveryAddress)}</span>
-                                                </div>
+                                            <div className="flex items-center gap-2 text-sm mt-2">
+                                                <Clock size={14} className="text-zinc-500" />
+                                                <span className="text-zinc-400 text-xs">
+                                                    {delivery.deliveredAt
+                                                        ? `Entregue em ${new Date(delivery.deliveredAt).toLocaleDateString()}`
+                                                        : `Criado em ${new Date(delivery.createdAt).toLocaleDateString()}`}
+                                                </span>
                                             </div>
-                                            {delivery.contactPhone && (
-                                                <div className="flex items-center gap-2 text-sm">
-                                                    <Phone size={14} className="text-primary-400" />
-                                                    <span className="text-zinc-500">Contato:</span>
-                                                    <span className="text-zinc-400">{delivery.contactPhone}</span>
-                                                </div>
-                                            )}
                                         </div>
 
-                                        <div className="flex items-center justify-between">
-                                            <p className="text-emerald-400 font-bold">{formatCurrency(delivery.courierEarnings)}</p>
-                                            <div className="flex gap-2">
-                                                {delivery.deliveryStatus === 'ACCEPTED' && (
-                                                    <>
-                                                        {delivery.sellerPhone && (
-                                                            <a
-                                                                href={`https://wa.me/55${delivery.sellerPhone.replace(/\D/g, '')}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg transition-colors border border-green-400/20"
-                                                            >
-                                                                <Phone size={16} />
-                                                                WhatsApp Vendedor
-                                                            </a>
-                                                        )}
-                                                        <button
-                                                            onClick={() => setTrackingOrder(delivery)}
-                                                            className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all flex items-center justify-center font-bold"
-                                                            title="Ver no Mapa"
-                                                        >
-                                                            <MapIcon size={18} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleCancel(delivery.orderId)}
-                                                            disabled={actionLoading === delivery.orderId}
-                                                            className="text-red-400 hover:text-red-300 text-sm font-bold py-2 px-4 rounded-lg border border-red-500/20 transition-colors uppercase tracking-tight"
-                                                        >
-                                                            Cancelar
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handlePickup(delivery.orderId)}
-                                                            disabled={actionLoading === delivery.orderId}
-                                                            className="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 shadow-lg shadow-blue-500/20"
-                                                        >
-                                                            {actionLoading === delivery.orderId ? (
-                                                                <Loader2 size={16} className="animate-spin" />
-                                                            ) : (
-                                                                <>
-                                                                    <Package size={16} />
-                                                                    Coletei
-                                                                </>
-                                                            )}
-                                                        </button>
-                                                    </>
-                                                )}
-                                                {delivery.deliveryStatus === 'IN_TRANSIT' && (
-                                                    <>
-                                                        {delivery.buyerPhone && (
-                                                            <a
-                                                                href={`https://wa.me/55${delivery.buyerPhone.replace(/\D/g, '')}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg transition-colors border border-green-400/20"
-                                                            >
-                                                                <Phone size={16} />
-                                                                WhatsApp Comprador
-                                                            </a>
-                                                        )}
-                                                        <button
-                                                            onClick={() => setTrackingOrder(delivery)}
-                                                            className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all flex items-center justify-center font-bold"
-                                                            title="Ver no Mapa"
-                                                        >
-                                                            <MapIcon size={18} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDelivered(delivery.orderId)}
-                                                            disabled={actionLoading === delivery.orderId}
-                                                            className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 shadow-lg shadow-emerald-500/20"
-                                                        >
-                                                            {actionLoading === delivery.orderId ? (
-                                                                <Loader2 size={16} className="animate-spin" />
-                                                            ) : (
-                                                                <>
-                                                                    <CheckCircle size={16} />
-                                                                    Entreguei
-                                                                </>
-                                                            )}
-                                                        </button>
-                                                    </>
-                                                )}
-                                                {delivery.deliveryStatus === 'DELIVERED' && (
-                                                    <span className="text-xs text-yellow-400 bg-yellow-500/10 px-3 py-2 rounded-lg">
-                                                        ⏳ Aguardando confirmação do comprador
-                                                    </span>
-                                                )}
+                                        <div className="flex items-center justify-between border-t border-white/5 pt-3">
+                                            <div>
+                                                <p className="text-[10px] text-zinc-500 uppercase font-bold">Ganhos</p>
+                                                <p className="text-emerald-400 font-bold">{formatCurrency(delivery.courierEarnings)}</p>
                                             </div>
+                                            {delivery.deliveryStatus === 'CANCELLED' && (
+                                                <span className="text-xs font-bold text-red-500">Cancelado</span>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         )
-                    )}
-
-                    {/* Info Box */}
-                    <div className="mt-8 bg-zinc-900 border border-white/5 rounded-2xl p-5">
-                        <h3 className="text-white font-bold mb-3">💡 Como funciona?</h3>
-                        <ul className="space-y-2 text-sm text-zinc-400">
-                            <li className="flex items-start gap-3">
-                                <span className="bg-primary-500/20 text-primary-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0">1</span>
-                                <div className="flex items-center gap-2">
-                                    <Package size={16} className="text-primary-400" />
-                                    <span>Escolha uma entrega disponível e clique em <b>"Aceitar"</b></span>
-                                </div>
-                            </li>
-                            <li className="flex items-start gap-3">
-                                <span className="bg-primary-500/20 text-primary-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0">2</span>
-                                <div className="flex items-center gap-2">
-                                    <Store size={16} className="text-blue-400" />
-                                    <span>Vá até o vendedor e <b>colete o produto</b></span>
-                                </div>
-                            </li>
-                            <li className="flex items-start gap-3">
-                                <span className="bg-primary-500/20 text-primary-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0">3</span>
-                                <div className="flex items-center gap-2">
-                                    <Truck size={16} className="text-purple-400" />
-                                    <span>Leve até o endereço do comprador e <b>marque como entregue</b></span>
-                                </div>
-                            </li>
-                            <li className="flex items-start gap-3">
-                                <span className="bg-primary-500/20 text-primary-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0">4</span>
-                                <div className="flex items-center gap-2">
-                                    <CheckCircle size={16} className="text-emerald-400" />
-                                    <span>Quando o comprador confirmar, você recebe <span className="text-emerald-400 font-bold">90%</span> do valor do frete</span>
-                                </div>
-                            </li>
-                        </ul>
-                    </div>
-                    {/* Tracking Modal */}
-                    {trackingOrder && (
-                        <OrderTrackingMap
-                            orderId={trackingOrder.orderId.toString()}
-                            onClose={() => setTrackingOrder(null)}
-                            userRole="courier"
-                        />
                     )}
                 </>
             )}
