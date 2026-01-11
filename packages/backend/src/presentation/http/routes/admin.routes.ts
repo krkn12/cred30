@@ -50,6 +50,18 @@ adminRoutes.post('/users/update-access', adminMiddleware, auditMiddleware('UPDAT
 adminRoutes.post('/users/create-attendant', adminMiddleware, auditMiddleware('CREATE_ATTENDANT', 'USER'), AdminUsersController.createAttendant);
 adminRoutes.post('/clear-admins', adminMiddleware, AdminUsersController.clearAdmins);
 
+// --- GESTÃO DE ENTREGADORES ---
+adminRoutes.get('/couriers', adminMiddleware, AdminUsersController.listPendingCouriers);
+adminRoutes.post('/couriers/approve', adminMiddleware, auditMiddleware('APPROVE_COURIER', 'USER'), AdminUsersController.approveCourier);
+adminRoutes.post('/couriers/reject', adminMiddleware, auditMiddleware('REJECT_COURIER', 'USER'), AdminUsersController.rejectCourier);
+
+// --- GESTÃO DE VENDEDORES ---
+adminRoutes.get('/sellers', adminMiddleware, AdminUsersController.listPendingSellers);
+adminRoutes.post('/sellers/approve', adminMiddleware, auditMiddleware('APPROVE_SELLER', 'USER'), AdminUsersController.approveSeller);
+adminRoutes.post('/sellers/reject', adminMiddleware, auditMiddleware('REJECT_SELLER', 'USER'), AdminUsersController.rejectSeller);
+
+
+
 // --- GESTÃO DE CÓDIGOS DE INDICAÇÃO ---
 adminRoutes.get('/referral-codes', adminMiddleware, AdminReferralController.listReferralCodes);
 adminRoutes.post('/referral-codes', adminMiddleware, auditMiddleware('CREATE_REFERRAL_CODE', 'REFERRAL_CODE'), AdminReferralController.createReferralCode);

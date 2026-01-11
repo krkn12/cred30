@@ -1,4 +1,4 @@
-import { ApiBase } from './api.base';
+import { ApiBase, ApiResponse } from './api.base';
 
 export class MarketplaceApi extends ApiBase {
     // --- LISTINGS ---
@@ -79,5 +79,19 @@ export class MarketplaceApi extends ApiBase {
             method: 'POST',
             body: JSON.stringify({ title })
         });
+    }
+
+    // --- COURIER REGISTRATION ---
+    async getCourierStatus(): Promise<any> {
+        const res = await this.request<any>('/logistics/status');
+        return res.data || res;
+    }
+
+    async registerCourier(data: { cpf: string; phone: string; city: string; state: string; vehicle: string }): Promise<ApiResponse<any>> {
+        return await this.post<any>('/logistics/register', data);
+    }
+
+    async getDeliveryStats(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/logistics/stats');
     }
 }

@@ -20,6 +20,7 @@ import { AdminReviews } from '../features/admin/tabs/AdminReviews';
 import { AdminBugs } from '../features/admin/tabs/AdminBugs';
 import { AdminInvestments } from '../features/admin/tabs/AdminInvestments';
 import { AdminLogistics } from '../features/admin/tabs/AdminLogistics';
+import { AdminPartners } from '../features/admin/tabs/AdminPartners';
 import { AdminApprovals } from '../features/admin/tabs/AdminApprovals';
 import { AdminRewardsTab } from '../features/admin/tabs/AdminRewardsTab';
 
@@ -34,7 +35,7 @@ interface AdminViewProps {
     onError: (title: string, message: string) => void;
 }
 
-type TabType = 'overview' | 'approvals' | 'payouts' | 'system' | 'investments' | 'store' | 'rewards' | 'referrals' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics';
+type TabType = 'overview' | 'approvals' | 'payouts' | 'system' | 'investments' | 'store' | 'rewards' | 'referrals' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics' | 'partners';
 
 export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: AdminViewProps) => {
     const [isLoading, setIsLoading] = useState(false);
@@ -134,6 +135,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         { id: 'reviews', name: 'Depoimentos', icon: MessageSquare, count: pendingReviewsCount, roles: ['ADMIN'] },
         { id: 'bugs', name: 'Bugs', icon: Bug, count: pendingBugsCount, roles: ['ADMIN'] },
         { id: 'logistics', name: 'Logística', icon: Truck, roles: ['ADMIN'] },
+        { id: 'partners', name: 'Parceiros', icon: UserPlus, roles: ['ADMIN'] },
     ].filter(tab => tab.roles.includes(userRole)), [userRole, pendingApprovalsCount, pendingPayoutsCount, pendingReviewsCount, pendingBugsCount]);
 
 
@@ -225,6 +227,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                 {activeTab === 'reviews' && <AdminReviews onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'bugs' && <AdminBugs onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'logistics' && <AdminLogistics />}
+                {activeTab === 'partners' && <AdminPartners onSuccess={onSuccess} onError={onError} />}
             </div>
 
             {confirmMP && (

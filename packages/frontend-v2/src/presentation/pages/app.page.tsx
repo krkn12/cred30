@@ -60,6 +60,7 @@ const ViewFarmView = lazyWithRetry(() => import('../components/views/ViewFarmVie
 const SellerRegistrationView = lazyWithRetry(() => import('../components/views/SellerRegistrationView'));
 const MyBugReportsView = lazyWithRetry(() => import('../components/views/MyBugReportsView').then(m => ({ default: m.MyBugReportsView })));
 const LogisticsView = lazyWithRetry(() => import('../components/views/LogisticsView'));
+const CourierRegistrationView = lazyWithRetry(() => import('../components/views/CourierRegistrationView'));
 const DepositView = lazyWithRetry(() => import('../components/views/DepositView').then(m => ({ default: m.DepositView })));
 const ServicesView = lazyWithRetry(() => import('../components/views/ServicesView').then(m => ({ default: m.ServicesView })));
 const RewardsShopView = lazyWithRetry(() => import('../components/views/RewardsShopView').then(m => ({ default: m.RewardsShopView })));
@@ -610,6 +611,11 @@ export default function App() {
                 <Route path="seller-registration" element={
                   <Suspense fallback={null}>
                     <SellerRegistrationView />
+                  </Suspense>
+                } />
+                <Route path="courier-registration" element={
+                  <Suspense fallback={null}>
+                    <CourierRegistrationView />
                   </Suspense>
                 } />
                 <Route path="my-bug-reports" element={

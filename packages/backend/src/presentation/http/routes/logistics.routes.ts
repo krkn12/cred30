@@ -25,4 +25,11 @@ logisticsRoutes.get('/my-deliveries', authMiddleware, LogisticsController.listMy
 // Estatísticas do entregador
 logisticsRoutes.get('/stats', authMiddleware, LogisticsController.getStats);
 
+// Status do cadastro de entregador
+logisticsRoutes.get('/status', authMiddleware, LogisticsController.getCourierStatus);
+
+// Registrar como entregador
+logisticsRoutes.post('/register', authMiddleware, LogisticsController.registerCourier);
+
 export { logisticsRoutes };
+

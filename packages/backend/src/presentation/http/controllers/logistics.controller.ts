@@ -403,4 +403,108 @@ export class LogisticsController {
             return c.json({ success: false, message: `Erro ao buscar estatísticas: ${error.message}` }, 500);
         }
     }
+
+    /**
+     * Verificar status do cadastro de entregador
+     */
+    static async getCourierStatus(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+
+            const result = await pool.query(
+                `SELECT is_courier, courier_status, courier_vehicle, courier_city, courier_state, courier_created_at 
+                 FROM users WHERE id = $1`,
+                [user.id]
+            );
+
+            const userData = result.rows[0];
+
+            return c.json({
+                success: true,
+                isCourier: userData?.is_courier || false,
+                status: userData?.courier_status || null,
+                vehicle: userData?.courier_vehicle || null,
+                city: userData?.courier_city || null,
+                state: userData?.courier_state || null,
+                registeredAt: userData?.courier_created_at || null,
+            });
+        } catch (error: any) {
+            console.error('[LOGISTICS] Erro ao buscar status do entregador:', error);
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
+     * Registrar como entregador
+     */
+    static async registerCourier(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+            const body = await c.req.json();
+
+            const { cpf, phone, city, state, vehicle } = body;
+
+            // Validação de campos obrigatórios
+            if (!cpf || !phone || !city || !state || !vehicle) {
+                return c.json({
+                    success: false,
+                    message: 'Preencha todos os campos obrigatórios: CPF, Telefone, Cidade, Estado e Veículo'
+                }, 400);
+            }
+
+            // Validação de veículo
+            const validVehicles = ['BIKE', 'MOTO', 'CAR', 'TRUCK'];
+            if (!validVehicles.includes(vehicle)) {
+                return c.json({
+                    success: false,
+                    message: 'Tipo de veículo inválido. Escolha: BIKE, MOTO, CAR ou TRUCK'
+                }, 400);
+            }
+
+            // Verificar se já é entregador
+            const existingCheck = await pool.query(
+                `SELECT is_courier FROM users WHERE id = $1`,
+                [user.id]
+            );
+
+            if (existingCheck.rows[0]?.is_courier) {
+                return c.json({
+                    success: false,
+                    message: 'Você já é um entregador registrado'
+                }, 400);
+            }
+
+            // Registrar entregador com status pendente (admin aprova)
+            await pool.query(
+                `UPDATE users SET 
+                    is_courier = TRUE,
+                    courier_status = 'pending',
+                    courier_vehicle = $1,
+                    courier_phone = $2,
+                    courier_cpf = $3,
+                    courier_city = $4,
+                    courier_state = $5,
+                    courier_created_at = CURRENT_TIMESTAMP
+                 WHERE id = $6`,
+                [vehicle, phone, cpf, city, state, user.id]
+            );
+
+            return c.json({
+                success: true,
+                message: 'Cadastro enviado para aprovação! Aguarde a liberação pelo administrador.',
+                courier: {
+                    status: 'pending',
+                    vehicle: vehicle
+                }
+            });
+        } catch (error: any) {
+            console.error('[LOGISTICS] Erro ao registrar entregador:', error);
+            return c.json({
+                success: false,
+                message: error.message || 'Erro ao criar cadastro de entregador'
+            }, 500);
+        }
+    }
 }

@@ -225,10 +225,10 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                             <h3 className="font-bold text-white mb-1">Selo Verificado</h3>
                             <p className="text-xs text-zinc-500 mb-4">Adquira sua verificação de identidade</p>
                             <button
-                                onClick={() => navigate('/app/settings')}
+                                onClick={() => navigate('/app/courier-registration')}
                                 className="w-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 py-2 rounded-lg text-xs font-bold uppercase hover:bg-emerald-500 hover:text-white transition-all"
                             >
-                                Obter Selo
+                                Tornar-se Entregador
                             </button>
                         </div>
                     </div>
