@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { MapPin, X, Truck, Package, Phone, User, Navigation2 } from 'lucide-react';
+import { MapPin, X, Truck, Package, Phone, User, Navigation2, Info } from 'lucide-react';
+import { applyLocationCorrection, correctStoredAddress } from '../../../application/utils/location_corrections';
 
 interface DeliveryMission {
     id: string;
@@ -35,24 +36,21 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
     onClose,
     isEmbedded = false
 }) => {
-    // ... existing refs and state ...
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<L.Map | null>(null);
     const markersRef = useRef<L.Marker[]>([]);
     const [selectedDelivery, setSelectedDelivery] = useState<DeliveryMission | null>(null);
     const [isAccepting, setIsAccepting] = useState(false);
 
-    // ... existing icons and geocode logic ...
-
     // Ícones personalizados
     const pickupIcon = L.divIcon({
         html: `<div class="bg-amber-500 p-2 rounded-full shadow-lg border-2 border-white animate-pulse">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-                    <line x1="3" y1="6" x2="21" y2="6"/>
-                    <path d="M16 10a4 4 0 0 1-8 0"/>
-                </svg>
-              </div>`,
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
+            </svg>
+        </div>`,
         className: '',
         iconSize: [40, 40],
         iconAnchor: [20, 40]
@@ -60,11 +58,11 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
 
     const deliveryIcon = L.divIcon({
         html: `<div class="bg-rose-500 p-2 rounded-full shadow-lg border-2 border-white">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
-                    <line x1="4" y1="22" x2="4" y2="15"/>
-                </svg>
-              </div>`,
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                <line x1="4" y1="22" x2="4" y2="15" />
+            </svg>
+        </div>`,
         className: '',
         iconSize: [40, 40],
         iconAnchor: [20, 40]
@@ -138,8 +136,6 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
         markersRef.current.forEach(marker => marker.remove());
         markersRef.current = [];
 
-        const bounds: L.LatLngExpression[] = [];
-
         // Adicionar localização do usuário e círculo de acurácia
         L.circleMarker([userCoords.lat, userCoords.lng], {
             radius: 8,
@@ -152,7 +148,7 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
 
         // Círculo de Precisão (Acurácia)
         const accuracyCircle = L.circle([userCoords.lat, userCoords.lng], {
-            radius: 300, // Raio inicial baseado no relato do Josias ou dinâmico
+            radius: 300,
             fillColor: "#3b82f6",
             fillOpacity: 0.15,
             color: "#3b82f6",
@@ -160,94 +156,67 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
             dashArray: '5, 5'
         }).addTo(mapRef.current);
 
-        // Se houver precisão vinda do navegador, usamos ela
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition((pos) => {
                 accuracyCircle.setRadius(pos.coords.accuracy);
             });
         }
 
-        const updateMarkers = async () => {
-            const sortedDeliveries = [...deliveries];
-            let stateUpdated = false;
-            const newPassed = new Set(passedMarkers);
-            const newReached = new Set(reachedMarkers);
+        const sortedDeliveries = [...deliveries];
+        const newPassed = new Set(passedMarkers);
+        const newReached = new Set(reachedMarkers);
+        let stateUpdated = false;
 
-            for (const delivery of sortedDeliveries) {
-                if (!mapRef.current) return;
+        for (const delivery of sortedDeliveries) {
+            if (!mapRef.current) return;
 
-                const pickupPos = delivery.pickup_lat && delivery.pickup_lng ? { lat: delivery.pickup_lat, lng: delivery.pickup_lng } : null;
-                const deliveryPos = delivery.delivery_lat && delivery.delivery_lng ? { lat: delivery.delivery_lat, lng: delivery.delivery_lng } : null;
+            const pickupPos = delivery.pickup_lat && delivery.pickup_lng ? { lat: delivery.pickup_lat, lng: delivery.pickup_lng } : null;
+            const deliveryPos = delivery.delivery_lat && delivery.delivery_lng ? { lat: delivery.delivery_lat, lng: delivery.delivery_lng } : null;
 
-                // Identificadores únicos para os pontos (Usando order_id vindo do backend)
-                const pickupId = `pickup-${delivery.order_id}`;
-                const deliveryId = `delivery-${delivery.order_id}`;
+            const pickupId = `pickup-${delivery.order_id}`;
+            const deliveryId = `delivery-${delivery.order_id}`;
 
-                // 1. Lógica de Coleta
-                if (pickupPos && !newPassed.has(pickupId)) {
-                    const dist = calculateDistance(userCoords.lat, userCoords.lng, pickupPos.lat, pickupPos.lng);
-
-                    if (dist < 50) {
-                        if (!newReached.has(pickupId)) {
-                            newReached.add(pickupId);
-                            stateUpdated = true;
-                        }
-                    } else if (dist > 70 && newReached.has(pickupId)) { // Buffer de 20m para evitar flickering
-                        newPassed.add(pickupId);
-                        stateUpdated = true;
-                    }
-
-                    // Mostrar se estiver no raio de 30km e não tiver "passado"
-                    if (dist <= 30000 && !newPassed.has(pickupId)) {
-                        const m = L.marker([pickupPos.lat, pickupPos.lng], {
-                            icon: pickupIcon,
-                            zIndexOffset: 1000
-                        })
-                            .addTo(mapRef.current!)
-                            .on('click', () => setSelectedDelivery(delivery));
-
-                        markersRef.current.push(m);
-                        bounds.push([pickupPos.lat, pickupPos.lng]);
-                    }
+            if (pickupPos && !newPassed.has(pickupId)) {
+                const dist = calculateDistance(userCoords.lat, userCoords.lng, pickupPos.lat, pickupPos.lng);
+                if (dist < 50) {
+                    if (!newReached.has(pickupId)) { newReached.add(pickupId); stateUpdated = true; }
+                } else if (dist > 70 && newReached.has(pickupId)) {
+                    newPassed.add(pickupId); stateUpdated = true;
                 }
 
-                // 2. Lógica de Entrega
-                if (deliveryPos && !newPassed.has(deliveryId)) {
-                    const dist = calculateDistance(userCoords.lat, userCoords.lng, deliveryPos.lat, deliveryPos.lng);
-
-                    if (dist < 50) {
-                        if (!newReached.has(deliveryId)) {
-                            newReached.add(deliveryId);
-                            stateUpdated = true;
-                        }
-                    } else if (dist > 70 && newReached.has(deliveryId)) {
-                        newPassed.add(deliveryId);
-                        stateUpdated = true;
-                    }
-
-                    if (dist <= 30000 && !newPassed.has(deliveryId)) {
-                        const m = L.marker([deliveryPos.lat, deliveryPos.lng], { icon: deliveryIcon })
-                            .addTo(mapRef.current!)
-                            .on('click', () => setSelectedDelivery(delivery));
-
-                        markersRef.current.push(m);
-                        bounds.push([deliveryPos.lat, deliveryPos.lng]);
-                    }
+                if (dist <= 30000 && !newPassed.has(pickupId)) {
+                    const m = L.marker([pickupPos.lat, pickupPos.lng], { icon: pickupIcon, zIndexOffset: 1000 })
+                        .addTo(mapRef.current!)
+                        .on('click', () => setSelectedDelivery(delivery));
+                    markersRef.current.push(m);
                 }
             }
 
-            if (stateUpdated) {
-                setReachedMarkers(newReached);
-                setPassedMarkers(newPassed);
-            }
-        };
+            if (deliveryPos && !newPassed.has(deliveryId)) {
+                const dist = calculateDistance(userCoords.lat, userCoords.lng, deliveryPos.lat, deliveryPos.lng);
+                if (dist < 50) {
+                    if (!newReached.has(deliveryId)) { newReached.add(deliveryId); stateUpdated = true; }
+                } else if (dist > 70 && newReached.has(deliveryId)) {
+                    newPassed.add(deliveryId); stateUpdated = true;
+                }
 
-        updateMarkers();
-    }, [deliveries, userCoords, passedMarkers, reachedMarkers]);
+                if (dist <= 30000 && !newPassed.has(deliveryId)) {
+                    const m = L.marker([deliveryPos.lat, deliveryPos.lng], { icon: deliveryIcon })
+                        .addTo(mapRef.current!)
+                        .on('click', () => setSelectedDelivery(delivery));
+                    markersRef.current.push(m);
+                }
+            }
+        }
+
+        if (stateUpdated) {
+            setReachedMarkers(newReached);
+            setPassedMarkers(newPassed);
+        }
+    }, [deliveries, userCoords]);
 
     const routeLayerRef = useRef<L.Polyline | null>(null);
 
-    // Limpar rota ao desmontar ou trocar seleção
     useEffect(() => {
         if (routeLayerRef.current) {
             routeLayerRef.current.remove();
@@ -257,48 +226,22 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
         const drawRoute = async () => {
             if (!selectedDelivery || !mapRef.current) return;
 
-            // Coordenadas de origem e destino
-            let start: { lat: number, lng: number } | null = null;
-            let end: { lat: number, lng: number } | null = null;
-
-            if (selectedDelivery.pickup_lat && selectedDelivery.pickup_lng) {
-                start = { lat: selectedDelivery.pickup_lat, lng: selectedDelivery.pickup_lng };
-            }
-            if (selectedDelivery.delivery_lat && selectedDelivery.delivery_lng) {
-                end = { lat: selectedDelivery.delivery_lat, lng: selectedDelivery.delivery_lng };
-            }
+            const start = selectedDelivery.pickup_lat && selectedDelivery.pickup_lng ? { lat: selectedDelivery.pickup_lat, lng: selectedDelivery.pickup_lng } : null;
+            const end = selectedDelivery.delivery_lat && selectedDelivery.delivery_lng ? { lat: selectedDelivery.delivery_lat, lng: selectedDelivery.delivery_lng } : null;
 
             if (start && end) {
                 try {
-                    // OSRM Public API (Free)
-                    const response = await fetch(
-                        `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`
-                    );
+                    const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`);
                     const data = await response.json();
 
                     if (data.routes && data.routes.length > 0) {
                         const coordinates = data.routes[0].geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]);
-
-                        // Desenhar linha estilo "Uber"
-                        routeLayerRef.current = L.polyline(coordinates, {
-                            color: '#3b82f6', // blue-500
-                            weight: 6,
-                            opacity: 0.8,
-                            lineCap: 'round'
-                        }).addTo(mapRef.current);
-
-                        // Zoom na rota
+                        routeLayerRef.current = L.polyline(coordinates, { color: '#3b82f6', weight: 6, opacity: 0.8, lineCap: 'round' }).addTo(mapRef.current);
                         mapRef.current.fitBounds(routeLayerRef.current.getBounds(), { padding: [50, 50] });
                     }
                 } catch (error) {
                     console.error('Erro ao buscar rota:', error);
-                    // Fallback: linha reta se OSRM falhar
-                    routeLayerRef.current = L.polyline([[start.lat, start.lng], [end.lat, end.lng]], {
-                        color: '#3b82f6',
-                        weight: 4,
-                        dashArray: '10, 10',
-                        opacity: 0.5
-                    }).addTo(mapRef.current);
+                    routeLayerRef.current = L.polyline([[start.lat, start.lng], [end.lat, end.lng]], { color: '#3b82f6', weight: 4, dashArray: '10, 10', opacity: 0.5 }).addTo(mapRef.current);
                 }
             }
         };
@@ -308,7 +251,6 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
 
     const handleAcceptDelivery = async () => {
         if (!selectedDelivery) return;
-
         setIsAccepting(true);
         try {
             await onAccept(selectedDelivery.id);
@@ -358,11 +300,9 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                 )}
             </div>
 
-            {/* Map Area */}
             <div className="flex-1 relative z-0">
                 <div ref={mapContainerRef} className="w-full h-full bg-zinc-900" />
 
-                {/* Legenda - Mais compacta em mobile */}
                 <div className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-zinc-900/95 backdrop-blur-md border border-zinc-800 p-3 rounded-2xl shadow-2xl z-[100] space-y-3">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center shadow-lg shadow-amber-500/20">
@@ -378,7 +318,6 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                     </div>
                 </div>
 
-                {/* Mensagem de GPS ou sem entregas */}
                 {!userCoords ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/80 backdrop-blur-md z-[500]">
                         <div className="text-center space-y-4 p-6">
@@ -389,8 +328,6 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                             <h3 className="text-white font-black text-xl uppercase tracking-tighter">Sintonizando Satélites...</h3>
                             <p className="text-zinc-500 text-sm max-w-xs mx-auto font-bold leading-relaxed">
                                 Precisamos da sua localização precisa para mostrar as entregas num raio de <span className="text-blue-400">30km</span>.
-                                <br /><br />
-                                <span className="text-[10px] uppercase opacity-70">Dica: Ficar em céu aberto ajuda na precisão.</span>
                             </p>
                         </div>
                     </div>
@@ -404,110 +341,47 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                 )}
             </div>
 
-            {/* Modal de Detalhes da Entrega */}
             {selectedDelivery && (
                 <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-[9999] animate-in fade-in duration-200" onClick={() => setSelectedDelivery(null)}>
                     <div className="bg-zinc-900 border border-zinc-800 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md max-h-[80vh] overflow-y-auto animate-in slide-in-from-bottom duration-300 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                        {/* Header do Modal */}
                         <div className="p-6 border-b border-zinc-800 flex items-start justify-between">
                             <div className="flex items-start gap-4">
                                 {selectedDelivery.image_url ? (
-                                    <img
-                                        src={selectedDelivery.image_url}
-                                        alt={selectedDelivery.item_title}
-                                        className="w-16 h-16 rounded-xl object-cover border border-zinc-800"
-                                    />
+                                    <img src={selectedDelivery.image_url} alt={selectedDelivery.item_title} className="w-16 h-16 rounded-xl object-cover border border-zinc-800" />
                                 ) : (
-                                    <div className="w-16 h-16 bg-zinc-800 rounded-xl flex items-center justify-center">
-                                        <Package className="text-zinc-600" size={24} />
-                                    </div>
+                                    <div className="w-16 h-16 bg-zinc-800 rounded-xl flex items-center justify-center"><Package className="text-zinc-600" size={24} /></div>
                                 )}
                                 <div className="flex-1">
                                     <h3 className="text-white font-bold text-base line-clamp-2">{selectedDelivery.item_title}</h3>
-                                    <p className="text-primary-400 font-black text-xl mt-1">
-                                        {formatCurrency(selectedDelivery.delivery_fee)}
-                                    </p>
+                                    <p className="text-primary-400 font-black text-xl mt-1">{formatCurrency(selectedDelivery.delivery_fee)}</p>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => setSelectedDelivery(null)}
-                                className="p-2 hover:bg-zinc-800 rounded-lg transition"
-                            >
-                                <X className="text-zinc-500" size={20} />
-                            </button>
+                            <button onClick={() => setSelectedDelivery(null)} className="p-2 hover:bg-zinc-800 rounded-lg transition"><X className="text-zinc-500" size={20} /></button>
                         </div>
 
-                        {/* Conteúdo do Modal */}
                         <div className="p-6 space-y-4">
-                            {/* Coleta */}
                             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
-                                        <MapPin className="text-white" size={16} />
-                                    </div>
-                                    <span className="text-xs font-black text-amber-400 uppercase tracking-widest">Coleta</span>
+                                    <MapPin size={16} className="text-amber-500" />
+                                    <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Ponto de Coleta</span>
                                 </div>
-                                <p className="text-white text-sm font-medium mb-2">{selectedDelivery.pickup_address}</p>
-                                <div className="flex items-center gap-2 text-zinc-400 text-xs">
-                                    <User size={14} />
-                                    <span>{selectedDelivery.seller_name}</span>
-                                </div>
-                                {selectedDelivery.seller_phone && (
-                                    <div className="flex items-center gap-2 text-zinc-400 text-xs mt-1">
-                                        <Phone size={14} />
-                                        <span>{selectedDelivery.seller_phone}</span>
-                                    </div>
-                                )}
+                                <p className="text-white text-sm font-medium mb-2">{correctStoredAddress(selectedDelivery.pickup_lat, selectedDelivery.pickup_lng, selectedDelivery.pickup_address)}</p>
+                                <div className="flex items-center gap-2 text-zinc-400 text-xs"><User size={14} /><span>{selectedDelivery.seller_name}</span></div>
                             </div>
 
-                            {/* Entrega */}
-                            <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4">
+                            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <div className="w-8 h-8 bg-rose-500 rounded-full flex items-center justify-center">
-                                        <MapPin className="text-white" size={16} />
-                                    </div>
-                                    <span className="text-xs font-black text-rose-400 uppercase tracking-widest">Destino</span>
+                                    <MapPin size={16} className="text-emerald-500" />
+                                    <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Ponto de Entrega</span>
                                 </div>
-                                <p className="text-white text-sm font-medium mb-2">{selectedDelivery.delivery_address}</p>
-                                <div className="flex items-center gap-2 text-zinc-400 text-xs">
-                                    <User size={14} />
-                                    <span>{selectedDelivery.buyer_name}</span>
-                                </div>
-                                {selectedDelivery.buyer_phone && (
-                                    <div className="flex items-center gap-2 text-zinc-400 text-xs mt-1">
-                                        <Phone size={14} />
-                                        <span>{selectedDelivery.buyer_phone}</span>
-                                    </div>
-                                )}
+                                <p className="text-white text-sm font-medium mb-2">{correctStoredAddress(selectedDelivery.delivery_lat, selectedDelivery.delivery_lng, selectedDelivery.delivery_address)}</p>
+                                <div className="flex items-center gap-2 text-zinc-400 text-xs"><User size={14} /><span>{selectedDelivery.buyer_name}</span></div>
                             </div>
 
-                            {/* Botões de Ação */}
                             <div className="flex gap-3 pt-2">
-                                <button
-                                    onClick={() => {
-                                        onIgnore(selectedDelivery.id);
-                                        setSelectedDelivery(null);
-                                    }}
-                                    className="px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-xl font-bold text-sm transition"
-                                >
-                                    Ignorar
-                                </button>
-                                <button
-                                    onClick={handleAcceptDelivery}
-                                    disabled={isAccepting}
-                                    className="flex-1 py-3 bg-primary-500 hover:bg-primary-400 text-black rounded-xl font-black text-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                >
-                                    {isAccepting ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                                            Aceitando...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Truck size={18} />
-                                            ACEITAR ENTREGA
-                                        </>
-                                    )}
+                                <button onClick={() => { onIgnore(selectedDelivery.id); setSelectedDelivery(null); }} className="px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-xl font-bold text-sm transition">Ignorar</button>
+                                <button onClick={handleAcceptDelivery} disabled={isAccepting} className="flex-1 py-3 bg-primary-500 hover:bg-primary-400 text-black rounded-xl font-black text-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                                    {isAccepting ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" /> : <><Truck size={18} />ACEITAR ENTREGA</>}
                                 </button>
                             </div>
                         </div>
