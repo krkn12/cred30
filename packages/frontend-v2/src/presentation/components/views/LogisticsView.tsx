@@ -30,8 +30,10 @@ interface Delivery {
     contactPhone?: string;
     sellerName: string;
     sellerId: number;
+    sellerPhone?: string;
     buyerName: string;
     buyerId: number;
+    buyerPhone?: string;
     createdAt: string;
     deliveryStatus?: string;
     orderStatus?: string;
@@ -403,6 +405,7 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                                             {delivery.contactPhone && (
                                                 <div className="flex items-center gap-2 text-sm">
                                                     <Phone size={14} className="text-primary-400" />
+                                                    <span className="text-zinc-500">Contato:</span>
                                                     <span className="text-zinc-400">{delivery.contactPhone}</span>
                                                 </div>
                                             )}
@@ -413,9 +416,20 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                                             <div className="flex gap-2">
                                                 {delivery.deliveryStatus === 'ACCEPTED' && (
                                                     <>
+                                                        {delivery.sellerPhone && (
+                                                            <a
+                                                                href={`https://wa.me/55${delivery.sellerPhone.replace(/\D/g, '')}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg transition-colors border border-green-400/20"
+                                                            >
+                                                                <Phone size={16} />
+                                                                WhatsApp Vendedor
+                                                            </a>
+                                                        )}
                                                         <button
                                                             onClick={() => setTrackingOrder(delivery)}
-                                                            className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all flex items-center justify-center"
+                                                            className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all flex items-center justify-center font-bold"
                                                             title="Ver no Mapa"
                                                         >
                                                             <MapIcon size={18} />
@@ -423,21 +437,21 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                                                         <button
                                                             onClick={() => handleCancel(delivery.orderId)}
                                                             disabled={actionLoading === delivery.orderId}
-                                                            className="text-red-400 hover:text-red-300 text-sm font-bold py-2 px-4 rounded-lg border border-red-500/20 transition-colors"
+                                                            className="text-red-400 hover:text-red-300 text-sm font-bold py-2 px-4 rounded-lg border border-red-500/20 transition-colors uppercase tracking-tight"
                                                         >
                                                             Cancelar
                                                         </button>
                                                         <button
                                                             onClick={() => handlePickup(delivery.orderId)}
                                                             disabled={actionLoading === delivery.orderId}
-                                                            className="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
+                                                            className="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 shadow-lg shadow-blue-500/20"
                                                         >
                                                             {actionLoading === delivery.orderId ? (
                                                                 <Loader2 size={16} className="animate-spin" />
                                                             ) : (
                                                                 <>
                                                                     <Package size={16} />
-                                                                    Coletei o Produto
+                                                                    Coletei
                                                                 </>
                                                             )}
                                                         </button>
@@ -445,9 +459,20 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                                                 )}
                                                 {delivery.deliveryStatus === 'IN_TRANSIT' && (
                                                     <>
+                                                        {delivery.buyerPhone && (
+                                                            <a
+                                                                href={`https://wa.me/55${delivery.buyerPhone.replace(/\D/g, '')}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg transition-colors border border-green-400/20"
+                                                            >
+                                                                <Phone size={16} />
+                                                                WhatsApp Comprador
+                                                            </a>
+                                                        )}
                                                         <button
                                                             onClick={() => setTrackingOrder(delivery)}
-                                                            className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all flex items-center justify-center mr-1"
+                                                            className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all flex items-center justify-center font-bold"
                                                             title="Ver no Mapa"
                                                         >
                                                             <MapIcon size={18} />
@@ -455,7 +480,7 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                                                         <button
                                                             onClick={() => handleDelivered(delivery.orderId)}
                                                             disabled={actionLoading === delivery.orderId}
-                                                            className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
+                                                            className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 shadow-lg shadow-emerald-500/20"
                                                         >
                                                             {actionLoading === delivery.orderId ? (
                                                                 <Loader2 size={16} className="animate-spin" />
