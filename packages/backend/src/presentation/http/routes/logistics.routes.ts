@@ -28,8 +28,8 @@ logisticsRoutes.get('/stats', authMiddleware, LogisticsController.getStats);
 // Status do cadastro de entregador
 logisticsRoutes.get('/status', authMiddleware, LogisticsController.getCourierStatus);
 
-// Registrar como entregador
-logisticsRoutes.post('/register', authMiddleware, LogisticsController.registerCourier);
+// Atualizar preço por KM do entregador
+logisticsRoutes.post('/update-price', authMiddleware, LogisticsController.updateCourierPrice);
 
 export { logisticsRoutes };
 

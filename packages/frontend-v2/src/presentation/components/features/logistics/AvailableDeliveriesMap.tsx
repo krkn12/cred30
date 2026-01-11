@@ -4,6 +4,7 @@ import { MapPin, X, Truck, Package, Phone, User } from 'lucide-react';
 
 interface DeliveryMission {
     id: string;
+    order_id: string;
     delivery_fee: number;
     delivery_address: string;
     pickup_address: string;
@@ -69,23 +70,25 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
         iconAnchor: [20, 40]
     });
 
-    const geocodeAddress = async (address: string): Promise<{ lat: number; lng: number } | null> => {
-        try {
-            const response = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`
-            );
-            const data = await response.json();
-            if (data && data.length > 0) {
-                return {
-                    lat: parseFloat(data[0].lat),
-                    lng: parseFloat(data[0].lon)
-                };
-            }
-        } catch (err) {
-            console.error('Geocoding error:', err);
-        }
-        return null;
+    // Função para calcular distância entre dois pontos (Haversine) em metros
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+        const R = 6371e3; // Raio da Terra em metros
+        const φ1 = lat1 * Math.PI / 180;
+        const φ2 = lat2 * Math.PI / 180;
+        const Δφ = (lat2 - lat1) * Math.PI / 180;
+        const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return R * c; // Distância em metros
     };
+
+    const [userCoords, setUserCoords] = useState<{ lat: number, lng: number } | null>(null);
+    const [passedMarkers, setPassedMarkers] = useState<Set<string>>(new Set());
+    const [reachedMarkers, setReachedMarkers] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (!mapContainerRef.current || mapRef.current) return;
@@ -93,114 +96,127 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
         mapRef.current = L.map(mapContainerRef.current, {
             zoomControl: true,
             attributionControl: false
-        }).setView([-14.235, -51.9253], 4); // Initial setView for Brazil
+        }).setView([-14.235, -51.9253], 4);
 
-        // Usar CartoDB Light para melhor visibilidade em operações de campo
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap &copy; CARTO',
             maxZoom: 20
         }).addTo(mapRef.current);
 
-        // Tentar focar na localização do usuário
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
+            const watchId = navigator.geolocation.watchPosition(
                 (position) => {
-                    if (mapRef.current) {
-                        mapRef.current.flyTo([position.coords.latitude, position.coords.longitude], 13, {
-                            duration: 2 // 2 seconds animation
-                        });
+                    const { latitude, longitude } = position.coords;
+                    setUserCoords({ lat: latitude, lng: longitude });
 
-                        // Adicionar um ponto azul indicando "Você está aqui"
-                        L.circleMarker([position.coords.latitude, position.coords.longitude], {
-                            radius: 8,
-                            fillColor: "#3b82f6", // blue-500
-                            color: "#fff",
-                            weight: 2,
-                            opacity: 1,
-                            fillOpacity: 0.8
-                        }).addTo(mapRef.current).bindPopup("Sua localização");
+                    if (mapRef.current && !userCoords) {
+                        mapRef.current.flyTo([latitude, longitude], 15);
                     }
                 },
-                (error) => console.log('GPS Error:', error),
-                { enableHighAccuracy: true, timeout: 5000 }
+                (error) => console.log('Location error:', error),
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
             );
-        }
 
-        return () => {
-            if (mapRef.current) {
-                mapRef.current.remove();
-                mapRef.current = null;
-            }
-        };
+            return () => navigator.geolocation.clearWatch(watchId);
+        }
     }, []);
 
     useEffect(() => {
-        if (!mapRef.current) return;
+        if (!mapRef.current || !userCoords) return;
 
+        // Limpar marcadores anteriores
         markersRef.current.forEach(marker => marker.remove());
         markersRef.current = [];
 
         const bounds: L.LatLngExpression[] = [];
 
-        const addMarkers = async () => {
-            for (const delivery of deliveries) {
+        // Adicionar localizaçao do usuário
+        L.circleMarker([userCoords.lat, userCoords.lng], {
+            radius: 8,
+            fillColor: "#3b82f6",
+            color: "#fff",
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8
+        }).addTo(mapRef.current).bindPopup("Sua localização");
+
+        const updateMarkers = async () => {
+            const sortedDeliveries = [...deliveries];
+            let stateUpdated = false;
+            const newPassed = new Set(passedMarkers);
+            const newReached = new Set(reachedMarkers);
+
+            for (const delivery of sortedDeliveries) {
                 if (!mapRef.current) return;
 
-                let pickupCoords = null;
-                let deliveryCoords = null;
+                const pickupPos = delivery.pickup_lat && delivery.pickup_lng ? { lat: delivery.pickup_lat, lng: delivery.pickup_lng } : null;
+                const deliveryPos = delivery.delivery_lat && delivery.delivery_lng ? { lat: delivery.delivery_lat, lng: delivery.delivery_lng } : null;
 
-                if (delivery.pickup_lat && delivery.pickup_lng) {
-                    pickupCoords = { lat: delivery.pickup_lat, lng: delivery.pickup_lng };
-                } else if (delivery.pickup_address) {
-                    pickupCoords = await geocodeAddress(delivery.pickup_address);
+                // Identificadores únicos para os pontos (Usando order_id vindo do backend)
+                const pickupId = `pickup-${delivery.order_id}`;
+                const deliveryId = `delivery-${delivery.order_id}`;
+
+                // 1. Lógica de Coleta
+                if (pickupPos && !newPassed.has(pickupId)) {
+                    const dist = calculateDistance(userCoords.lat, userCoords.lng, pickupPos.lat, pickupPos.lng);
+
+                    if (dist < 50) {
+                        if (!newReached.has(pickupId)) {
+                            newReached.add(pickupId);
+                            stateUpdated = true;
+                        }
+                    } else if (dist > 70 && newReached.has(pickupId)) { // Buffer de 20m para evitar flickering
+                        newPassed.add(pickupId);
+                        stateUpdated = true;
+                    }
+
+                    // Mostrar se estiver no raio de 2km e não tiver "passado"
+                    if (dist <= 2000 && !newPassed.has(pickupId)) {
+                        const m = L.marker([pickupPos.lat, pickupPos.lng], {
+                            icon: pickupIcon,
+                            zIndexOffset: 1000
+                        })
+                            .addTo(mapRef.current!)
+                            .on('click', () => setSelectedDelivery(delivery));
+
+                        markersRef.current.push(m);
+                        bounds.push([pickupPos.lat, pickupPos.lng]);
+                    }
                 }
 
-                if (delivery.delivery_lat && delivery.delivery_lng) {
-                    deliveryCoords = { lat: delivery.delivery_lat, lng: delivery.delivery_lng };
-                } else if (delivery.delivery_address) {
-                    deliveryCoords = await geocodeAddress(delivery.delivery_address);
-                }
+                // 2. Lógica de Entrega
+                if (deliveryPos && !newPassed.has(deliveryId)) {
+                    const dist = calculateDistance(userCoords.lat, userCoords.lng, deliveryPos.lat, deliveryPos.lng);
 
-                if (pickupCoords) {
-                    const pickupMarker = L.marker([pickupCoords.lat, pickupCoords.lng], { icon: pickupIcon })
-                        .addTo(mapRef.current!)
-                        .on('click', () => {
-                            console.log('📍 Marcador de Coleta clicado:', delivery.item_title);
-                            setSelectedDelivery(delivery);
-                        });
+                    if (dist < 50) {
+                        if (!newReached.has(deliveryId)) {
+                            newReached.add(deliveryId);
+                            stateUpdated = true;
+                        }
+                    } else if (dist > 70 && newReached.has(deliveryId)) {
+                        newPassed.add(deliveryId);
+                        stateUpdated = true;
+                    }
 
-                    markersRef.current.push(pickupMarker);
-                    bounds.push([pickupCoords.lat, pickupCoords.lng]);
-                }
+                    if (dist <= 2000 && !newPassed.has(deliveryId)) {
+                        const m = L.marker([deliveryPos.lat, deliveryPos.lng], { icon: deliveryIcon })
+                            .addTo(mapRef.current!)
+                            .on('click', () => setSelectedDelivery(delivery));
 
-                if (deliveryCoords) {
-                    const deliveryMarker = L.marker([deliveryCoords.lat, deliveryCoords.lng], { icon: deliveryIcon })
-                        .addTo(mapRef.current!)
-                        .on('click', () => {
-                            console.log('📍 Marcador de Entrega clicado:', delivery.item_title);
-                            setSelectedDelivery(delivery);
-                        });
-
-                    markersRef.current.push(deliveryMarker);
-                    bounds.push([deliveryCoords.lat, deliveryCoords.lng]);
+                        markersRef.current.push(m);
+                        bounds.push([deliveryPos.lat, deliveryPos.lng]);
+                    }
                 }
             }
 
-            if (bounds.length > 0 && mapRef.current) {
-                // Pequeno delay para garantir que o mapa tem tamanho definido
-                setTimeout(() => {
-                    if (mapRef.current) {
-                        console.log('🗺️ Ajustando zoom para', bounds.length, 'entregas');
-                        mapRef.current.fitBounds(L.latLngBounds(bounds), { padding: [50, 50], maxZoom: 15 });
-                    }
-                }, 100);
-            } else {
-                console.log('🗺️ Nenhuma entrega com coordenadas para focar');
+            if (stateUpdated) {
+                setReachedMarkers(newReached);
+                setPassedMarkers(newPassed);
             }
         };
 
-        addMarkers();
-    }, [deliveries]);
+        updateMarkers();
+    }, [deliveries, userCoords, passedMarkers, reachedMarkers]);
 
     const routeLayerRef = useRef<L.Polyline | null>(null);
 

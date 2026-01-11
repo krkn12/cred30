@@ -83,6 +83,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const [invitedCourierId, setInvitedCourierId] = useState('');
 
     const [trackingOrder, setTrackingOrder] = useState<any>(null);
+    const [courierPricePerKm, setCourierPricePerKm] = useState<number>(2.0);
 
     const addToCart = (item: any) => {
         if (cart.sellerId && cart.sellerId !== item.seller_id) {
@@ -237,6 +238,12 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 const response = await apiService.get<any>('/marketplace/logistic/missions');
                 if (response.success) {
                     setMissions(response.data);
+                }
+
+                // Buscar status e preço por KM do entregador
+                const courierRes = await apiService.get<any>('/logistics/status');
+                if (courierRes.success && courierRes.data) {
+                    setCourierPricePerKm(courierRes.data.pricePerKm || 2.0);
                 }
             }
         } catch (error) {
@@ -863,8 +870,19 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     </div>
 
                                     <button
-                                        onClick={() => {
+                                        onClick={async () => {
                                             const total = cart.items.reduce((acc, i) => acc + parseFloat(i.price), 0);
+
+                                            // Tentar pegar localização para frete se necessário
+                                            let deliveryCoords = { lat: 0, lng: 0 };
+                                            if (navigator.geolocation) {
+                                                const pos = await new Promise<any>((resolve) => {
+                                                    navigator.geolocation.getCurrentPosition(resolve, () => resolve(null));
+                                                });
+                                                if (pos) {
+                                                    deliveryCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                                                }
+                                            }
 
                                             setConfirmData({
                                                 isOpen: true,
@@ -879,10 +897,14 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                     try {
                                                         const res = await apiService.post('/marketplace/buy', {
                                                             listingIds: cart.items.map(i => i.id),
-                                                            deliveryType: 'SELF_PICKUP', // No carrinho simplificamos para retirada ou o usuário compra avulso para frete complexo
+                                                            deliveryType: 'SELF_PICKUP',
                                                             paymentMethod: 'BALANCE',
                                                             deliveryAddress: 'A combinar (Lote)',
-                                                            contactPhone: (state.currentUser as any)?.phone || '000000000'
+                                                            contactPhone: (state.currentUser as any)?.phone || '000000000',
+                                                            deliveryLat: deliveryCoords.lat,
+                                                            deliveryLng: deliveryCoords.lng,
+                                                            pickupLat: cart.items[0].pickup_lat,
+                                                            pickupLng: cart.items[0].pickup_lng
                                                         });
 
                                                         if (res.success) {
@@ -954,6 +976,18 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                     missions={missions}
                     currentUserId={state.currentUser?.id || ''}
                     formatCurrency={formatCurrency}
+                    pricePerKm={courierPricePerKm}
+                    onUpdatePrice={async (newPrice) => {
+                        try {
+                            const res = await apiService.post('/logistics/update-price', { pricePerKm: newPrice });
+                            if (res.success) {
+                                setCourierPricePerKm(newPrice);
+                                onSuccess('Sucesso', 'Preço por KM atualizado!');
+                            }
+                        } catch (err: any) {
+                            onError('Erro', err.message);
+                        }
+                    }}
                     onAccept={(mission: any) => {
                         setConfirmData({
                             isOpen: true,
@@ -1017,7 +1051,18 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                             }
                         });
                     }}
-                    onBuy={(data: any) => {
+                    onBuy={async (data: any) => {
+                        // Tentar pegar localização para frete se necessário
+                        let deliveryCoords = { lat: 0, lng: 0 };
+                        if (navigator.geolocation) {
+                            const pos = await new Promise<any>((resolve) => {
+                                navigator.geolocation.getCurrentPosition(resolve, () => resolve(null));
+                            });
+                            if (pos) {
+                                deliveryCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                            }
+                        }
+
                         setConfirmData({
                             isOpen: true,
                             title: 'Confirmar Compra',
@@ -1033,7 +1078,11 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                         deliveryAddress: data.deliveryAddress,
                                         contactPhone: (state.currentUser as any).phone || '',
                                         invitedCourierId: data.invitedCourierId,
-                                        paymentMethod: 'BALANCE'
+                                        paymentMethod: 'BALANCE',
+                                        deliveryLat: deliveryCoords.lat,
+                                        deliveryLng: deliveryCoords.lng,
+                                        pickupLat: selectedItem.pickup_lat,
+                                        pickupLng: selectedItem.pickup_lng
                                     });
                                     if (res.success) {
                                         onSuccess('Sucesso!', 'Compra realizada!');
