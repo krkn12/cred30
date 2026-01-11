@@ -10,6 +10,7 @@ interface CreateListingViewProps {
     onCancel: () => void;
     onGetGPS: () => void;
     gpsLocation: any;
+    setGpsLocation: (loc: any) => void;
     isSubmitting: boolean;
 }
 
@@ -20,6 +21,7 @@ export const CreateListingView = ({
     onCancel,
     onGetGPS,
     gpsLocation,
+    setGpsLocation,
     isSubmitting
 }: CreateListingViewProps) => {
     return (
@@ -46,9 +48,55 @@ export const CreateListingView = ({
                     </button>
 
                     {gpsLocation ? (
-                        <p className="text-[10px] text-blue-200 font-bold mt-2 flex items-center gap-1">
-                            <MapPin size={10} /> {gpsLocation.neighborhood ? `${gpsLocation.neighborhood} - ` : ''}{gpsLocation.city}/{gpsLocation.state}
-                        </p>
+                        <div className="mt-4 space-y-3 p-3 bg-zinc-950/50 rounded-xl border border-blue-500/20">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Confirme o Endereço</span>
+                                {gpsLocation.accuracy && (
+                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${gpsLocation.accuracy > 100 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                        Precisão: {Math.round(gpsLocation.accuracy)}m
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-2">
+                                <div className="space-y-1">
+                                    <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">Bairro / Rua</label>
+                                    <input
+                                        type="text"
+                                        value={gpsLocation.neighborhood}
+                                        onChange={(e) => setGpsLocation({ ...gpsLocation, neighborhood: e.target.value })}
+                                        className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:border-blue-500/50 outline-none"
+                                        placeholder="Ex: Tapanã / Passagem Dois Amigos"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">Cidade</label>
+                                        <input
+                                            type="text"
+                                            value={gpsLocation.city}
+                                            onChange={(e) => setGpsLocation({ ...gpsLocation, city: e.target.value })}
+                                            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:border-blue-500/50 outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">UF</label>
+                                        <input
+                                            type="text"
+                                            value={gpsLocation.state}
+                                            onChange={(e) => setGpsLocation({ ...gpsLocation, state: e.target.value.toUpperCase().slice(0, 2) })}
+                                            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:border-blue-500/50 outline-none uppercase"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {gpsLocation.accuracy > 100 && (
+                                <p className="text-[9px] text-amber-500/70 italic leading-tight">
+                                    ⚠️ O GPS está oscilando. Se o nome da rua estiver errado (ex: Rua Lula), apague e digite o correto acima.
+                                </p>
+                            )}
+                        </div>
                     ) : (
                         <p className="text-[10px] text-blue-200/50 mt-2">
                             *Isso atualizará a localização do seu perfil de vendedor.
