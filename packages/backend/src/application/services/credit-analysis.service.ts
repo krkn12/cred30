@@ -109,8 +109,24 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
             parseFloat(userData.platform_spent || 0) +
             (quotasCount * 8.0); // 8,00 por cota é taxa de manutenção (gasto)
 
-        // Limite = 80% do gasto + 50% do valor das cotas
-        const maxLoanAmount = Math.floor((totalSpent * LIMIT_PERCENTAGE_OF_SPENT) + (quotasValue * LIMIT_PERCENTAGE_OF_QUOTAS));
+        // BUSCA DE LUCRO REAL DO SISTEMA PARA BÔNUS DE LIMITE
+        const systemProfitRes = await pool.query(`
+            SELECT 
+                COALESCE(profit_pool, 0) as profit_pool,
+                (SELECT COUNT(*) FROM quotas WHERE status = 'ACTIVE' OR status IS NULL) as system_total_quotas
+            FROM system_config LIMIT 1
+        `);
+        const systemProfitPool = parseFloat(systemProfitRes.rows[0]?.profit_pool || 0);
+        const systemTotalQuotas = parseInt(systemProfitRes.rows[0]?.system_total_quotas || 1);
+
+        // Se a plataforma está lucrando, damos um bônus de 5% no limite
+        const profitBonusFactor = systemProfitPool > 0 ? 0.05 : 0;
+        const userProfitShare = (systemProfitPool * (quotasCount / systemTotalQuotas));
+
+        // Limite = (80% + bônus) do gasto + (50% + bônus) do valor das cotas + Lucro Real Proporcional
+        const spentLimit = totalSpent * (LIMIT_PERCENTAGE_OF_SPENT + profitBonusFactor);
+        const quotasLimit = quotasValue * (LIMIT_PERCENTAGE_OF_QUOTAS + profitBonusFactor);
+        const maxLoanAmount = Math.floor(spentLimit + quotasLimit + userProfitShare);
 
         // NOVA VERIFICAÇÃO: O usuário já é fiador de alguém?
         const isGuarantorResult = await pool.query(`
@@ -122,7 +138,7 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
 
         const details = { score, quotasCount, quotasValue, marketplaceTransactions, accountAgeDays, hasOverdue, totalSpent, maxLoanAmount, isCurrentlyGuarantor };
 
-        // Verificações
+        console.log(`[DEBUG_CREDIT] User ${userId}: Score=${score}, Quotas=${quotasCount} (R$ ${quotasValue}), Spent=R$ ${totalSpent}, Limit=R$ ${maxLoanAmount}, Eligible=${!hasOverdue}`);
         if (hasOverdue) {
             return { eligible: false, reason: 'Você possui empréstimos em atraso.', details };
         }
