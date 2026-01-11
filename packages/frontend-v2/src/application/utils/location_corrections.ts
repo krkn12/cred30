@@ -66,3 +66,23 @@ export function applyLocationCorrection(lat: number, lng: number, currentAddress
 
     return currentAddress;
 }
+
+export function correctStoredAddress(lat: number | null, lng: number | null, address: string): string {
+    if (lat === null || lng === null) return address;
+
+    for (const rule of CORRECTION_RULES) {
+        const dist = getDistance(lat, lng, rule.targetLat, rule.targetLng);
+
+        if (dist <= rule.radius) {
+            const hasTrigger = rule.triggers.some(t => address.toLowerCase().includes(t.toLowerCase()));
+
+            // Se o endereço original contém os termos errados OU se for uma string curta/vazia
+            if (hasTrigger || address.length < 5) {
+                console.log(`[GEO-FIX] Substituindo endereço armazenado equivocado por: ${rule.correction.neighborhood}`);
+                return `${rule.correction.neighborhood}, ${rule.correction.city} - ${rule.correction.state}`;
+            }
+        }
+    }
+
+    return address;
+}

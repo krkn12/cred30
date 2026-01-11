@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import {
     Truck, Package, Phone, Clock, CheckCircle, XCircle,
     Loader2, DollarSign, Star, AlertCircle, RefreshCw,
-    User as UserIcon, Store, Map as MapIcon, ShieldCheck
+    User as UserIcon, Store, Map as MapIcon, ShieldCheck, MapPin
 } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 import { useNavigate } from 'react-router-dom';
 import { OrderTrackingMap } from '../features/marketplace/OrderTrackingMap';
 import { AvailableDeliveriesMap } from '../features/logistics/AvailableDeliveriesMap';
 import { User } from '../../../domain/types/common.types';
+import { correctStoredAddress } from '../../../application/utils/location_corrections';
 
 interface LogisticsViewProps {
     currentUser: User | null;
@@ -392,15 +393,19 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                                         </div>
 
                                         <div className="space-y-2 mb-4">
-                                            <div className="flex items-center gap-2 text-sm">
-                                                <Store size={14} className="text-blue-400" />
-                                                <span className="text-zinc-500">Vendedor:</span>
-                                                <span className="text-zinc-300">{delivery.sellerName}</span>
+                                            <div className="flex items-start gap-2 text-sm">
+                                                <MapPin size={14} className="text-amber-500 mt-0.5 shrink-0" />
+                                                <div>
+                                                    <span className="text-zinc-500">Coleta:</span>
+                                                    <span className="text-zinc-300 ml-1">{correctStoredAddress(delivery.pickupLat || null, delivery.pickupLng || null, delivery.pickupAddress)}</span>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-2 text-sm">
-                                                <UserIcon size={14} className="text-emerald-400" />
-                                                <span className="text-zinc-500">Comprador:</span>
-                                                <span className="text-zinc-300">{delivery.buyerName}</span>
+                                            <div className="flex items-start gap-2 text-sm">
+                                                <MapPin size={14} className="text-emerald-500 mt-0.5 shrink-0" />
+                                                <div>
+                                                    <span className="text-zinc-500">Entrega:</span>
+                                                    <span className="text-zinc-300 ml-1">{correctStoredAddress(delivery.deliveryLat || null, delivery.deliveryLng || null, delivery.deliveryAddress)}</span>
+                                                </div>
                                             </div>
                                             {delivery.contactPhone && (
                                                 <div className="flex items-center gap-2 text-sm">
