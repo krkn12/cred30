@@ -84,11 +84,13 @@ export class LogisticsController {
             const pool = getDbPool(c);
 
             // 1. Verificar Penalidade
+            /*
             const userCheck = await pool.query('SELECT courier_penalty_until FROM users WHERE id = $1', [user.id]);
             if (userCheck.rows[0]?.courier_penalty_until && new Date(userCheck.rows[0].courier_penalty_until) > new Date()) {
                 const waitTime = Math.ceil((new Date(userCheck.rows[0].courier_penalty_until).getTime() - new Date().getTime()) / 60000);
                 return c.json({ success: false, message: `Você está em período de penalidade por cancelamento. Aguarde ${waitTime} minutos.` }, 403);
             }
+            */
 
             // 2. Verificar Entrega Ativa (Regra: Uma por vez)
             const activeOrderCheck = await pool.query(
