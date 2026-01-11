@@ -105,19 +105,21 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
         }
     };
 
-    const handleAccept = async (orderId: number) => {
+    const handleAccept = async (orderId: number): Promise<boolean> => {
         setActionLoading(orderId);
         setError(null);
         try {
             const result = await apiService.acceptDelivery(orderId);
             if (result.success) {
                 setSuccess(`Entrega aceita! Vá até ${result.data?.pickupAddress} para coletar.`);
-                loadData();
+                return true;
             } else {
                 setError(result.message || 'Erro ao aceitar entrega');
+                return false;
             }
         } catch (err: any) {
             setError(err.message || 'Erro ao aceitar entrega');
+            return false;
         } finally {
             setActionLoading(null);
         }
@@ -356,16 +358,28 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                                     seller_phone: ''
                                 }))}
                                 onAccept={async (deliveryId) => {
-                                    await handleAccept(parseInt(deliveryId));
-                                    await loadData();
+                                    // 1. Capturar o pedido ANTES de processar
+                                    const deliveryToTrack = visibleDeliveries.find(d => d.orderId.toString() === deliveryId);
+
+                                    // 2. Tentar Aceitar no Backend
+                                    const success = await handleAccept(parseInt(deliveryId));
+
+                                    if (!success) {
+                                        throw new Error('Falha ao aceitar entrega');
+                                    }
+
+                                    // 3. Se sucesso, mudar aba e abrir rastreio
                                     setActiveTab('active');
-                                    const acceptedDelivery = visibleDeliveries.find(d => d.orderId.toString() === deliveryId);
-                                    if (acceptedDelivery) {
+
+                                    if (deliveryToTrack) {
                                         setTrackingOrder({
-                                            ...acceptedDelivery,
+                                            ...deliveryToTrack,
                                             deliveryStatus: 'ACCEPTED'
                                         });
                                     }
+
+                                    // 4. Atualizar lista em background
+                                    await loadData();
                                 }}
                                 onIgnore={(id) => handleIgnore(parseInt(id))}
                                 onClose={() => { }}

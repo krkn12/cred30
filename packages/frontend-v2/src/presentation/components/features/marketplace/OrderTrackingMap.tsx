@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { MapPin, Truck, Navigation2, X } from 'lucide-react';
 import { apiService } from '../../../../application/services/api.service';
 import { correctStoredAddress } from '../../../../application/utils/location_corrections';
+import { useWakeLock } from '../../../hooks/use-wake-lock';
 
 interface OrderTrackingMapProps {
     orderId: string;
@@ -18,6 +19,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
     const [isLoading, setIsLoading] = useState(true);
     const [courierPos, setCourierPos] = useState<{ lat: number, lng: number } | null>(null);
     const [destinationPos, setDestinationPos] = useState<{ lat: number, lng: number } | null>(null);
+    useWakeLock();
     const routeLayerRef = useRef<L.Polyline | null>(null);
 
     // Ícones personalizados
