@@ -47,10 +47,10 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
     // Ícones personalizados
     const pickupIcon = L.divIcon({
         html: `<div class="bg-amber-500 p-2 rounded-full shadow-lg border-2 border-white animate-pulse">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.5">
-                    <path d="M21 10h-4l-1-3H8L7 10H3M5 10v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9" />
-                    <circle cx="9" cy="17" r="2" />
-                    <circle cx="15" cy="17" r="2" />
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <path d="M16 10a4 4 0 0 1-8 0"/>
                 </svg>
               </div>`,
         className: '',
@@ -60,9 +60,9 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
 
     const deliveryIcon = L.divIcon({
         html: `<div class="bg-rose-500 p-2 rounded-full shadow-lg border-2 border-white">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.5">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                    <circle cx="12" cy="10" r="3" />
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+                    <line x1="4" y1="22" x2="4" y2="15"/>
                 </svg>
               </div>`,
         className: '',
@@ -325,14 +325,18 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                 <div ref={mapContainerRef} className="w-full h-full bg-zinc-900" />
 
                 {/* Legenda - Mais compacta em mobile */}
-                <div className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-zinc-900/90 backdrop-blur-md border border-zinc-800 p-2 sm:p-3 rounded-xl shadow-2xl z-[100]">
-                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
-                        <div className="w-4 h-4 sm:w-6 sm:h-6 bg-amber-500 rounded-full" />
-                        <span className="text-[10px] sm:text-xs text-white font-medium">Coleta</span>
+                <div className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-zinc-900/95 backdrop-blur-md border border-zinc-800 p-3 rounded-2xl shadow-2xl z-[100] space-y-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center shadow-lg shadow-amber-500/20">
+                            <Package size={14} className="text-white" />
+                        </div>
+                        <span className="text-[10px] sm:text-xs text-zinc-300 font-black uppercase tracking-widest">Coleta</span>
                     </div>
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                        <div className="w-4 h-4 sm:w-6 sm:h-6 bg-rose-500 rounded-full" />
-                        <span className="text-[10px] sm:text-xs text-white font-medium">Entrega</span>
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-rose-500 rounded-full flex items-center justify-center shadow-lg shadow-rose-500/20">
+                            <MapPin size={14} className="text-white" />
+                        </div>
+                        <span className="text-[10px] sm:text-xs text-zinc-300 font-black uppercase tracking-widest">Entrega</span>
                     </div>
                 </div>
 

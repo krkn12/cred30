@@ -337,6 +337,7 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                             <AvailableDeliveriesMap
                                 deliveries={visibleDeliveries.map(d => ({
                                     id: d.orderId.toString(),
+                                    order_id: d.orderId.toString(),
                                     delivery_fee: d.deliveryFee,
                                     delivery_address: d.deliveryAddress,
                                     pickup_address: d.pickupAddress,
@@ -434,7 +435,10 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                                                             {actionLoading === delivery.orderId ? (
                                                                 <Loader2 size={16} className="animate-spin" />
                                                             ) : (
-                                                                'Coletei o Produto'
+                                                                <>
+                                                                    <Package size={16} />
+                                                                    Coletei o Produto
+                                                                </>
                                                             )}
                                                         </button>
                                                     </>
@@ -481,21 +485,33 @@ export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
                     <div className="mt-8 bg-zinc-900 border border-white/5 rounded-2xl p-5">
                         <h3 className="text-white font-bold mb-3">💡 Como funciona?</h3>
                         <ul className="space-y-2 text-sm text-zinc-400">
-                            <li className="flex items-start gap-2">
-                                <span className="text-primary-400 font-bold">1.</span>
-                                Escolha uma entrega disponível e clique em "Aceitar"
+                            <li className="flex items-start gap-3">
+                                <span className="bg-primary-500/20 text-primary-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0">1</span>
+                                <div className="flex items-center gap-2">
+                                    <Package size={16} className="text-primary-400" />
+                                    <span>Escolha uma entrega disponível e clique em <b>"Aceitar"</b></span>
+                                </div>
                             </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-primary-400 font-bold">2.</span>
-                                Vá até o vendedor e colete o produto
+                            <li className="flex items-start gap-3">
+                                <span className="bg-primary-500/20 text-primary-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0">2</span>
+                                <div className="flex items-center gap-2">
+                                    <Store size={16} className="text-blue-400" />
+                                    <span>Vá até o vendedor e <b>colete o produto</b></span>
+                                </div>
                             </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-primary-400 font-bold">3.</span>
-                                Leve até o endereço do comprador e marque como entregue
+                            <li className="flex items-start gap-3">
+                                <span className="bg-primary-500/20 text-primary-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0">3</span>
+                                <div className="flex items-center gap-2">
+                                    <Truck size={16} className="text-purple-400" />
+                                    <span>Leve até o endereço do comprador e <b>marque como entregue</b></span>
+                                </div>
                             </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-primary-400 font-bold">4.</span>
-                                Quando o comprador confirmar, você recebe <span className="text-emerald-400 font-bold">90%</span> do valor do frete
+                            <li className="flex items-start gap-3">
+                                <span className="bg-primary-500/20 text-primary-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0">4</span>
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle size={16} className="text-emerald-400" />
+                                    <span>Quando o comprador confirmar, você recebe <span className="text-emerald-400 font-bold">90%</span> do valor do frete</span>
+                                </div>
                             </li>
                         </ul>
                     </div>
