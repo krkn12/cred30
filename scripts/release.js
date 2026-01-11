@@ -62,7 +62,7 @@ async function main() {
 
         // 4. Build do frontend
         console.log('\n🔨 Buildando frontend...');
-        execSync('npm run build:frontend', { stdio: 'inherit' });
+        execSync('npm run build', { stdio: 'inherit' });
 
         // 5. Deploy no Firebase
         console.log('\n🌐 Deployando no Firebase...');
