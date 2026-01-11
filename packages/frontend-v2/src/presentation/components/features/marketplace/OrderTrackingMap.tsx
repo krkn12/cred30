@@ -16,6 +16,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<L.Map | null>(null);
     const courierMarkerRef = useRef<L.Marker | null>(null);
+    const courierAccuracyCircleRef = useRef<L.Circle | null>(null);
     const [trackingData, setTrackingData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [courierPos, setCourierPos] = useState<{ lat: number, lng: number } | null>(null);
@@ -72,14 +73,33 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
         iconAnchor: [20, 40]
     });
 
-    const updateCourierMarker = (lat: number, lng: number) => {
+    const updateCourierMarker = (lat: number, lng: number, accuracy?: number) => {
         setCourierPos({ lat, lng });
         if (!mapRef.current) return;
+
+        // Atualiza Marcador
         if (courierMarkerRef.current) {
             courierMarkerRef.current.setLatLng([lat, lng]);
         } else {
             courierMarkerRef.current = L.marker([lat, lng], { icon: courierIcon }).addTo(mapRef.current);
         }
+
+        // Atualiza Círculo de Precisão
+        if (accuracy) {
+            if (courierAccuracyCircleRef.current) {
+                courierAccuracyCircleRef.current.setLatLng([lat, lng]);
+                courierAccuracyCircleRef.current.setRadius(accuracy);
+            } else {
+                courierAccuracyCircleRef.current = L.circle([lat, lng], {
+                    radius: accuracy,
+                    color: '#3b82f6',
+                    fillColor: '#3b82f6',
+                    fillOpacity: 0.15,
+                    weight: 1
+                }).addTo(mapRef.current);
+            }
+        }
+
         mapRef.current.panTo([lat, lng], { animate: true, duration: 1.0 });
     };
 
@@ -96,6 +116,8 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
                 });
                 initialCourierLat = position.coords.latitude;
                 initialCourierLng = position.coords.longitude;
+                // Inicializa com precisão se disponível
+                updateCourierMarker(initialCourierLat, initialCourierLng, position.coords.accuracy);
             } catch (e) {
                 initialCourierLat = -1.4558;
                 initialCourierLng = -48.4902;
@@ -108,7 +130,8 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
         mapRef.current = L.map(mapContainerRef.current, { zoomControl: false, attributionControl: false }).setView([mapCenter, mapCenterLng], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 20 }).addTo(mapRef.current);
 
-        if (initialCourierLat && initialCourierLng) {
+        if (initialCourierLat && initialCourierLng && !courierMarkerRef.current) {
+            // Se já não foi criado pelo getCurrentPosition acima
             updateCourierMarker(initialCourierLat, initialCourierLng);
         }
 
@@ -175,8 +198,12 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
         if (userRole === 'courier' && navigator.geolocation) {
             watchId = navigator.geolocation.watchPosition(
                 async (pos) => {
-                    const { latitude, longitude } = pos.coords;
-                    updateCourierMarker(latitude, longitude);
+                    const { latitude, longitude, accuracy } = pos.coords;
+
+                    // Ignora leituras com precisão muito ruim (> 100m) para evitar pulos no mapa
+                    if (accuracy > 100) return;
+
+                    updateCourierMarker(latitude, longitude, accuracy);
                     try {
                         // Usa rota específica de logística que aceita status 'ACCEPTED' e 'IN_TRANSIT'
                         await apiService.post(`/logistics/location/${orderId}`, { lat: latitude, lng: longitude });
