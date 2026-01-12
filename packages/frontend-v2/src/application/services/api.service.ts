@@ -127,6 +127,15 @@ class ApiService extends ApiBase {
     return await this.get<any>(`/finance/titles/${titleId}/eligibility`);
   };
 
+  async adminAddQuota(email: string, quantity: number, reason: string): Promise<any> {
+    return this.post('/admin/users/add-quota', { email, quantity, reason });
+  }
+
+  async adminAddBalance(email: string, amount: number, reason: string): Promise<any> {
+    return this.post('/admin/users/add-balance', { email, amount, reason });
+  }
+
+  // --- UTILS ---
   downloadTitle = async (titleId: string) => {
     return await this.get<any>(`/finance/titles/${titleId}/download`);
   };

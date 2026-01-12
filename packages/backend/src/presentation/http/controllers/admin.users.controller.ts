@@ -3,7 +3,7 @@ import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
-import { createTransaction, executeInTransaction } from '../../../domain/services/transaction.service';
+import { createTransaction, executeInTransaction, updateUserBalance } from '../../../domain/services/transaction.service';
 import { QUOTA_PRICE, QUOTA_SHARE_VALUE } from '../../../shared/constants/business.constants';
 
 // Schemas
@@ -24,6 +24,12 @@ const createAttendantSchema = z.object({
 const addQuotaSchema = z.object({
     email: z.string().email(),
     quantity: z.number().int().positive(),
+    reason: z.string().optional()
+});
+
+const addBalanceSchema = z.object({
+    email: z.string().email(),
+    amount: z.number().positive(),
     reason: z.string().optional()
 });
 
@@ -222,6 +228,65 @@ export class AdminUsersController {
             return c.json({
                 success: true,
                 message: `${quantity} cotas adicionadas para ${result.data?.user} com sucesso!`
+            });
+
+        } catch (error) {
+            if (error instanceof z.ZodError) {
+                return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
+            }
+            return c.json({ success: false, message: error instanceof Error ? error.message : 'Erro interno' }, 500);
+        }
+    }
+
+    /**
+     * Adicionar saldo diretamente para um usuário (Depósito Administrativo)
+     */
+    static async addBalance(c: Context) {
+        try {
+            const body = await c.req.json();
+            const { email, amount, reason } = addBalanceSchema.parse(body);
+            const pool = getDbPool(c);
+            const adminUser = c.get('user');
+
+            // Usar a lógica centralizada de transação
+            const result = await executeInTransaction(pool, async (client) => {
+                // 1. Encontrar usuário pelo email
+                const userRes = await client.query('SELECT id, name FROM users WHERE email = $1', [email]);
+                if (userRes.rows.length === 0) {
+                    throw new Error('Usuário não encontrado com este email');
+                }
+                const user = userRes.rows[0];
+
+                // 2. Atualizar Saldo do Usuário
+                await updateUserBalance(client, user.id, amount, 'credit');
+
+                // 3. Registrar Transação
+                await createTransaction(
+                    client,
+                    user.id,
+                    'DEPOSIT',
+                    amount,
+                    `Depósito Administrativo. Motivo: ${reason || 'Ajuste manual'}`,
+                    'COMPLETED',
+                    { method: 'ADMIN_MANUAL', adminId: adminUser.id, reason }
+                );
+
+                // 4. Atualizar Custos Manuais do Sistema (Passivo)
+                await client.query(
+                    'UPDATE system_config SET total_manual_costs = total_manual_costs + $1',
+                    [amount]
+                );
+
+                return { user: user.name };
+            });
+
+            if (!result.success) {
+                return c.json({ success: false, message: result.error }, 400);
+            }
+
+            return c.json({
+                success: true,
+                message: `R$ ${amount.toFixed(2)} creditados para ${result.data?.user} com sucesso!`
             });
 
         } catch (error) {

@@ -13,6 +13,10 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ onSuccess, onError }) =>
     const [giftQuantity, setGiftQuantity] = useState('');
     const [giftReason, setGiftReason] = useState('');
 
+    const [depositEmail, setDepositEmail] = useState('');
+    const [depositAmount, setDepositAmount] = useState('');
+    const [depositReason, setDepositReason] = useState('');
+
     const handleGiftQuota = async () => {
         if (!giftEmail || !giftQuantity) return;
         if (!window.confirm(`CONFIRMAÇÃO: Enviar ${giftQuantity} participações para ${giftEmail}? Esta ação criará as participações e não cobrará do usuário.`)) return;
@@ -28,6 +32,25 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ onSuccess, onError }) =>
                 setGiftEmail('');
                 setGiftQuantity('');
                 setGiftReason('');
+            } else {
+                onError('Erro', response.message);
+            }
+        } catch (e: any) {
+            onError('Erro', e.message);
+        }
+    };
+
+    const handleDepositBalance = async () => {
+        if (!depositEmail || !depositAmount) return;
+        if (!window.confirm(`CONFIRMAÇÃO CRÍTICA (FINANCEIRO): Adicionar R$ ${depositAmount} para ${depositEmail}? Esta ação criará dinheiro novo no sistema.`)) return;
+
+        try {
+            const response = await apiService.adminAddBalance(depositEmail, parseFloat(depositAmount), depositReason);
+            if (response.success) {
+                onSuccess('Depósito Realizado!', response.message);
+                setDepositEmail('');
+                setDepositAmount('');
+                setDepositReason('');
             } else {
                 onError('Erro', response.message);
             }
@@ -68,6 +91,44 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ onSuccess, onError }) =>
                             Enviar
                         </button>
                     </div>
+                </div>
+            </div>
+
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl max-w-2xl mx-auto opacity-50 hover:opacity-100 transition-opacity">
+                <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
+                    <div className="p-2 bg-emerald-500/10 rounded-lg"><Gift className="text-emerald-400" size={20} /></div>
+                    Adicionar Saldo (Depósito Direto)
+                </h3>
+                <div className="space-y-4">
+                    <input
+                        type="email"
+                        placeholder="Email do usuário"
+                        value={depositEmail}
+                        onChange={(e) => setDepositEmail(e.target.value)}
+                        className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-emerald-500/50 font-bold"
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                        <input
+                            type="number"
+                            placeholder="Valor (R$)"
+                            value={depositAmount}
+                            onChange={(e) => setDepositAmount(e.target.value)}
+                            className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-emerald-500/50 font-bold"
+                        />
+                        <button
+                            onClick={handleDepositBalance}
+                            className="bg-emerald-500 hover:bg-emerald-400 text-black font-black px-6 py-4 rounded-2xl transition-all shadow-xl"
+                        >
+                            Creditat
+                        </button>
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Motivo (Opcional - ex: Bônus, Estorno)"
+                        value={depositReason}
+                        onChange={(e) => setDepositReason(e.target.value)}
+                        className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-emerald-500/50 font-bold text-sm"
+                    />
                 </div>
             </div>
         </div>
