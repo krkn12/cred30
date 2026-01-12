@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Truck, Phone, MapPin, CheckCircle, AlertCircle, Loader2, ArrowLeft, Bike, Car, Fingerprint, Map, Motorcycle } from 'lucide-react';
+import { Truck, Phone, MapPin, CheckCircle, AlertCircle, Loader2, ArrowLeft, Bike, Car, Fingerprint, Map } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,6 +8,10 @@ interface CourierStatus {
     status: string | null;
     vehicle: string | null;
 }
+
+const MotorcycleIcon = ({ className, size }: { className?: string, size?: number }) => (
+    <span className={className} style={{ fontSize: size ? `${size}px` : '24px', lineHeight: 1 }}>🛵</span>
+);
 
 const CourierRegistrationView = () => {
     const navigate = useNavigate();
@@ -29,7 +33,7 @@ const CourierRegistrationView = () => {
 
     const vehicles = [
         { id: 'BIKE', label: 'Bicicleta', icon: Bike, emoji: '🚲', desc: 'Entregas leves e próximas' },
-        { id: 'MOTO', label: 'Moto', icon: Motorcycle, emoji: '🛵', desc: 'Entregas rápidas na cidade' },
+        { id: 'MOTO', label: 'Moto', icon: MotorcycleIcon, emoji: '🛵', desc: 'Entregas rápidas na cidade' },
         { id: 'CAR', label: 'Carro', icon: Car, emoji: '🚗', desc: 'Entregas maiores e distantes' },
         { id: 'TRUCK', label: 'Utilitário', icon: Truck, emoji: '🚚', desc: 'Cargas grandes e mudanças' },
     ];
@@ -338,7 +342,7 @@ const CourierRegistrationView = () => {
                                         <img src={form.vehiclePhoto} className="w-full h-full object-cover rounded-lg" alt="Vehicle" />
                                     ) : (
                                         <>
-                                            {form.vehicle === 'BIKE' ? <Bike className="text-zinc-600 mb-2" size={24} /> : form.vehicle === 'MOTO' ? <Motorcycle className="text-zinc-600 mb-2" size={24} /> : <Car className="text-zinc-600 mb-2" size={24} />}
+                                            {form.vehicle === 'BIKE' ? <Bike className="text-zinc-600 mb-2" size={24} /> : form.vehicle === 'MOTO' ? <MotorcycleIcon className="mb-2" size={24} /> : <Car className="text-zinc-600 mb-2" size={24} />}
                                             <span className="text-zinc-500 text-xs">Anexar Foto</span>
                                         </>
                                     )}
