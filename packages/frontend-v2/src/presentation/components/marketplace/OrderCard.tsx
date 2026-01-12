@@ -1,5 +1,5 @@
 import React from 'react';
-import { Zap, Navigation2, Truck, Phone } from 'lucide-react';
+import { Zap, Navigation2, Truck, Phone, Download, ExternalLink } from 'lucide-react';
 
 interface OrderCardProps {
     order: any;
@@ -105,6 +105,34 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                             )}
                         </div>
                     )}
+                    {/* Conteúdo Digital (Curso/E-book) - Apenas para Comprador com Pedido Concluído ou Pago */}
+                    {order.buyer_id === currentUser?.id && order.digital_content && (
+                        <div className="w-full mt-4 bg-gradient-to-r from-blue-900/40 to-indigo-900/40 border border-blue-500/30 rounded-xl p-3 flex flex-col gap-2">
+                            <div className="flex items-center gap-2 mb-1">
+                                <Download size={14} className="text-blue-400" />
+                                <span className="text-xs font-black text-blue-100 uppercase tracking-wide">Conteúdo Digital Liberado</span>
+                            </div>
+                            <div className="bg-black/40 rounded-lg p-3 flex items-center justify-between gap-3">
+                                <p className="text-xs text-zinc-300 font-mono truncate select-all">{order.digital_content}</p>
+                                <button
+                                    onClick={() => {
+                                        if (order.digital_content.startsWith('http')) {
+                                            window.open(order.digital_content, '_blank');
+                                        } else {
+                                            navigator.clipboard.writeText(order.digital_content);
+                                            onSuccess('Copiado', 'Conteúdo copiado para área de transferência!');
+                                        }
+                                    }}
+                                    className="shrink-0 bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-lg transition-colors"
+                                    title={order.digital_content.startsWith('http') ? "Abrir Link" : "Copiar"}
+                                >
+                                    {order.digital_content.startsWith('http') ? <ExternalLink size={14} /> : <span className="text-[10px] font-bold">COPIAR</span>}
+                                </button>
+                            </div>
+                            <p className="text-[10px] text-zinc-500">Este conteúdo é exclusivo para você. Não compartilhe.</p>
+                        </div>
+                    )}
+
                 </div>
 
                 {/* Ações de Ordem */}

@@ -6,6 +6,12 @@ import { FinanceApi } from './api.finance';
 import { AdminApi } from './api.admin';
 import { MiscApi } from './api.misc';
 
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  message?: string;
+}
+
 /**
  * ApiService reorganizado em múltiplos sub-serviços.
  * Esta classe atua como uma fachada (Facade) para manter compatibilidade com o código existente.
@@ -131,8 +137,12 @@ class ApiService extends ApiBase {
     return this.post('/admin/users/add-quota', { email, quantity, reason });
   }
 
-  async adminAddBalance(email: string, amount: number, reason: string): Promise<any> {
-    return this.post('/admin/users/add-balance', { email, amount, reason });
+  async adminAddBalance(userId: string, amount: number, reason: string): Promise<ApiResponse<any>> {
+    return this.post('/admin/users/add-balance', { userId, amount, reason });
+  }
+
+  async adminResetSecurityLock(userId: string, reason: string): Promise<ApiResponse<any>> {
+    return this.post('/admin/users/reset-security-lock', { userId, reason });
   }
 
   // --- UTILS ---
