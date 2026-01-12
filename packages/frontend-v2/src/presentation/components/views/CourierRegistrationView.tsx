@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Truck, Phone, MapPin, CheckCircle, AlertCircle, Loader2, ArrowLeft, Bike, Car } from 'lucide-react';
+import { Truck, Phone, MapPin, CheckCircle, AlertCircle, Loader2, ArrowLeft, Bike, Car, Fingerprint, Map, Zap } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 import { useNavigate } from 'react-router-dom';
 
@@ -26,7 +26,7 @@ const CourierRegistrationView = () => {
 
     const vehicles = [
         { id: 'BIKE', label: 'Bicicleta', icon: Bike, emoji: '🚲', desc: 'Entregas leves e próximas' },
-        { id: 'MOTO', label: 'Moto', icon: Truck, emoji: '🛵', desc: 'Entregas rápidas na cidade' },
+        { id: 'MOTO', label: 'Moto', icon: Zap, emoji: '🛵', desc: 'Entregas rápidas na cidade' },
         { id: 'CAR', label: 'Carro', icon: Car, emoji: '🚗', desc: 'Entregas maiores e distantes' },
         { id: 'TRUCK', label: 'Utilitário', icon: Truck, emoji: '🚚', desc: 'Cargas grandes e mudanças' },
     ];
@@ -183,14 +183,16 @@ const CourierRegistrationView = () => {
                                 key={v.id}
                                 type="button"
                                 onClick={() => setForm({ ...form, vehicle: v.id })}
-                                className={`p-4 rounded-2xl border-2 transition-all text-left ${form.vehicle === v.id
+                                className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col items-center justify-center ${form.vehicle === v.id
                                         ? 'border-primary-500 bg-primary-500/10'
                                         : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
                                     }`}
                             >
-                                <span className="text-2xl mb-2 block">{v.emoji}</span>
-                                <p className="font-bold text-white text-sm">{v.label}</p>
-                                <p className="text-[10px] text-zinc-500">{v.desc}</p>
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-2 transition-all ${form.vehicle === v.id ? 'bg-primary-500 text-black' : 'bg-zinc-800 text-zinc-400'}`}>
+                                    <v.icon size={24} />
+                                </div>
+                                <p className="font-bold text-white text-xs">{v.label}</p>
+                                <p className="text-[10px] text-zinc-500 text-center mt-1">{v.desc}</p>
                             </button>
                         ))}
                     </div>
@@ -199,61 +201,71 @@ const CourierRegistrationView = () => {
                 {/* CPF */}
                 <div>
                     <label className="text-xs text-zinc-400 font-bold uppercase tracking-wider mb-2 block">CPF *</label>
-                    <input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="000.000.000-00"
-                        value={formatCpf(form.cpf)}
-                        onChange={e => setForm({ ...form, cpf: e.target.value })}
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-4 px-4 text-white focus:border-primary-500 outline-none"
-                        required
-                    />
+                    <div className="relative">
+                        <Fingerprint className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                        <input
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="000.000.000-00"
+                            value={formatCpf(form.cpf)}
+                            onChange={e => setForm({ ...form, cpf: e.target.value })}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-4 pl-12 pr-4 text-white focus:border-primary-500 outline-none"
+                            required
+                        />
+                    </div>
                 </div>
 
                 {/* Telefone */}
                 <div>
-                    <label className="text-xs text-zinc-400 font-bold uppercase tracking-wider mb-2 block flex items-center gap-2">
-                        <Phone className="w-4 h-4" /> Telefone *
+                    <label className="text-xs text-zinc-400 font-bold uppercase tracking-wider mb-2 block">
+                        Telefone *
                     </label>
-                    <input
-                        type="tel"
-                        inputMode="numeric"
-                        placeholder="(00) 00000-0000"
-                        value={formatPhone(form.phone)}
-                        onChange={e => setForm({ ...form, phone: e.target.value })}
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-4 px-4 text-white focus:border-primary-500 outline-none"
-                        required
-                    />
+                    <div className="relative">
+                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                        <input
+                            type="tel"
+                            inputMode="numeric"
+                            placeholder="(00) 00000-0000"
+                            value={formatPhone(form.phone)}
+                            onChange={e => setForm({ ...form, phone: e.target.value })}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-4 pl-12 pr-4 text-white focus:border-primary-500 outline-none"
+                            required
+                        />
+                    </div>
                 </div>
 
                 {/* Cidade e Estado */}
                 <div className="grid grid-cols-3 gap-3">
                     <div className="col-span-2">
-                        <label className="text-xs text-zinc-400 font-bold uppercase tracking-wider mb-2 block flex items-center gap-2">
-                            <MapPin className="w-4 h-4" /> Cidade *
-                        </label>
-                        <input
-                            type="text"
-                            placeholder="Sua cidade"
-                            value={form.city}
-                            onChange={e => setForm({ ...form, city: e.target.value })}
-                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-4 px-4 text-white focus:border-primary-500 outline-none"
-                            required
-                        />
+                        <label className="text-xs text-zinc-400 font-bold uppercase tracking-wider mb-2 block"> Cidade *</label>
+                        <div className="relative">
+                            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Sua cidade"
+                                value={form.city}
+                                onChange={e => setForm({ ...form, city: e.target.value })}
+                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-4 pl-12 pr-4 text-white focus:border-primary-500 outline-none"
+                                required
+                            />
+                        </div>
                     </div>
                     <div>
                         <label className="text-xs text-zinc-400 font-bold uppercase tracking-wider mb-2 block">UF *</label>
-                        <select
-                            value={form.state}
-                            onChange={e => setForm({ ...form, state: e.target.value })}
-                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-4 px-3 text-white focus:border-primary-500 outline-none appearance-none"
-                            required
-                        >
-                            <option value="">UF</option>
-                            {states.map(s => (
-                                <option key={s} value={s}>{s}</option>
-                            ))}
-                        </select>
+                        <div className="relative">
+                            <Map className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                            <select
+                                value={form.state}
+                                onChange={e => setForm({ ...form, state: e.target.value })}
+                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-4 pl-12 pr-3 text-white focus:border-primary-500 outline-none appearance-none"
+                                required
+                            >
+                                <option value="">UF</option>
+                                {states.map(s => (
+                                    <option key={s} value={s}>{s}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
                 </div>
 
