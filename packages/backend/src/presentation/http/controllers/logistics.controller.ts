@@ -456,12 +456,12 @@ export class LogisticsController {
             const pool = getDbPool(c);
             const body = await c.req.json();
 
-            const { cpf, phone, city, state, vehicle } = body;
+            const { cpf, phone, city, state, vehicle, idPhoto, vehiclePhoto, docPhoto } = body;
 
-            if (!cpf || !phone || !city || !state || !vehicle) {
+            if (!cpf || !phone || !city || !state || !vehicle || !idPhoto || !vehiclePhoto || !docPhoto) {
                 return c.json({
                     success: false,
-                    message: 'Preencha todos os campos obrigatórios: CPF, Telefone, Cidade, Estado e Veículo'
+                    message: 'Preencha todos os campos e anexe todas as fotos obrigatórias.'
                 }, 400);
             }
 
@@ -488,9 +488,12 @@ export class LogisticsController {
                     courier_city = $4,
                     courier_state = $5,
                     courier_price_per_km = $6,
+                    courier_id_photo = $7,
+                    courier_vehicle_photo = $8,
+                    courier_doc_photo = $9,
                     courier_created_at = CURRENT_TIMESTAMP
-                 WHERE id = $7`,
-                [vehicle, phone, cpf, city, state, body.pricePerKm || 2.00, user.id]
+                 WHERE id = $10`,
+                [vehicle, phone, cpf, city, state, body.pricePerKm || 2.00, idPhoto, vehiclePhoto, docPhoto, user.id]
             );
 
             return c.json({
