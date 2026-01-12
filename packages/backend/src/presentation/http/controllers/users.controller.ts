@@ -77,7 +77,7 @@ export class UsersController {
             );
 
             if (existingCpf.rows.length > 0) {
-                return c.json({ success: false, message: 'Este CPF já está vinculado a outra conta' }, 409);
+                return c.json({ success: false, message: 'Este CPF já está vinculado a outra conta. Entre em contato com o suporte se acredita ser um erro.' }, 409);
             }
 
             // Verificar se PIX já está em uso
@@ -87,7 +87,7 @@ export class UsersController {
             );
 
             if (existingPix.rows.length > 0) {
-                return c.json({ success: false, message: 'Esta chave PIX já está vinculada a outra conta' }, 409);
+                return c.json({ success: false, message: 'Esta chave PIX já está em uso por outro usuário.' }, 409);
             }
 
             await pool.query(

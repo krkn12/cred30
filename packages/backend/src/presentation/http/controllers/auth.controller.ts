@@ -300,15 +300,15 @@ export class AuthController {
 
             if (!user) {
                 isNewUser = true;
+                isNewUser = true;
                 const referralCode = generateReferralCode();
-                const randomPass = await bcrypt.hash(Math.random().toString(36), 10);
-                const randomSecret = Math.random().toString(36).substring(2, 10).toUpperCase();
+                // Google users start without password/secret. They must set them in Settings.
 
                 const insertResult = await pool.query(
                     `INSERT INTO users (name, email, password_hash, secret_phrase, pix_key, balance, referral_code, is_admin, score, is_email_verified)
-                     VALUES ($1, $2, $3, $4, $5, 0, $6, $7, 0, TRUE)
+                     VALUES ($1, $2, NULL, NULL, 'pendente', 0, $3, $4, 0, TRUE)
                      RETURNING id, name, email, pix_key, balance, score, created_at, referral_code, is_admin, role, status`,
-                    [name, email, randomPass, randomSecret, 'pendente', referralCode, isAdmin]
+                    [name, email, referralCode, isAdmin]
                 );
                 user = insertResult.rows[0];
             } else {
