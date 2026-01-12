@@ -15,6 +15,8 @@ import {
     Loader2,
     Image as ImageIcon,
     AlertTriangle,
+    Store,
+    Bike,
 } from 'lucide-react';
 
 import { useNavigate } from 'react-router-dom';
@@ -65,6 +67,13 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const [missions, setMissions] = useState<any[]>([]);
     const [deliveryOption, setDeliveryOption] = useState<'SELF_PICKUP' | 'COURIER_REQUEST' | 'EXTERNAL_SHIPPING'>('SELF_PICKUP');
     const [offeredFee, setOfferedFee] = useState<string>('5.00');
+
+    // Cart Delivery State
+    const [cartDeliveryOption, setCartDeliveryOption] = useState<'SELF_PICKUP' | 'COURIER_REQUEST' | 'EXTERNAL_SHIPPING'>('SELF_PICKUP');
+    const [cartDeliveryAddress, setCartDeliveryAddress] = useState('');
+    const [cartOfferedFee, setCartOfferedFee] = useState('10.00'); // Default bundle fee
+    const [cartGpsLocation, setCartGpsLocation] = useState<{ lat: number, lng: number } | null>(null);
+
     const [gpsLocation, setGpsLocation] = useState<{ city: string, state: string, neighborhood: string, accuracy?: number } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -419,32 +428,24 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 if (data.address) {
                     const stateName = data.address.state;
                     const cityName = data.address.city || data.address.town || data.address.municipality;
-                    const neighborhood = data.address.suburb || data.address.neighbourhood;
+                    const neighborhood = data.address.suburb || data.address.neighbourhood || '';
 
                     const foundUF = ufs.find(u =>
                         u.nome.toLowerCase() === stateName?.toLowerCase() ||
                         u.sigla.toLowerCase() === stateName?.toLowerCase()
                     );
 
+                    // For Listing Creation
                     if (cityName && foundUF) {
                         const originalAddress = {
                             city: cityName,
                             state: foundUF.sigla,
-                            neighborhood: neighborhood || '',
+                            neighborhood: neighborhood,
                             accuracy: accuracy
                         };
-
                         const corrected = applyLocationCorrection(latitude, longitude, originalAddress);
-
                         setGpsLocation(corrected);
-
-                        if (accuracy > 100 && !corrected.neighborhood.includes('Passagem Dois Amigos')) {
-                            onSuccess('GPS Oscilando', `Localização capturada, mas com baixa precisão (${Math.round(accuracy)}m). Você pode ajustar manualmente se estiver errado.`);
-                        } else {
-                            onSuccess('Localização Definida', `Seu anúncio será em: ${corrected.neighborhood ? corrected.neighborhood + ' - ' : ''}${corrected.city}/${corrected.state}`);
-                        }
-                    } else {
-                        onError('Erro', 'Não conseguimos identificar sua cidade/estado com precisão.');
+                        onSuccess('Localização Definida', `Local: ${corrected.neighborhood} - ${corrected.city}/${corrected.state}`);
                     }
                 }
             } catch (error) {
@@ -458,6 +459,46 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
             setIsLoading(false);
             onError('Erro', 'Permissão de localização negada.');
         }, { enableHighAccuracy: true, timeout: 10000 });
+    };
+
+    const handleGetCartGPS = () => {
+        if (!navigator.geolocation) {
+            onError('Erro', 'Geolocalização não suportada.');
+            return;
+        }
+
+        setIsLoading(true);
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            try {
+                const { latitude, longitude } = position.coords;
+                setCartGpsLocation({ lat: latitude, lng: longitude });
+
+                // Reverse Geocoding for Address Field
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                const data = await response.json();
+
+                let addressText = "Minha Localização Atual (GPS)";
+                if (data.address) {
+                    const road = data.address.road || '';
+                    const number = data.address.house_number || '';
+                    const suburb = data.address.suburb || data.address.neighbourhood || '';
+                    const city = data.address.city || data.address.town || '';
+                    if (road) addressText = `${road}, ${number} - ${suburb}, ${city}`;
+                }
+                setCartDeliveryAddress(addressText);
+                onSuccess('GPS Ativo', 'Endereço de entrega atualizado!');
+
+            } catch (error) {
+                console.error(error);
+                onError('Erro', 'Falha ao buscar endereço GPS.');
+            } finally {
+                setIsLoading(false);
+            }
+        }, (err) => {
+            console.warn(err);
+            setIsLoading(false);
+            onError('Erro', 'Permissão de localização negada.');
+        });
     };
 
     // Loading principal
@@ -879,6 +920,88 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                 </div>
 
                                 <div className="space-y-4">
+                                    {/* --- Seletor de Entrega no Carrinho --- */}
+                                    <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800 space-y-4">
+                                        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                                            <Package size={16} className="text-primary-400" />
+                                            Método de Recebimento
+                                        </h4>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                onClick={() => setCartDeliveryOption('SELF_PICKUP')}
+                                                className={`p-3 rounded-lg text-xs font-bold uppercase tracking-wide border transition flex flex-col items-center gap-2 ${cartDeliveryOption === 'SELF_PICKUP'
+                                                        ? 'bg-primary-500/10 border-primary-500 text-primary-400'
+                                                        : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:bg-zinc-800'
+                                                    }`}
+                                            >
+                                                <Store size={20} />
+                                                Retirar no Local
+                                            </button>
+                                            <button
+                                                onClick={() => setCartDeliveryOption('COURIER_REQUEST')}
+                                                className={`p-3 rounded-lg text-xs font-bold uppercase tracking-wide border transition flex flex-col items-center gap-2 ${cartDeliveryOption === 'COURIER_REQUEST'
+                                                        ? 'bg-primary-500/10 border-primary-500 text-primary-400'
+                                                        : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:bg-zinc-800'
+                                                    }`}
+                                            >
+                                                <Bike size={20} />
+                                                Pedir Entregador
+                                            </button>
+                                        </div>
+
+                                        {cartDeliveryOption === 'COURIER_REQUEST' && (
+                                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                                                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                                                    <p className="text-[10px] text-blue-200">
+                                                        Você está solicitando entrega para {cart.items.length} itens.
+                                                        Certifique-se que o entregador consiga transportar tudo.
+                                                    </p>
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-[10px] text-zinc-400 font-bold uppercase mb-1 block">Onde entregar?</label>
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={cartDeliveryAddress}
+                                                            onChange={(e) => setCartDeliveryAddress(e.target.value)}
+                                                            placeholder="Endereço completo (Rua, Número, Bairro)"
+                                                            className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500"
+                                                        />
+                                                        <button
+                                                            onClick={handleGetCartGPS}
+                                                            className="bg-zinc-800 text-white p-2 rounded-lg hover:bg-zinc-700 active:scale-95 transition"
+                                                            title="Usar GPS"
+                                                        >
+                                                            <MapPin size={18} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-[10px] text-zinc-400 font-bold uppercase mb-1 block">Oferta pela Entrega (R$)</label>
+                                                    <input
+                                                        type="number"
+                                                        value={cartOfferedFee}
+                                                        onChange={(e) => setCartOfferedFee(e.target.value)}
+                                                        placeholder="Ex: 10.00"
+                                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500"
+                                                    />
+                                                    <p className="text-[9px] text-zinc-500 mt-1">Valor sugerido para o trajeto total.</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {cartDeliveryOption === 'SELF_PICKUP' && (
+                                            <div className="p-3 bg-zinc-950 rounded-lg border border-zinc-800">
+                                                <p className="text-[10px] text-zinc-400">
+                                                    Você deverá ir até o vendedor para buscar os produtos. O endereço será revelado após o pagamento.
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex gap-3 items-start">
                                         <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
                                         <p className="text-[10px] text-amber-200/80 leading-relaxed">
@@ -888,25 +1011,17 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     </div>
 
                                     <button
+                                        disabled={cartDeliveryOption === 'COURIER_REQUEST' && (!cartDeliveryAddress || !cartOfferedFee)}
                                         onClick={async () => {
                                             const total = cart.items.reduce((acc, i) => acc + parseFloat(i.price), 0);
-
-                                            // Tentar pegar localização para frete se necessário
-                                            let deliveryCoords = { lat: 0, lng: 0 };
-                                            if (navigator.geolocation) {
-                                                const pos = await new Promise<any>((resolve) => {
-                                                    navigator.geolocation.getCurrentPosition(resolve, () => resolve(null));
-                                                });
-                                                if (pos) {
-                                                    deliveryCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                                                }
-                                            }
+                                            const fee = cartDeliveryOption === 'COURIER_REQUEST' ? parseFloat(cartOfferedFee || '0') : 0;
+                                            const finalTotal = total + fee;
 
                                             setConfirmData({
                                                 isOpen: true,
                                                 title: 'Finalizar Pedido (Lote)',
-                                                message: `Confirmar compra de ${cart.items.length} itens da loja ${cart.sellerName}? Total: ${formatCurrency(total)}`,
-                                                confirmText: `PAGAR ${formatCurrency(total)}`,
+                                                message: `Confirmar compra de ${cart.items.length} itens? \nProdutos: ${formatCurrency(total)}\nEntrega: ${formatCurrency(fee)}\nTotal: ${formatCurrency(finalTotal)}`,
+                                                confirmText: `PAGAR ${formatCurrency(finalTotal)}`,
                                                 type: 'success',
                                                 onConfirm: async () => {
                                                     setIsLoading(true);
@@ -915,12 +1030,14 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                     try {
                                                         const res = await apiService.post('/marketplace/buy', {
                                                             listingIds: cart.items.map(i => i.id),
-                                                            deliveryType: 'SELF_PICKUP',
+                                                            deliveryType: cartDeliveryOption,
                                                             paymentMethod: 'BALANCE',
-                                                            deliveryAddress: 'A combinar (Lote)',
+                                                            deliveryAddress: cartDeliveryAddress || 'Retirada no Local',
                                                             contactPhone: (state.currentUser as any)?.phone || '000000000',
-                                                            deliveryLat: deliveryCoords.lat,
-                                                            deliveryLng: deliveryCoords.lng,
+                                                            deliveryLat: cartGpsLocation?.lat || 0,
+                                                            deliveryLng: cartGpsLocation?.lng || 0,
+                                                            offeredDeliveryFee: cartOfferedFee,
+                                                            invitedCourierId: invitedCourierId,
                                                             pickupLat: cart.items[0].pickup_lat,
                                                             pickupLng: cart.items[0].pickup_lng
                                                         });
@@ -938,7 +1055,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                                 }
                                             });
                                         }}
-                                        className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-xl uppercase tracking-widest shadow-lg shadow-primary-500/20 active:scale-95 transition"
+                                        className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-xl uppercase tracking-widest shadow-lg shadow-primary-500/20 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         PAGAR LOTE AGORA
                                     </button>

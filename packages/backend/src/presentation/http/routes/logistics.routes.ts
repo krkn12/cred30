@@ -31,6 +31,9 @@ logisticsRoutes.get('/status', authMiddleware, LogisticsController.getCourierSta
 // Atualizar preço por KM do entregador
 logisticsRoutes.post('/update-price', authMiddleware, LogisticsController.updateCourierPrice);
 
+// Registrar novo entregador
+logisticsRoutes.post('/register', authMiddleware, LogisticsController.registerCourier);
+
 // Atualizar localização GPS (Rastreio)
 logisticsRoutes.post('/location/:orderId', authMiddleware, LogisticsController.updateLocation);
 
