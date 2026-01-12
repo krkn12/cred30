@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { MapPin, Truck, Navigation2, X } from 'lucide-react';
+import { MapPin, Truck, Navigation2, X, Target, MousePointer2 } from 'lucide-react';
 import { apiService } from '../../../../application/services/api.service';
 import { correctStoredAddress } from '../../../../application/utils/location_corrections';
 import { useWakeLock } from '../../../hooks/use-wake-lock';
@@ -21,6 +21,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
     const [isLoading, setIsLoading] = useState(true);
     const [courierPos, setCourierPos] = useState<{ lat: number, lng: number } | null>(null);
     const [destinationPos, setDestinationPos] = useState<{ lat: number, lng: number } | null>(null);
+    const [isManualMode, setIsManualMode] = useState(false); // New state for manual override
     useWakeLock();
     const routeLayerRef = useRef<L.Polyline | null>(null);
 
@@ -28,7 +29,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
     const courierIcon = L.divIcon({
         html: `<div class="relative w-12 h-12 flex items-center justify-center">
                 <div class="absolute inset-0 bg-blue-500/30 animate-ping rounded-full"></div>
-                <div class="relative z-10 bg-blue-600 p-2 rounded-full shadow-lg border-2 border-white transform hover:scale-110 transition-transform">
+                <div class="relative z-10 bg-blue-600 p-2 rounded-full shadow-lg border-2 border-white transform hover:scale-110 transition-transform cursor-move">
                      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/>
                         <path d="M2.5 17.5H5a2 2 0 0 0 1-1.5L8 9l4 1 2-3h3.5"/>
@@ -81,11 +82,35 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
         if (courierMarkerRef.current) {
             courierMarkerRef.current.setLatLng([lat, lng]);
         } else {
-            courierMarkerRef.current = L.marker([lat, lng], { icon: courierIcon }).addTo(mapRef.current);
+            const marker = L.marker([lat, lng], {
+                icon: courierIcon,
+                draggable: userRole === 'courier' // Apenas entregador pode arrastar
+            }).addTo(mapRef.current);
+
+            // Evento de Drag End
+            marker.on('dragend', async (event) => {
+                const newPos = event.target.getLatLng();
+                setIsManualMode(true); // Ativa modo manual
+                setCourierPos({ lat: newPos.lat, lng: newPos.lng });
+
+                // Remove círculo de precisão pois manual é exato (pelo usuário)
+                if (courierAccuracyCircleRef.current) {
+                    courierAccuracyCircleRef.current.remove();
+                    courierAccuracyCircleRef.current = null;
+                }
+
+                try {
+                    await apiService.post(`/logistics/location/${orderId}`, { lat: newPos.lat, lng: newPos.lng });
+                } catch (e) {
+                    console.error('Erro ao atualizar posição manual', e);
+                }
+            });
+
+            courierMarkerRef.current = marker;
         }
 
-        // Atualiza Círculo de Precisão
-        if (accuracy) {
+        // Atualiza Círculo de Precisão (apenas se não estiver em modo manual ou se accuracy for fornecida explicitamente na chamada)
+        if (accuracy && !isManualMode) {
             if (courierAccuracyCircleRef.current) {
                 courierAccuracyCircleRef.current.setLatLng([lat, lng]);
                 courierAccuracyCircleRef.current.setRadius(accuracy);
@@ -100,7 +125,26 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
             }
         }
 
-        mapRef.current.panTo([lat, lng], { animate: true, duration: 1.0 });
+        if (!isManualMode) {
+            mapRef.current.panTo([lat, lng], { animate: true, duration: 1.0 });
+        }
+    };
+
+    const reenableAutoGPS = () => {
+        setIsManualMode(false);
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const { latitude, longitude, accuracy } = pos.coords;
+                    updateCourierMarker(latitude, longitude, accuracy);
+                    if (mapRef.current) {
+                        mapRef.current.setView([latitude, longitude], 16, { animate: true });
+                    }
+                },
+                (err) => console.error(err),
+                { enableHighAccuracy: true }
+            );
+        }
     };
 
     const initMap = async (data: any) => {
@@ -203,6 +247,10 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
                     // Ignora leituras com precisão muito ruim (> 100m) para evitar pulos no mapa
                     if (accuracy > 100) return;
 
+                    // SE ESTIVER EM MODO MANUAL, IGNORA O UPDATE DO MAPA (mas mantém o watch ativo se quiser reconectar rápido?)
+                    // Na verdade, aqui a gente DEVE ignorar o updateCourierMarker se estiver em manual
+                    if (isManualMode) return;
+
                     updateCourierMarker(latitude, longitude, accuracy);
                     try {
                         // Usa rota específica de logística que aceita status 'ACCEPTED' e 'IN_TRANSIT'
@@ -223,7 +271,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
             if (watchId) navigator.geolocation.clearWatch(watchId);
             if (mapRef.current) mapRef.current.remove();
         };
-    }, [orderId, userRole]);
+    }, [orderId, userRole, isManualMode]);
 
     useEffect(() => {
         const drawRoute = async () => {
@@ -263,6 +311,33 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
 
             <div className="flex-1 relative">
                 <div ref={mapContainerRef} className="w-full h-full bg-zinc-900" />
+
+                {/* Manual Mode / Recenter Control */}
+                {userRole === 'courier' && (
+                    <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
+                        <button
+                            onClick={reenableAutoGPS}
+                            className={`p-3 rounded-full shadow-xl border border-white/10 transition-all ${!isManualMode ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}
+                        >
+                            <Target size={24} />
+                        </button>
+                        {isManualMode && (
+                            <div className="bg-amber-500 text-black text-[10px] font-bold px-2 py-1 rounded-md animate-bounce shadow-lg text-center absolute right-[110%] top-2 w-24">
+                                GPS Manual
+                            </div>
+                        )}
+                    </div>
+                )}
+                {/* Tip for PC users */}
+                {userRole === 'courier' && !isManualMode && (
+                    <div className="absolute bottom-24 left-0 right-0 z-[1000] flex justify-center pointer-events-none fade-out duration-1000 delay-5000">
+                        <div className="bg-black/60 text-white text-xs px-4 py-2 rounded-full backdrop-blur-md flex items-center gap-2">
+                            <MousePointer2 size={14} />
+                            <span>Arraste o marcador para corrigir sua posição</span>
+                        </div>
+                    </div>
+                )}
+
                 {isLoading && (
                     <div className="absolute inset-0 bg-zinc-950/50 backdrop-blur-sm flex items-center justify-center z-[10]">
                         <div className="text-center space-y-4">
