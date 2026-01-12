@@ -21,7 +21,10 @@ const CourierRegistrationView = () => {
         phone: '',
         city: '',
         state: '',
-        vehicle: ''
+        vehicle: '',
+        idPhoto: '',
+        vehiclePhoto: '',
+        docPhoto: ''
     });
 
     const vehicles = [
@@ -66,6 +69,22 @@ const CourierRegistrationView = () => {
         return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
     };
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'idPhoto' | 'vehiclePhoto' | 'docPhoto') => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+            setError('A imagem deve ter no máximo 2MB');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setForm(prev => ({ ...prev, [field]: reader.result as string }));
+        };
+        reader.readAsDataURL(file);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -77,7 +96,10 @@ const CourierRegistrationView = () => {
                 phone: form.phone.replace(/\D/g, ''),
                 city: form.city,
                 state: form.state,
-                vehicle: form.vehicle
+                vehicle: form.vehicle,
+                idPhoto: form.idPhoto,
+                vehiclePhoto: form.vehiclePhoto,
+                docPhoto: form.docPhoto
             });
 
             if (res.success) {
@@ -184,8 +206,8 @@ const CourierRegistrationView = () => {
                                 type="button"
                                 onClick={() => setForm({ ...form, vehicle: v.id })}
                                 className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col items-center justify-center ${form.vehicle === v.id
-                                        ? 'border-primary-500 bg-primary-500/10'
-                                        : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
+                                    ? 'border-primary-500 bg-primary-500/10'
+                                    : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
                                     }`}
                             >
                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-2 transition-all ${form.vehicle === v.id ? 'bg-primary-500 text-black' : 'bg-zinc-800 text-zinc-400'}`}>
@@ -269,9 +291,89 @@ const CourierRegistrationView = () => {
                     </div>
                 </div>
 
+                {/* Documentação */}
+                {form.vehicle && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                        <label className="text-xs text-zinc-400 font-bold uppercase tracking-wider mb-2 block">
+                            Documentação Obrigatória
+                        </label>
+
+                        <div className="grid grid-cols-1 gap-4">
+                            {/* Foto RG ou CNH */}
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                                <p className="text-white font-bold text-sm mb-1">{form.vehicle === 'BIKE' ? 'RG ou CNH (Frente)' : 'CNH (Frente)'}</p>
+                                <p className="text-zinc-500 text-xs mb-3">Sua identificação oficial</p>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    id="input-id"
+                                    onChange={(e) => handleFileChange(e, 'idPhoto')}
+                                />
+                                <label htmlFor="input-id" className={`w-full h-32 rounded-lg border-2 border-dashed flex flex-col items-center justify-center transition-all cursor-pointer ${form.idPhoto ? 'border-emerald-500 bg-emerald-500/5' : 'border-zinc-800 hover:border-zinc-700'}`}>
+                                    {form.idPhoto ? (
+                                        <img src={form.idPhoto} className="w-full h-full object-cover rounded-lg" alt="ID" />
+                                    ) : (
+                                        <>
+                                            <Fingerprint className="text-zinc-600 mb-2" size={24} />
+                                            <span className="text-zinc-500 text-xs">Anexar Documento</span>
+                                        </>
+                                    )}
+                                </label>
+                            </div>
+
+                            {/* Foto do Veículo */}
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                                <p className="text-white font-bold text-sm mb-1">Foto da {form.vehicle === 'BIKE' ? 'Bicicleta' : form.vehicle === 'MOTO' ? 'Moto' : 'Veículo'}</p>
+                                <p className="text-zinc-500 text-xs mb-3">Foto visível do veículo que será usado</p>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    id="input-vehicle"
+                                    onChange={(e) => handleFileChange(e, 'vehiclePhoto')}
+                                />
+                                <label htmlFor="input-vehicle" className={`w-full h-32 rounded-lg border-2 border-dashed flex flex-col items-center justify-center transition-all cursor-pointer ${form.vehiclePhoto ? 'border-emerald-500 bg-emerald-500/5' : 'border-zinc-800 hover:border-zinc-700'}`}>
+                                    {form.vehiclePhoto ? (
+                                        <img src={form.vehiclePhoto} className="w-full h-full object-cover rounded-lg" alt="Vehicle" />
+                                    ) : (
+                                        <>
+                                            {form.vehicle === 'BIKE' ? <Bike className="text-zinc-600 mb-2" size={24} /> : form.vehicle === 'MOTO' ? <Zap className="text-zinc-600 mb-2" size={24} /> : <Car className="text-zinc-600 mb-2" size={24} />}
+                                            <span className="text-zinc-500 text-xs">Anexar Foto</span>
+                                        </>
+                                    )}
+                                </label>
+                            </div>
+
+                            {/* CRLV ou Nota Fiscal */}
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                                <p className="text-white font-bold text-sm mb-1">{form.vehicle === 'BIKE' ? 'Nota Fiscal ou Declaração' : 'Documento (CRLV)'}</p>
+                                <p className="text-zinc-500 text-xs mb-3">{form.vehicle === 'BIKE' ? 'Comprovação de propriedade' : 'Documento do veículo atualizado'}</p>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    id="input-doc"
+                                    onChange={(e) => handleFileChange(e, 'docPhoto')}
+                                />
+                                <label htmlFor="input-doc" className={`w-full h-32 rounded-lg border-2 border-dashed flex flex-col items-center justify-center transition-all cursor-pointer ${form.docPhoto ? 'border-emerald-500 bg-emerald-500/5' : 'border-zinc-800 hover:border-zinc-700'}`}>
+                                    {form.docPhoto ? (
+                                        <img src={form.docPhoto} className="w-full h-full object-cover rounded-lg" alt="Doc" />
+                                    ) : (
+                                        <>
+                                            <MapPin className="text-zinc-600 mb-2" size={24} />
+                                            <span className="text-zinc-500 text-xs">Anexar Documento</span>
+                                        </>
+                                    )}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <button
                     type="submit"
-                    disabled={loading || !form.vehicle || !form.cpf || !form.phone || !form.city || !form.state}
+                    disabled={loading || !form.vehicle || !form.cpf || !form.phone || !form.city || !form.state || !form.idPhoto || !form.vehiclePhoto || !form.docPhoto}
                     className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 mt-6"
                 >
                     {loading ? (

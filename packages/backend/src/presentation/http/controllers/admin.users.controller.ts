@@ -321,7 +321,8 @@ export class AdminUsersController {
             const result = await pool.query(`
                 SELECT 
                     id, name, email, courier_vehicle, courier_phone, courier_cpf,
-                    courier_city, courier_state, courier_status, courier_created_at, score
+                    courier_city, courier_state, courier_status, courier_created_at, score,
+                    courier_id_photo, courier_vehicle_photo, courier_doc_photo
                 FROM users 
                 WHERE is_courier = TRUE AND courier_status = $1
                 ORDER BY courier_created_at DESC
@@ -340,7 +341,10 @@ export class AdminUsersController {
                     state: r.courier_state,
                     status: r.courier_status,
                     score: r.score,
-                    createdAt: r.courier_created_at
+                    createdAt: r.courier_created_at,
+                    idPhoto: r.courier_id_photo,
+                    vehiclePhoto: r.courier_vehicle_photo,
+                    docPhoto: r.courier_doc_photo
                 }))
             });
         } catch (error: any) {

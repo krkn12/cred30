@@ -95,6 +95,7 @@ class ApiService extends ApiBase {
 
   // Auth & Account
   resetPassword = this.auth.resetPassword.bind(this.auth);
+  recover2FA = this.auth.recover2FA.bind(this.auth);
   changePassword = this.users.changePassword.bind(this.users);
 
   // Quotas & Finance
@@ -128,9 +129,21 @@ class ApiService extends ApiBase {
   // Bug Reports
   getMyBugReports = this.misc.getMyBugReports.bind(this.misc);
 
-  // Portfolio / Titles
-  checkTitleEligibility = async (titleId: string) => {
-    return await this.get<any>(`/finance/titles/${titleId}/eligibility`);
+  checkTitleEligibility = async () => {
+    return await this.get<any>('/users/title-eligibility');
+  };
+
+  // Courier Admin
+  listPendingCouriers = async (status: string = 'pending') => {
+    return await this.get<any>(`/admin/couriers?status=${status}`);
+  };
+
+  approveCourier = async (userId: number) => {
+    return await this.post<any>('/admin/couriers/approve', { userId });
+  };
+
+  rejectCourier = async (userId: number, reason: string) => {
+    return await this.post<any>('/admin/couriers/reject', { userId, reason });
   };
 
   async adminAddQuota(email: string, quantity: number, reason: string): Promise<any> {
@@ -146,8 +159,8 @@ class ApiService extends ApiBase {
   }
 
   // --- UTILS ---
-  downloadTitle = async (titleId: string) => {
-    return await this.get<any>(`/finance/titles/${titleId}/download`);
+  downloadTitle = async () => {
+    return await this.post<any>('/users/title-download', {});
   };
 
   // Premium Features
