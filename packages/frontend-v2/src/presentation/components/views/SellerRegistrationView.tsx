@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Store, Phone, MapPin, Building2, CheckCircle, AlertCircle, Loader2, ArrowLeft, BadgeCheck, Percent, Zap } from 'lucide-react';
+import { Store, Phone, MapPin, Building2, CheckCircle, AlertCircle, Loader2, ArrowLeft, BadgeCheck, Percent, Zap, Fingerprint, Briefcase, Home, Map } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 import { useNavigate } from 'react-router-dom';
 import { useLocation } from '../../hooks/use-location';
@@ -235,28 +235,34 @@ export const SellerRegistrationView = () => {
                         <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">
                             Tipo de Conta
                         </label>
-                        <select
-                            value={formData.companyType}
-                            onChange={(e) => updateField('companyType', e.target.value)}
-                            className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3.5 px-4 text-white focus:border-primary-500 outline-none transition"
-                        >
-                            <option value="INDIVIDUAL">Pessoa Física (CPF)</option>
-                            <option value="MEI">MEI</option>
-                            <option value="LIMITED">Empresa (CNPJ)</option>
-                        </select>
+                        <div className="relative">
+                            <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                            <select
+                                value={formData.companyType}
+                                onChange={(e) => updateField('companyType', e.target.value)}
+                                className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3.5 pl-12 pr-4 text-white focus:border-primary-500 outline-none transition appearance-none"
+                            >
+                                <option value="INDIVIDUAL">Pessoa Física (CPF)</option>
+                                <option value="MEI">MEI</option>
+                                <option value="LIMITED">Empresa (CNPJ)</option>
+                            </select>
+                        </div>
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">
                             CPF ou CNPJ
                         </label>
-                        <input
-                            type="text"
-                            value={formData.cpfCnpj}
-                            onChange={(e) => updateField('cpfCnpj', e.target.value.replace(/\D/g, '').slice(0, 14))}
-                            placeholder="Apenas números"
-                            className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3.5 px-4 text-white focus:border-primary-500 outline-none transition"
-                            required
-                        />
+                        <div className="relative">
+                            <Fingerprint className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                            <input
+                                type="text"
+                                value={formData.cpfCnpj}
+                                onChange={(e) => updateField('cpfCnpj', e.target.value.replace(/\D/g, '').slice(0, 14))}
+                                placeholder="Apenas números"
+                                className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3.5 pl-12 pr-4 text-white focus:border-primary-500 outline-none transition"
+                                required
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -286,61 +292,79 @@ export const SellerRegistrationView = () => {
                     </label>
 
                     <div className="grid grid-cols-3 gap-3">
-                        <input
-                            type="text"
-                            value={formData.postalCode}
-                            onChange={(e) => updateField('postalCode', e.target.value.replace(/\D/g, '').slice(0, 8))}
-                            onBlur={handleCepBlur}
-                            placeholder="CEP"
-                            className="col-span-1 bg-zinc-900 border border-white/5 rounded-xl py-3 px-4 text-white focus:border-primary-500 outline-none transition text-sm"
-                            required
-                        />
-                        <input
-                            type="text"
-                            value={formData.address}
-                            onChange={(e) => updateField('address', e.target.value)}
-                            placeholder="Rua, Avenida..."
-                            className="col-span-2 bg-zinc-900 border border-white/5 rounded-xl py-3 px-4 text-white focus:border-primary-500 outline-none transition text-sm"
-                            required
-                        />
+                        <div className="relative col-span-1">
+                            <Map className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+                            <input
+                                type="text"
+                                value={formData.postalCode}
+                                onChange={(e) => updateField('postalCode', e.target.value.replace(/\D/g, '').slice(0, 8))}
+                                onBlur={handleCepBlur}
+                                placeholder="CEP"
+                                className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3 pl-11 pr-4 text-white focus:border-primary-500 outline-none transition text-sm"
+                                required
+                            />
+                        </div>
+                        <div className="relative col-span-2">
+                            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+                            <input
+                                type="text"
+                                value={formData.address}
+                                onChange={(e) => updateField('address', e.target.value)}
+                                placeholder="Rua, Avenida..."
+                                className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3 pl-11 pr-4 text-white focus:border-primary-500 outline-none transition text-sm"
+                                required
+                            />
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-3">
-                        <input
-                            type="text"
-                            value={formData.addressNumber}
-                            onChange={(e) => updateField('addressNumber', e.target.value)}
-                            placeholder="Nº"
-                            className="bg-zinc-900 border border-white/5 rounded-xl py-3 px-4 text-white focus:border-primary-500 outline-none transition text-sm"
-                        />
-                        <input
-                            type="text"
-                            value={formData.neighborhood}
-                            onChange={(e) => updateField('neighborhood', e.target.value)}
-                            placeholder="Bairro"
-                            className="col-span-2 bg-zinc-900 border border-white/5 rounded-xl py-3 px-4 text-white focus:border-primary-500 outline-none transition text-sm"
-                            required
-                        />
+                        <div className="relative col-span-1">
+                            <Home className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+                            <input
+                                type="text"
+                                value={formData.addressNumber}
+                                onChange={(e) => updateField('addressNumber', e.target.value)}
+                                placeholder="Nº"
+                                className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3 pl-11 pr-4 text-white focus:border-primary-500 outline-none transition text-sm"
+                            />
+                        </div>
+                        <div className="relative col-span-2">
+                            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+                            <input
+                                type="text"
+                                value={formData.neighborhood}
+                                onChange={(e) => updateField('neighborhood', e.target.value)}
+                                placeholder="Bairro"
+                                className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3 pl-11 pr-4 text-white focus:border-primary-500 outline-none transition text-sm"
+                                required
+                            />
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-3">
-                        <input
-                            type="text"
-                            value={formData.city}
-                            onChange={(e) => updateField('city', e.target.value)}
-                            placeholder="Cidade"
-                            className="col-span-2 bg-zinc-900 border border-white/5 rounded-xl py-3 px-4 text-white focus:border-primary-500 outline-none transition text-sm"
-                            required
-                        />
-                        <input
-                            type="text"
-                            value={formData.state}
-                            onChange={(e) => updateField('state', e.target.value.toUpperCase().slice(0, 2))}
-                            placeholder="UF"
-                            maxLength={2}
-                            className="bg-zinc-900 border border-white/5 rounded-xl py-3 px-4 text-white focus:border-primary-500 outline-none transition text-sm uppercase"
-                            required
-                        />
+                        <div className="relative col-span-2">
+                            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+                            <input
+                                type="text"
+                                value={formData.city}
+                                onChange={(e) => updateField('city', e.target.value)}
+                                placeholder="Cidade"
+                                className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3 pl-11 pr-4 text-white focus:border-primary-500 outline-none transition text-sm"
+                                required
+                            />
+                        </div>
+                        <div className="relative col-span-1">
+                            <Map className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+                            <input
+                                type="text"
+                                value={formData.state}
+                                onChange={(e) => updateField('state', e.target.value.toUpperCase().slice(0, 2))}
+                                placeholder="UF"
+                                maxLength={2}
+                                className="w-full bg-zinc-900 border border-white/5 rounded-xl py-3 pl-11 pr-4 text-white focus:border-primary-500 outline-none transition text-sm uppercase"
+                                required
+                            />
+                        </div>
                     </div>
                 </div>
 

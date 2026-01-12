@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Scanner } from '@yudiel/react-qr-scanner';
-import { CheckCircle2, QrCode, ScanLine, XCircle, UploadCloud, WifiOff } from 'lucide-react';
+import { CheckCircle2, QrCode, ScanLine, XCircle, UploadCloud, WifiOff, Package, DollarSign } from 'lucide-react';
 
 interface OfflineMarketplaceViewProps {
     user: any;
@@ -158,23 +158,29 @@ export const OfflineMarketplaceView = ({ user, pendingSales, onSaveSale, onSync 
                 <div className="space-y-4">
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-zinc-400 uppercase">O que você está vendendo?</label>
-                        <input
-                            type="text"
-                            value={itemTitle}
-                            onChange={(e) => setItemTitle(e.target.value)}
-                            placeholder="Ex: Bolo de Pote"
-                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-500 transition"
-                        />
+                        <div className="relative">
+                            <Package className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                            <input
+                                type="text"
+                                value={itemTitle}
+                                onChange={(e) => setItemTitle(e.target.value)}
+                                placeholder="Ex: Bolo de Pote"
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-12 pr-4 py-3 text-white focus:outline-none focus:border-primary-500 transition"
+                            />
+                        </div>
                     </div>
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-zinc-400 uppercase">Valor (R$)</label>
-                        <input
-                            type="number"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            placeholder="0.00"
-                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-500 transition"
-                        />
+                        <div className="relative">
+                            <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                            <input
+                                type="number"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                placeholder="0.00"
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-12 pr-4 py-3 text-white focus:outline-none focus:border-primary-500 transition"
+                            />
+                        </div>
                     </div>
                     <button
                         onClick={handleCreateOffer}
