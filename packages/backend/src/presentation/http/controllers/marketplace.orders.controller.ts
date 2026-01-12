@@ -428,6 +428,7 @@ export class MarketplaceOrdersController {
 
             const result = await pool.query(
                 `SELECT o.*, l.title as listing_title, l.image_url as listing_image, 
+                  CASE WHEN o.buyer_id = $1 THEN l.digital_content ELSE NULL END as digital_content,
                   ub.name as buyer_name,
                   us.name as seller_name,
                   uc.name as courier_name,

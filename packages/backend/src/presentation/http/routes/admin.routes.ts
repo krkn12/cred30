@@ -48,6 +48,7 @@ adminRoutes.post('/run-liquidation', adminMiddleware, auditMiddleware('FORCE_LIQ
 // --- GESTÃO DE USUÁRIOS E EQUIPE ---
 adminRoutes.post('/users/add-quota', adminMiddleware, auditMiddleware('MANUAL_ADD_QUOTA', 'QUOTA'), AdminUsersController.addQuota);
 adminRoutes.post('/users/add-balance', adminMiddleware, auditMiddleware('MANUAL_ADD_BALANCE', 'USER'), AdminUsersController.addBalance);
+adminRoutes.post('/users/reset-security-lock', adminMiddleware, auditMiddleware('RESET_SECURITY_LOCK', 'USER'), AdminUsersController.resetSecurityLock);
 adminRoutes.get('/users', adminMiddleware, AdminUsersController.listUsers);
 adminRoutes.post('/users/update-access', adminMiddleware, auditMiddleware('UPDATE_USER_ACCESS', 'USER'), AdminUsersController.updateUserAccess);
 adminRoutes.post('/users/create-attendant', adminMiddleware, auditMiddleware('CREATE_ATTENDANT', 'USER'), AdminUsersController.createAttendant);
