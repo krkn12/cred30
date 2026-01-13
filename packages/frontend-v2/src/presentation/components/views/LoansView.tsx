@@ -507,7 +507,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
 
                         <h3 className="text-xl font-bold text-white mb-4">Finalizar Compromisso</h3>
                         <p className="text-zinc-400 text-sm mb-6">
-                            Você está prestes a repor o valor total de <strong className="text-white">{formatBRL(selectedLoan.totalRepayment)}</strong> para o clube.
+                            Você está prestes a repor o valor restante de <strong className="text-white">{formatBRL(selectedLoan.remainingAmount ?? selectedLoan.totalRepayment)}</strong> para o clube.
                         </p>
 
                         <div className="space-y-4">
@@ -518,7 +518,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                 </div>
                             </div>
 
-                            {userBalance < selectedLoan.totalRepayment ? (
+                            {userBalance < (selectedLoan.remainingAmount ?? selectedLoan.totalRepayment) ? (
                                 <button
                                     onClick={() => window.location.hash = '#/app/dashboard'} // Redireciona para home onde tem o botão de depósito
                                     className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-black py-4 rounded-xl mb-2 transition"

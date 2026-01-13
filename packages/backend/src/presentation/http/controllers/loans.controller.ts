@@ -289,22 +289,37 @@ export class LoansController {
             const loan = loanResult.rows[0];
             if (loan.status !== 'APPROVED') return c.json({ success: false, message: 'Apoio não disponível para reposição' }, 400);
 
+            // CALCULAR SALDO DEVEDOR REAL (SUBTRAINDO PARCELAS PAGAS)
+            const paidInstallmentsResult = await pool.query('SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) as paid_amount FROM loan_installments WHERE loan_id = $1', [loanId]);
+            const paidAmount = parseFloat(paidInstallmentsResult.rows[0].paid_amount);
+
+            const totalRepayOriginal = parseFloat(loan.total_repayment);
+            const remainingToPay = Math.max(0, totalRepayOriginal - paidAmount);
+
+            if (remainingToPay <= 0) return c.json({ success: false, message: 'Este apoio já está quitado.' }, 400);
+
             const principalAmount = parseFloat(loan.amount);
-            const totalInterest = totalRepayment - principalAmount;
+            // Proporção de juros no valor restante
+            const interestRatio = (totalRepayOriginal - principalAmount) / totalRepayOriginal;
+            const remainingInterest = remainingToPay * interestRatio;
+            const remainingPrincipal = remainingToPay - remainingInterest;
 
             const method: PaymentMethod = useBalance ? 'balance' : (paymentMethod as PaymentMethod);
-            const { total: finalCost } = calculateTotalToPay(totalRepayment, method);
+            const { total: finalCost } = calculateTotalToPay(remainingToPay, method);
 
-            if (useBalance && user.balance < totalRepayment) return c.json({ success: false, message: 'Saldo insuficiente' }, 400);
+            if (useBalance && user.balance < remainingToPay) return c.json({ success: false, message: 'Saldo insuficiente' }, 400);
 
             if (useBalance) {
                 // FLUXO DE PAGAMENTO COM SALDO (AUTOMÁTICO)
                 await executeInTransaction(pool, async (client: PoolClient) => {
-                    // 1. Debitar saldo do usuário
-                    await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [totalRepayment, user.id]);
+                    // 1. Debitar saldo do usuário (Apenas o que falta!)
+                    await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [remainingToPay, user.id]);
 
                     // 2. Marcar empréstimo como PAGO
                     await client.query('UPDATE loans SET status = $1 WHERE id = $2', ['PAID', loanId]);
+
+                    // Registrar como uma parcela final para histórico
+                    await client.query('INSERT INTO loan_installments (loan_id, amount, use_balance, created_at) VALUES ($1, $2, $3, $4)', [loanId, remainingToPay, true, new Date()]);
 
                     // 3. Criar transação COMPLETA
                     await client.query(
@@ -312,14 +327,14 @@ export class LoansController {
                          VALUES ($1, 'LOAN_PAYMENT', $2, $3, 'COMPLETED', $4)`,
                         [
                             user.id, finalCost,
-                            `Reposição de Apoio (Saldo)`,
-                            JSON.stringify({ loanId, useBalance: true, principalAmount, interestAmount: totalInterest })
+                            `Quitação de Apoio (Saldo)`,
+                            JSON.stringify({ loanId, useBalance: true, principalAmount: remainingPrincipal, interestAmount: remainingInterest })
                         ]
                     );
 
-                    // 4. Distribuição Contábil (Mesma lógica das parcelas)
-                    const profitShare = totalInterest * 0.80; // 80% dos juros para cotistas
-                    const systemShare = totalInterest * 0.20; // 20% dos juros para o sistema
+                    // 4. Distribuição Contábil
+                    const profitShare = remainingInterest * 0.80; // 80% dos juros para cotistas
+                    const systemShare = remainingInterest * 0.20; // 20% dos juros para o sistema
                     const taxPart = systemShare * 0.25;
                     const operPart = systemShare * 0.25;
                     const ownerPart = systemShare * 0.25;
@@ -333,7 +348,7 @@ export class LoansController {
                             total_tax_reserve = total_tax_reserve + $4,
                             total_operational_reserve = total_operational_reserve + $5,
                             total_owner_profit = total_owner_profit + $6
-                        `, [principalAmount, profitShare, systemShare, taxPart, operPart, ownerPart]
+                        `, [remainingPrincipal, profitShare, systemShare, taxPart, operPart, ownerPart]
                     );
 
                     // 5. Atualizar Score
@@ -351,8 +366,8 @@ export class LoansController {
          VALUES ($1, 'LOAN_PAYMENT', $2, $3, 'PENDING', $4) RETURNING id`,
                 [
                     user.id, finalCost,
-                    `Reposição de Apoio (${useBalance ? 'Saldo' : 'PIX Manual'})`,
-                    JSON.stringify({ loanId, useBalance, paymentMethod: 'pix', principalAmount, interestAmount: totalInterest, manualPix: !useBalance })
+                    `Quitação de Apoio (${useBalance ? 'Saldo' : 'PIX Manual'})`,
+                    JSON.stringify({ loanId, useBalance, paymentMethod: 'pix', principalAmount: remainingPrincipal, interestAmount: remainingInterest, manualPix: !useBalance })
                 ]
             );
 
