@@ -89,7 +89,9 @@ const convertApiLoanToLoan = (apiLoan: any): Loan => {
 
   const remainingAmount = typeof apiLoan.remainingAmount === 'string'
     ? parseFloat(apiLoan.remainingAmount)
-    : (apiLoan.remainingAmount !== undefined && apiLoan.remainingAmount !== null ? apiLoan.remainingAmount : totalRepayment);
+    : (apiLoan.remainingAmount !== undefined && apiLoan.remainingAmount !== null
+      ? apiLoan.remainingAmount
+      : Math.max(0, totalRepayment - totalPaid));
 
   return {
     id: String(apiLoan.id || ''),
