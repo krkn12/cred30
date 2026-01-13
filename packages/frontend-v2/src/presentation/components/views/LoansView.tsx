@@ -397,7 +397,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                     void isUrgent;
 
                     const paidAmount = loan.totalPaid || 0;
-                    const remainingAmount = loan.remainingAmount || loan.totalRepayment;
+                    const remainingAmount = loan.status === 'PAID' ? 0 : (loan.remainingAmount ?? loan.totalRepayment);
                     const progressPercentage = (paidAmount / loan.totalRepayment) * 100;
                     const installmentValue = getInstallmentValue(loan);
 
