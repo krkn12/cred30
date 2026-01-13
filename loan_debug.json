@@ -1,0 +1,27 @@
+{
+  "id": 5,
+  "user_id": 31,
+  "amount": "44.00",
+  "interest_rate": "0.35",
+  "penalty_rate": "0.40",
+  "total_repayment": "59.40",
+  "installments": 12,
+  "term_days": 360,
+  "status": "PAYMENT_PENDING",
+  "created_at": "2026-01-13T18:08:45.355Z",
+  "approved_at": "2026-01-13T18:08:45.940Z",
+  "due_date": "2027-01-08T18:08:45.385Z",
+  "payout_status": "NONE",
+  "pix_key_to_receive": null,
+  "metadata": {
+    "guarantorId": null,
+    "guarantorName": null,
+    "guaranteeValue": 22,
+    "originationFee": 1.3199999999999998,
+    "disbursedAmount": 42.68,
+    "finalInterestRate": 0.35,
+    "guaranteePercentage": 50,
+    "riskClassInterestRate": 0.35,
+    "welcomeBenefitApplied": false
+  }
+}

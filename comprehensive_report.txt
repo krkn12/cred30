@@ -1,0 +1,83 @@
+[dotenv@17.2.3] injecting env (15) from packages\backend\.env -- tip: ÔÜÖ´©Å  write to custom object with { processEnv: myObject }
+­ƒÜÇ INICIANDO AUDITORIA PROFUNDA - CRED30
+
+-------------------------------------------
+­ƒôü ESTRUTURA DO BANCO DE DADOS:
+- admin_logs               : 3 registros
+- audit_logs               : 3 registros
+- bug_reports              : 0 registros
+- course_lessons           : 0 registros
+- course_progress          : 0 registros
+- course_purchases         : 0 registros
+- course_reviews           : 0 registros
+- courses                  : 0 registros
+- credit_applications      : 0 registros
+- deposits                 : 0 registros
+- earnings                 : 0 registros
+- education_courses        : 0 registros
+- education_lessons        : 0 registros
+- education_progress       : 0 registros
+- education_sessions       : 0 registros
+- governance_proposals     : 0 registros
+- governance_votes         : 0 registros
+- investment_pools         : 0 registros
+- investments              : 0 registros
+- job_applications         : 0 registros
+- jobs                     : 0 registros
+- loan_installments        : 1 registros
+- loans                    : 2 registros
+- marketplace_listings     : 6 registros
+- marketplace_orders       : 1 registros
+- notifications            : 0 registros
+- pending_mission_rewards  : 0 registros
+- products                 : 0 registros
+- promo_video_audits       : 0 registros
+- promo_video_views        : 0 registros
+- promo_videos             : 0 registros
+- quotas                   : 2 registros
+- rate_limit_logs          : 0 registros
+- referral_codes           : 0 registros
+- reward_catalog           : 8 registros
+- reward_inventory         : 0 registros
+- reward_redemptions       : 0 registros
+- support_chats            : 0 registros
+- support_messages         : 0 registros
+- system_config            : 1 registros
+- system_costs             : 0 registros
+- terms_acceptance         : 0 registros
+- transaction_reviews      : 0 registros
+- transactions             : 5 registros
+- users                    : 3 registros
+- voting_proposals         : 0 registros
+- voting_votes             : 0 registros
+- webhook_logs             : 0 registros
+- withdrawals              : 0 registros
+-------------------------------------------
+­ƒÅª CAIXA CENTRAL E RESERVAS:
+- Saldo em Caixa (System Balance): 348.06
+- Reserva de Lucros (Cotas):       -10.73
+- Reserva de Investimento:         123.18
+- Lucro da Empresa (Owner):        -55.00
+- Reserva de Impostos:             5.78
+- Reserva Operacional:             5.78
+-------------------------------------------
+­ƒæñ PASSIVO COM USU├üRIOS:
+- Total de Usu├írios:   3
+- Saldo total em carteiras: R$┬á325,36
+- ├ìndice de Cobertura (Caixa/Passivo): 106.98%
+-------------------------------------------
+­ƒÆÄ AUDITORIA DE COTAS:
+- Status [ACTIVE]: 2 cotas | Total: 84.00
+-------------------------------------------
+­ƒÆ© SA├ÜDE DO CR├ëDITO (APOIO M├ÜTUO):
+- [PAYMENT_PENDING]: 1 contratos | Desembolsado: 44.00 | A receber: 59.40
+- [PAID]: 1 contratos | Desembolsado: 34.00 | A receber: 45.90
+-------------------------------------------
+­ƒôè FLUXO DE CAIXA (TRANSA├ç├òES COMPROMETIDAS):
+-------------------------------------------
+­ƒòÁ´©Å VERIFICA├ç├òES DE INTEGRIDADE:
+Ô£à Nenhum usu├írio com saldo negativo.
+Ô£à Todas as cotas possuem propriet├írio vinculado.
+
+-------------------------------------------
+­ƒÅü AUDITORIA FINALIZADA.
