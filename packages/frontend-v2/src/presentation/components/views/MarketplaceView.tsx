@@ -396,7 +396,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                     <h2 className="text-2xl font-black text-white tracking-tighter">MERCADO</h2>
                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest flex items-center gap-1">
                         <MapPin size={10} className="text-primary-500" />
-                        Brasil • {listings.length} anúncios ativos
+                        {selectedCity ? `${selectedCity}, ${selectedUF}` : (selectedUF || 'Brasil')} • {listings.length} anúncios ativos
                     </p>
                 </div>
 

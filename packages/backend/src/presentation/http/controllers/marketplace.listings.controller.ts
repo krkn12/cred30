@@ -37,11 +37,11 @@ export class MarketplaceListingsController {
         SELECT * FROM (
             (SELECT l.id::text, l.title, l.description, l.price::float, l.image_url, l.category, 
                     u.name as seller_name, l.seller_id::text, l.is_boosted, l.created_at, l.status, 'P2P' as type,
-                    u.seller_address_city as city, u.seller_address_state as uf,
-                    COALESCE(l.item_type, 'PHYSICAL') as item_type,
-                    COALESCE(l.required_vehicle, 'MOTO') as required_vehicle
-             FROM marketplace_listings l 
-             JOIN users u ON l.seller_id = u.id
+                u.seller_address_city as city, u.seller_address_state as uf, u.seller_address_neighborhood as neighborhood,
+                COALESCE(l.item_type, 'PHYSICAL') as item_type,
+                COALESCE(l.required_vehicle, 'MOTO') as required_vehicle
+         FROM marketplace_listings l 
+         JOIN users u ON l.seller_id = u.id
              WHERE l.status = 'ACTIVE'
              AND ($3::text IS NULL OR $3 = 'TODOS' OR l.category = $3)
              AND ($4::text IS NULL OR (l.title ILIKE '%' || $4 || '%' OR l.description ILIKE '%' || $4 || '%'))
@@ -51,7 +51,7 @@ export class MarketplaceListingsController {
             UNION ALL
             (SELECT p.id::text, p.title, p.description, p.price::float, p.image_url, p.category, 
                     'Cred30 Parceiros' as seller_name, '0' as seller_id, true as is_boosted, p.created_at, 'ACTIVE' as status, 'AFFILIATE' as type,
-                    '' as city, '' as uf, 'PHYSICAL' as item_type, 'MOTO' as required_vehicle
+                    '' as city, '' as uf, '' as neighborhood, 'PHYSICAL' as item_type, 'MOTO' as required_vehicle
              FROM products p 
              WHERE p.active = true
              AND ($3::text IS NULL OR $3 = 'TODOS' OR p.category = $3)

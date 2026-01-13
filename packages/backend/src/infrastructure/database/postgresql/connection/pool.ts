@@ -601,6 +601,7 @@ export const initializeDatabase = async () => {
         penalty_rate DECIMAL(5,2) DEFAULT 0.4,
         vesting_period_ms BIGINT DEFAULT 31536000000,
         total_manual_costs DECIMAL(20,2) DEFAULT 0,
+        courier_price_per_km DECIMAL(10,2) DEFAULT 2.50,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -611,6 +612,7 @@ export const initializeDatabase = async () => {
       ALTER TABLE system_config ADD COLUMN IF NOT EXISTS total_operational_reserve DECIMAL(20,2) DEFAULT 0;
       ALTER TABLE system_config ADD COLUMN IF NOT EXISTS total_owner_profit DECIMAL(20,2) DEFAULT 0;
       ALTER TABLE system_config ADD COLUMN IF NOT EXISTS investment_reserve DECIMAL(20,2) DEFAULT 0;
+      ALTER TABLE system_config ADD COLUMN IF NOT EXISTS courier_price_per_km DECIMAL(10,2) DEFAULT 2.50;
     `);
 
     // Verificar se a coluna total_gateway_costs existe na tabela system_config
@@ -773,7 +775,9 @@ export const initializeDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         tracking_code VARCHAR(100),
-        offline_token VARCHAR(50)
+        offline_token VARCHAR(50),
+        listing_ids INTEGER[],
+        is_lote BOOLEAN DEFAULT FALSE
       )
     `);
 
@@ -811,6 +815,8 @@ export const initializeDatabase = async () => {
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_lng DECIMAL(11, 8);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS listing_ids INTEGER[];
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS is_lote BOOLEAN DEFAULT FALSE;
     `);
 
     // --- SISTEMA DE PROMOÇÃO DE VÍDEOS (VIEW-TO-EARN) ---

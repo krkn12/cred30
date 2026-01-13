@@ -22,8 +22,8 @@ import { getWelcomeBenefit, consumeWelcomeBenefitUse } from '../../../applicatio
 
 // Schemas
 const buyListingSchema = z.object({
-    listingId: z.string().uuid().optional(), // Changed to UUID and optional
-    listingIds: z.array(z.string().uuid()).optional(), // New field for multiple listings
+    listingId: z.any().optional(), // Aceita UUID ou Inteiro (SERIAL)
+    listingIds: z.array(z.any()).optional(), // Novo campo para múltiplos itens
     deliveryAddress: z.string().min(5), // Updated validation and made required
     contactPhone: z.string(), // Updated validation and made required
     offlineToken: z.string().optional(),
@@ -44,8 +44,8 @@ const buyListingSchema = z.object({
 });
 
 const buyOnCreditSchema = z.object({
-    listingId: z.string().uuid().optional(), // Changed to UUID and optional
-    listingIds: z.array(z.string().uuid()).optional(), // New field for multiple listings
+    listingId: z.any().optional(), // Aceita UUID ou Inteiro (SERIAL)
+    listingIds: z.array(z.any()).optional(), // Novo campo para múltiplos itens
     installments: z.number().int().min(1).max(24), // Updated max installments
     deliveryAddress: z.string().min(5), // Updated validation and made required
     contactPhone: z.string(), // Updated validation and made required
