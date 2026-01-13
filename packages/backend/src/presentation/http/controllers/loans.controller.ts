@@ -468,7 +468,18 @@ export class LoansController {
                     `, [principalPortion, profitShare, taxPart, operPart, ownerPart, investPart]
                 );
 
-                // D. Verificar quitação total
+                // D. Registrar Transação no Histórico (CORREÇÃO DE BUG: Faltava este registro)
+                await client.query(
+                    `INSERT INTO transactions (user_id, type, amount, description, status, metadata)
+                     VALUES ($1, 'LOAN_PAYMENT', $2, $3, 'COMPLETED', $4)`,
+                    [
+                        user.id, finalInstallmentCost,
+                        `Parcela de Apoio (Saldo)`,
+                        JSON.stringify({ loanId, installmentAmount, isInstallment: true, principalAmount: principalPortion, interestAmount: interestPortion })
+                    ]
+                );
+
+                // E. Verificar quitação total
                 const newPaidAmount = paidAmount + installmentAmount;
                 if (newPaidAmount >= parseFloat(loan.total_repayment) - 0.01) {
                     await client.query('UPDATE loans SET status = $1 WHERE id = $2', ['PAID', loanId]);
