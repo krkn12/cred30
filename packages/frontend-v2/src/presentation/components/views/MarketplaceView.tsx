@@ -28,6 +28,7 @@ import { useDebounce } from '../../hooks/use-performance';
 import { LoadingScreen } from '../ui/LoadingScreen';
 import { OrderTrackingMap } from '../features/marketplace/OrderTrackingMap';
 import { useLocation } from '../../hooks/use-location';
+import { useGps } from '../../hooks/use-gps';
 
 // Modularized Components & Constants
 import { CATEGORY_ICONS, MARKETPLACE_CATEGORIES } from '../marketplace/marketplace.constants';
@@ -36,7 +37,7 @@ import { MissionsView } from '../marketplace/MissionsView';
 import { ItemDetailsView } from '../marketplace/ItemDetailsView';
 import { CreateListingView } from '../marketplace/CreateListingView';
 import { AvailableDeliveriesMap } from '../features/logistics/AvailableDeliveriesMap';
-import { applyLocationCorrection } from '../../../application/utils/location_corrections';
+// Modularized Components & Constants
 
 interface MarketplaceViewProps {
     state: AppState;
@@ -96,6 +97,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const [trackingOrder, setTrackingOrder] = useState<any>(null);
     const [courierPricePerKm, setCourierPricePerKm] = useState<number>(2.0);
     const [showMissionsMap, setShowMissionsMap] = useState(false);
+    const { getLocation, isLoading: isGpsLoading } = useGps(onSuccess, onError);
 
     const addToCart = (item: any) => {
         if (cart.sellerId && cart.sellerId !== item.seller_id) {
@@ -350,159 +352,39 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
 
 
-    const handleUseMyLocation = () => {
-        if (!navigator.geolocation) {
-            onError('Erro', 'Geolocalização não suportada.');
-            return;
+    const handleUseMyLocation = async () => {
+        const corrected = await getLocation();
+        if (corrected) {
+            setSelectedUF(corrected.state);
+            setTimeout(() => {
+                if (corrected.city) setSelectedCity(corrected.city);
+                if (corrected.neighborhood) setSelectedNeighborhood(corrected.neighborhood);
+            }, 800);
+            setShowFilters(true);
         }
-
-        setIsLoading(true);
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            try {
-                const { latitude, longitude } = position.coords;
-                // Nominatim API (Free)
-                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-                const data = await response.json();
-
-                if (data.address) {
-                    const stateName = data.address.state;
-                    const cityName = data.address.city || data.address.town || data.address.municipality;
-                    const suburb = data.address.suburb || data.address.neighbourhood;
-
-                    // Tentar encontrar a sigla do estado
-                    // Como ufs é carregado do useLocation, devemos ter acesso.
-                    // Assumindo que a API do IBGE retorna nomes parecidos com OSM.
-                    // Vamos tentar buscar pelo nome.
-                    const foundUF = ufs.find(u =>
-                        u.nome.toLowerCase() === stateName?.toLowerCase() ||
-                        u.sigla.toLowerCase() === stateName?.toLowerCase()
-                    );
-
-                    if (foundUF) {
-                        const originalAddress = {
-                            city: cityName || '',
-                            state: foundUF.sigla,
-                            neighborhood: suburb || ''
-                        };
-
-                        const corrected = applyLocationCorrection(latitude, longitude, originalAddress);
-
-                        setSelectedUF(corrected.state);
-                        setTimeout(() => {
-                            if (corrected.city) setSelectedCity(corrected.city);
-                            if (corrected.neighborhood) setSelectedNeighborhood(corrected.neighborhood);
-                        }, 800);
-
-                        setShowFilters(true);
-                        onSuccess('Localização Definida', `${corrected.neighborhood ? corrected.neighborhood + ' - ' : ''}${corrected.city}/${corrected.state}`);
-                    } else {
-                        onError('Ops', `Estado não reconhecido: ${stateName}`);
-                    }
-                }
-            } catch (error) {
-                console.error(error);
-                onError('Erro', 'Falha ao buscar endereço GPS.');
-            } finally {
-                setIsLoading(false);
-            }
-        }, (err) => {
-            console.warn(err);
-            setIsLoading(false);
-            onError('Erro no GPS', 'Verifique se a permissão de localização está ativa.');
-        });
     };
 
-    const handleGetListingGPS = () => {
-        if (!navigator.geolocation) {
-            onError('Erro', 'Geolocalização não suportada.');
-            return;
+    const handleGetListingGPS = async () => {
+        const corrected = await getLocation({ highAccuracy: true });
+        if (corrected) {
+            setGpsLocation(corrected);
         }
-
-        setIsLoading(true);
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            try {
-                const { latitude, longitude, accuracy } = position.coords;
-                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-                const data = await response.json();
-
-                if (data.address) {
-                    const stateName = data.address.state;
-                    const cityName = data.address.city || data.address.town || data.address.municipality;
-                    const neighborhood = data.address.suburb || data.address.neighbourhood || '';
-
-                    const foundUF = ufs.find(u =>
-                        u.nome.toLowerCase() === stateName?.toLowerCase() ||
-                        u.sigla.toLowerCase() === stateName?.toLowerCase()
-                    );
-
-                    // For Listing Creation
-                    if (cityName && foundUF) {
-                        const originalAddress = {
-                            city: cityName,
-                            state: foundUF.sigla,
-                            neighborhood: neighborhood,
-                            accuracy: accuracy
-                        };
-                        const corrected = applyLocationCorrection(latitude, longitude, originalAddress);
-                        setGpsLocation(corrected);
-                        onSuccess('Localização Definida', `Local: ${corrected.neighborhood} - ${corrected.city}/${corrected.state}`);
-                    }
-                }
-            } catch (error) {
-                console.error(error);
-                onError('Erro', 'Falha ao buscar GPS.');
-            } finally {
-                setIsLoading(false);
-            }
-        }, (err) => {
-            console.warn(err);
-            setIsLoading(false);
-            onError('Erro', 'Permissão de localização negada.');
-        }, { enableHighAccuracy: true, timeout: 10000 });
     };
 
-    const handleGetCartGPS = () => {
-        if (!navigator.geolocation) {
-            onError('Erro', 'Geolocalização não suportada.');
-            return;
+    const handleGetCartGPS = async () => {
+        const corrected = await getLocation();
+        if (corrected) {
+            setCartGpsLocation({ lat: corrected.lat || 0, lng: corrected.lng || 0 });
+
+            let addressText = "Minha Localização Atual (GPS)";
+            if (corrected.neighborhood) addressText = `${corrected.neighborhood}, ${corrected.city} - ${corrected.state}`;
+
+            setCartDeliveryAddress(addressText);
         }
-
-        setIsLoading(true);
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            try {
-                const { latitude, longitude } = position.coords;
-                setCartGpsLocation({ lat: latitude, lng: longitude });
-
-                // Reverse Geocoding for Address Field
-                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-                const data = await response.json();
-
-                let addressText = "Minha Localização Atual (GPS)";
-                if (data.address) {
-                    const road = data.address.road || '';
-                    const number = data.address.house_number || '';
-                    const suburb = data.address.suburb || data.address.neighbourhood || '';
-                    const city = data.address.city || data.address.town || '';
-                    if (road) addressText = `${road}, ${number} - ${suburb}, ${city}`;
-                }
-                setCartDeliveryAddress(addressText);
-                onSuccess('GPS Ativo', 'Endereço de entrega atualizado!');
-
-            } catch (error) {
-                console.error(error);
-                onError('Erro', 'Falha ao buscar endereço GPS.');
-            } finally {
-                setIsLoading(false);
-            }
-        }, (err) => {
-            console.warn(err);
-            setIsLoading(false);
-            onError('Erro', 'Permissão de localização negada.');
-        });
     };
 
     // Loading principal
-    if (isLoading && view === 'browse' && listings.length === 0) {
+    if ((isLoading || isGpsLoading) && view === 'browse' && listings.length === 0) {
         return <LoadingScreen fullScreen message="Carregando Mercado..." />;
     }
 
@@ -931,8 +813,8 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                             <button
                                                 onClick={() => setCartDeliveryOption('SELF_PICKUP')}
                                                 className={`p-3 rounded-lg text-xs font-bold uppercase tracking-wide border transition flex flex-col items-center gap-2 ${cartDeliveryOption === 'SELF_PICKUP'
-                                                        ? 'bg-primary-500/10 border-primary-500 text-primary-400'
-                                                        : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:bg-zinc-800'
+                                                    ? 'bg-primary-500/10 border-primary-500 text-primary-400'
+                                                    : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:bg-zinc-800'
                                                     }`}
                                             >
                                                 <Store size={20} />
@@ -941,8 +823,8 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                             <button
                                                 onClick={() => setCartDeliveryOption('COURIER_REQUEST')}
                                                 className={`p-3 rounded-lg text-xs font-bold uppercase tracking-wide border transition flex flex-col items-center gap-2 ${cartDeliveryOption === 'COURIER_REQUEST'
-                                                        ? 'bg-primary-500/10 border-primary-500 text-primary-400'
-                                                        : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:bg-zinc-800'
+                                                    ? 'bg-primary-500/10 border-primary-500 text-primary-400'
+                                                    : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:bg-zinc-800'
                                                     }`}
                                             >
                                                 <Bike size={20} />

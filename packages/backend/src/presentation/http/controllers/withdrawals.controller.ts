@@ -321,7 +321,10 @@ export class WithdrawalsController {
 
             // === VERIFICAÇÃO 2FA PARA SAQUES ===
             if (userData.two_factor_enabled && userData.two_factor_secret) {
-                if (!twoFactorCode) {
+                // O código pode vir tanto em 'code' (padrão legado) quanto em 'twoFactorCode'
+                const tokenToVerify = twoFactorCode || code;
+
+                if (!tokenToVerify) {
                     return c.json({
                         success: false,
                         message: 'Código 2FA obrigatório para saques.',
@@ -329,15 +332,10 @@ export class WithdrawalsController {
                     }, 401);
                 }
 
-                const is2FAValid = twoFactorService.verifyToken(twoFactorCode, userData.two_factor_secret);
+                const is2FAValid = twoFactorService.verifyToken(tokenToVerify, userData.two_factor_secret);
                 if (!is2FAValid) {
                     return c.json({ success: false, message: 'Código 2FA inválido ou expirado.' }, 401);
                 }
-            }
-
-            if (userData.two_factor_enabled) {
-                const isValid = twoFactorService.verifyToken(code, userData.two_factor_secret);
-                if (!isValid) return c.json({ success: false, message: 'Código do autenticador inválido' }, 400);
             }
 
             if (userData.is_under_duress) {
