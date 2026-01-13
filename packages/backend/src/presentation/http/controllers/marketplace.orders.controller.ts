@@ -24,9 +24,7 @@ import { getWelcomeBenefit, consumeWelcomeBenefitUse } from '../../../applicatio
 const buyListingSchema = z.object({
     listingId: z.any().optional(), // Aceita UUID ou Inteiro (SERIAL)
     listingIds: z.array(z.any()).optional(), // Novo campo para múltiplos itens
-    deliveryAddress: z.string().min(5).refine(val => /\d/.test(val), {
-        message: "O endereço deve incluir o número da casa/local."
-    }),
+    deliveryAddress: z.string().min(3),
     contactPhone: z.string(),
     offlineToken: z.string().optional(),
     payerCpfCnpj: z.string().optional(),
@@ -47,15 +45,21 @@ const buyListingSchema = z.object({
         ccv: z.string(),
         cpf: z.string(),
     }).optional(),
+}).refine(data => {
+    if (data.deliveryType !== 'SELF_PICKUP' && !/\d/.test(data.deliveryAddress)) {
+        return false;
+    }
+    return true;
+}, {
+    message: "O endereço deve incluir o número da casa/local para entregas.",
+    path: ['deliveryAddress']
 });
 
 const buyOnCreditSchema = z.object({
     listingId: z.any().optional(), // Aceita UUID ou Inteiro (SERIAL)
     listingIds: z.array(z.any()).optional(), // Novo campo para múltiplos itens
     installments: z.number().int().min(1).max(24),
-    deliveryAddress: z.string().min(5).refine(val => /\d/.test(val), {
-        message: "O endereço deve incluir o número da casa/local."
-    }),
+    deliveryAddress: z.string().min(3),
     contactPhone: z.string(),
     deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST', 'EXTERNAL_SHIPPING']).optional().default('SELF_PICKUP'),
     offeredDeliveryFee: z.coerce.number().min(0).optional().default(0),
@@ -65,6 +69,14 @@ const buyOnCreditSchema = z.object({
     deliveryLng: z.coerce.number().optional(),
     pickupLat: z.coerce.number().optional(),
     pickupLng: z.coerce.number().optional(),
+}).refine(data => {
+    if (data.deliveryType !== 'SELF_PICKUP' && !/\d/.test(data.deliveryAddress)) {
+        return false;
+    }
+    return true;
+}, {
+    message: "O endereço deve incluir o número da casa/local para entregas.",
+    path: ['deliveryAddress']
 });
 
 export class MarketplaceOrdersController {
