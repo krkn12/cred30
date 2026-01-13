@@ -186,18 +186,25 @@ export class MarketplaceOrdersController {
                     const deliveryStatus = isDigitalLote ? 'DELIVERED' : (deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE');
                     const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
+                    console.log(`[MARKETPLACE_BUY] Inserindo pedido: listing_id=${listings[0].id}, buyer=${user.id}, seller=${sellerId}, invitedCourier=${invitedCourierId || 'null'}`);
+
                     const orderResult = await client.query(
                         `INSERT INTO marketplace_orders (
                             listing_id, listing_ids, is_lote, buyer_id, seller_id, amount, fee_amount, seller_amount, 
                             status, payment_method, delivery_address, pickup_address, contact_phone, 
                             offline_token, delivery_status, delivery_fee, pickup_code, invited_courier_id,
                             pickup_lat, pickup_lng, delivery_lat, delivery_lng
-                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) RETURNING id`,
+                        ) VALUES (
+                            $1::INTEGER, $2::INTEGER[], $3::BOOLEAN, $4::INTEGER, $5::INTEGER, $6::NUMERIC, $7::NUMERIC, $8::NUMERIC,
+                            $9, $10, $11, $12, $13,
+                            $14, $15, $16::NUMERIC, $17, $18::UUID,
+                            $19::NUMERIC, $20::NUMERIC, $21::NUMERIC, $22::NUMERIC
+                        ) RETURNING id`,
                         [
                             listings[0].id, idsToProcess, listings.length > 1, user.id, sellerId, totalPrice, fee, sellerAmount,
                             orderStatus, 'BALANCE', deliveryAddress, isDigitalLote ? null : finalPickupAddress, contactPhone,
                             offlineToken, deliveryStatus, isDigitalLote ? 0 : calculatedDeliveryFee, pickupCode,
-                            invitedCourierId || null,
+                            (invitedCourierId && invitedCourierId.length > 30) ? invitedCourierId : null,
                             pickupLat || null, pickupLng || null, deliveryLat || null, deliveryLng || null
                         ]
                     );
@@ -387,17 +394,24 @@ export class MarketplaceOrdersController {
                 const deliveryStatus = (buyOnCreditSchema.parse(body).deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE');
                 const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
+                console.log(`[MARKETPLACE_CREDIT] Inserindo pedido: listing_id=${listings[0].id}, buyer=${user.id}`);
+
                 const orderResult = await client.query(
                     `INSERT INTO marketplace_orders (
                         listing_id, listing_ids, is_lote, buyer_id, seller_id, amount, fee_amount, seller_amount, 
                         status, payment_method, delivery_address, pickup_address, contact_phone, 
                         delivery_status, delivery_fee, pickup_code, invited_courier_id,
                         pickup_lat, pickup_lng, delivery_lat, delivery_lng
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING id`,
+                    ) VALUES (
+                        $1::INTEGER, $2::INTEGER[], $3::BOOLEAN, $4::INTEGER, $5::INTEGER, $6::NUMERIC, $7::NUMERIC, $8::NUMERIC,
+                        $9, $10, $11, $12, $13,
+                        $14, $15, $16, $17::UUID,
+                        $18::NUMERIC, $19::NUMERIC, $20::NUMERIC, $21::NUMERIC
+                    ) RETURNING id`,
                     [
                         listings[0].id, idsToProcess, listings.length > 1, user.id, sellerId, totalWithFee, escrowFee, sellerAmount,
                         'WAITING_SHIPPING', 'CRED30_CREDIT', deliveryAddress, finalPickupAddress, contactPhone,
-                        deliveryStatus, fee, pickupCode, invitedCourierId,
+                        deliveryStatus, fee, pickupCode, (invitedCourierId && invitedCourierId.length > 30) ? invitedCourierId : null,
                         body.pickupLat || null, body.pickupLng || null, body.deliveryLat || null, body.deliveryLng || null
                     ]
                 );

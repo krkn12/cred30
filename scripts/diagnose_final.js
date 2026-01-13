@@ -1,0 +1,27 @@
+const { Pool } = require('pg');
+require('dotenv').config({ path: 'packages/backend/.env' });
+
+async function diagnose() {
+    const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+    });
+
+    try {
+        const res = await pool.query(`
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = 'marketplace_orders'
+            ORDER BY ordinal_position;
+        `);
+
+        const output = res.rows.map(row => `${row.column_name}: ${row.data_type}`).join(' | ');
+        console.log(output);
+    } catch (e) {
+        console.error('Erro:', e);
+    } finally {
+        await pool.end();
+    }
+}
+
+diagnose();
