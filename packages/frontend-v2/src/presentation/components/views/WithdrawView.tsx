@@ -5,6 +5,7 @@ import { User } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 import { confirmWithdrawal } from '../../../application/services/storage.service';
 import { WITHDRAWAL_FEE_FIXED, WITHDRAWAL_MIN_AMOUNT } from '../../../shared/constants/app.constants';
+import { formatBRL, parseToNumber } from '../../../shared/utils/format.utils';
 
 interface WithdrawViewProps {
     balance: number;
@@ -25,7 +26,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
     const quickAmounts = [50, 100, 200, 500];
 
     const { isValidAmount, isFree, fee, netAmount } = useMemo(() => {
-        const amount = parseFloat(val) || 0;
+        const amount = parseToNumber(val);
         const valid = val !== '' && amount >= WITHDRAWAL_MIN_AMOUNT && amount <= balance;
         const free = totalQuotaValue >= amount;
 
@@ -125,7 +126,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
 
                 <div className="bg-white/20 rounded-xl p-4 mt-6">
                     <p className="text-sm opacity-80 mb-1">Saldo Disponível</p>
-                    <p className="text-3xl font-bold">{(balance || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                    <p className="text-3xl font-bold">{formatBRL(balance)}</p>
                     <p className="text-xs opacity-70 mt-1">Seu saldo atual na conta</p>
                 </div>
             </div>
@@ -156,11 +157,17 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                         <div className="relative">
                             <span className="absolute left-3 top-3 text-zinc-500">R$</span>
                             <input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 value={val}
-                                onChange={e => setVal(e.target.value)}
+                                onChange={e => {
+                                    const v = e.target.value;
+                                    if (v === '' || /^[0-9.,]+$/.test(v)) {
+                                        setVal(v);
+                                    }
+                                }}
                                 className="w-full bg-background border border-surfaceHighlight rounded-xl py-3 pl-10 pr-16 text-white outline-none focus:border-primary-500 transition"
-                                placeholder="0.00"
+                                placeholder="0,00"
                             />
                             <button
                                 onClick={() => setVal(balance.toString())}
@@ -172,7 +179,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
 
                         {val !== '' && parseFloat(val) < WITHDRAWAL_MIN_AMOUNT && (
                             <p className="text-red-400 text-[10px] mt-2 font-medium">
-                                * O valor mínimo para resgate é de {(WITHDRAWAL_MIN_AMOUNT || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.
+                                * O valor mínimo para resgate é de {formatBRL(WITHDRAWAL_MIN_AMOUNT)}.
                             </p>
                         )}
 
@@ -182,12 +189,12 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                                 <div className="flex justify-between">
                                     <span className="text-zinc-400">Taxa de resgate operativo ({isFree ? 'Grátis' : 'Taxa de Manutenção'})</span>
                                     <span className={isFree ? 'text-emerald-400' : 'text-zinc-300'}>
-                                        {isFree ? 'R$ 0,00' : (fee || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        {isFree ? 'R$ 0,00' : formatBRL(fee)}
                                     </span>
                                 </div>
                                 <div className="flex justify-between font-bold">
                                     <span className="text-white">Você receberá</span>
-                                    <span className="text-emerald-400">{(netAmount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                    <span className="text-emerald-400">{formatBRL(netAmount)}</span>
                                 </div>
                             </div>
                         )}

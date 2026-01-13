@@ -84,8 +84,10 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
     }, [state.quotas, user.id]);
 
     const { userLoans, totalDebt } = useMemo(() => {
-        const loans = state.loans?.filter((l: Loan) => l.userId === user.id && l.status === 'APPROVED') ?? [];
-        const debt = loans.reduce((acc: number, l: Loan) => acc + l.totalRepayment, 0);
+        const loans = state.loans?.filter((l: Loan) =>
+            l.userId === user.id && ['APPROVED', 'PAYMENT_PENDING', 'PENDING', 'WAITING_GUARANTOR'].includes(l.status)
+        ) ?? [];
+        const debt = loans.reduce((acc: number, l: Loan) => acc + (l.remainingAmount ?? l.totalRepayment), 0);
         return { userLoans: loans, totalDebt: debt };
     }, [state.loans, user.id]);
 
