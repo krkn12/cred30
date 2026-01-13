@@ -1,0 +1,883 @@
+[dotenv@17.2.3] injecting env (15) from packages\backend\.env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+--- ESTRUTURA DETALHADA DO BANCO DE DADOS ---
+
+TABLE: admin_logs
+┌─────────┬───────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name   │ data_type                     │ is_nullable │
+├─────────┼───────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'          │ 'integer'                     │ 'NO'        │
+│ 1       │ 'admin_id'    │ 'integer'                     │ 'YES'       │
+│ 2       │ 'action'      │ 'character varying'           │ 'NO'        │
+│ 3       │ 'entity_type' │ 'character varying'           │ 'NO'        │
+│ 4       │ 'entity_id'   │ 'character varying'           │ 'YES'       │
+│ 5       │ 'old_values'  │ 'jsonb'                       │ 'YES'       │
+│ 6       │ 'new_values'  │ 'jsonb'                       │ 'YES'       │
+│ 7       │ 'ip_address'  │ 'text'                        │ 'YES'       │
+│ 8       │ 'user_agent'  │ 'text'                        │ 'YES'       │
+│ 9       │ 'created_at'  │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴───────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: audit_logs
+┌─────────┬───────────────┬────────────────────────────┬─────────────┐
+│ (index) │ column_name   │ data_type                  │ is_nullable │
+├─────────┼───────────────┼────────────────────────────┼─────────────┤
+│ 0       │ 'id'          │ 'integer'                  │ 'NO'        │
+│ 1       │ 'user_id'     │ 'integer'                  │ 'YES'       │
+│ 2       │ 'action'      │ 'character varying'        │ 'NO'        │
+│ 3       │ 'entity_type' │ 'character varying'        │ 'YES'       │
+│ 4       │ 'entity_id'   │ 'character varying'        │ 'YES'       │
+│ 5       │ 'old_values'  │ 'jsonb'                    │ 'YES'       │
+│ 6       │ 'new_values'  │ 'jsonb'                    │ 'YES'       │
+│ 7       │ 'ip_address'  │ 'character varying'        │ 'YES'       │
+│ 8       │ 'user_agent'  │ 'text'                     │ 'YES'       │
+│ 9       │ 'created_at'  │ 'timestamp with time zone' │ 'YES'       │
+└─────────┴───────────────┴────────────────────────────┴─────────────┘
+
+TABLE: bug_reports
+┌─────────┬──────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name      │ data_type                     │ is_nullable │
+├─────────┼──────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'             │ 'integer'                     │ 'NO'        │
+│ 1       │ 'user_id'        │ 'integer'                     │ 'YES'       │
+│ 2       │ 'user_email'     │ 'character varying'           │ 'YES'       │
+│ 3       │ 'user_name'      │ 'character varying'           │ 'YES'       │
+│ 4       │ 'title'          │ 'character varying'           │ 'NO'        │
+│ 5       │ 'description'    │ 'text'                        │ 'NO'        │
+│ 6       │ 'category'       │ 'character varying'           │ 'YES'       │
+│ 7       │ 'severity'       │ 'character varying'           │ 'YES'       │
+│ 8       │ 'status'         │ 'character varying'           │ 'YES'       │
+│ 9       │ 'screenshot_url' │ 'text'                        │ 'YES'       │
+│ 10      │ 'device_info'    │ 'text'                        │ 'YES'       │
+│ 11      │ 'admin_notes'    │ 'text'                        │ 'YES'       │
+│ 12      │ 'resolved_by'    │ 'integer'                     │ 'YES'       │
+│ 13      │ 'resolved_at'    │ 'timestamp without time zone' │ 'YES'       │
+│ 14      │ 'created_at'     │ 'timestamp without time zone' │ 'YES'       │
+│ 15      │ 'updated_at'     │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴──────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: course_lessons
+┌─────────┬────────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name        │ data_type                     │ is_nullable │
+├─────────┼────────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'               │ 'integer'                     │ 'NO'        │
+│ 1       │ 'course_id'        │ 'integer'                     │ 'NO'        │
+│ 2       │ 'title'            │ 'character varying'           │ 'NO'        │
+│ 3       │ 'description'      │ 'text'                        │ 'YES'       │
+│ 4       │ 'youtube_url'      │ 'text'                        │ 'NO'        │
+│ 5       │ 'duration_minutes' │ 'integer'                     │ 'YES'       │
+│ 6       │ 'order_index'      │ 'integer'                     │ 'YES'       │
+│ 7       │ 'is_preview'       │ 'boolean'                     │ 'YES'       │
+│ 8       │ 'created_at'       │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴────────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: course_progress
+┌─────────┬───────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name       │ data_type                     │ is_nullable │
+├─────────┼───────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'              │ 'integer'                     │ 'NO'        │
+│ 1       │ 'user_id'         │ 'integer'                     │ 'NO'        │
+│ 2       │ 'course_id'       │ 'integer'                     │ 'NO'        │
+│ 3       │ 'lesson_id'       │ 'integer'                     │ 'NO'        │
+│ 4       │ 'completed'       │ 'boolean'                     │ 'YES'       │
+│ 5       │ 'watched_seconds' │ 'integer'                     │ 'YES'       │
+│ 6       │ 'completed_at'    │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴───────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: course_purchases
+┌─────────┬────────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name        │ data_type                     │ is_nullable │
+├─────────┼────────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'               │ 'integer'                     │ 'NO'        │
+│ 1       │ 'user_id'          │ 'integer'                     │ 'NO'        │
+│ 2       │ 'course_id'        │ 'integer'                     │ 'NO'        │
+│ 3       │ 'amount_paid'      │ 'numeric'                     │ 'NO'        │
+│ 4       │ 'instructor_share' │ 'numeric'                     │ 'NO'        │
+│ 5       │ 'platform_share'   │ 'numeric'                     │ 'NO'        │
+│ 6       │ 'created_at'       │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴────────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: course_reviews
+┌─────────┬──────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name  │ data_type                     │ is_nullable │
+├─────────┼──────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'         │ 'integer'                     │ 'NO'        │
+│ 1       │ 'user_id'    │ 'integer'                     │ 'NO'        │
+│ 2       │ 'course_id'  │ 'integer'                     │ 'NO'        │
+│ 3       │ 'rating'     │ 'integer'                     │ 'NO'        │
+│ 4       │ 'comment'    │ 'text'                        │ 'YES'       │
+│ 5       │ 'created_at' │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴──────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: courses
+┌─────────┬──────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name      │ data_type                     │ is_nullable │
+├─────────┼──────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'             │ 'integer'                     │ 'NO'        │
+│ 1       │ 'instructor_id'  │ 'integer'                     │ 'NO'        │
+│ 2       │ 'title'          │ 'character varying'           │ 'NO'        │
+│ 3       │ 'description'    │ 'text'                        │ 'YES'       │
+│ 4       │ 'thumbnail_url'  │ 'text'                        │ 'YES'       │
+│ 5       │ 'price'          │ 'numeric'                     │ 'NO'        │
+│ 6       │ 'category'       │ 'character varying'           │ 'YES'       │
+│ 7       │ 'status'         │ 'character varying'           │ 'YES'       │
+│ 8       │ 'total_students' │ 'integer'                     │ 'YES'       │
+│ 9       │ 'total_revenue'  │ 'numeric'                     │ 'YES'       │
+│ 10      │ 'rating'         │ 'numeric'                     │ 'YES'       │
+│ 11      │ 'created_at'     │ 'timestamp without time zone' │ 'YES'       │
+│ 12      │ 'updated_at'     │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴──────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: credit_applications
+┌─────────┬────────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name        │ data_type                     │ is_nullable │
+├─────────┼────────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'               │ 'integer'                     │ 'NO'        │
+│ 1       │ 'user_id'          │ 'integer'                     │ 'NO'        │
+│ 2       │ 'requested_amount' │ 'numeric'                     │ 'NO'        │
+│ 3       │ 'approved_amount'  │ 'numeric'                     │ 'YES'       │
+│ 4       │ 'purpose'          │ 'character varying'           │ 'YES'       │
+│ 5       │ 'status'           │ 'character varying'           │ 'YES'       │
+│ 6       │ 'reviewed_by'      │ 'integer'                     │ 'YES'       │
+│ 7       │ 'reviewed_at'      │ 'timestamp without time zone' │ 'YES'       │
+│ 8       │ 'notes'            │ 'text'                        │ 'YES'       │
+│ 9       │ 'created_at'       │ 'timestamp without time zone' │ 'YES'       │
+│ 10      │ 'updated_at'       │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴────────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: deposits
+┌─────────┬────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name    │ data_type                     │ is_nullable │
+├─────────┼────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'           │ 'integer'                     │ 'NO'        │
+│ 1       │ 'user_id'      │ 'integer'                     │ 'NO'        │
+│ 2       │ 'amount'       │ 'numeric'                     │ 'NO'        │
+│ 3       │ 'source'       │ 'character varying'           │ 'YES'       │
+│ 4       │ 'source_id'    │ 'character varying'           │ 'YES'       │
+│ 5       │ 'status'       │ 'character varying'           │ 'YES'       │
+│ 6       │ 'processed_at' │ 'timestamp without time zone' │ 'YES'       │
+│ 7       │ 'created_at'   │ 'timestamp without time zone' │ 'YES'       │
+│ 8       │ 'updated_at'   │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: earnings
+┌─────────┬───────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name   │ data_type                     │ is_nullable │
+├─────────┼───────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'          │ 'integer'                     │ 'NO'        │
+│ 1       │ 'user_id'     │ 'integer'                     │ 'NO'        │
+│ 2       │ 'source'      │ 'character varying'           │ 'NO'        │
+│ 3       │ 'source_id'   │ 'character varying'           │ 'YES'       │
+│ 4       │ 'amount'      │ 'numeric'                     │ 'NO'        │
+│ 5       │ 'description' │ 'text'                        │ 'YES'       │
+│ 6       │ 'status'      │ 'character varying'           │ 'YES'       │
+│ 7       │ 'withdrawn'   │ 'boolean'                     │ 'YES'       │
+│ 8       │ 'created_at'  │ 'timestamp without time zone' │ 'YES'       │
+│ 9       │ 'updated_at'  │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴───────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: education_courses
+┌─────────┬─────────────────┬────────────────────────────┬─────────────┐
+│ (index) │ column_name     │ data_type                  │ is_nullable │
+├─────────┼─────────────────┼────────────────────────────┼─────────────┤
+│ 0       │ 'id'            │ 'integer'                  │ 'NO'        │
+│ 1       │ 'title'         │ 'text'                     │ 'NO'        │
+│ 2       │ 'description'   │ 'text'                     │ 'YES'       │
+│ 3       │ 'thumbnail_url' │ 'text'                     │ 'YES'       │
+│ 4       │ 'status'        │ 'text'                     │ 'YES'       │
+│ 5       │ 'created_at'    │ 'timestamp with time zone' │ 'YES'       │
+└─────────┴─────────────────┴────────────────────────────┴─────────────┘
+
+TABLE: education_lessons
+┌─────────┬────────────────────┬────────────────────────────┬─────────────┐
+│ (index) │ column_name        │ data_type                  │ is_nullable │
+├─────────┼────────────────────┼────────────────────────────┼─────────────┤
+│ 0       │ 'id'               │ 'integer'                  │ 'NO'        │
+│ 1       │ 'course_id'        │ 'integer'                  │ 'NO'        │
+│ 2       │ 'title'            │ 'text'                     │ 'NO'        │
+│ 3       │ 'video_url'        │ 'text'                     │ 'YES'       │
+│ 4       │ 'duration_seconds' │ 'integer'                  │ 'YES'       │
+│ 5       │ 'reward_points'    │ 'integer'                  │ 'YES'       │
+│ 6       │ 'order_index'      │ 'integer'                  │ 'YES'       │
+│ 7       │ 'created_at'       │ 'timestamp with time zone' │ 'YES'       │
+└─────────┴────────────────────┴────────────────────────────┴─────────────┘
+
+TABLE: education_progress
+┌─────────┬─────────────────┬────────────────────────────┬─────────────┐
+│ (index) │ column_name     │ data_type                  │ is_nullable │
+├─────────┼─────────────────┼────────────────────────────┼─────────────┤
+│ 0       │ 'id'            │ 'integer'                  │ 'NO'        │
+│ 1       │ 'user_id'       │ 'integer'                  │ 'NO'        │
+│ 2       │ 'lesson_id'     │ 'integer'                  │ 'NO'        │
+│ 3       │ 'completed_at'  │ 'timestamp with time zone' │ 'YES'       │
+│ 4       │ 'points_earned' │ 'integer'                  │ 'YES'       │
+└─────────┴─────────────────┴────────────────────────────┴─────────────┘
+
+TABLE: education_sessions
+┌─────────┬─────────────────┬────────────────────────────┬─────────────┐
+│ (index) │ column_name     │ data_type                  │ is_nullable │
+├─────────┼─────────────────┼────────────────────────────┼─────────────┤
+│ 0       │ 'id'            │ 'integer'                  │ 'NO'        │
+│ 1       │ 'user_id'       │ 'integer'                  │ 'NO'        │
+│ 2       │ 'video_id'      │ 'character varying'        │ 'NO'        │
+│ 3       │ 'started_at'    │ 'timestamp with time zone' │ 'YES'       │
+│ 4       │ 'last_ping_at'  │ 'timestamp with time zone' │ 'YES'       │
+│ 5       │ 'total_seconds' │ 'integer'                  │ 'YES'       │
+│ 6       │ 'is_active'     │ 'boolean'                  │ 'YES'       │
+│ 7       │ 'ip_address'    │ 'character varying'        │ 'YES'       │
+│ 8       │ 'user_agent'    │ 'text'                     │ 'YES'       │
+└─────────┴─────────────────┴────────────────────────────┴─────────────┘
+
+TABLE: governance_proposals
+┌─────────┬────────────────────┬────────────────────────────┬─────────────┐
+│ (index) │ column_name        │ data_type                  │ is_nullable │
+├─────────┼────────────────────┼────────────────────────────┼─────────────┤
+│ 0       │ 'id'               │ 'uuid'                     │ 'NO'        │
+│ 1       │ 'title'            │ 'text'                     │ 'NO'        │
+│ 2       │ 'description'      │ 'text'                     │ 'NO'        │
+│ 3       │ 'creator_id'       │ 'integer'                  │ 'YES'       │
+│ 4       │ 'status'           │ 'text'                     │ 'YES'       │
+│ 5       │ 'category'         │ 'text'                     │ 'YES'       │
+│ 6       │ 'yes_votes_power'  │ 'numeric'                  │ 'YES'       │
+│ 7       │ 'no_votes_power'   │ 'numeric'                  │ 'YES'       │
+│ 8       │ 'min_power_quorum' │ 'numeric'                  │ 'YES'       │
+│ 9       │ 'created_at'       │ 'timestamp with time zone' │ 'YES'       │
+│ 10      │ 'expires_at'       │ 'timestamp with time zone' │ 'YES'       │
+└─────────┴────────────────────┴────────────────────────────┴─────────────┘
+
+TABLE: governance_votes
+┌─────────┬────────────────┬────────────────────────────┬─────────────┐
+│ (index) │ column_name    │ data_type                  │ is_nullable │
+├─────────┼────────────────┼────────────────────────────┼─────────────┤
+│ 0       │ 'id'           │ 'uuid'                     │ 'NO'        │
+│ 1       │ 'proposal_id'  │ 'uuid'                     │ 'YES'       │
+│ 2       │ 'user_id'      │ 'integer'                  │ 'YES'       │
+│ 3       │ 'choice'       │ 'text'                     │ 'NO'        │
+│ 4       │ 'voting_power' │ 'numeric'                  │ 'NO'        │
+│ 5       │ 'created_at'   │ 'timestamp with time zone' │ 'YES'       │
+└─────────┴────────────────┴────────────────────────────┴─────────────┘
+
+TABLE: investment_pools
+┌─────────┬──────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name      │ data_type                     │ is_nullable │
+├─────────┼──────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'             │ 'integer'                     │ 'NO'        │
+│ 1       │ 'name'           │ 'character varying'           │ 'NO'        │
+│ 2       │ 'description'    │ 'text'                        │ 'YES'       │
+│ 3       │ 'target_amount'  │ 'numeric'                     │ 'YES'       │
+│ 4       │ 'current_amount' │ 'numeric'                     │ 'YES'       │
+│ 5       │ 'min_investment' │ 'numeric'                     │ 'YES'       │
+│ 6       │ 'max_investment' │ 'numeric'                     │ 'YES'       │
+│ 7       │ 'interest_rate'  │ 'numeric'                     │ 'YES'       │
+│ 8       │ 'duration_days'  │ 'integer'                     │ 'YES'       │
+│ 9       │ 'status'         │ 'character varying'           │ 'YES'       │
+│ 10      │ 'start_date'     │ 'timestamp without time zone' │ 'YES'       │
+│ 11      │ 'end_date'       │ 'timestamp without time zone' │ 'YES'       │
+│ 12      │ 'created_by'     │ 'integer'                     │ 'YES'       │
+│ 13      │ 'created_at'     │ 'timestamp without time zone' │ 'YES'       │
+│ 14      │ 'updated_at'     │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴──────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: investments
+┌─────────┬──────────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name          │ data_type                     │ is_nullable │
+├─────────┼──────────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'                 │ 'integer'                     │ 'NO'        │
+│ 1       │ 'asset_name'         │ 'character varying'           │ 'NO'        │
+│ 2       │ 'asset_type'         │ 'character varying'           │ 'NO'        │
+│ 3       │ 'quantity'           │ 'numeric'                     │ 'YES'       │
+│ 4       │ 'unit_price'         │ 'numeric'                     │ 'NO'        │
+│ 5       │ 'total_invested'     │ 'numeric'                     │ 'NO'        │
+│ 6       │ 'current_value'      │ 'numeric'                     │ 'YES'       │
+│ 7       │ 'dividends_received' │ 'numeric'                     │ 'YES'       │
+│ 8       │ 'broker'             │ 'character varying'           │ 'YES'       │
+│ 9       │ 'notes'              │ 'text'                        │ 'YES'       │
+│ 10      │ 'invested_at'        │ 'timestamp without time zone' │ 'YES'       │
+│ 11      │ 'created_at'         │ 'timestamp without time zone' │ 'YES'       │
+│ 12      │ 'updated_at'         │ 'timestamp without time zone' │ 'YES'       │
+│ 13      │ 'status'             │ 'character varying'           │ 'YES'       │
+│ 14      │ 'sale_value'         │ 'numeric'                     │ 'YES'       │
+│ 15      │ 'sold_at'            │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴──────────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: job_applications
+┌─────────┬───────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name   │ data_type                     │ is_nullable │
+├─────────┼───────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'          │ 'integer'                     │ 'NO'        │
+│ 1       │ 'job_id'      │ 'integer'                     │ 'NO'        │
+│ 2       │ 'user_id'     │ 'integer'                     │ 'NO'        │
+│ 3       │ 'message'     │ 'text'                        │ 'YES'       │
+│ 4       │ 'status'      │ 'character varying'           │ 'YES'       │
+│ 5       │ 'reviewed_by' │ 'integer'                     │ 'YES'       │
+│ 6       │ 'reviewed_at' │ 'timestamp without time zone' │ 'YES'       │
+│ 7       │ 'created_at'  │ 'timestamp without time zone' │ 'YES'       │
+│ 8       │ 'updated_at'  │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴───────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: jobs
+┌─────────┬───────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name   │ data_type                     │ is_nullable │
+├─────────┼───────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'          │ 'integer'                     │ 'NO'        │
+│ 1       │ 'title'       │ 'character varying'           │ 'NO'        │
+│ 2       │ 'description' │ 'text'                        │ 'YES'       │
+│ 3       │ 'location'    │ 'character varying'           │ 'YES'       │
+│ 4       │ 'salary'      │ 'character varying'           │ 'YES'       │
+│ 5       │ 'type'        │ 'character varying'           │ 'YES'       │
+│ 6       │ 'status'      │ 'character varying'           │ 'YES'       │
+│ 7       │ 'posted_by'   │ 'integer'                     │ 'YES'       │
+│ 8       │ 'created_at'  │ 'timestamp without time zone' │ 'YES'       │
+│ 9       │ 'updated_at'  │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴───────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: loan_installments
+┌─────────┬───────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name   │ data_type                     │ is_nullable │
+├─────────┼───────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'          │ 'integer'                     │ 'NO'        │
+│ 1       │ 'loan_id'     │ 'integer'                     │ 'YES'       │
+│ 2       │ 'amount'      │ 'numeric'                     │ 'NO'        │
+│ 3       │ 'use_balance' │ 'boolean'                     │ 'YES'       │
+│ 4       │ 'created_at'  │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴───────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: loans
+┌─────────┬──────────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name          │ data_type                     │ is_nullable │
+├─────────┼──────────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'                 │ 'integer'                     │ 'NO'        │
+│ 1       │ 'user_id'            │ 'integer'                     │ 'YES'       │
+│ 2       │ 'amount'             │ 'numeric'                     │ 'NO'        │
+│ 3       │ 'interest_rate'      │ 'numeric'                     │ 'NO'        │
+│ 4       │ 'penalty_rate'       │ 'numeric'                     │ 'YES'       │
+│ 5       │ 'total_repayment'    │ 'numeric'                     │ 'NO'        │
+│ 6       │ 'installments'       │ 'integer'                     │ 'YES'       │
+│ 7       │ 'term_days'          │ 'integer'                     │ 'YES'       │
+│ 8       │ 'status'             │ 'character varying'           │ 'YES'       │
+│ 9       │ 'created_at'         │ 'timestamp without time zone' │ 'YES'       │
+│ 10      │ 'approved_at'        │ 'timestamp without time zone' │ 'YES'       │
+│ 11      │ 'due_date'           │ 'timestamp without time zone' │ 'YES'       │
+│ 12      │ 'payout_status'      │ 'character varying'           │ 'YES'       │
+│ 13      │ 'pix_key_to_receive' │ 'character varying'           │ 'YES'       │
+│ 14      │ 'metadata'           │ 'jsonb'                       │ 'YES'       │
+└─────────┴──────────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: marketplace_listings
+┌─────────┬────────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name        │ data_type                     │ is_nullable │
+├─────────┼────────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'               │ 'integer'                     │ 'NO'        │
+│ 1       │ 'seller_id'        │ 'integer'                     │ 'YES'       │
+│ 2       │ 'title'            │ 'character varying'           │ 'NO'        │
+│ 3       │ 'description'      │ 'text'                        │ 'YES'       │
+│ 4       │ 'price'            │ 'numeric'                     │ 'NO'        │
+│ 5       │ 'category'         │ 'character varying'           │ 'YES'       │
+│ 6       │ 'image_url'        │ 'text'                        │ 'YES'       │
+│ 7       │ 'status'           │ 'character varying'           │ 'YES'       │
+│ 8       │ 'is_boosted'       │ 'boolean'                     │ 'YES'       │
+│ 9       │ 'boost_expires_at' │ 'timestamp without time zone' │ 'YES'       │
+│ 10      │ 'created_at'       │ 'timestamp without time zone' │ 'YES'       │
+│ 11      │ 'updated_at'       │ 'timestamp without time zone' │ 'YES'       │
+│ 12      │ 'quota_id'         │ 'integer'                     │ 'YES'       │
+│ 13      │ 'item_type'        │ 'character varying'           │ 'YES'       │
+│ 14      │ 'digital_content'  │ 'text'                        │ 'YES'       │
+│ 15      │ 'required_vehicle' │ 'character varying'           │ 'YES'       │
+│ 16      │ 'stock'            │ 'integer'                     │ 'YES'       │
+│ 17      │ 'pickup_address'   │ 'text'                        │ 'YES'       │
+└─────────┴────────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: marketplace_orders
+┌─────────┬──────────────────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name                  │ data_type                     │ is_nullable │
+├─────────┼──────────────────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'                         │ 'integer'                     │ 'NO'        │
+│ 1       │ 'listing_id'                 │ 'integer'                     │ 'YES'       │
+│ 2       │ 'buyer_id'                   │ 'integer'                     │ 'YES'       │
+│ 3       │ 'seller_id'                  │ 'integer'                     │ 'YES'       │
+│ 4       │ 'amount'                     │ 'numeric'                     │ 'NO'        │
+│ 5       │ 'fee_amount'                 │ 'numeric'                     │ 'NO'        │
+│ 6       │ 'seller_amount'              │ 'numeric'                     │ 'NO'        │
+│ 7       │ 'status'                     │ 'character varying'           │ 'YES'       │
+│ 8       │ 'payment_method'             │ 'character varying'           │ 'YES'       │
+│ 9       │ 'delivery_address'           │ 'text'                        │ 'YES'       │
+│ 10      │ 'contact_phone'              │ 'character varying'           │ 'YES'       │
+│ 11      │ 'dispute_reason'             │ 'text'                        │ 'YES'       │
+│ 12      │ 'disputed_at'                │ 'timestamp without time zone' │ 'YES'       │
+│ 13      │ 'buyer_rating'               │ 'integer'                     │ 'YES'       │
+│ 14      │ 'seller_rating'              │ 'integer'                     │ 'YES'       │
+│ 15      │ 'created_at'                 │ 'timestamp without time zone' │ 'YES'       │
+│ 16      │ 'updated_at'                 │ 'timestamp without time zone' │ 'YES'       │
+│ 17      │ 'tracking_code'              │ 'character varying'           │ 'YES'       │
+│ 18      │ 'offline_token'              │ 'character varying'           │ 'YES'       │
+│ 19      │ 'pickup_address'             │ 'text'                        │ 'YES'       │
+│ 20      │ 'delivery_status'            │ 'character varying'           │ 'YES'       │
+│ 21      │ 'delivery_fee'               │ 'numeric'                     │ 'YES'       │
+│ 22      │ 'courier_id'                 │ 'integer'                     │ 'YES'       │
+│ 23      │ 'pickup_code'                │ 'character varying'           │ 'YES'       │
+│ 24      │ 'courier_lat'                │ 'double precision'            │ 'YES'       │
+│ 25      │ 'courier_lng'                │ 'double precision'            │ 'YES'       │
+│ 26      │ 'picked_up_at'               │ 'timestamp without time zone' │ 'YES'       │
+│ 27      │ 'delivered_at'               │ 'timestamp without time zone' │ 'YES'       │
+│ 28      │ 'delivery_confirmation_code' │ 'character varying'           │ 'YES'       │
+│ 29      │ 'delivery_type'              │ 'character varying'           │ 'YES'       │
+│ 30      │ 'pickup_lat'                 │ 'numeric'                     │ 'YES'       │
+│ 31      │ 'pickup_lng'                 │ 'numeric'                     │ 'YES'       │
+│ 32      │ 'delivery_lat'               │ 'numeric'                     │ 'YES'       │
+│ 33      │ 'delivery_lng'               │ 'numeric'                     │ 'YES'       │
+│ 34      │ 'courier_rating'             │ 'integer'                     │ 'YES'       │
+│ 35      │ 'is_lote'                    │ 'boolean'                     │ 'YES'       │
+│ 36      │ 'courier_fee'                │ 'numeric'                     │ 'YES'       │
+│ 37      │ 'invited_courier_id'         │ 'uuid'                        │ 'YES'       │
+│ 38      │ 'previous_couriers'          │ 'ARRAY'                       │ 'YES'       │
+│ 39      │ 'listing_ids'                │ 'ARRAY'                       │ 'YES'       │
+│ 40      │ 'quantity'                   │ 'integer'                     │ 'YES'       │
+└─────────┴──────────────────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: notifications
+┌─────────┬──────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name  │ data_type                     │ is_nullable │
+├─────────┼──────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'         │ 'integer'                     │ 'NO'        │
+│ 1       │ 'user_id'    │ 'integer'                     │ 'YES'       │
+│ 2       │ 'title'      │ 'character varying'           │ 'NO'        │
+│ 3       │ 'message'    │ 'text'                        │ 'NO'        │
+│ 4       │ 'type'       │ 'character varying'           │ 'YES'       │
+│ 5       │ 'status'     │ 'character varying'           │ 'YES'       │
+│ 6       │ 'metadata'   │ 'jsonb'                       │ 'YES'       │
+│ 7       │ 'created_at' │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴──────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: pending_mission_rewards
+┌─────────┬────────────────┬────────────────────────────┬─────────────┐
+│ (index) │ column_name    │ data_type                  │ is_nullable │
+├─────────┼────────────────┼────────────────────────────┼─────────────┤
+│ 0       │ 'id'           │ 'integer'                  │ 'NO'        │
+│ 1       │ 'user_id'      │ 'integer'                  │ 'YES'       │
+│ 2       │ 'video_id'     │ 'integer'                  │ 'YES'       │
+│ 3       │ 'view_id'      │ 'integer'                  │ 'YES'       │
+│ 4       │ 'points'       │ 'integer'                  │ 'NO'        │
+│ 5       │ 'status'       │ 'character varying'        │ 'YES'       │
+│ 6       │ 'created_at'   │ 'timestamp with time zone' │ 'YES'       │
+│ 7       │ 'processed_at' │ 'timestamp with time zone' │ 'YES'       │
+└─────────┴────────────────┴────────────────────────────┴─────────────┘
+
+TABLE: products
+┌─────────┬─────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name     │ data_type                     │ is_nullable │
+├─────────┼─────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'            │ 'uuid'                        │ 'NO'        │
+│ 1       │ 'title'         │ 'character varying'           │ 'NO'        │
+│ 2       │ 'description'   │ 'text'                        │ 'YES'       │
+│ 3       │ 'image_url'     │ 'text'                        │ 'YES'       │
+│ 4       │ 'affiliate_url' │ 'text'                        │ 'NO'        │
+│ 5       │ 'price'         │ 'numeric'                     │ 'YES'       │
+│ 6       │ 'category'      │ 'character varying'           │ 'YES'       │
+│ 7       │ 'active'        │ 'boolean'                     │ 'YES'       │
+│ 8       │ 'created_at'    │ 'timestamp without time zone' │ 'YES'       │
+│ 9       │ 'updated_at'    │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴─────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: promo_video_audits
+┌─────────┬───────────────────┬────────────────────────────┬─────────────┐
+│ (index) │ column_name       │ data_type                  │ is_nullable │
+├─────────┼───────────────────┼────────────────────────────┼─────────────┤
+│ 0       │ 'id'              │ 'integer'                  │ 'NO'        │
+│ 1       │ 'video_id'        │ 'integer'                  │ 'YES'       │
+│ 2       │ 'checked_at'      │ 'timestamp with time zone' │ 'YES'       │
+│ 3       │ 'likes_start'     │ 'integer'                  │ 'YES'       │
+│ 4       │ 'likes_now'       │ 'integer'                  │ 'YES'       │
+│ 5       │ 'clicks_recorded' │ 'integer'                  │ 'YES'       │
+│ 6       │ 'conversion_rate' │ 'numeric'                  │ 'YES'       │
+│ 7       │ 'status'          │ 'character varying'        │ 'YES'       │
+└─────────┴───────────────────┴────────────────────────────┴─────────────┘
+
+TABLE: promo_video_views
+┌─────────┬──────────────────────┬────────────────────────────┬─────────────┐
+│ (index) │ column_name          │ data_type                  │ is_nullable │
+├─────────┼──────────────────────┼────────────────────────────┼─────────────┤
+│ 0       │ 'id'                 │ 'integer'                  │ 'NO'        │
+│ 1       │ 'video_id'           │ 'integer'                  │ 'NO'        │
+│ 2       │ 'viewer_id'          │ 'integer'                  │ 'NO'        │
+│ 3       │ 'watch_time_seconds' │ 'integer'                  │ 'NO'        │
+│ 4       │ 'completed'          │ 'boolean'                  │ 'YES'       │
+│ 5       │ 'earned'             │ 'numeric'                  │ 'YES'       │
+│ 6       │ 'paid_at'            │ 'timestamp with time zone' │ 'YES'       │
+│ 7       │ 'ip_address'         │ 'character varying'        │ 'YES'       │
+│ 8       │ 'user_agent'         │ 'text'                     │ 'YES'       │
+│ 9       │ 'device_fingerprint' │ 'character varying'        │ 'YES'       │
+│ 10      │ 'started_at'         │ 'timestamp with time zone' │ 'YES'       │
+│ 11      │ 'finished_at'        │ 'timestamp with time zone' │ 'YES'       │
+│ 12      │ 'liked'              │ 'boolean'                  │ 'YES'       │
+│ 13      │ 'commented'          │ 'boolean'                  │ 'YES'       │
+│ 14      │ 'subscribed'         │ 'boolean'                  │ 'YES'       │
+└─────────┴──────────────────────┴────────────────────────────┴─────────────┘
+
+TABLE: promo_videos
+┌─────────┬────────────────────────────────┬────────────────────────────┬─────────────┐
+│ (index) │ column_name                    │ data_type                  │ is_nullable │
+├─────────┼────────────────────────────────┼────────────────────────────┼─────────────┤
+│ 0       │ 'id'                           │ 'integer'                  │ 'NO'        │
+│ 1       │ 'user_id'                      │ 'integer'                  │ 'NO'        │
+│ 2       │ 'title'                        │ 'character varying'        │ 'NO'        │
+│ 3       │ 'description'                  │ 'text'                     │ 'YES'       │
+│ 4       │ 'video_url'                    │ 'text'                     │ 'NO'        │
+│ 5       │ 'thumbnail_url'                │ 'text'                     │ 'YES'       │
+│ 6       │ 'platform'                     │ 'character varying'        │ 'YES'       │
+│ 7       │ 'duration_seconds'             │ 'integer'                  │ 'YES'       │
+│ 8       │ 'price_per_view'               │ 'numeric'                  │ 'NO'        │
+│ 9       │ 'min_watch_seconds'            │ 'integer'                  │ 'NO'        │
+│ 10      │ 'budget'                       │ 'numeric'                  │ 'NO'        │
+│ 11      │ 'spent'                        │ 'numeric'                  │ 'NO'        │
+│ 12      │ 'max_views'                    │ 'integer'                  │ 'YES'       │
+│ 13      │ 'target_views'                 │ 'integer'                  │ 'YES'       │
+│ 14      │ 'daily_limit'                  │ 'integer'                  │ 'YES'       │
+│ 15      │ 'status'                       │ 'character varying'        │ 'YES'       │
+│ 16      │ 'is_active'                    │ 'boolean'                  │ 'YES'       │
+│ 17      │ 'total_views'                  │ 'integer'                  │ 'YES'       │
+│ 18      │ 'unique_viewers'               │ 'integer'                  │ 'YES'       │
+│ 19      │ 'total_watch_time'             │ 'integer'                  │ 'YES'       │
+│ 20      │ 'created_at'                   │ 'timestamp with time zone' │ 'YES'       │
+│ 21      │ 'approved_at'                  │ 'timestamp with time zone' │ 'YES'       │
+│ 22      │ 'completed_at'                 │ 'timestamp with time zone' │ 'YES'       │
+│ 23      │ 'expires_at'                   │ 'timestamp with time zone' │ 'YES'       │
+│ 24      │ 'is_approved'                  │ 'boolean'                  │ 'YES'       │
+│ 25      │ 'approved_by'                  │ 'integer'                  │ 'YES'       │
+│ 26      │ 'rejection_reason'             │ 'text'                     │ 'YES'       │
+│ 27      │ 'tag'                          │ 'character varying'        │ 'YES'       │
+│ 28      │ 'budget_gross'                 │ 'numeric'                  │ 'YES'       │
+│ 29      │ 'payment_id'                   │ 'character varying'        │ 'YES'       │
+│ 30      │ 'require_like'                 │ 'boolean'                  │ 'YES'       │
+│ 31      │ 'require_comment'              │ 'boolean'                  │ 'YES'       │
+│ 32      │ 'require_subscribe'            │ 'boolean'                  │ 'YES'       │
+│ 33      │ 'external_initial_likes'       │ 'integer'                  │ 'YES'       │
+│ 34      │ 'external_current_likes'       │ 'integer'                  │ 'YES'       │
+│ 35      │ 'last_audit_at'                │ 'timestamp with time zone' │ 'YES'       │
+│ 36      │ 'audit_health_score'           │ 'numeric'                  │ 'YES'       │
+│ 37      │ 'external_initial_comments'    │ 'integer'                  │ 'YES'       │
+│ 38      │ 'external_current_comments'    │ 'integer'                  │ 'YES'       │
+│ 39      │ 'external_initial_subscribers' │ 'integer'                  │ 'YES'       │
+│ 40      │ 'external_current_subscribers' │ 'integer'                  │ 'YES'       │
+│ 41      │ 'min_score_required'           │ 'integer'                  │ 'YES'       │
+│ 42      │ 'verified_only'                │ 'boolean'                  │ 'YES'       │
+└─────────┴────────────────────────────────┴────────────────────────────┴─────────────┘
+
+TABLE: quotas
+┌─────────┬──────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name      │ data_type                     │ is_nullable │
+├─────────┼──────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'             │ 'integer'                     │ 'NO'        │
+│ 1       │ 'user_id'        │ 'integer'                     │ 'YES'       │
+│ 2       │ 'purchase_price' │ 'numeric'                     │ 'NO'        │
+│ 3       │ 'current_value'  │ 'numeric'                     │ 'NO'        │
+│ 4       │ 'purchase_date'  │ 'timestamp without time zone' │ 'YES'       │
+│ 5       │ 'status'         │ 'character varying'           │ 'YES'       │
+│ 6       │ 'yield_rate'     │ 'numeric'                     │ 'YES'       │
+│ 7       │ 'value'          │ 'numeric'                     │ 'YES'       │
+│ 8       │ 'vesting_start'  │ 'timestamp with time zone'    │ 'YES'       │
+└─────────┴──────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: rate_limit_logs
+┌─────────┬──────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name  │ data_type                     │ is_nullable │
+├─────────┼──────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'         │ 'integer'                     │ 'NO'        │
+│ 1       │ 'identifier' │ 'character varying'           │ 'NO'        │
+│ 2       │ 'user_id'    │ 'integer'                     │ 'YES'       │
+│ 3       │ 'count'      │ 'integer'                     │ 'NO'        │
+│ 4       │ 'ip_address' │ 'text'                        │ 'YES'       │
+│ 5       │ 'user_agent' │ 'text'                        │ 'YES'       │
+│ 6       │ 'endpoint'   │ 'character varying'           │ 'YES'       │
+│ 7       │ 'created_at' │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴──────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: referral_codes
+┌─────────┬────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name    │ data_type                     │ is_nullable │
+├─────────┼────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'           │ 'integer'                     │ 'NO'        │
+│ 1       │ 'code'         │ 'character varying'           │ 'NO'        │
+│ 2       │ 'created_by'   │ 'integer'                     │ 'YES'       │
+│ 3       │ 'max_uses'     │ 'integer'                     │ 'YES'       │
+│ 4       │ 'current_uses' │ 'integer'                     │ 'YES'       │
+│ 5       │ 'is_active'    │ 'boolean'                     │ 'YES'       │
+│ 6       │ 'is_verified'  │ 'boolean'                     │ 'YES'       │
+│ 7       │ 'created_at'   │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: reward_catalog
+┌─────────┬───────────────┬────────────────────────────┬─────────────┐
+│ (index) │ column_name   │ data_type                  │ is_nullable │
+├─────────┼───────────────┼────────────────────────────┼─────────────┤
+│ 0       │ 'id'          │ 'character varying'        │ 'NO'        │
+│ 1       │ 'name'        │ 'character varying'        │ 'NO'        │
+│ 2       │ 'description' │ 'text'                     │ 'YES'       │
+│ 3       │ 'points_cost' │ 'integer'                  │ 'NO'        │
+│ 4       │ 'type'        │ 'character varying'        │ 'NO'        │
+│ 5       │ 'value'       │ 'numeric'                  │ 'NO'        │
+│ 6       │ 'is_active'   │ 'boolean'                  │ 'YES'       │
+│ 7       │ 'image_url'   │ 'text'                     │ 'YES'       │
+│ 8       │ 'created_at'  │ 'timestamp with time zone' │ 'YES'       │
+└─────────┴───────────────┴────────────────────────────┴─────────────┘
+
+TABLE: reward_inventory
+┌─────────┬───────────────────┬────────────────────────────┬─────────────┐
+│ (index) │ column_name       │ data_type                  │ is_nullable │
+├─────────┼───────────────────┼────────────────────────────┼─────────────┤
+│ 0       │ 'id'              │ 'integer'                  │ 'NO'        │
+│ 1       │ 'reward_id'       │ 'character varying'        │ 'YES'       │
+│ 2       │ 'code'            │ 'character varying'        │ 'NO'        │
+│ 3       │ 'is_used'         │ 'boolean'                  │ 'YES'       │
+│ 4       │ 'used_by_user_id' │ 'integer'                  │ 'YES'       │
+│ 5       │ 'used_at'         │ 'timestamp with time zone' │ 'YES'       │
+│ 6       │ 'created_at'      │ 'timestamp with time zone' │ 'YES'       │
+└─────────┴───────────────────┴────────────────────────────┴─────────────┘
+
+TABLE: reward_redemptions
+┌─────────┬──────────────────┬────────────────────────────┬─────────────┐
+│ (index) │ column_name      │ data_type                  │ is_nullable │
+├─────────┼──────────────────┼────────────────────────────┼─────────────┤
+│ 0       │ 'id'             │ 'integer'                  │ 'NO'        │
+│ 1       │ 'user_id'        │ 'integer'                  │ 'YES'       │
+│ 2       │ 'reward_id'      │ 'character varying'        │ 'YES'       │
+│ 3       │ 'reward_name'    │ 'character varying'        │ 'YES'       │
+│ 4       │ 'points_spent'   │ 'integer'                  │ 'NO'        │
+│ 5       │ 'code_delivered' │ 'text'                     │ 'YES'       │
+│ 6       │ 'status'         │ 'character varying'        │ 'YES'       │
+│ 7       │ 'created_at'     │ 'timestamp with time zone' │ 'YES'       │
+└─────────┴──────────────────┴────────────────────────────┴─────────────┘
+
+TABLE: support_chats
+┌─────────┬────────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name        │ data_type                     │ is_nullable │
+├─────────┼────────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'               │ 'integer'                     │ 'NO'        │
+│ 1       │ 'user_id'          │ 'integer'                     │ 'YES'       │
+│ 2       │ 'status'           │ 'character varying'           │ 'YES'       │
+│ 3       │ 'rating'           │ 'integer'                     │ 'YES'       │
+│ 4       │ 'feedback_comment' │ 'text'                        │ 'YES'       │
+│ 5       │ 'last_message_at'  │ 'timestamp without time zone' │ 'YES'       │
+│ 6       │ 'created_at'       │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴────────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: support_messages
+┌─────────┬──────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name  │ data_type                     │ is_nullable │
+├─────────┼──────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'         │ 'integer'                     │ 'NO'        │
+│ 1       │ 'chat_id'    │ 'integer'                     │ 'YES'       │
+│ 2       │ 'sender_id'  │ 'integer'                     │ 'YES'       │
+│ 3       │ 'role'       │ 'character varying'           │ 'NO'        │
+│ 4       │ 'content'    │ 'text'                        │ 'NO'        │
+│ 5       │ 'created_at' │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴──────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: system_config
+┌─────────┬─────────────────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name                 │ data_type                     │ is_nullable │
+├─────────┼─────────────────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'                        │ 'integer'                     │ 'NO'        │
+│ 1       │ 'system_balance'            │ 'numeric'                     │ 'YES'       │
+│ 2       │ 'profit_pool'               │ 'numeric'                     │ 'YES'       │
+│ 3       │ 'total_gateway_costs'       │ 'numeric'                     │ 'YES'       │
+│ 4       │ 'total_tax_reserve'         │ 'numeric'                     │ 'YES'       │
+│ 5       │ 'total_operational_reserve' │ 'numeric'                     │ 'YES'       │
+│ 6       │ 'total_owner_profit'        │ 'numeric'                     │ 'YES'       │
+│ 7       │ 'quota_price'               │ 'numeric'                     │ 'YES'       │
+│ 8       │ 'loan_interest_rate'        │ 'numeric'                     │ 'YES'       │
+│ 9       │ 'penalty_rate'              │ 'numeric'                     │ 'YES'       │
+│ 10      │ 'vesting_period_ms'         │ 'bigint'                      │ 'YES'       │
+│ 11      │ 'total_manual_costs'        │ 'numeric'                     │ 'YES'       │
+│ 12      │ 'updated_at'                │ 'timestamp without time zone' │ 'YES'       │
+│ 13      │ 'investment_reserve'        │ 'numeric'                     │ 'YES'       │
+│ 14      │ 'courier_price_per_km'      │ 'numeric'                     │ 'YES'       │
+└─────────┴─────────────────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: system_costs
+┌─────────┬────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name    │ data_type                     │ is_nullable │
+├─────────┼────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'           │ 'integer'                     │ 'NO'        │
+│ 1       │ 'description'  │ 'character varying'           │ 'NO'        │
+│ 2       │ 'amount'       │ 'numeric'                     │ 'NO'        │
+│ 3       │ 'is_recurring' │ 'boolean'                     │ 'YES'       │
+│ 4       │ 'created_at'   │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: terms_acceptance
+┌─────────┬────────────────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name                │ data_type                     │ is_nullable │
+├─────────┼────────────────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'                       │ 'integer'                     │ 'NO'        │
+│ 1       │ 'user_id'                  │ 'integer'                     │ 'NO'        │
+│ 2       │ 'terms_version'            │ 'character varying'           │ 'NO'        │
+│ 3       │ 'privacy_version'          │ 'character varying'           │ 'NO'        │
+│ 4       │ 'ip_address'               │ 'character varying'           │ 'YES'       │
+│ 5       │ 'user_agent'               │ 'text'                        │ 'YES'       │
+│ 6       │ 'accepted_age_requirement' │ 'boolean'                     │ 'YES'       │
+│ 7       │ 'accepted_risk_disclosure' │ 'boolean'                     │ 'YES'       │
+│ 8       │ 'accepted_terms'           │ 'boolean'                     │ 'YES'       │
+│ 9       │ 'accepted_privacy'         │ 'boolean'                     │ 'YES'       │
+│ 10      │ 'accepted_at'              │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴────────────────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: transaction_reviews
+┌─────────┬──────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name      │ data_type                     │ is_nullable │
+├─────────┼──────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'             │ 'integer'                     │ 'NO'        │
+│ 1       │ 'transaction_id' │ 'integer'                     │ 'NO'        │
+│ 2       │ 'user_id'        │ 'integer'                     │ 'NO'        │
+│ 3       │ 'rating'         │ 'integer'                     │ 'NO'        │
+│ 4       │ 'comment'        │ 'text'                        │ 'YES'       │
+│ 5       │ 'is_public'      │ 'boolean'                     │ 'YES'       │
+│ 6       │ 'is_approved'    │ 'boolean'                     │ 'YES'       │
+│ 7       │ 'created_at'     │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴──────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: transactions
+┌─────────┬─────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name     │ data_type                     │ is_nullable │
+├─────────┼─────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'            │ 'integer'                     │ 'NO'        │
+│ 1       │ 'user_id'       │ 'integer'                     │ 'YES'       │
+│ 2       │ 'type'          │ 'character varying'           │ 'NO'        │
+│ 3       │ 'amount'        │ 'numeric'                     │ 'NO'        │
+│ 4       │ 'gateway_cost'  │ 'numeric'                     │ 'YES'       │
+│ 5       │ 'description'   │ 'text'                        │ 'YES'       │
+│ 6       │ 'status'        │ 'character varying'           │ 'YES'       │
+│ 7       │ 'metadata'      │ 'jsonb'                       │ 'YES'       │
+│ 8       │ 'payout_status' │ 'character varying'           │ 'YES'       │
+│ 9       │ 'created_at'    │ 'timestamp without time zone' │ 'YES'       │
+│ 10      │ 'processed_at'  │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴─────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: users
+┌─────────┬───────────────────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name                   │ data_type                     │ is_nullable │
+├─────────┼───────────────────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'                          │ 'integer'                     │ 'NO'        │
+│ 1       │ 'name'                        │ 'character varying'           │ 'NO'        │
+│ 2       │ 'email'                       │ 'character varying'           │ 'NO'        │
+│ 3       │ 'password_hash'               │ 'character varying'           │ 'YES'       │
+│ 4       │ 'secret_phrase'               │ 'character varying'           │ 'YES'       │
+│ 5       │ 'pix_key'                     │ 'character varying'           │ 'YES'       │
+│ 6       │ 'balance'                     │ 'numeric'                     │ 'YES'       │
+│ 7       │ 'referral_code'               │ 'character varying'           │ 'YES'       │
+│ 8       │ 'referred_by'                 │ 'character varying'           │ 'YES'       │
+│ 9       │ 'is_admin'                    │ 'boolean'                     │ 'YES'       │
+│ 10      │ 'score'                       │ 'integer'                     │ 'YES'       │
+│ 11      │ 'is_email_verified'           │ 'boolean'                     │ 'YES'       │
+│ 12      │ 'verification_code'           │ 'character varying'           │ 'YES'       │
+│ 13      │ 'reset_password_token'        │ 'character varying'           │ 'YES'       │
+│ 14      │ 'two_factor_secret'           │ 'text'                        │ 'YES'       │
+│ 15      │ 'two_factor_enabled'          │ 'boolean'                     │ 'YES'       │
+│ 16      │ 'accepted_terms_at'           │ 'timestamp without time zone' │ 'YES'       │
+│ 17      │ 'title_downloaded'            │ 'boolean'                     │ 'YES'       │
+│ 18      │ 'title_downloaded_at'         │ 'timestamp without time zone' │ 'YES'       │
+│ 19      │ 'role'                        │ 'character varying'           │ 'YES'       │
+│ 20      │ 'status'                      │ 'character varying'           │ 'YES'       │
+│ 21      │ 'created_at'                  │ 'timestamp without time zone' │ 'YES'       │
+│ 22      │ 'is_verified'                 │ 'boolean'                     │ 'YES'       │
+│ 23      │ 'address'                     │ 'text'                        │ 'YES'       │
+│ 24      │ 'phone'                       │ 'character varying'           │ 'YES'       │
+│ 25      │ 'membership_type'             │ 'character varying'           │ 'YES'       │
+│ 26      │ 'last_reward_at'              │ 'timestamp without time zone' │ 'YES'       │
+│ 27      │ 'total_dividends_earned'      │ 'numeric'                     │ 'YES'       │
+│ 28      │ 'security_lock_until'         │ 'timestamp without time zone' │ 'YES'       │
+│ 29      │ 'last_ip'                     │ 'character varying'           │ 'YES'       │
+│ 30      │ 'last_login_at'               │ 'timestamp without time zone' │ 'YES'       │
+│ 31      │ 'panic_phrase'                │ 'character varying'           │ 'YES'       │
+│ 32      │ 'is_under_duress'             │ 'boolean'                     │ 'YES'       │
+│ 33      │ 'safe_contact_phone'          │ 'character varying'           │ 'YES'       │
+│ 34      │ 'welcome_benefit_uses'        │ 'integer'                     │ 'YES'       │
+│ 35      │ 'last_checkin_at'             │ 'timestamp without time zone' │ 'YES'       │
+│ 36      │ 'cpf'                         │ 'character varying'           │ 'YES'       │
+│ 37      │ 'video_points'                │ 'integer'                     │ 'YES'       │
+│ 38      │ 'daily_chests_opened'         │ 'integer'                     │ 'YES'       │
+│ 39      │ 'last_chest_date'             │ 'date'                        │ 'YES'       │
+│ 40      │ 'asaas_account_id'            │ 'character varying'           │ 'YES'       │
+│ 41      │ 'asaas_wallet_id'             │ 'character varying'           │ 'YES'       │
+│ 42      │ 'is_seller'                   │ 'boolean'                     │ 'YES'       │
+│ 43      │ 'seller_status'               │ 'character varying'           │ 'YES'       │
+│ 44      │ 'ad_points'                   │ 'integer'                     │ 'YES'       │
+│ 45      │ 'seller_company_name'         │ 'character varying'           │ 'YES'       │
+│ 46      │ 'seller_cpf_cnpj'             │ 'character varying'           │ 'YES'       │
+│ 47      │ 'seller_phone'                │ 'character varying'           │ 'YES'       │
+│ 48      │ 'seller_address_street'       │ 'character varying'           │ 'YES'       │
+│ 49      │ 'seller_address_number'       │ 'character varying'           │ 'YES'       │
+│ 50      │ 'seller_address_neighborhood' │ 'character varying'           │ 'YES'       │
+│ 51      │ 'seller_address_city'         │ 'character varying'           │ 'YES'       │
+│ 52      │ 'seller_address_state'        │ 'character varying'           │ 'YES'       │
+│ 53      │ 'seller_address_postal_code'  │ 'character varying'           │ 'YES'       │
+│ 54      │ 'seller_created_at'           │ 'timestamp without time zone' │ 'YES'       │
+│ 55      │ 'is_courier'                  │ 'boolean'                     │ 'YES'       │
+│ 56      │ 'courier_vehicle_type'        │ 'character varying'           │ 'YES'       │
+│ 57      │ 'courier_vehicle_model'       │ 'character varying'           │ 'YES'       │
+│ 58      │ 'courier_vehicle_plate'       │ 'character varying'           │ 'YES'       │
+│ 59      │ 'courier_photo_url'           │ 'text'                        │ 'YES'       │
+│ 60      │ 'courier_penalty_until'       │ 'timestamp with time zone'    │ 'YES'       │
+│ 61      │ 'last_deposit_at'             │ 'timestamp with time zone'    │ 'YES'       │
+│ 62      │ 'pending_video_points'        │ 'integer'                     │ 'YES'       │
+│ 63      │ 'courier_status'              │ 'character varying'           │ 'YES'       │
+│ 64      │ 'courier_vehicle'             │ 'character varying'           │ 'YES'       │
+│ 65      │ 'courier_phone'               │ 'character varying'           │ 'YES'       │
+│ 66      │ 'courier_cpf'                 │ 'character varying'           │ 'YES'       │
+│ 67      │ 'courier_city'                │ 'character varying'           │ 'YES'       │
+│ 68      │ 'courier_state'               │ 'character varying'           │ 'YES'       │
+│ 69      │ 'courier_created_at'          │ 'timestamp without time zone' │ 'YES'       │
+│ 70      │ 'courier_price_per_km'        │ 'numeric'                     │ 'YES'       │
+└─────────┴───────────────────────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: voting_proposals
+┌─────────┬───────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name   │ data_type                     │ is_nullable │
+├─────────┼───────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'          │ 'integer'                     │ 'NO'        │
+│ 1       │ 'title'       │ 'character varying'           │ 'NO'        │
+│ 2       │ 'description' │ 'text'                        │ 'NO'        │
+│ 3       │ 'status'      │ 'character varying'           │ 'YES'       │
+│ 4       │ 'yes_votes'   │ 'integer'                     │ 'YES'       │
+│ 5       │ 'no_votes'    │ 'integer'                     │ 'YES'       │
+│ 6       │ 'created_at'  │ 'timestamp without time zone' │ 'YES'       │
+│ 7       │ 'closed_at'   │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴───────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: voting_votes
+┌─────────┬───────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name   │ data_type                     │ is_nullable │
+├─────────┼───────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'          │ 'integer'                     │ 'NO'        │
+│ 1       │ 'proposal_id' │ 'integer'                     │ 'YES'       │
+│ 2       │ 'user_id'     │ 'integer'                     │ 'YES'       │
+│ 3       │ 'vote'        │ 'character varying'           │ 'NO'        │
+│ 4       │ 'weight'      │ 'integer'                     │ 'YES'       │
+│ 5       │ 'created_at'  │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴───────────────┴───────────────────────────────┴─────────────┘
+
+TABLE: webhook_logs
+┌─────────┬─────────────────┬────────────────────────────┬─────────────┐
+│ (index) │ column_name     │ data_type                  │ is_nullable │
+├─────────┼─────────────────┼────────────────────────────┼─────────────┤
+│ 0       │ 'id'            │ 'integer'                  │ 'NO'        │
+│ 1       │ 'provider'      │ 'character varying'        │ 'NO'        │
+│ 2       │ 'payload'       │ 'jsonb'                    │ 'NO'        │
+│ 3       │ 'status'        │ 'character varying'        │ 'YES'       │
+│ 4       │ 'error_message' │ 'text'                     │ 'YES'       │
+│ 5       │ 'processed_at'  │ 'timestamp with time zone' │ 'YES'       │
+│ 6       │ 'created_at'    │ 'timestamp with time zone' │ 'YES'       │
+└─────────┴─────────────────┴────────────────────────────┴─────────────┘
+
+TABLE: withdrawals
+┌─────────┬────────────────┬───────────────────────────────┬─────────────┐
+│ (index) │ column_name    │ data_type                     │ is_nullable │
+├─────────┼────────────────┼───────────────────────────────┼─────────────┤
+│ 0       │ 'id'           │ 'integer'                     │ 'NO'        │
+│ 1       │ 'user_id'      │ 'integer'                     │ 'NO'        │
+│ 2       │ 'amount'       │ 'numeric'                     │ 'NO'        │
+│ 3       │ 'pix_key'      │ 'character varying'           │ 'YES'       │
+│ 4       │ 'pix_type'     │ 'character varying'           │ 'YES'       │
+│ 5       │ 'status'       │ 'character varying'           │ 'YES'       │
+│ 6       │ 'processed_at' │ 'timestamp without time zone' │ 'YES'       │
+│ 7       │ 'created_at'   │ 'timestamp without time zone' │ 'YES'       │
+│ 8       │ 'updated_at'   │ 'timestamp without time zone' │ 'YES'       │
+└─────────┴────────────────┴───────────────────────────────┴─────────────┘

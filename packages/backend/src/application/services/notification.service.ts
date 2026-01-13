@@ -1,10 +1,10 @@
-
 // Gerenciador de conexões em tempo real (SSE)
-const clients = new Map<string, (data: any) => void>();
+// Map<userId, Map<connectionId, sendFn>>
+const clients = new Map<string, Map<string, (data: any) => void>>();
 
 interface NotificationService {
-    addClient(userId: string | number, sendFn: (data: any) => void): void;
-    removeClient(userId: string | number): void;
+    addClient(userId: string | number, connectionId: string, sendFn: (data: any) => void): void;
+    removeClient(userId: string | number, connectionId: string): void;
     notifyAdmin(message: string, type?: 'ALERT' | 'INFO' | 'SUCCESS'): Promise<void>;
     notifyUser(userId: string | number, title: string, body: string): Promise<void>;
     notifyNewWithdrawal(userName: string, amount: number): Promise<void>;
@@ -20,17 +20,34 @@ export const notificationService: NotificationService = {
     /**
      * Adiciona um cliente SSE
      */
-    addClient(userId: string | number, sendFn: (data: any) => void) {
-        clients.set(userId.toString(), sendFn);
-        console.log(`📡 [SSE] Cliente conectado: ${userId}. Total: ${clients.size}`);
+    addClient(userId: string | number, connectionId: string, sendFn: (data: any) => void) {
+        const uId = userId.toString();
+        if (!clients.has(uId)) {
+            clients.set(uId, new Map());
+        }
+        clients.get(uId)!.set(connectionId, sendFn);
+
+        let total = 0;
+        clients.forEach(c => total += c.size);
+        console.log(`📡 [SSE] Cliente conectado: ${userId} (${connectionId}). Total: ${total}`);
     },
 
     /**
      * Remove um cliente SSE
      */
-    removeClient(userId: string | number) {
-        clients.delete(userId.toString());
-        console.log(`📡 [SSE] Cliente desconectado: ${userId}. Total: ${clients.size}`);
+    removeClient(userId: string | number, connectionId: string) {
+        const uId = userId.toString();
+        const userClients = clients.get(uId);
+        if (userClients) {
+            userClients.delete(connectionId);
+            if (userClients.size === 0) {
+                clients.delete(uId);
+            }
+        }
+
+        let total = 0;
+        clients.forEach(c => total += c.size);
+        console.log(`📡 [SSE] Cliente desconectado: ${userId} (${connectionId}). Total: ${total}`);
     },
 
     /**
@@ -41,13 +58,15 @@ export const notificationService: NotificationService = {
         console.log(`${emoji} [ADMIN NOTIFICATION]: ${message}`);
 
         // Broadcast silencioso para todos os admins conectados via SSE
-        clients.forEach((send, userId) => {
+        clients.forEach((userClients, userId) => {
             // No futuro, verificar se o userId é admin
-            send({
-                event: 'admin_notification',
-                message,
-                type,
-                timestamp: new Date().toISOString()
+            userClients.forEach((send) => {
+                send({
+                    event: 'admin_notification',
+                    message,
+                    type,
+                    timestamp: new Date().toISOString()
+                });
             });
         });
     },
@@ -58,13 +77,15 @@ export const notificationService: NotificationService = {
     async notifyUser(userId: string | number, title: string, body: string) {
         console.log(`🔔 [USER NOTIFICATION] User: ${userId} | ${title}: ${body}`);
 
-        const send = clients.get(userId.toString());
-        if (send) {
-            send({
-                event: 'notification',
-                title,
-                body,
-                timestamp: new Date().toISOString()
+        const userClients = clients.get(userId.toString());
+        if (userClients) {
+            userClients.forEach((send) => {
+                send({
+                    event: 'notification',
+                    title,
+                    body,
+                    timestamp: new Date().toISOString()
+                });
             });
         }
     },

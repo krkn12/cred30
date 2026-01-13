@@ -267,26 +267,66 @@ export const ItemDetailsView = ({
                         )}
                     </div>
 
-                    <div className="sticky bottom-6 mt-12 bg-black border border-zinc-800 p-4 rounded-3xl">
-                        <div className="flex justify-between items-center mb-4">
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase">Total</p>
+                    <div className="sticky bottom-6 mt-12 bg-black/80 backdrop-blur-xl border border-zinc-800 p-4 rounded-3xl space-y-3">
+                        <div className="flex justify-between items-center px-2">
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase">Total À Vista</p>
                             <p className="text-xl font-black text-white">
                                 {formatCurrency(totalAmount)}
                             </p>
                         </div>
-                        <button
-                            onClick={() => onBuy({
-                                listingId: item.id,
-                                deliveryType: deliveryOption,
-                                deliveryFee: deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee) : deliveryOption === 'EXTERNAL_SHIPPING' ? 35.00 : 0,
-                                deliveryAddress: deliveryAddress || 'Principal',
-                                invitedCourierId: invitedCourierId || undefined,
-                                quantity: quantity
-                            })}
-                            className="w-full bg-primary-500 text-black font-black py-4 rounded-2xl uppercase tracking-widest text-xs"
-                        >
-                            Comprar Agora
-                        </button>
+
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                                onClick={() => onBuy({
+                                    listingId: item.id,
+                                    deliveryType: deliveryOption,
+                                    deliveryFee: deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee) : deliveryOption === 'EXTERNAL_SHIPPING' ? 35.00 : 0,
+                                    deliveryAddress: deliveryAddress || 'Principal',
+                                    invitedCourierId: invitedCourierId || undefined,
+                                    quantity: quantity,
+                                    paymentMethod: 'BALANCE'
+                                })}
+                                className="flex-1 bg-zinc-900 hover:bg-zinc-800 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[10px] border border-zinc-800 transition-all active:scale-95"
+                            >
+                                Pagar com Saldo
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    const userScore = currentUser?.score || 0;
+                                    const activeQuotas = currentUser?.quota_count || 0;
+
+                                    if (userScore < 450 || activeQuotas < 1) {
+                                        alert(`Requisitos para Crédito não atingidos.\nScore Mínimo: 450 (Seu: ${userScore})\nCotas Ativas: 1 (Sua: ${activeQuotas})`);
+                                        return;
+                                    }
+
+                                    const installments = parseInt(window.prompt("Em quantas parcelas deseja pagar? (1x a 24x)", "1") || "0");
+                                    if (installments < 1 || installments > 24) {
+                                        alert("Número de parcelas inválido (mínimo 1, máximo 24).");
+                                        return;
+                                    }
+
+                                    onBuy({
+                                        listingId: item.id,
+                                        deliveryType: deliveryOption,
+                                        deliveryFee: deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee) : deliveryOption === 'EXTERNAL_SHIPPING' ? 35.00 : 0,
+                                        deliveryAddress: deliveryAddress || 'Principal',
+                                        invitedCourierId: invitedCourierId || undefined,
+                                        quantity: quantity,
+                                        paymentMethod: 'CREDIT',
+                                        installments
+                                    });
+                                }}
+                                className="flex-1 bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl uppercase tracking-widest text-[10px] shadow-lg shadow-primary-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+                            >
+                                <Zap size={14} />
+                                Comprar Parcelado
+                            </button>
+                        </div>
+                        <p className="text-[8px] text-zinc-600 font-bold uppercase text-center tracking-tighter">
+                            Crédito sujeito a análise de score (Min. 450) e participação social (1+ Cota)
+                        </p>
                     </div>
                 </div>
             </div>

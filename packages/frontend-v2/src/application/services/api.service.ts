@@ -64,6 +64,7 @@ class ApiService extends ApiBase {
   getMarketplaceListings = this.marketplace.getListings.bind(this.marketplace);
   createMarketplaceListing = this.marketplace.createListing.bind(this.marketplace);
   buyMarketplaceListing = this.marketplace.buyListing.bind(this.marketplace);
+  buyMarketplaceOnCredit = this.marketplace.buyOnCredit.bind(this.marketplace);
   getMyMarketplaceOrders = this.marketplace.getMyOrders.bind(this.marketplace);
 
   // Admin

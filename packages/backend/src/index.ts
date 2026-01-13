@@ -45,7 +45,13 @@ import { initializeDatabase, pool } from './infrastructure/database/postgresql/c
 const app = new Hono();
 
 // Middlewares Globais
-app.use('*', cors());
+app.use('*', cors({
+  origin: (origin) => origin || '*',
+  credentials: true,
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposeHeaders: ['Content-Length', 'X-Kuma-Revision'],
+}));
 app.use('*', compress());
 app.use('*', etag());
 app.use('*', logger());

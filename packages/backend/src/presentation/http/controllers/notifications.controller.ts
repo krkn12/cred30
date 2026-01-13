@@ -10,7 +10,15 @@ export class NotificationsController {
     static async streamNotifications(c: Context) {
         const user = c.get('user') as UserContext;
 
+        // Headers recomendados para SSE e para evitar cache de proxies/Nginx
+        c.header('Content-Type', 'text/event-stream');
+        c.header('Cache-Control', 'no-cache, no-transform');
+        c.header('Connection', 'keep-alive');
+        c.header('X-Accel-Buffering', 'no'); // Crítico para Nginx/Render
+
         return streamSSE(c, async (stream) => {
+            const connectionId = Math.random().toString(36).substring(7);
+
             const send = (data: any) => {
                 stream.writeSSE({
                     data: JSON.stringify(data),
@@ -19,17 +27,19 @@ export class NotificationsController {
                 });
             };
 
-            notificationService.addClient(user.id, send);
+            notificationService.addClient(user.id, connectionId, send);
 
+            // Ping para manter a conexão ativa em proxies (Render/Heroku/etc)
             const keepAlive = setInterval(() => {
                 stream.writeSSE({ data: 'ping', event: 'ping' });
-            }, 30000);
+            }, 15000);
 
             stream.onAbort(() => {
-                notificationService.removeClient(user.id);
+                notificationService.removeClient(user.id, connectionId);
                 clearInterval(keepAlive);
             });
 
+            // Loop principal mantendo a conexão aberta
             while (true) {
                 await stream.sleep(1000);
             }
