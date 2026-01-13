@@ -838,26 +838,14 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
     throw new Error(`Aprovação bloqueada: Limite insuficiente no momento (Disponível: R$ ${realAvailable.toFixed(2)}).`);
   }
 
-  await client.query('UPDATE loans SET status = $1, approved_at = $2, payout_status = $3 WHERE id = $4', ['APPROVED', new Date(), 'NONE', id]);
-
-  // Audit Log
-  await logAudit(client, {
-    userId: loan.user_id,
-    action: 'LOAN_APPROVED',
-    entityType: 'loan',
-    entityId: id,
-    oldValues: { status: 'PENDING' },
-    newValues: { status: 'APPROVED', amount: loan.amount }
-  });
-
-  // Calcular valor líquido a depositar (descontando taxa de originação de 3%)
-  const originationFeeRate = 0.03; // LOAN_ORIGINATION_FEE_RATE
+  // === CORREÇÃO: USAR DADOS PRÉ-CALCULADOS DO METADATA ===
+  const metadata = loan.metadata || {};
+  const netAmount = parseFloat(metadata.disbursedAmount || loan.amount); // Valor líquido a cair na conta
   const grossAmount = parseFloat(loan.amount);
-  const originationFee = grossAmount * originationFeeRate;
-  const netAmount = grossAmount - originationFee;
+  const originationFee = parseFloat(metadata.originationFee || 0);
 
   // === CORREÇÃO: VERIFICAR LIQUIDEZ REAL DO SISTEMA ===
-  // O empréstimo DEVE sair do caixa no momento da aprovação (não é pirâmide!)
+  // O dinheiro SAI do caixa real no momento da aprovação.
   const configRes = await client.query('SELECT system_balance, total_tax_reserve, total_operational_reserve, total_owner_profit FROM system_config LIMIT 1 FOR UPDATE');
   const config = configRes.rows[0];
 
@@ -872,7 +860,8 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
     throw new Error(`Liquidez insuficiente no sistema. Disponível: R$ ${availableLiquidity.toFixed(2)}, Solicitado: R$ ${netAmount.toFixed(2)}`);
   }
 
-  // === DÉBITO REAL DO CAIXA (O dinheiro SAI agora, não quando sacar) ===
+  // === DÉBITO REAL DO CAIXA (O dinheiro SAI agora) ===
+  // O netAmount é o que o usuário vai receber. A originationFee já foi distribuída no requestLoan.
   await client.query(
     'UPDATE system_config SET system_balance = system_balance - $1',
     [netAmount]
@@ -881,33 +870,15 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
   // Creditar no saldo do usuário
   await updateUserBalance(client, loan.user_id, netAmount, 'credit');
 
-  // Distribuir a Taxa de Originação (25/25/25/25) - essa taxa ENTRA no sistema
-  await client.query(
-    `UPDATE system_config SET 
-      total_tax_reserve = total_tax_reserve + $1,
-      total_operational_reserve = total_operational_reserve + $2,
-      total_owner_profit = total_owner_profit + $3,
-      investment_reserve = investment_reserve + $4`,
-    [
-      originationFee * PLATFORM_FEE_TAX_SHARE,
-      originationFee * PLATFORM_FEE_OPERATIONAL_SHARE,
-      originationFee * PLATFORM_FEE_OWNER_SHARE,
-      originationFee * PLATFORM_FEE_INVESTMENT_SHARE
-    ]
-  );
-
-  // CORREÇÃO: A originationFee nunca saiu do caixa do sistema.
-  // Já descontamos o netAmount do system_balance acima (linha 742).
-  // Portanto, não há nada a adicionar ao system_balance aqui.
-
-  // O dinheiro já foi reservado/debitado do caixa acima
+  // Audit e Transação
+  await client.query('UPDATE loans SET status = $1, approved_at = $2, payout_status = $3 WHERE id = $4', ['APPROVED', new Date(), 'NONE', id]);
 
   await createTransaction(
     client,
     loan.user_id,
     'LOAN_APPROVED',
     netAmount,
-    `Apoio Mútuo Aprovado - Valor Líquido Creditado (Taxa de Sustentabilidade de 3% retida)`,
+    `Apoio Mútuo Aprovado - Valor Líquido Creditado`,
     'APPROVED',
     {
       loanId: id,
@@ -920,7 +891,17 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
     }
   );
 
-  // Notificar usuário em tempo real
+  // Audit Log
+  await logAudit(client, {
+    userId: loan.user_id,
+    action: 'LOAN_APPROVED',
+    entityType: 'loan',
+    entityId: id,
+    oldValues: { status: 'PENDING' },
+    newValues: { status: 'APPROVED', amount: loan.amount }
+  });
+
+  // Notificar usuário
   notificationService.notifyUser(loan.user_id, 'Empréstimo Aprovado', `Seu empréstimo de R$ ${parseFloat(loan.amount).toFixed(2)} foi aprovado e creditado!`);
 
   return { success: true, status: 'APPROVED' };
