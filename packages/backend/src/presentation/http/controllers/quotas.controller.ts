@@ -179,7 +179,7 @@ export class QuotasController {
               total_tax_reserve = total_tax_reserve + $1,
               total_operational_reserve = total_operational_reserve + $2,
               total_owner_profit = total_owner_profit + $3,
-              investment_reserve = COALESCE(investment_reserve, 0) + $4 + ($5 * $6)
+              investment_reserve = COALESCE(investment_reserve, 0) + $4 + ($5::numeric * $6::numeric)
           `, [taxAmount, operationalAmount, ownerAmount, investmentAmount, quantity, QUOTA_SHARE_VALUE]);
 
                     return {
