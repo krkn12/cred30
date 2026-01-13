@@ -94,11 +94,11 @@ export const ListingCard = memo(({ item, currentUserId, onBoost, onDetails, onAd
                     <div className="pt-3 border-t border-zinc-800/50 flex items-center justify-between">
                         <div className="flex items-center gap-1 text-zinc-500">
                             <MapPin size={10} />
-                            <span className="text-[10px] font-medium truncate max-w-[120px]" title={`${item.seller_address_neighborhood || ''} - ${item.seller_address_city || ''}/${item.seller_address_state || ''}`}>
-                                {item.seller_address_neighborhood
-                                    ? `${item.seller_address_neighborhood} - ${item.seller_address_city}/${item.seller_address_state}`
-                                    : (item.seller_address_city
-                                        ? `${item.seller_address_city}/${item.seller_address_state}`
+                            <span className="text-[10px] font-medium truncate max-w-[120px]" title={`${item.neighborhood || ''} - ${item.city || ''}/${item.uf || ''}`}>
+                                {item.neighborhood
+                                    ? `${item.neighborhood} - ${item.city}/${item.uf}`
+                                    : (item.city
+                                        ? `${item.city}/${item.uf}`
                                         : (item.seller_address ? item.seller_address.split('-')[0].trim() : 'Brasil'))}
                             </span>
                         </div>
