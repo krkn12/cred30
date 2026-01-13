@@ -344,13 +344,13 @@ export class LoansController {
 
                     await client.query(`
                         UPDATE system_config SET 
-                            investment_reserve = COALESCE(investment_reserve, 0) + $1 + $7,
+                            system_balance = COALESCE(system_balance, 0) + $8,  -- Aumenta liquidez do sistema
+                            investment_reserve = COALESCE(investment_reserve, 0) + $1 + $6,
                             profit_pool = profit_pool + $2,
-                            -- O system_balance NÃO aumenta aqui pois o dinheiro já está no sistema (apenas mudou de user balance para house balance)
                             total_tax_reserve = total_tax_reserve + $3,
                             total_operational_reserve = total_operational_reserve + $4,
                             total_owner_profit = total_owner_profit + $5
-                        `, [remainingPrincipal, profitShare, taxPart, operPart, ownerPart, investPart]
+                        `, [remainingPrincipal, profitShare, taxPart, operPart, ownerPart, investPart, null, remainingToPay]
                     );
 
                     // 5. Atualizar Score
