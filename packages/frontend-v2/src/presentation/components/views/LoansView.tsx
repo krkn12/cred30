@@ -3,32 +3,28 @@ import { Wallet, Clock, DollarSign, TrendingUp, AlertTriangle, FileText, X as XI
 import { Loan, User } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 import { createContractData, downloadLoanContract } from '../../../application/services/contract.service';
+import { formatBRL, formatNumberBR, parseToNumber } from '../../../shared/utils/format.utils';
 
 interface LoansViewProps {
     loans: Loan[];
     onRequest: (amount: number, installments: number, guaranteePercentage: number, guarantorId?: string) => void;
     onGuarantorRespond: (loanId: string, action: 'APPROVE' | 'REJECT') => void;
-    onPay: (loanId: string, full: boolean, method?: 'pix') => void;
-    onPayInstallment: (loanId: string, amount: number, full: boolean, method?: 'pix') => void;
+    onPay: (loanId: string, full: boolean) => void;
+    onPayInstallment: (loanId: string, amount: number) => void;
     userBalance: number;
     currentUser: User | null;
 }
 
 export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayInstallment, userBalance, currentUser }: LoansViewProps) => {
-    const [amount, setAmount] = useState(500);
+    const [amountText, setAmountText] = useState('500');
+    const amount = parseToNumber(amountText);
     const [months, setMonths] = useState(3);
     const [guaranteePercentage, setGuaranteePercentage] = useState(100);
     const [guarantorId, setGuarantorId] = useState('');
     const [payModalId, setPayModalId] = useState<string | null>(null);
 
-    // Helpers de formatação segura (Null-Safety)
-    const formatBRL = (val: number | null | undefined) => {
-        return (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    };
-
-    const formatNumber = (val: number | null | undefined) => {
-        return (val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-    };
+    // Helpers de formatação segura migrados para utils
+    const formatNumber = formatNumberBR;
 
     const getDaysRemaining = (dueDate: string | number | null | undefined) => {
         if (!dueDate) return 'N/A';
@@ -80,7 +76,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
 
     const myLoans = loans.filter(l => !l.isGuarantor && (l.status === 'APPROVED' || l.status === 'PENDING' || l.status === 'PAYMENT_PENDING' || l.status === 'WAITING_GUARANTOR' || l.status === 'PAID'));
     const guarantorRequests = loans.filter(l => l.isGuarantor && l.status === 'WAITING_GUARANTOR');
-    const activeLoans = myLoans.filter(l => l.status === 'APPROVED' || l.status === 'PAYMENT_PENDING');
+    const activeLoans = myLoans.filter(l => ['APPROVED', 'PAYMENT_PENDING', 'PENDING', 'WAITING_GUARANTOR'].includes(l.status));
     const selectedLoan = activeLoans.find(l => l.id === payModalId);
 
     // Helper: Calculate installment value
@@ -245,9 +241,16 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                 <div className="relative">
                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 font-medium">R$</span>
                                     <input
-                                        type="number"
-                                        value={amount}
-                                        onChange={(e) => setAmount(Number(e.target.value))}
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={amountText}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            // Permitir apenas números e vírgula/ponto
+                                            if (val === '' || /^[0-9.,]+$/.test(val)) {
+                                                setAmountText(val);
+                                            }
+                                        }}
                                         className="w-full bg-background border border-surfaceHighlight rounded-xl py-4 pl-10 pr-4 text-white text-lg font-bold focus:border-primary-500 outline-none transition"
                                         placeholder="0,00"
                                     />
@@ -256,7 +259,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                     {[100, 300, 500, 1000].map(val => (
                                         <button
                                             key={val}
-                                            onClick={() => setAmount(val)}
+                                            onClick={() => setAmountText(val.toString())}
                                             className="px-3 py-1 rounded-lg bg-surfaceHighlight text-xs text-zinc-400 hover:bg-zinc-700 hover:text-white transition"
                                         >
                                             R$ {val}
@@ -575,7 +578,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                             ) : (
                                 <button
                                     onClick={() => {
-                                        onPayInstallment(installmentModalData.loanId, installmentModalData.installmentAmount, true); // true = useBalance
+                                        onPayInstallment(installmentModalData.loanId, installmentModalData.installmentAmount);
                                         setInstallmentModalData(null);
                                     }}
                                     className="w-full bg-primary-500 hover:bg-primary-600 text-black font-black py-4 rounded-xl mb-2 transition shadow-lg shadow-primary-500/20"

@@ -337,7 +337,7 @@ export default function App() {
       const result = await repayLoan(loanId, true);
       if (result.success) {
         setShowSuccess({ isOpen: true, title: 'Pago', message: result.message });
-        refreshState();
+        await refreshState();
       } else {
         setShowError({ isOpen: true, title: 'Erro', message: result.message });
       }
@@ -346,12 +346,13 @@ export default function App() {
     }
   };
 
-  const handlePayInstallment = async (loanId: string, amount: number, useBalance: boolean = true) => {
+  const handlePayInstallment = async (loanId: string, amount: number) => {
     try {
-      const result = await repayInstallment(loanId, amount, useBalance);
+      // Force useBalance = true since we removed PIX option for loans
+      const result = await repayInstallment(loanId, amount, true);
       if (result.success) {
         setShowSuccess({ isOpen: true, title: 'Parcela Paga', message: result.message });
-        refreshState();
+        await refreshState();
       } else {
         setShowError({ isOpen: true, title: 'Erro', message: result.message });
       }

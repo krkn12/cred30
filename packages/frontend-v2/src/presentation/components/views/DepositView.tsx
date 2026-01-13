@@ -124,7 +124,7 @@ export const DepositView: React.FC<DepositViewProps> = ({ onDeposit, onBack }) =
                         <div className="bg-black/40 border border-white/5 rounded-3xl p-6 mb-8 text-center">
                             <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2">Valor Solicitado</p>
                             <p className="text-4xl font-black text-white tabular-nums">
-                                {parseFloat(amount.replace(',', '.')).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                {formatBRL(amount)}
                             </p>
                         </div>
 
