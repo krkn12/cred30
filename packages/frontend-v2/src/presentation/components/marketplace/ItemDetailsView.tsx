@@ -50,7 +50,12 @@ export const ItemDetailsView = ({
     deliveryAddress,
     setDeliveryAddress
 }: ItemDetailsViewProps) => {
-    const totalAmount = parseFloat(item.price) + (deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee || '0') : deliveryOption === 'EXTERNAL_SHIPPING' ? 35.00 : 0);
+    const [quantity, setQuantity] = React.useState(1);
+    const stock = item.stock || 1;
+
+    const basePrice = parseFloat(item.price);
+    const deliveryFee = deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee || '0') : deliveryOption === 'EXTERNAL_SHIPPING' ? 35.00 : 0;
+    const totalAmount = (basePrice * quantity) + deliveryFee;
 
     return (
         <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl animate-in fade-in duration-300 overflow-y-auto">
@@ -134,10 +139,38 @@ export const ItemDetailsView = ({
                     </div>
 
                     <div className="space-y-4">
-                        <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                            <Package size={14} className="text-primary-400" /> Descrição Completa
-                        </h4>
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                <Package size={14} className="text-primary-400" /> Descrição Completa
+                            </h4>
+                            <span className="text-[10px] font-bold text-zinc-400">Estoque: {stock} unidades</span>
+                        </div>
                         <p className="text-sm text-zinc-400 leading-relaxed whitespace-pre-wrap">{item.description}</p>
+                    </div>
+
+                    {/* SELETOR DE QUANTIDADE */}
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 flex items-center justify-between">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Quantidade</span>
+                            <span className="text-xs text-zinc-400">Selecione quantos itens desejar</span>
+                        </div>
+                        <div className="flex items-center gap-3 bg-zinc-950 p-2 rounded-2xl border border-white/5">
+                            <button
+                                onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                                className="w-10 h-10 flex items-center justify-center bg-zinc-900 rounded-xl text-zinc-400 hover:text-white transition"
+                                disabled={quantity <= 1}
+                            >
+                                -
+                            </button>
+                            <span className="w-8 text-center text-white font-black">{quantity}</span>
+                            <button
+                                onClick={() => setQuantity(q => Math.min(stock, q + 1))}
+                                className="w-10 h-10 flex items-center justify-center bg-zinc-900 rounded-xl text-zinc-400 hover:text-white transition"
+                                disabled={quantity >= stock}
+                            >
+                                +
+                            </button>
+                        </div>
                     </div>
 
                     {item.seller_id !== currentUser?.id && item.type !== 'AFFILIATE' && (
@@ -172,7 +205,9 @@ export const ItemDetailsView = ({
                                     <div className="p-2 bg-zinc-800 rounded-lg text-zinc-400"><Store size={18} /></div>
                                     <div className="text-left">
                                         <p className="text-xs font-black text-white uppercase">Retirada Pessoal</p>
-                                        <p className="text-[10px] text-zinc-500">Você vai até o vendedor.</p>
+                                        <p className="text-[10px] text-zinc-500">
+                                            {item.pickup_address ? `Retirar em: ${item.pickup_address}` : 'Você vai até o vendedor.'}
+                                        </p>
                                     </div>
                                 </div>
                                 {deliveryOption === 'SELF_PICKUP' && <CheckCircle size={16} className="text-primary-400" />}
@@ -245,7 +280,8 @@ export const ItemDetailsView = ({
                                 deliveryType: deliveryOption,
                                 deliveryFee: deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee) : deliveryOption === 'EXTERNAL_SHIPPING' ? 35.00 : 0,
                                 deliveryAddress: deliveryAddress || 'Principal',
-                                invitedCourierId: invitedCourierId || undefined
+                                invitedCourierId: invitedCourierId || undefined,
+                                quantity: quantity
                             })}
                             className="w-full bg-primary-500 text-black font-black py-4 rounded-2xl uppercase tracking-widest text-xs"
                         >

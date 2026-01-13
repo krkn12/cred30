@@ -157,6 +157,8 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         image_url: string;
         quotaId: number | null;
         requiredVehicle: 'BIKE' | 'MOTO' | 'CAR' | 'TRUCK';
+        stock: string;
+        pickupAddress: string;
     }>({
         title: '',
         description: '',
@@ -164,7 +166,9 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         category: 'ELETRÔNICOS',
         image_url: '',
         quotaId: null,
-        requiredVehicle: 'MOTO'
+        requiredVehicle: 'MOTO',
+        stock: '1',
+        pickupAddress: ''
     });
 
     const categories = MARKETPLACE_CATEGORIES;

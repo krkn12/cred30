@@ -33,6 +33,7 @@ const buyListingSchema = z.object({
     pickupAddress: z.string().optional(),
     invitedCourierId: z.string().uuid().optional().or(z.literal('')),
     paymentMethod: z.enum(['BALANCE', 'PIX', 'CARD']).default('BALANCE'),
+    quantity: z.coerce.number().int().min(1).optional().default(1),
     deliveryLat: z.coerce.number().optional(),
     deliveryLng: z.coerce.number().optional(),
     pickupLat: z.coerce.number().optional(),
@@ -65,6 +66,7 @@ const buyOnCreditSchema = z.object({
     offeredDeliveryFee: z.coerce.number().min(0).optional().default(0),
     pickupAddress: z.string().optional(),
     invitedCourierId: z.string().uuid().optional().or(z.literal('')),
+    quantity: z.coerce.number().int().min(1).optional().default(1),
     deliveryLat: z.coerce.number().optional(),
     deliveryLng: z.coerce.number().optional(),
     pickupLat: z.coerce.number().optional(),
@@ -102,17 +104,23 @@ export class MarketplaceOrdersController {
             const {
                 listingId, listingIds, deliveryAddress, contactPhone, offlineToken,
                 paymentMethod, deliveryType, offeredDeliveryFee, invitedCourierId,
-                deliveryLat, deliveryLng, pickupLat, pickupLng
+                deliveryLat, deliveryLng, pickupLat, pickupLng, pickupAddress
             } = parsedBody;
 
             const idsToProcess = listingIds || (listingId ? [listingId] : []);
             if (idsToProcess.length === 0) return c.json({ success: false, message: 'Nenhum item selecionado.' }, 400);
 
-            const listingsResult = await pool.query('SELECT *, required_vehicle FROM marketplace_listings WHERE id = ANY($1) AND status = $2', [idsToProcess, 'ACTIVE']);
+            const listingsResult = await pool.query('SELECT *, COALESCE(stock, 1) as current_stock, required_vehicle FROM marketplace_listings WHERE id = ANY($1) AND status = $2', [idsToProcess, 'ACTIVE']);
             if (listingsResult.rows.length === 0) return c.json({ success: false, message: 'Itens indisponíveis.' }, 404);
 
             const listings = listingsResult.rows;
             const sellerId = listings[0].seller_id;
+            const quantity = parsedBody.quantity || 1;
+
+            // Validar Estoque
+            if (listings.length === 1 && listings[0].current_stock < quantity) {
+                return c.json({ success: false, message: `Quantidade solicitada (${quantity}) excede o estoque disponível (${listings[0].current_stock}).` }, 400);
+            }
 
             // Validar se todos são do mesmo vendedor
             if (listings.some(l => l.seller_id !== sellerId)) {
@@ -120,17 +128,18 @@ export class MarketplaceOrdersController {
             }
 
             const sellerRes = await pool.query('SELECT address, asaas_wallet_id FROM users WHERE id = $1', [sellerId]);
-            const finalPickupAddress = body.pickupAddress || sellerRes.rows[0]?.address || 'A combinar com o vendedor';
+            // Usar pickup_address do anúncio se for retirada e o vendedor informou
+            let finalPickupAddress = pickupAddress || listings[0].pickup_address || 'Endereço informado pelo vendedor no chat';
 
             // Cálculos Agregados
-            let totalPrice = 0;
+            const baseAmount = listings.reduce((acc: number, item: any) => acc + (parseFloat(item.price) * (listings.length === 1 ? quantity : 1)), 0);
+            let totalPrice = baseAmount;
             let maxVehicleRank = -1;
             const vehicleRank: Record<string, number> = { 'BIKE': 0, 'MOTO': 1, 'CAR': 2, 'TRUCK': 3 };
             let requiredVehicle = 'MOTO';
             let containsDigital = false;
 
             for (const l of listings) {
-                totalPrice += parseFloat(l.price);
                 const vRank = vehicleRank[l.required_vehicle || 'MOTO'] || 1;
                 if (vRank > maxVehicleRank) {
                     maxVehicleRank = vRank;
@@ -178,9 +187,9 @@ export class MarketplaceOrdersController {
                 const baseFeeRate = isVerified ? MARKETPLACE_ESCROW_FEE_RATE : MARKETPLACE_NON_VERIFIED_FEE_RATE;
 
                 // ===== SISTEMA DE BENEFÍCIO DE BOAS-VINDAS =====
-                const welcomeBenefit = await getWelcomeBenefit(pool, user.id);
+                const welcomeBenefit = await getWelcomeBenefit(pool, user.id, 'MARKETPLACE');
                 // Se o comprador tem benefício, aplica 50% de desconto sobre a taxa base
-                const effectiveEscrowRate = welcomeBenefit.hasDiscount ? baseFeeRate * 0.5 : baseFeeRate;
+                const effectiveEscrowRate = welcomeBenefit.hasDiscount ? welcomeBenefit.newRate : baseFeeRate;
 
                 console.log(`[MARKETPLACE] ${isDigitalLote ? 'DIGITAL' : 'FÍSICO'} | Vendedor ${isVerified ? 'VERIFICADO' : 'NÃO VERIFICADO'}. Comprador ${user.id} - Benefício: ${welcomeBenefit.hasDiscount ? 'ATIVO' : 'INATIVO'}, Taxa Escrow Final: ${(effectiveEscrowRate * 100).toFixed(1)}%`);
 
@@ -205,19 +214,20 @@ export class MarketplaceOrdersController {
                             listing_id, listing_ids, is_lote, buyer_id, seller_id, amount, fee_amount, seller_amount, 
                             status, payment_method, delivery_address, pickup_address, contact_phone, 
                             offline_token, delivery_status, delivery_fee, pickup_code, invited_courier_id,
-                            pickup_lat, pickup_lng, delivery_lat, delivery_lng
+                            pickup_lat, pickup_lng, delivery_lat, delivery_lng, quantity
                         ) VALUES (
                             $1::INTEGER, $2::INTEGER[], $3::BOOLEAN, $4::INTEGER, $5::INTEGER, $6::NUMERIC, $7::NUMERIC, $8::NUMERIC,
                             $9, $10, $11, $12, $13,
                             $14, $15, $16::NUMERIC, $17, $18::UUID,
-                            $19::NUMERIC, $20::NUMERIC, $21::NUMERIC, $22::NUMERIC
+                            $19::NUMERIC, $20::NUMERIC, $21::NUMERIC, $22::NUMERIC, $23::INTEGER
                         ) RETURNING id`,
                         [
                             listings[0].id, idsToProcess, listings.length > 1, user.id, sellerId, totalPrice, fee, sellerAmount,
                             orderStatus, 'BALANCE', deliveryAddress, isDigitalLote ? null : finalPickupAddress, contactPhone,
                             offlineToken, deliveryStatus, isDigitalLote ? 0 : calculatedDeliveryFee, pickupCode,
                             (invitedCourierId && invitedCourierId.length > 30) ? invitedCourierId : null,
-                            pickupLat || null, pickupLng || null, deliveryLat || null, deliveryLng || null
+                            pickupLat || null, pickupLng || null, deliveryLat || null, deliveryLng || null,
+                            quantity
                         ]
                     );
                     const orderId = orderResult.rows[0].id;
@@ -290,7 +300,7 @@ export class MarketplaceOrdersController {
                 }, 400);
             }
 
-            const { listingId, listingIds, installments, deliveryAddress, contactPhone, invitedCourierId } = parseResult.data;
+            const { listingId, listingIds, installments, deliveryAddress, contactPhone, invitedCourierId, quantity, pickupAddress } = parseResult.data;
 
             const idsToProcess = listingIds || (listingId ? [listingId] : []);
             if (idsToProcess.length === 0) return c.json({ success: false, message: 'Nenhum item selecionado.' }, 400);
@@ -327,25 +337,31 @@ export class MarketplaceOrdersController {
 
             // Verificação de Limite de Crédito Dinâmico
             const availableLimit = await calculateUserLoanLimit(pool, user.id);
-            const listingsResult = await pool.query('SELECT *, required_vehicle FROM marketplace_listings WHERE id = ANY($1) AND status = $2', [idsToProcess, 'ACTIVE']);
+            const listingsResult = await pool.query('SELECT *, COALESCE(stock, 1) as current_stock, required_vehicle FROM marketplace_listings WHERE id = ANY($1) AND status = $2', [idsToProcess, 'ACTIVE']);
 
             if (listingsResult.rows.length === 0) return c.json({ success: false, message: 'Itens indisponíveis.' }, 404);
 
             const listings = listingsResult.rows;
             const sellerId = listings[0].seller_id;
 
+            // Validar Estoque
+            if (listings.length === 1 && listings[0].current_stock < quantity) {
+                return c.json({ success: false, message: `Quantidade solicitada (${quantity}) excede o estoque disponível (${listings[0].current_stock}).` }, 400);
+            }
+
             if (listings.some(l => l.seller_id !== sellerId)) {
                 return c.json({ success: false, message: 'Todos os itens de um lote devem ser do mesmo vendedor.' }, 400);
             }
 
-            const totalPrice = listings.reduce((acc, l) => acc + parseFloat(l.price), 0);
+            const baseAmount = listings.reduce((acc: number, item: any) => acc + (parseFloat(item.price) * (listings.length === 1 ? quantity : 1)), 0);
+            const totalPrice = baseAmount;
             if (totalPrice > availableLimit) return c.json({ success: false, message: `O valor do lote (R$ ${totalPrice.toFixed(2)}) excede seu limite de crédito (R$ ${availableLimit.toFixed(2)}).` }, 403);
 
             if (sellerId === user.id) return c.json({ success: false, message: 'Você não pode comprar de si mesmo.' }, 400);
 
             // Buscar endereço do vendedor
             const sellerRes = await pool.query('SELECT address, asaas_wallet_id FROM users WHERE id = $1', [sellerId]);
-            const finalPickupAddress = body.pickupAddress || sellerRes.rows[0]?.address || 'A combinar com o vendedor';
+            const finalPickupAddress = pickupAddress || listings[0].pickup_address || 'Endereço informado pelo vendedor no chat';
 
             // Agregação de veículo
             let maxVehicleRank = -1;
@@ -361,8 +377,8 @@ export class MarketplaceOrdersController {
 
             const minFee = DELIVERY_MIN_FEES[requiredVehicle] || 5.00;
             // --- CÁLCULO DE FRETE DINÂMICO NO CREDIÁRIO ---
-            let calculatedDeliveryFee = buyOnCreditSchema.parse(body).offeredDeliveryFee;
-            if (buyOnCreditSchema.parse(body).deliveryType === 'COURIER_REQUEST') {
+            let calculatedDeliveryFee = parseResult.data.offeredDeliveryFee;
+            if (parseResult.data.deliveryType === 'COURIER_REQUEST') {
                 const { deliveryLat, deliveryLng, pickupLat, pickupLng } = body;
                 if (deliveryLat && deliveryLng && pickupLat && pickupLng) {
                     const R = 6371;
@@ -386,8 +402,8 @@ export class MarketplaceOrdersController {
             const isVerified = !!sellerRes.rows[0]?.asaas_wallet_id;
             const baseFeeRate = isVerified ? MARKETPLACE_ESCROW_FEE_RATE : MARKETPLACE_NON_VERIFIED_FEE_RATE;
 
-            const welcomeBenefit = await getWelcomeBenefit(pool, user.id);
-            const effectiveEscrowRate = welcomeBenefit.hasDiscount ? baseFeeRate * 0.5 : baseFeeRate;
+            const welcomeBenefit = await getWelcomeBenefit(pool, user.id, 'MARKETPLACE');
+            const effectiveEscrowRate = welcomeBenefit.hasDiscount ? welcomeBenefit.newRate : baseFeeRate;
 
             const escrowFee = totalPrice * effectiveEscrowRate;
             const sellerAmount = totalPrice - escrowFee;
@@ -403,7 +419,7 @@ export class MarketplaceOrdersController {
                 const systemConfig = await lockSystemConfig(client);
                 if (parseFloat(systemConfig.system_balance) < totalPrice) throw new Error('Limite diário de financiamento atingido.');
 
-                const deliveryStatus = (buyOnCreditSchema.parse(body).deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE');
+                const deliveryStatus = (parseResult.data.deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE');
                 const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
                 console.log(`[MARKETPLACE_CREDIT] Inserindo pedido: listing_id=${listings[0].id}, buyer=${user.id}`);
@@ -413,18 +429,19 @@ export class MarketplaceOrdersController {
                         listing_id, listing_ids, is_lote, buyer_id, seller_id, amount, fee_amount, seller_amount, 
                         status, payment_method, delivery_address, pickup_address, contact_phone, 
                         delivery_status, delivery_fee, pickup_code, invited_courier_id,
-                        pickup_lat, pickup_lng, delivery_lat, delivery_lng
+                        pickup_lat, pickup_lng, delivery_lat, delivery_lng, quantity
                     ) VALUES (
                         $1::INTEGER, $2::INTEGER[], $3::BOOLEAN, $4::INTEGER, $5::INTEGER, $6::NUMERIC, $7::NUMERIC, $8::NUMERIC,
                         $9, $10, $11, $12, $13,
                         $14, $15, $16, $17::UUID,
-                        $18::NUMERIC, $19::NUMERIC, $20::NUMERIC, $21::NUMERIC
+                        $18::NUMERIC, $19::NUMERIC, $20::NUMERIC, $21::NUMERIC, $22::INTEGER
                     ) RETURNING id`,
                     [
                         listings[0].id, idsToProcess, listings.length > 1, user.id, sellerId, totalWithFee, escrowFee, sellerAmount,
                         'WAITING_SHIPPING', 'CRED30_CREDIT', deliveryAddress, finalPickupAddress, contactPhone,
                         deliveryStatus, fee, pickupCode, (invitedCourierId && invitedCourierId.length > 30) ? invitedCourierId : null,
-                        body.pickupLat || null, body.pickupLng || null, body.deliveryLat || null, body.deliveryLng || null
+                        body.pickupLat || null, body.pickupLng || null, body.deliveryLat || null, body.deliveryLng || null,
+                        quantity
                     ]
                 );
                 const orderId = orderResult.rows[0].id;
@@ -693,6 +710,20 @@ export class MarketplaceOrdersController {
                     'UPDATE marketplace_orders SET status = $1, delivery_status = $2, updated_at = NOW() WHERE id = $3',
                     ['COMPLETED', 'DELIVERED', orderId]
                 );
+
+                // 1.0 Baixa de Estoque (Se for produto físico)
+                if (order.listing_id) {
+                    await client.query(
+                        'UPDATE marketplace_listings SET stock = GREATEST(0, stock - $1) WHERE id = $2',
+                        [order.quantity || 1, order.listing_id]
+                    );
+
+                    // Se o estoque chegar a zero, pausar o anúncio
+                    await client.query(
+                        "UPDATE marketplace_listings SET status = 'PAUSED' WHERE id = $1 AND stock <= 0",
+                        [order.listing_id]
+                    );
+                }
 
                 // 1.1 Se for uma cota, transferir propriedade
                 if (order.quota_id) {
