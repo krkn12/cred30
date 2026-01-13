@@ -140,7 +140,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
                         <div>
                             <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1 block">Saldo Devedor Atual</span>
-                            <h3 className="text-2xl sm:text-3xl font-black text-white">R$ {activeLoans.length > 0 ? formatNumber(activeLoans[0].remainingAmount ?? activeLoans[0].totalRepayment) : '0,00'}</h3>
+                            <h3 className="text-2xl sm:text-3xl font-black text-white">R$ {activeLoans.length > 0 ? formatNumber(Math.max(0, (activeLoans[0].remainingAmount ?? activeLoans[0].totalRepayment) < 0.05 ? 0 : (activeLoans[0].remainingAmount ?? activeLoans[0].totalRepayment))) : '0,00'}</h3>
                         </div>
                         <div className="bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 rounded-lg flex items-center gap-2 self-start sm:self-auto">
                             <Clock size={14} className="text-yellow-500" />
