@@ -289,7 +289,6 @@ export class LoansController {
             const loan = loanResult.rows[0];
             if (loan.status !== 'APPROVED') return c.json({ success: false, message: 'Apoio não disponível para reposição' }, 400);
 
-            const totalRepayment = parseFloat(loan.total_repayment);
             const principalAmount = parseFloat(loan.amount);
             const totalInterest = totalRepayment - principalAmount;
 
@@ -299,9 +298,52 @@ export class LoansController {
             if (useBalance && user.balance < totalRepayment) return c.json({ success: false, message: 'Saldo insuficiente' }, 400);
 
             if (useBalance) {
-                await pool.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [totalRepayment, user.id]);
+                // FLUXO DE PAGAMENTO COM SALDO (AUTOMÁTICO)
+                await executeInTransaction(pool, async (client: PoolClient) => {
+                    // 1. Debitar saldo do usuário
+                    await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [totalRepayment, user.id]);
+
+                    // 2. Marcar empréstimo como PAGO
+                    await client.query('UPDATE loans SET status = $1 WHERE id = $2', ['PAID', loanId]);
+
+                    // 3. Criar transação COMPLETA
+                    await client.query(
+                        `INSERT INTO transactions (user_id, type, amount, description, status, metadata)
+                         VALUES ($1, 'LOAN_PAYMENT', $2, $3, 'COMPLETED', $4)`,
+                        [
+                            user.id, finalCost,
+                            `Reposição de Apoio (Saldo)`,
+                            JSON.stringify({ loanId, useBalance: true, principalAmount, interestAmount: totalInterest })
+                        ]
+                    );
+
+                    // 4. Distribuição Contábil (Mesma lógica das parcelas)
+                    const profitShare = totalInterest * 0.80; // 80% dos juros para cotistas
+                    const systemShare = totalInterest * 0.20; // 20% dos juros para o sistema
+                    const taxPart = systemShare * 0.25;
+                    const operPart = systemShare * 0.25;
+                    const ownerPart = systemShare * 0.25;
+                    const investPart = systemShare * 0.25;
+
+                    await client.query(`
+                        UPDATE system_config SET 
+                            investment_reserve = COALESCE(investment_reserve, 0) + $1,
+                            profit_pool = profit_pool + $2,
+                            system_balance = system_balance + $3,
+                            total_tax_reserve = total_tax_reserve + $4,
+                            total_operational_reserve = total_operational_reserve + $5,
+                            total_owner_profit = total_owner_profit + $6
+                        `, [principalAmount, profitShare, systemShare, taxPart, operPart, ownerPart]
+                    );
+
+                    // 5. Atualizar Score
+                    await updateScore(pool, user.id, SCORE_REWARDS.LOAN_PAYMENT_ON_TIME, 'Quitação antecipada total');
+                });
+
+                return c.json({ success: true, message: 'Apoio quitado com sucesso!' });
             }
 
+            // FLUXO DE PAGAMENTO VIA PIX (AGUARDA CONFIRMAÇÃO)
             await pool.query('UPDATE loans SET status = $1 WHERE id = $2', ['PAYMENT_PENDING', loanId]);
 
             const transaction = await pool.query(
