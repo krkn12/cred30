@@ -152,9 +152,27 @@ export const CreateListingView = ({
                         </div>
                     </div>
                     <div>
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1 mb-1 block">Categoria</label>
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1 mb-1 block">Estoque Inicial</label>
                         <div className="relative">
                             <Archive className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                            <input
+                                type="number"
+                                value={newListing.stock}
+                                onChange={(e) => setNewListing({ ...newListing, stock: e.target.value })}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-12 pr-4 py-3 text-sm text-white focus:outline-none focus:border-primary-500/50"
+                                placeholder="Ex: 5"
+                                min="1"
+                                required
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-1">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1 mb-1 block">Categoria</label>
+                        <div className="relative">
+                            <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
                             <select
                                 value={newListing.category}
                                 onChange={(e) => setNewListing({ ...newListing, category: e.target.value })}
@@ -162,6 +180,19 @@ export const CreateListingView = ({
                             >
                                 {MARKETPLACE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
+                        </div>
+                    </div>
+                    <div className="col-span-1">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1 mb-1 block">Local de Retirada (Opcional)</label>
+                        <div className="relative">
+                            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                            <input
+                                type="text"
+                                value={newListing.pickupAddress}
+                                onChange={(e) => setNewListing({ ...newListing, pickupAddress: e.target.value })}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-12 pr-4 py-3 text-sm text-white focus:outline-none focus:border-primary-500/50"
+                                placeholder="Rua, número, etc"
+                            />
                         </div>
                     </div>
                 </div>

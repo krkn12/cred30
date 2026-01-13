@@ -6,15 +6,16 @@ import { UserContext } from '../../../shared/types/hono.types';
 
 // Schemas
 const createListingSchema = z.object({
-    title: z.string().min(3, 'Título deve ter pelo menos 3 caracteres').max(255),
-    description: z.string().min(5, 'Descrição deve ter pelo menos 5 caracteres'),
-    price: z.number().positive('Preço deve ser maior que zero'),
-    category: z.string().optional(),
+    title: z.string().min(3),
+    description: z.string().min(10),
+    price: z.coerce.number().min(0.01),
+    category: z.string().optional().default('OUTROS'),
     imageUrl: z.string().optional(),
-    quotaId: z.number().int().optional(),
     itemType: z.enum(['PHYSICAL', 'DIGITAL']).optional().default('PHYSICAL'),
     digitalContent: z.string().optional(), // Link/código para itens digitais
     requiredVehicle: z.enum(['BIKE', 'MOTO', 'CAR', 'TRUCK']).optional().default('MOTO'),
+    stock: z.coerce.number().int().min(1).optional().default(1),
+    pickupAddress: z.string().optional(),
 });
 
 export class MarketplaceListingsController {
@@ -39,7 +40,9 @@ export class MarketplaceListingsController {
                     u.name as seller_name, l.seller_id::text, l.is_boosted, l.created_at, l.status, 'P2P' as type,
                 u.seller_address_city as city, u.seller_address_state as uf, u.seller_address_neighborhood as neighborhood,
                 COALESCE(l.item_type, 'PHYSICAL') as item_type,
-                COALESCE(l.required_vehicle, 'MOTO') as required_vehicle
+                COALESCE(l.required_vehicle, 'MOTO') as required_vehicle,
+                COALESCE(l.stock, 1) as stock,
+                l.pickup_address
          FROM marketplace_listings l 
          JOIN users u ON l.seller_id = u.id
              WHERE l.status = 'ACTIVE'
@@ -51,7 +54,9 @@ export class MarketplaceListingsController {
             UNION ALL
             (SELECT p.id::text, p.title, p.description, p.price::float, p.image_url, p.category, 
                     'Cred30 Parceiros' as seller_name, '0' as seller_id, true as is_boosted, p.created_at, 'ACTIVE' as status, 'AFFILIATE' as type,
-                    '' as city, '' as uf, '' as neighborhood, 'PHYSICAL' as item_type, 'MOTO' as required_vehicle
+                    '' as city, '' as uf, '' as neighborhood, 'PHYSICAL' as item_type, 'MOTO' as required_vehicle,
+                    999999 as stock, -- Affiliate products usually have high stock
+                    NULL as pickup_address
              FROM products p 
              WHERE p.active = true
              AND ($3::text IS NULL OR $3 = 'TODOS' OR p.category = $3)
@@ -93,7 +98,10 @@ export class MarketplaceListingsController {
                 }, 400);
             }
 
-            const { title, description, price, category, imageUrl, quotaId, itemType, digitalContent, requiredVehicle } = parseResult.data;
+            const {
+                title, description, price, category, imageUrl,
+                itemType, digitalContent, requiredVehicle, stock, pickupAddress
+            } = parseResult.data;
 
             // Itens digitais precisam de conteúdo digital
             if (itemType === 'DIGITAL' && !digitalContent) {
@@ -104,12 +112,7 @@ export class MarketplaceListingsController {
             }
 
             // Se for uma cota, verificar se pertence ao usuário e está ativa
-            if (quotaId) {
-                const quotaCheck = await pool.query('SELECT * FROM quotas WHERE id = $1 AND user_id = $2 AND status = $3', [quotaId, user.id, 'ACTIVE']);
-                if (quotaCheck.rows.length === 0) {
-                    return c.json({ success: false, message: 'Você não possui esta cota ou ela não está ativa para repasse.' }, 403);
-                }
-            }
+            // Removed quotaId check as it's no longer in the schema
 
             // Atualizar localização do vendedor se fornecida (GPS)
             const { city, state, neighborhood } = body;
@@ -121,9 +124,14 @@ export class MarketplaceListingsController {
             }
 
             const result = await pool.query(
-                `INSERT INTO marketplace_listings (seller_id, title, description, price, category, image_url, quota_id, item_type, digital_content, required_vehicle)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-                [user.id, title, description, price, category || (quotaId ? 'COTAS' : 'OUTROS'), imageUrl, quotaId, itemType || 'PHYSICAL', digitalContent, requiredVehicle]
+                `INSERT INTO marketplace_listings (
+                    seller_id, title, description, price, category, image_url, 
+                    item_type, digital_content, required_vehicle, stock, pickup_address
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+                [
+                    user.id, title, description, price, category, imageUrl || null,
+                    itemType, digitalContent || null, requiredVehicle, stock || 1, pickupAddress || null
+                ]
             );
 
             return c.json({
@@ -148,7 +156,7 @@ export class MarketplaceListingsController {
             const pool = getDbPool(c);
 
             const result = await pool.query(
-                `SELECT id, title, description, price, category, image_url, status, is_boosted, created_at, required_vehicle
+                `SELECT id, title, description, price, category, image_url, status, is_boosted, created_at, required_vehicle, stock, pickup_address
          FROM marketplace_listings
          WHERE seller_id = $1
          ORDER BY created_at DESC`,
@@ -280,7 +288,9 @@ export class MarketplaceListingsController {
                 SELECT 
                     l.id, l.title, l.price, l.description, l.image_url, l.seller_id,
                     u.name as seller_name, u.phone as seller_phone, u.address as seller_address,
-                    u.is_verified as seller_verified
+                    u.is_verified as seller_verified,
+                    l.stock,
+                    l.pickup_address
                 FROM marketplace_listings l
                 JOIN users u ON l.seller_id = u.id
                 WHERE l.id = $1 AND l.status = 'ACTIVE'

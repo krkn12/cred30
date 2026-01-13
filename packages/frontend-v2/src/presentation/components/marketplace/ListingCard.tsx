@@ -69,6 +69,13 @@ export const ListingCard = memo(({ item, currentUserId, onBoost, onDetails, onAd
                         </div>
                     )}
                 </div>
+
+                {/* Badge Inferior Direito (Estoque) */}
+                <div className="absolute bottom-3 right-3 flex flex-col gap-1.5 items-end">
+                    <div className={`backdrop-blur-md text-[8px] px-2 py-1 rounded-full font-black flex items-center gap-1 border shadow-lg ${item.stock <= 0 ? 'bg-red-500/80 border-red-500 text-white' : 'bg-black/60 border-white/10 text-zinc-300'}`}>
+                        {item.stock <= 0 ? 'ESGOTADO' : `${item.stock} EM ESTOQUE`}
+                    </div>
+                </div>
             </div>
 
             {/* Informações */}
