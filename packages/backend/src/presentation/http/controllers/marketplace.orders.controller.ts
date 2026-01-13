@@ -24,15 +24,21 @@ import { getWelcomeBenefit, consumeWelcomeBenefitUse } from '../../../applicatio
 const buyListingSchema = z.object({
     listingId: z.any().optional(), // Aceita UUID ou Inteiro (SERIAL)
     listingIds: z.array(z.any()).optional(), // Novo campo para múltiplos itens
-    deliveryAddress: z.string().min(5), // Updated validation and made required
-    contactPhone: z.string(), // Updated validation and made required
+    deliveryAddress: z.string().min(5).refine(val => /\d/.test(val), {
+        message: "O endereço deve incluir o número da casa/local."
+    }),
+    contactPhone: z.string(),
     offlineToken: z.string().optional(),
     payerCpfCnpj: z.string().optional(),
-    deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST', 'EXTERNAL_SHIPPING']).optional().default('SELF_PICKUP'), // Added EXTERNAL_SHIPPING
-    offeredDeliveryFee: z.number().min(0).optional().default(0),
+    deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST', 'EXTERNAL_SHIPPING']).optional().default('SELF_PICKUP'),
+    offeredDeliveryFee: z.coerce.number().min(0).optional().default(0),
     pickupAddress: z.string().optional(),
-    invitedCourierId: z.string().uuid().optional(),
+    invitedCourierId: z.string().uuid().optional().or(z.literal('')),
     paymentMethod: z.enum(['BALANCE', 'PIX', 'CARD']).default('BALANCE'),
+    deliveryLat: z.coerce.number().optional(),
+    deliveryLng: z.coerce.number().optional(),
+    pickupLat: z.coerce.number().optional(),
+    pickupLng: z.coerce.number().optional(),
     creditCard: z.object({
         holderName: z.string(),
         number: z.string(),
@@ -46,13 +52,19 @@ const buyListingSchema = z.object({
 const buyOnCreditSchema = z.object({
     listingId: z.any().optional(), // Aceita UUID ou Inteiro (SERIAL)
     listingIds: z.array(z.any()).optional(), // Novo campo para múltiplos itens
-    installments: z.number().int().min(1).max(24), // Updated max installments
-    deliveryAddress: z.string().min(5), // Updated validation and made required
-    contactPhone: z.string(), // Updated validation and made required
-    deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST', 'EXTERNAL_SHIPPING']).optional().default('SELF_PICKUP'), // Added EXTERNAL_SHIPPING
-    offeredDeliveryFee: z.number().min(0).optional().default(0),
+    installments: z.number().int().min(1).max(24),
+    deliveryAddress: z.string().min(5).refine(val => /\d/.test(val), {
+        message: "O endereço deve incluir o número da casa/local."
+    }),
+    contactPhone: z.string(),
+    deliveryType: z.enum(['SELF_PICKUP', 'COURIER_REQUEST', 'EXTERNAL_SHIPPING']).optional().default('SELF_PICKUP'),
+    offeredDeliveryFee: z.coerce.number().min(0).optional().default(0),
     pickupAddress: z.string().optional(),
-    invitedCourierId: z.string().uuid().optional(),
+    invitedCourierId: z.string().uuid().optional().or(z.literal('')),
+    deliveryLat: z.coerce.number().optional(),
+    deliveryLng: z.coerce.number().optional(),
+    pickupLat: z.coerce.number().optional(),
+    pickupLng: z.coerce.number().optional(),
 });
 
 export class MarketplaceOrdersController {
@@ -65,7 +77,21 @@ export class MarketplaceOrdersController {
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
             const body = await c.req.json();
-            const { listingId, listingIds, deliveryAddress, contactPhone, offlineToken, paymentMethod, deliveryType, offeredDeliveryFee, invitedCourierId } = buyListingSchema.parse(body);
+
+            const parseResult = buyListingSchema.safeParse(body);
+            if (!parseResult.success) {
+                return c.json({
+                    success: false,
+                    message: parseResult.error.errors[0]?.message || 'Dados inválidos.'
+                }, 400);
+            }
+
+            const parsedBody = parseResult.data;
+            const {
+                listingId, listingIds, deliveryAddress, contactPhone, offlineToken,
+                paymentMethod, deliveryType, offeredDeliveryFee, invitedCourierId,
+                deliveryLat, deliveryLng, pickupLat, pickupLng
+            } = parsedBody;
 
             const idsToProcess = listingIds || (listingId ? [listingId] : []);
             if (idsToProcess.length === 0) return c.json({ success: false, message: 'Nenhum item selecionado.' }, 400);
@@ -106,8 +132,6 @@ export class MarketplaceOrdersController {
             // --- CÁLCULO DE FRETE DINÂMICO (NOVO) ---
             let calculatedDeliveryFee = offeredDeliveryFee;
             if (deliveryType === 'COURIER_REQUEST') {
-                const { deliveryLat, deliveryLng, pickupLat, pickupLng } = body;
-
                 if (deliveryLat && deliveryLng && pickupLat && pickupLng) {
                     // Haversine no Backend para Cálculo de Frete
                     const R = 6371; // km
@@ -172,8 +196,9 @@ export class MarketplaceOrdersController {
                         [
                             listings[0].id, idsToProcess, listings.length > 1, user.id, sellerId, totalPrice, fee, sellerAmount,
                             orderStatus, 'BALANCE', deliveryAddress, isDigitalLote ? null : finalPickupAddress, contactPhone,
-                            offlineToken, deliveryStatus, isDigitalLote ? 0 : calculatedDeliveryFee, pickupCode, invitedCourierId,
-                            body.pickupLat || null, body.pickupLng || null, body.deliveryLat || null, body.deliveryLng || null
+                            offlineToken, deliveryStatus, isDigitalLote ? 0 : calculatedDeliveryFee, pickupCode,
+                            invitedCourierId || null,
+                            pickupLat || null, pickupLng || null, deliveryLat || null, deliveryLng || null
                         ]
                     );
                     const orderId = orderResult.rows[0].id;
@@ -237,7 +262,16 @@ export class MarketplaceOrdersController {
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
             const body = await c.req.json();
-            const { listingId, listingIds, installments, deliveryAddress, contactPhone, invitedCourierId } = buyOnCreditSchema.parse(body);
+
+            const parseResult = buyOnCreditSchema.safeParse(body);
+            if (!parseResult.success) {
+                return c.json({
+                    success: false,
+                    message: parseResult.error.errors[0]?.message || 'Dados inválidos.'
+                }, 400);
+            }
+
+            const { listingId, listingIds, installments, deliveryAddress, contactPhone, invitedCourierId } = parseResult.data;
 
             const idsToProcess = listingIds || (listingId ? [listingId] : []);
             if (idsToProcess.length === 0) return c.json({ success: false, message: 'Nenhum item selecionado.' }, 400);
