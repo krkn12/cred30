@@ -151,7 +151,8 @@ export const loadState = async (): Promise<AppState> => {
     }
 
     // Obter dados consolidados (Otimização Máxima)
-    const syncResponse = await apiService.get<any>('/users/sync');
+    // Cache busting adicionado para forçar atualização em tempo real
+    const syncResponse = await apiService.get<any>(`/users/sync?t=${Date.now()}`);
     const syncData = syncResponse.data;
 
     const currentUser = convertApiUserToUser(syncData.user);
