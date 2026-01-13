@@ -312,7 +312,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                     <input
                                         type="number"
                                         min="1"
-                                        max="36"
+                                        max="24"
                                         value={months}
                                         onChange={(e) => setMonths(Math.max(1, Number(e.target.value)))}
                                         className="w-full bg-background border border-surfaceHighlight rounded-xl py-4 px-4 text-white text-lg font-bold focus:border-primary-500 outline-none transition"

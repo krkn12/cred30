@@ -24,7 +24,7 @@ import { UserContext } from '../../../shared/types/hono.types';
 // Esquemas de validação
 const createLoanSchema = z.object({
     amount: z.number().positive(),
-    installments: z.number().int().min(1).max(12),
+    installments: z.number().int().min(1).max(24),
     guaranteePercentage: z.number().int().min(50).max(100).optional().default(100),
     guarantorId: z.string().optional(),
 });
