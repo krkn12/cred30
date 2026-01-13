@@ -280,48 +280,52 @@ export class LoansController {
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
 
-            const loanResult = await pool.query(
-                'SELECT * FROM loans WHERE id = $1 AND user_id = $2',
-                [loanId, user.id]
-            );
-
-            if (loanResult.rows.length === 0) return c.json({ success: false, message: 'Apoio não encontrado' }, 404);
-            const loan = loanResult.rows[0];
-            if (loan.status !== 'APPROVED') return c.json({ success: false, message: 'Apoio não disponível para reposição' }, 400);
-
-            // CALCULAR SALDO DEVEDOR REAL (SUBTRAINDO PARCELAS PAGAS)
-            const paidInstallmentsResult = await pool.query('SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) as paid_amount FROM loan_installments WHERE loan_id = $1', [loanId]);
-            const paidAmount = parseFloat(paidInstallmentsResult.rows[0].paid_amount);
-
-            const totalRepayOriginal = parseFloat(loan.total_repayment);
-            const remainingToPay = Math.max(0, totalRepayOriginal - paidAmount);
-
-            if (remainingToPay <= 0) return c.json({ success: false, message: 'Este apoio já está quitado.' }, 400);
-
-            const principalAmount = parseFloat(loan.amount);
-            // Proporção de juros no valor restante
-            const interestRatio = (totalRepayOriginal - principalAmount) / totalRepayOriginal;
-            const remainingInterest = remainingToPay * interestRatio;
-            const remainingPrincipal = remainingToPay - remainingInterest;
-
-            const method: PaymentMethod = useBalance ? 'balance' : (paymentMethod as PaymentMethod);
-            const { total: finalCost } = calculateTotalToPay(remainingToPay, method);
-
-            if (useBalance && user.balance < remainingToPay) return c.json({ success: false, message: 'Saldo insuficiente' }, 400);
-
+            // FLUXO DE PAGAMENTO COM SALDO (AUTOMÁTICO)
             if (useBalance) {
-                // FLUXO DE PAGAMENTO COM SALDO (AUTOMÁTICO)
-                await executeInTransaction(pool, async (client: PoolClient) => {
-                    // 1. Debitar saldo do usuário (Apenas o que falta!)
+                const result = await executeInTransaction(pool, async (client: PoolClient) => {
+                    // 1. Buscar empréstimo COM LOCK para evitar concorrência
+                    const loanResult = await client.query(
+                        'SELECT * FROM loans WHERE id = $1 AND user_id = $2 FOR UPDATE',
+                        [loanId, user.id]
+                    );
+
+                    if (loanResult.rows.length === 0) throw new Error('Apoio não encontrado');
+                    const loan = loanResult.rows[0];
+                    if (loan.status !== 'APPROVED') throw new Error('Apoio não disponível para reposição');
+
+                    // 2. Calcular saldo devedor real
+                    const paidInstallmentsResult = await client.query('SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) as paid_amount FROM loan_installments WHERE loan_id = $1', [loanId]);
+                    const paidAmount = parseFloat(paidInstallmentsResult.rows[0].paid_amount);
+
+                    const totalRepayOriginal = parseFloat(loan.total_repayment);
+                    const remainingToPay = Math.max(0, totalRepayOriginal - paidAmount);
+
+                    if (remainingToPay <= 0) throw new Error('Este apoio já está quitado.');
+
+                    // 3. Verificar saldo do usuário COM LOCK
+                    const userBalanceResult = await client.query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [user.id]);
+                    const currentBalance = parseFloat(userBalanceResult.rows[0].balance);
+
+                    if (currentBalance < remainingToPay) throw new Error('Saldo insuficiente');
+
+                    // Cálculos de distribuição
+                    const principalAmount = parseFloat(loan.amount);
+                    const interestRatio = (totalRepayOriginal - principalAmount) / totalRepayOriginal;
+                    const remainingInterest = remainingToPay * interestRatio;
+                    const remainingPrincipal = remainingToPay - remainingInterest;
+                    const { total: finalCost } = calculateTotalToPay(remainingToPay, 'balance');
+
+                    // 4. Executar Pagamento
+                    // Debitar saldo
                     await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [remainingToPay, user.id]);
 
-                    // 2. Marcar empréstimo como PAGO
+                    // Marcar empréstimo como PAGO
                     await client.query('UPDATE loans SET status = $1 WHERE id = $2', ['PAID', loanId]);
 
-                    // Registrar como uma parcela final para histórico
+                    // Registrar parcela final
                     await client.query('INSERT INTO loan_installments (loan_id, amount, use_balance, created_at) VALUES ($1, $2, $3, $4)', [loanId, remainingToPay, true, new Date()]);
 
-                    // 3. Criar transação COMPLETA
+                    // Registrar Transação
                     await client.query(
                         `INSERT INTO transactions (user_id, type, amount, description, status, metadata)
                          VALUES ($1, 'LOAN_PAYMENT', $2, $3, 'COMPLETED', $4)`,
@@ -332,11 +336,9 @@ export class LoansController {
                         ]
                     );
 
-                    // 4. Distribuição Contábil
-                    const profitShare = remainingInterest * 0.80; // 80% dos juros para cotistas
-                    const systemShare = remainingInterest * 0.20; // 20% dos juros para o sistema
-
-                    // Dividir a parte do sistema nas reservas (25% de 20% = 5% do total juros cada)
+                    // 5. Distribuição Contábil
+                    const profitShare = remainingInterest * 0.80;
+                    const systemShare = remainingInterest * 0.20;
                     const taxPart = systemShare * 0.25;
                     const operPart = systemShare * 0.25;
                     const ownerPart = systemShare * 0.25;
@@ -344,7 +346,7 @@ export class LoansController {
 
                     await client.query(`
                         UPDATE system_config SET 
-                            system_balance = COALESCE(system_balance, 0) + $8,  -- Aumenta liquidez do sistema
+                            system_balance = COALESCE(system_balance, 0) + $8,
                             investment_reserve = COALESCE(investment_reserve, 0) + $1 + $6,
                             profit_pool = profit_pool + $2,
                             total_tax_reserve = total_tax_reserve + $3,
@@ -353,36 +355,61 @@ export class LoansController {
                         `, [remainingPrincipal, profitShare, taxPart, operPart, ownerPart, investPart, null, remainingToPay]
                     );
 
-                    // 5. Atualizar Score
+                    // 6. Atualizar Score
                     await updateScore(client, user.id, SCORE_REWARDS.LOAN_PAYMENT_ON_TIME, 'Quitação antecipada total');
+
+                    return { success: true };
                 });
 
+                if (!result.success) return c.json({ success: false, message: result.error || 'Erro ao processar pagamento' }, 400);
                 return c.json({ success: true, message: 'Apoio quitado com sucesso!' });
             }
 
-            // FLUXO DE PAGAMENTO VIA PIX (AGUARDA CONFIRMAÇÃO)
+            // FLUXO DE PAGAMENTO VIA PIX (Sem Transação Complexa por enquanto)
+            // Aqui mantemos simples pois cria apenas uma intenção (Transaction PENDING)
+            // A atomicidade necessária é menor pois não mexe em saldo ainda.
+            // Mas idealmente deveríamos verificar se já não está pago.
+
+            const loanCheck = await pool.query('SELECT * FROM loans WHERE id = $1 AND user_id = $2', [loanId, user.id]);
+            if (loanCheck.rows.length === 0) return c.json({ success: false, message: 'Apoio não encontrado' }, 404);
+            const loan = loanCheck.rows[0];
+
+            if (loan.status !== 'APPROVED' && loan.status !== 'PAYMENT_PENDING') {
+                return c.json({ success: false, message: 'Apoio não elegível para pagamento' }, 400);
+            }
+
+            const paidInstallmentsResult = await pool.query('SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) as paid_amount FROM loan_installments WHERE loan_id = $1', [loanId]);
+            const paidAmount = parseFloat(paidInstallmentsResult.rows[0].paid_amount);
+            const remainingToPay = Math.max(0, parseFloat(loan.total_repayment) - paidAmount);
+            const { total: finalCost } = calculateTotalToPay(remainingToPay, 'pix');
+
             await pool.query('UPDATE loans SET status = $1 WHERE id = $2', ['PAYMENT_PENDING', loanId]);
 
             const transaction = await pool.query(
                 `INSERT INTO transactions (user_id, type, amount, description, status, metadata)
-         VALUES ($1, 'LOAN_PAYMENT', $2, $3, 'PENDING', $4) RETURNING id`,
+                 VALUES ($1, 'LOAN_PAYMENT', $2, $3, 'PENDING', $4) RETURNING id`,
                 [
                     user.id, finalCost,
-                    `Quitação de Apoio (${useBalance ? 'Saldo' : 'PIX Manual'})`,
-                    JSON.stringify({ loanId, useBalance, paymentMethod: 'pix', principalAmount: remainingPrincipal, interestAmount: remainingInterest, manualPix: !useBalance })
+                    `Quitação de Apoio (PIX Manual)`,
+                    JSON.stringify({ loanId, useBalance: false, paymentMethod: 'pix', manualPix: true })
                 ]
             );
 
-            const pixData = !useBalance ? {
-                manualPix: {
-                    key: ADMIN_PIX_KEY,
-                    owner: 'Cred30',
-                    amount: finalCost,
-                    description: `Reposição de Apoio - ID ${loanId}`
+            return c.json({
+                success: true,
+                message: 'Reposição enviada!',
+                data: {
+                    transactionId: transaction.rows[0].id,
+                    finalCost,
+                    manualPix: {
+                        key: ADMIN_PIX_KEY,
+                        owner: 'Cred30',
+                        amount: finalCost,
+                        description: `Reposição de Apoio - ID ${loanId}`
+                    }
                 }
-            } : null;
+            });
 
-            return c.json({ success: true, message: 'Reposição enviada!', data: { transactionId: transaction.rows[0].id, finalCost, ...pixData } });
         } catch (error) {
             if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
             console.error('Erro ao pagar apoio:', error);
