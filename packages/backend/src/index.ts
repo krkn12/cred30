@@ -46,10 +46,21 @@ const app = new Hono();
 
 // Middlewares Globais
 app.use('*', cors({
-  origin: (origin) => origin || '*',
+  origin: (origin) => {
+    const allowed = [
+      'https://cred30.site',
+      'https://www.cred30.site',
+      'https://cred30-prod-app-2025.web.app',
+      'https://cred30-prod-app-2025.firebaseapp.com',
+      'http://localhost:3000',
+      'http://localhost:5173'
+    ];
+    if (allowed.includes(origin) || !origin) return origin || allowed[0];
+    return allowed[0];
+  },
   credentials: true,
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   exposeHeaders: ['Content-Length', 'X-Kuma-Revision'],
 }));
 app.use('*', compress());
