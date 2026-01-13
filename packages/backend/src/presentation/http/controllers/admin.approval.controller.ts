@@ -39,6 +39,10 @@ export class AdminApprovalController {
             const result = await executeInTransaction(pool, async (client) => {
                 if (type === 'TRANSACTION') {
                     return await processTransactionApproval(client, id, action);
+                } else if (type === 'LOAN') {
+                    // Importamos a função de processamento de loan
+                    const { processLoanApproval } = await import('../../../domain/services/transaction.service');
+                    return await processLoanApproval(client, id, action);
                 }
                 throw new Error('Tipo de ação não reconhecido');
             });
