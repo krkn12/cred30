@@ -1130,23 +1130,37 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                             type: 'success',
                             onConfirm: async () => {
                                 try {
-                                    const res = await apiService.post<any>('/marketplace/buy', {
+                                    const payload = {
                                         listingId: data.listingId,
                                         deliveryType: data.deliveryType,
                                         offeredDeliveryFee: data.deliveryFee,
                                         deliveryAddress: data.deliveryAddress,
                                         contactPhone: (state.currentUser as any).phone || '',
                                         invitedCourierId: data.invitedCourierId,
-                                        paymentMethod: 'BALANCE',
                                         deliveryLat: deliveryCoords.lat,
                                         deliveryLng: deliveryCoords.lng,
                                         pickupLat: selectedItem.pickup_lat,
-                                        pickupLng: selectedItem.pickup_lng
-                                    });
+                                        pickupLng: selectedItem.pickup_lng,
+                                        quantity: data.quantity || 1,
+                                    };
+
+                                    let res;
+                                    if (data.paymentMethod === 'CREDIT') {
+                                        res = await apiService.buyMarketplaceOnCredit({
+                                            ...payload,
+                                            installments: data.installments
+                                        });
+                                    } else {
+                                        res = await apiService.buyMarketplaceListing(payload);
+                                    }
+
                                     if (res.success) {
-                                        onSuccess('Sucesso!', 'Compra realizada!');
+                                        onSuccess('Sucesso!', res.message || 'Compra realizada com sucesso!');
                                         setView('my-orders');
                                         setConfirmData(null);
+                                        await onRefresh();
+                                    } else {
+                                        onError('Atenção', res.message || 'Erro ao processar compra.');
                                     }
                                 } catch (err: any) {
                                     onError('Erro', err.message);

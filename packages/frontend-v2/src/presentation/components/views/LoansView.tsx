@@ -78,14 +78,16 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
     const totalRepay = amount * (1 + effectiveInterestRate);
     const monthlyPayment = totalRepay / months;
 
-    const myLoans = loans.filter(l => !l.isGuarantor && (l.status === 'APPROVED' || l.status === 'PENDING' || l.status === 'PAYMENT_PENDING' || l.status === 'WAITING_GUARANTOR'));
+    const myLoans = loans.filter(l => !l.isGuarantor && (l.status === 'APPROVED' || l.status === 'PENDING' || l.status === 'PAYMENT_PENDING' || l.status === 'WAITING_GUARANTOR' || l.status === 'PAID'));
     const guarantorRequests = loans.filter(l => l.isGuarantor && l.status === 'WAITING_GUARANTOR');
     const activeLoans = myLoans.filter(l => l.status === 'APPROVED' || l.status === 'PAYMENT_PENDING');
     const selectedLoan = activeLoans.find(l => l.id === payModalId);
 
     // Helper: Calculate installment value
     const getInstallmentValue = (loan: Loan) => {
-        return loan.totalRepayment / loan.installments;
+        const fixedValue = loan.totalRepayment / loan.installments;
+        const remaining = loan.remainingAmount ?? loan.totalRepayment;
+        return Math.min(fixedValue, remaining);
     };
 
     void isPro;
@@ -141,8 +143,8 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                 <div className="relative z-10">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
                         <div>
-                            <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1 block">Apoio Mútuo em Aberto</span>
-                            <h3 className="text-2xl sm:text-3xl font-black text-white">R$ {activeLoans.length > 0 ? formatNumber(activeLoans[0].amount) : '0,00'}</h3>
+                            <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1 block">Saldo Devedor Atual</span>
+                            <h3 className="text-2xl sm:text-3xl font-black text-white">R$ {activeLoans.length > 0 ? formatNumber(activeLoans[0].remainingAmount ?? activeLoans[0].totalRepayment) : '0,00'}</h3>
                         </div>
                         <div className="bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 rounded-lg flex items-center gap-2 self-start sm:self-auto">
                             <Clock size={14} className="text-yellow-500" />
@@ -412,14 +414,16 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                             <span className={`text-xs px-2 py-0.5 rounded-full ${loan.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400' :
                                                 loan.status === 'PENDING' ? 'bg-yellow-500/10 text-yellow-400' :
                                                     loan.status === 'WAITING_GUARANTOR' ? 'bg-blue-500/10 text-blue-400' :
-                                                        'bg-zinc-800 text-zinc-400'
+                                                        loan.status === 'PAID' ? 'bg-zinc-500/10 text-zinc-400' :
+                                                            'bg-zinc-800 text-zinc-400'
                                                 }`}>
                                                 {loan.status === 'APPROVED' ? 'Aprovado' :
                                                     loan.status === 'PENDING' ? 'Em Análise' :
                                                         loan.status === 'WAITING_GUARANTOR' ? 'Aguardando Fiador' :
-                                                            loan.status}
+                                                            loan.status === 'PAID' ? 'Quitado' :
+                                                                loan.status}
                                             </span>
-                                            {isOverdue && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full flex items-center gap-1"><AlertTriangle size={10} /> Atrasado</span>}
+                                            {isOverdue && loan.status !== 'PAID' && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full flex items-center gap-1"><AlertTriangle size={10} /> Atrasado</span>}
                                         </div>
                                     </div>
                                 </div>
