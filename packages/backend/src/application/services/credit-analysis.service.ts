@@ -24,8 +24,8 @@ const MIN_SCORE_FOR_LOAN = 0; // Removido bloqueio por score - garantia real via
 const MIN_MARKETPLACE_TRANSACTIONS = 0; // Se tem cota, já é parceiro
 const MIN_ACCOUNT_AGE_DAYS = 0;  // Liberação imediata para detentores de cotas
 const SYSTEM_LIQUIDITY_RESERVE = 0.30;
-const LIMIT_PERCENTAGE_OF_SPENT = 0.80; // 80% do que "sumiu" (gastou/taxas)
-const LIMIT_PERCENTAGE_OF_QUOTAS = 0.70; // 70% do capital social (cotas) - Atualizado para LTV de 70%
+const LIMIT_PERCENTAGE_OF_SPENT = 0.70; // 70% do que "sumiu" (gastou/taxas)
+const LIMIT_PERCENTAGE_OF_QUOTAS = 1.00; // 100% do capital social (cotas) - Garantia Real Integral
 
 // Tabela de juros baseada na garantia
 const INTEREST_RATES: { [key: number]: number } = {
@@ -124,8 +124,8 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         const profitBonusFactor = systemProfitPool > 0 ? 0.20 : 0;
         const userProfitShare = (systemProfitPool * (quotasCount / systemTotalQuotas));
 
-        // Limite = (80% + bônus) do gasto + (50% + bônus) do valor das cotas + Lucro Real Proporcional
-        // Com bônus de 0.20: Gasto vai para 100% e Cotas para 70%
+        // Limite = (70% + bônus) do gasto + (100% + bônus) do valor das cotas + Lucro Real Proporcional
+        // Com bônus de 0.20: Gasto vai para 90% e Cotas para 120%
         const spentLimit = totalSpent * (LIMIT_PERCENTAGE_OF_SPENT + profitBonusFactor);
         const quotasLimit = quotasValue * (LIMIT_PERCENTAGE_OF_QUOTAS + profitBonusFactor);
         const maxLoanAmount = Math.floor(spentLimit + quotasLimit + userProfitShare);
