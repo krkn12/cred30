@@ -21,6 +21,21 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
     const [guarantorId, setGuarantorId] = useState('');
     const [payModalId, setPayModalId] = useState<string | null>(null);
 
+    // Helpers de formatação segura (Null-Safety)
+    const formatBRL = (val: number | null | undefined) => {
+        return (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    };
+
+    const formatNumber = (val: number | null | undefined) => {
+        return (val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    };
+
+    const getDaysRemaining = (dueDate: string | number | null | undefined) => {
+        if (!dueDate) return 'N/A';
+        const days = Math.ceil((new Date(dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        return days > 0 ? days : 0;
+    };
+
     const [viewDetailsId, setViewDetailsId] = useState<string | null>(null);
     const [installmentModalData, setInstallmentModalData] = useState<{ loanId: string, installmentAmount: number } | null>(null);
 
@@ -92,8 +107,8 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                 <div>
                                     <p className="text-yellow-500 text-xs font-bold uppercase mb-1">Ação Requerida</p>
                                     <p className="text-white text-sm">
-                                        <span className="font-bold">{req.requesterName}</span> solicitou que você seja fiador de um apoio de
-                                        <span className="font-bold text-yellow-400 ml-1">{req.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>.
+                                        <span className="font-bold">{req.requesterName || 'Usuário'}</span> solicitou que você seja fiador de um apoio de
+                                        <span className="font-bold text-yellow-400 ml-1">{formatBRL(req.amount)}</span>.
                                     </p>
                                     <p className="text-zinc-500 text-xs mt-1 italic">* Suas cotas serão usadas como garantia se você aceitar.</p>
                                 </div>
@@ -127,11 +142,11 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
                         <div>
                             <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1 block">Apoio Mútuo em Aberto</span>
-                            <h3 className="text-2xl sm:text-3xl font-black text-white">R$ {activeLoans.length > 0 ? activeLoans[0].amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}</h3>
+                            <h3 className="text-2xl sm:text-3xl font-black text-white">R$ {activeLoans.length > 0 ? formatNumber(activeLoans[0].amount) : '0,00'}</h3>
                         </div>
                         <div className="bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 rounded-lg flex items-center gap-2 self-start sm:self-auto">
                             <Clock size={14} className="text-yellow-500" />
-                            <span className="text-yellow-500 text-xs font-bold uppercase">Vence em {activeLoans.length > 0 && activeLoans[0].dueDate ? Math.ceil((new Date(activeLoans[0].dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 'N/A'} dias</span>
+                            <span className="text-yellow-500 text-xs font-bold uppercase">Vence em {activeLoans.length > 0 ? getDaysRemaining(activeLoans[0].dueDate) : 'N/A'} dias</span>
                         </div>
                     </div>
 
@@ -143,8 +158,8 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                             />
                         </div>
                         <div className="flex justify-between text-xs font-medium text-zinc-500">
-                            <span>Pago: R$ {activeLoans.length > 0 ? (activeLoans[0].totalPaid || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}</span>
-                            <span>Total: R$ {activeLoans.length > 0 ? activeLoans[0].totalRepayment.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}</span>
+                            <span>Pago: R$ {activeLoans.length > 0 ? formatNumber(activeLoans[0].totalPaid) : '0,00'}</span>
+                            <span>Total: R$ {activeLoans.length > 0 ? formatNumber(activeLoans[0].totalRepayment) : '0,00'}</span>
                         </div>
                     </div>
 
@@ -203,17 +218,17 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                             ) : (
                                 <>
                                     <div className="flex justify-between items-center mb-2">
-                                        <span className="text-2xl font-bold text-white">{creditLimit.remainingLimit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                                        <span className="text-xs text-zinc-400">de {creditLimit.totalLimit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                        <span className="text-2xl font-bold text-white">{formatBRL(creditLimit.remainingLimit)}</span>
+                                        <span className="text-xs text-zinc-400">de {formatBRL(creditLimit.totalLimit)}</span>
                                     </div>
                                     <div className="w-full h-2 bg-background rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-gradient-to-r from-emerald-500 to-primary-500 transition-all"
-                                            style={{ width: `${Math.max(0, Math.min(100, (creditLimit.remainingLimit / creditLimit.totalLimit) * 100))}%` }}
+                                            style={{ width: `${Math.max(0, Math.min(100, (creditLimit.remainingLimit / (creditLimit.totalLimit || 1)) * 100))}%` }}
                                         />
                                     </div>
                                     {creditLimit.activeDebt > 0 && (
-                                        <p className="text-xs text-zinc-500 mt-2">Você tem {creditLimit.activeDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em compromissos ativos.</p>
+                                        <p className="text-xs text-zinc-500 mt-2">Você tem {formatBRL(creditLimit.activeDebt)} em compromissos ativos.</p>
                                     )}
                                 </>
                             )}
@@ -323,20 +338,20 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                 <div className="space-y-3">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-zinc-500">Valor Solicitado</span>
-                                        <span className="text-white font-medium">{amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                        <span className="text-white font-medium">{formatBRL(amount)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-zinc-500">Taxa de Manutenção ({(effectiveInterestRate * 100).toFixed(0)}%)</span>
-                                        <span className="text-red-400 font-medium">{(totalRepay - amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                        <span className="text-red-400 font-medium">{formatBRL(totalRepay - amount)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-zinc-500">Valor da Reposição</span>
-                                        <span className="text-primary-400 font-medium">{monthlyPayment.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                        <span className="text-primary-400 font-medium">{formatBRL(monthlyPayment)}</span>
                                     </div>
                                     <div className="h-px bg-zinc-800 my-2"></div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-zinc-400 text-sm">Total a Repor</span>
-                                        <span className="text-xl font-bold text-white">{totalRepay.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                        <span className="text-xl font-bold text-white">{formatBRL(totalRepay)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -392,7 +407,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                         <DollarSign size={20} />
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-white text-lg">{loan.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</h4>
+                                        <h4 className="font-bold text-white text-lg">{formatBRL(loan.amount)}</h4>
                                         <div className="flex items-center gap-2">
                                             <span className={`text-xs px-2 py-0.5 rounded-full ${loan.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400' :
                                                 loan.status === 'PENDING' ? 'bg-yellow-500/10 text-yellow-400' :
@@ -411,7 +426,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
 
                                 <div className="text-right">
                                     <p className="text-xs text-zinc-400">Restante</p>
-                                    <p className="font-bold text-white">{remainingAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                    <p className="font-bold text-white">{formatBRL(remainingAmount)}</p>
                                 </div>
                             </div>
 
@@ -492,14 +507,14 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
 
                         <h3 className="text-xl font-bold text-white mb-4">Finalizar Compromisso</h3>
                         <p className="text-zinc-400 text-sm mb-6">
-                            Você está prestes a repor o valor total de <strong className="text-white">{selectedLoan.totalRepayment.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong> para o clube.
+                            Você está prestes a repor o valor total de <strong className="text-white">{formatBRL(selectedLoan.totalRepayment)}</strong> para o clube.
                         </p>
 
                         <div className="space-y-4">
                             <div className="bg-background p-3 rounded-xl border border-surfaceHighlight">
                                 <div className="flex justify-between text-sm mb-1">
                                     <span className="text-zinc-400">Seu Saldo</span>
-                                    <span className="text-white font-bold">{userBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                    <span className="text-white font-bold">{formatBRL(userBalance)}</span>
                                 </div>
                             </div>
 
@@ -535,14 +550,14 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
 
                         <h3 className="text-xl font-bold text-white mb-4">Repor Parcela</h3>
                         <p className="text-zinc-400 text-sm mb-6">
-                            Valor da parcela: <strong className="text-white">{installmentModalData.installmentAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                            Valor da parcela: <strong className="text-white">{formatBRL(installmentModalData.installmentAmount)}</strong>
                         </p>
 
                         <div className="space-y-4">
                             <div className="bg-background p-3 rounded-xl border border-surfaceHighlight">
                                 <div className="flex justify-between text-sm mb-1">
                                     <span className="text-zinc-400">Seu Saldo</span>
-                                    <span className="text-white font-bold">{userBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                    <span className="text-white font-bold">{formatBRL(userBalance)}</span>
                                 </div>
                             </div>
 
