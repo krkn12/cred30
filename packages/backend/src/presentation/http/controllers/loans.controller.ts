@@ -335,6 +335,8 @@ export class LoansController {
                     // 4. Distribuição Contábil
                     const profitShare = remainingInterest * 0.80; // 80% dos juros para cotistas
                     const systemShare = remainingInterest * 0.20; // 20% dos juros para o sistema
+
+                    // Dividir a parte do sistema nas reservas (25% de 20% = 5% do total juros cada)
                     const taxPart = systemShare * 0.25;
                     const operPart = systemShare * 0.25;
                     const ownerPart = systemShare * 0.25;
@@ -342,17 +344,17 @@ export class LoansController {
 
                     await client.query(`
                         UPDATE system_config SET 
-                            investment_reserve = COALESCE(investment_reserve, 0) + $1,
+                            investment_reserve = COALESCE(investment_reserve, 0) + $1 + $7,
                             profit_pool = profit_pool + $2,
-                            system_balance = system_balance + $3,
-                            total_tax_reserve = total_tax_reserve + $4,
-                            total_operational_reserve = total_operational_reserve + $5,
-                            total_owner_profit = total_owner_profit + $6
-                        `, [remainingPrincipal, profitShare, systemShare, taxPart, operPart, ownerPart]
+                            -- O system_balance NÃO aumenta aqui pois o dinheiro já está no sistema (apenas mudou de user balance para house balance)
+                            total_tax_reserve = total_tax_reserve + $3,
+                            total_operational_reserve = total_operational_reserve + $4,
+                            total_owner_profit = total_owner_profit + $5
+                        `, [remainingPrincipal, profitShare, taxPart, operPart, ownerPart, investPart]
                     );
 
                     // 5. Atualizar Score
-                    await updateScore(pool, user.id, SCORE_REWARDS.LOAN_PAYMENT_ON_TIME, 'Quitação antecipada total');
+                    await updateScore(client, user.id, SCORE_REWARDS.LOAN_PAYMENT_ON_TIME, 'Quitação antecipada total');
                 });
 
                 return c.json({ success: true, message: 'Apoio quitado com sucesso!' });
@@ -399,81 +401,109 @@ export class LoansController {
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
 
-            const loanResult = await pool.query('SELECT * FROM loans WHERE id = $1 AND user_id = $2', [loanId, user.id]);
-            if (loanResult.rows.length === 0) return c.json({ success: false, message: 'Apoio não encontrado' }, 404);
-            const loan = loanResult.rows[0];
-            if (loan.status !== 'APPROVED') return c.json({ success: false, message: 'Apoio não está ativo' }, 400);
+            const result = await executeInTransaction(pool, async (client: PoolClient) => {
+                // 1. Buscar empréstimo com bloqueio
+                const loanResult = await client.query('SELECT * FROM loans WHERE id = $1 AND user_id = $2 FOR UPDATE', [loanId, user.id]);
+                if (loanResult.rows.length === 0) throw new Error('Apoio não encontrado');
+                const loan = loanResult.rows[0];
+                if (loan.status !== 'APPROVED') throw new Error('Apoio não está ativo para reposição');
 
-            const paidInstallmentsResult = await pool.query('SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) as paid_amount FROM loan_installments WHERE loan_id = $1', [loanId]);
-            const paidAmount = parseFloat(paidInstallmentsResult.rows[0].paid_amount);
-            const remainingAmountPre = parseFloat(loan.total_repayment) - paidAmount;
+                // 2. Verificar saldo devedor
+                const paidInstallmentsResult = await client.query('SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) as paid_amount FROM loan_installments WHERE loan_id = $1', [loanId]);
+                const paidAmount = parseFloat(paidInstallmentsResult.rows[0].paid_amount);
+                const remainingAmountPre = parseFloat(loan.total_repayment) - paidAmount;
 
-            const method: PaymentMethod = useBalance ? 'balance' : (paymentMethod as PaymentMethod);
-            const { total: finalInstallmentCost } = calculateTotalToPay(installmentAmount, method);
+                if (installmentAmount > remainingAmountPre + 0.01) {
+                    throw new Error(`Valor excede o restante (Restante: R$ ${remainingAmountPre.toFixed(2)})`);
+                }
 
-            if (installmentAmount > remainingAmountPre) return c.json({ success: false, message: 'Valor excede o restante' }, 400);
+                const method: PaymentMethod = useBalance ? 'balance' : (paymentMethod as PaymentMethod);
+                const { total: finalInstallmentCost } = calculateTotalToPay(installmentAmount, method);
 
-            if (!useBalance) {
-                await pool.query(
-                    `INSERT INTO transactions (user_id, type, amount, description, status, metadata)
-           VALUES ($1, 'LOAN_PAYMENT', $2, $3, 'PENDING', $4)`,
-                    [user.id, finalInstallmentCost, `Parcela (PIX Manual)`, JSON.stringify({ loanId, installmentAmount, isInstallment: true, manualPix: true })]
+                // FLUXO PIX MANUAL
+                if (!useBalance) {
+                    await client.query(
+                        `INSERT INTO transactions (user_id, type, amount, description, status, metadata)
+                         VALUES ($1, 'LOAN_PAYMENT', $2, $3, 'PENDING', $4)`,
+                        [user.id, finalInstallmentCost, `Parcela (PIX Manual)`, JSON.stringify({ loanId, installmentAmount, isInstallment: true, manualPix: true })]
+                    );
+
+                    return { success: true, manualPix: true, finalCost: finalInstallmentCost };
+                }
+
+                // FLUXO SALDO INTERNO
+                const balanceLock = await client.query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [user.id]);
+                const currentBalance = parseFloat(balanceLock.rows[0].balance);
+
+                if (currentBalance < installmentAmount) {
+                    throw new Error('Saldo insuficiente para pagar esta parcela.');
+                }
+
+                // A. Debitar saldo
+                await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [installmentAmount, user.id]);
+
+                // B. Registrar parcela
+                await client.query('INSERT INTO loan_installments (loan_id, amount, use_balance, created_at) VALUES ($1, $2, $3, $4)', [loanId, installmentAmount, true, new Date()]);
+
+                // C. Distribuição Contábil
+                const principalPortion = installmentAmount * (parseFloat(loan.amount) / parseFloat(loan.total_repayment));
+                const interestPortion = Math.max(0, installmentAmount - principalPortion);
+
+                const profitShare = interestPortion * 0.80; // 80% dos juros para cotistas
+                const systemShare = interestPortion * 0.20; // 20% dos juros para o sistema
+
+                const taxPart = systemShare * 0.25;
+                const operPart = systemShare * 0.25;
+                const ownerPart = systemShare * 0.25;
+                const investPart = systemShare * 0.25;
+
+                await client.query(`
+                    UPDATE system_config SET 
+                        investment_reserve = COALESCE(investment_reserve, 0) + $1 + $6,
+                        profit_pool = profit_pool + $2,
+                        -- O system_balance NÃO aumenta aqui pois o dinheiro já está no sistema
+                        total_tax_reserve = total_tax_reserve + $3,
+                        total_operational_reserve = total_operational_reserve + $4,
+                        total_owner_profit = total_owner_profit + $5
+                    `, [principalPortion, profitShare, taxPart, operPart, ownerPart, investPart]
                 );
 
+                // D. Verificar quitação total
+                const newPaidAmount = paidAmount + installmentAmount;
+                if (newPaidAmount >= parseFloat(loan.total_repayment) - 0.01) {
+                    await client.query('UPDATE loans SET status = $1 WHERE id = $2', ['PAID', loanId]);
+                    await updateScore(client, user.id, SCORE_REWARDS.LOAN_PAYMENT_ON_TIME, 'Reposição integral via parcelas');
+                }
+
+                return { success: true, manualPix: false, remainingAmount: Math.max(0, remainingAmountPre - installmentAmount) };
+            });
+
+            if (!result.success) {
+                return c.json({ success: false, message: result.error || 'Erro ao processar pagamento' }, 400);
+            }
+
+            if (result.data?.manualPix) {
                 return c.json({
                     success: true,
                     message: 'Realize a transferência PIX para confirmar!',
                     data: {
-                        finalCost: finalInstallmentCost,
+                        finalCost: result.data.finalCost,
                         manualPix: {
                             key: ADMIN_PIX_KEY,
-                            owner: 'Cred30',
-                            amount: finalInstallmentCost,
+                            owner: 'Cred30 (Admin)',
+                            amount: result.data.finalCost,
                             description: `Parcela do Apoio - ID ${loanId}`
                         }
                     }
                 });
             }
 
-            if (user.balance < installmentAmount) return c.json({ success: false, message: 'Saldo insuficiente' }, 400);
+            return c.json({
+                success: true,
+                message: 'Parcela paga com sucesso!',
+                data: { remainingAmount: result.data?.remainingAmount }
+            });
 
-            await pool.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [installmentAmount, user.id]);
-            await pool.query('INSERT INTO loan_installments (loan_id, amount, use_balance, created_at) VALUES ($1, $2, $3, $4)', [loanId, installmentAmount, true, new Date()]);
-
-            const principalPortion = installmentAmount * (parseFloat(loan.amount) / parseFloat(loan.total_repayment));
-            const interestPortion = Math.max(0, installmentAmount - principalPortion);
-
-            // DISTRIBUIÇÃO CONTÁBIL CORRETA
-            // 1. Principal volta para o fundo de investimento (repor liquidez)
-            // 2. Juros: 80% para Cotistas (Profit Pool) e 20% para a Plataforma (Sistema)
-
-            const profitShare = interestPortion * 0.80; // 80% dos juros para cotistas
-            const systemShare = interestPortion * 0.20; // 20% dos juros para o sistema
-
-            // Dividir a parte do sistema nas reservas (25% de 20% = 5% do total juros cada)
-            const taxPart = systemShare * 0.25;
-            const operPart = systemShare * 0.25;
-            const ownerPart = systemShare * 0.25;
-            const investPart = systemShare * 0.25;
-
-            await pool.query(`
-                UPDATE system_config SET 
-                    investment_reserve = COALESCE(investment_reserve, 0) + $1,
-                    profit_pool = profit_pool + $2,
-                    system_balance = system_balance + $3,
-                    total_tax_reserve = total_tax_reserve + $4,
-                    total_operational_reserve = total_operational_reserve + $5,
-                    total_owner_profit = total_owner_profit + $6
-                `, [principalPortion, profitShare, systemShare, taxPart, operPart, ownerPart]
-            );
-
-            const newPaidAmount = paidAmount + installmentAmount;
-            if (newPaidAmount >= parseFloat(loan.total_repayment)) {
-                await pool.query('UPDATE loans SET status = $1 WHERE id = $2', ['PAID', loanId]);
-                await updateScore(pool, user.id, SCORE_REWARDS.LOAN_PAYMENT_ON_TIME, 'Reposição integral em dia');
-            }
-
-            return c.json({ success: true, message: 'Parcela paga!', data: { remainingAmount: Math.max(0, remainingAmountPre - installmentAmount) } });
         } catch (error) {
             if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
             console.error('Erro ao pagar parcela:', error);

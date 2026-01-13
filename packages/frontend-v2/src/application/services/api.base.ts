@@ -125,17 +125,31 @@ export class ApiBase {
         return this.request<T>(endpoint, { method: 'GET' });
     }
 
+    private safeJsonStringify(obj: any): string {
+        const cache = new Set();
+        return JSON.stringify(obj, (_key, value) => {
+            if (typeof value === 'object' && value !== null) {
+                if (cache.has(value)) {
+                    // Circular reference found, discard key
+                    return;
+                }
+                cache.add(value);
+            }
+            return value;
+        });
+    }
+
     public async post<T>(endpoint: string, body: any): Promise<ApiResponse<T>> {
         return this.request<T>(endpoint, {
             method: 'POST',
-            body: JSON.stringify(body),
+            body: this.safeJsonStringify(body),
         });
     }
 
     public async put<T>(endpoint: string, body: any): Promise<ApiResponse<T>> {
         return this.request<T>(endpoint, {
             method: 'PUT',
-            body: JSON.stringify(body),
+            body: this.safeJsonStringify(body),
         });
     }
 

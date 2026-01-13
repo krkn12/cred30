@@ -91,7 +91,7 @@ const convertApiLoanToLoan = (apiLoan: any): Loan => {
     : (apiLoan.remainingAmount || totalRepayment);
 
   return {
-    id: apiLoan.id,
+    id: String(apiLoan.id || ''),
     userId: String(apiLoan.userId || apiLoan.user_id || ''),
     amount: amount || 0,
     totalRepayment: totalRepayment || 0,
@@ -179,8 +179,8 @@ export const loadState = async (): Promise<AppState> => {
           console.log('Buscando dashboard administrativo...');
           const dashboard = await apiService.getAdminDashboard();
 
-          // DEBUG: Log completo da resposta
-          console.log('DEBUG - Resposta completa do dashboard:', JSON.stringify(dashboard, null, 2));
+          // Log removido para evitar erro de circularidade em objetos grandes
+          console.log('Dados do dashboard administrativo carregados.');
 
           // Acessar dados aninhados corretamente
           systemBalance = dashboard.data?.systemConfig?.system_balance || dashboard.systemConfig?.system_balance || 0;
