@@ -312,7 +312,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                     <input
                                         type="number"
                                         min="1"
-                                        max="24"
+                                        max="12"
                                         value={months}
                                         onChange={(e) => setMonths(Math.max(1, Number(e.target.value)))}
                                         className="w-full bg-background border border-surfaceHighlight rounded-xl py-4 px-4 text-white text-lg font-bold focus:border-primary-500 outline-none transition"
@@ -321,7 +321,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 font-medium">meses</span>
                                 </div>
                                 <div className="flex gap-2 mt-2">
-                                    {[1, 3, 6, 12, 24].map(val => (
+                                    {[1, 3, 6, 12].map(val => (
                                         <button
                                             key={val}
                                             onClick={() => setMonths(val)}
