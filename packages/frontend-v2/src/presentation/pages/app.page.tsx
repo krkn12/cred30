@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from '../components/layout/main-layout.component';
 import { UpdateNotification } from '../components/ui/update-notification.component';
-import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, changePassword, apiService, requestDeposit, upgradePro, clearPendingItemsCache, deleteUserAccount } from '../../application/services/storage.service';
+import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, repayInstallment, changePassword, apiService, requestDeposit, upgradePro, clearPendingItemsCache, deleteUserAccount } from '../../application/services/storage.service';
 import { syncService } from '../../application/services/sync.service';
 import { AppState } from '../../domain/types/common.types';
 import { Check, X as XIcon, RefreshCw, AlertTriangle, Users, Copy, TrendingUp } from 'lucide-react';
@@ -346,6 +346,20 @@ export default function App() {
     }
   };
 
+  const handlePayInstallment = async (loanId: string, amount: number, useBalance: boolean = true) => {
+    try {
+      const result = await repayInstallment(loanId, amount, useBalance);
+      if (result.success) {
+        setShowSuccess({ isOpen: true, title: 'Parcela Paga', message: result.message });
+        refreshState();
+      } else {
+        setShowError({ isOpen: true, title: 'Erro', message: result.message });
+      }
+    } catch (e: any) {
+      setShowError({ isOpen: true, title: 'Erro', message: e.message });
+    }
+  };
+
 
 
   const handleDeposit = async (amount: number, senderName?: string) => {
@@ -501,8 +515,8 @@ export default function App() {
                       loans={state.loans}
                       onRequest={handleRequestLoan}
                       onGuarantorRespond={handleGuarantorRespond}
-                      onPay={(loanId, _full, _method) => handleRepayLoan(loanId)}
-                      onPayInstallment={() => { }}
+                      onPay={(loanId) => handleRepayLoan(loanId)}
+                      onPayInstallment={handlePayInstallment}
                       userBalance={state.currentUser?.balance || 0}
                       currentUser={state.currentUser}
                     />
