@@ -346,13 +346,13 @@ export class LoansController {
 
                     await client.query(`
                         UPDATE system_config SET 
-                            system_balance = COALESCE(system_balance, 0) + $8,
-                            investment_reserve = COALESCE(investment_reserve, 0) + $1 + $6,
-                            profit_pool = profit_pool + $2,
-                            total_tax_reserve = total_tax_reserve + $3,
-                            total_operational_reserve = total_operational_reserve + $4,
-                            total_owner_profit = total_owner_profit + $5
-                        `, [remainingPrincipal, profitShare, taxPart, operPart, ownerPart, investPart, null, remainingToPay]
+                            system_balance = COALESCE(system_balance, 0) + $1,
+                            investment_reserve = COALESCE(investment_reserve, 0) + $2,
+                            profit_pool = profit_pool + $3,
+                            total_tax_reserve = total_tax_reserve + $4,
+                            total_operational_reserve = total_operational_reserve + $5,
+                            total_owner_profit = total_owner_profit + $6
+                        `, [remainingToPay, remainingPrincipal + investPart, profitShare, taxPart, operPart, ownerPart]
                     );
 
                     // 6. Atualizar Score
