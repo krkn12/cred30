@@ -1,7 +1,7 @@
 {
     "name": "cred30-frontend-v2",
     "private": true,
-    "version": "1.0.519",
+    "version": "1.0.520",
     "type": "module",
     "scripts": {
         "dev": "vite",
@@ -16,6 +16,7 @@
         "@yudiel/react-qr-scanner": "^2.5.0",
         "axios": "^1.6.7",
         "firebase": "^12.7.0",
+        "framer-motion": "^12.26.2",
         "hono": "4.11.2",
         "jspdf": "^3.0.4",
         "leaflet": "^1.9.4",
@@ -23,7 +24,8 @@
         "qrcode.react": "^4.2.0",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
-        "react-router-dom": "^6.22.3"
+        "react-router-dom": "^6.22.3",
+        "sonner": "^2.0.7"
     },
     "devDependencies": {
         "@types/node": "^20.11.24",
