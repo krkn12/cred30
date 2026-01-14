@@ -124,18 +124,22 @@ export const AdminFiscal = () => {
                                         <p className="text-2xl font-black text-white">{formatCurrency(report.gross_revenue)}</p>
                                     </div>
                                 </div>
-                                <div className="space-y-2 pt-4 border-t border-zinc-800/50">
-                                    <div className="flex justify-between text-xs">
-                                        <span className="text-zinc-500">Comissões Marketplace</span>
-                                        <span className="text-zinc-300 font-bold">{formatCurrency(report.details.marketplace_commissions)}</span>
+                                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-800/50">
+                                    <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
+                                        <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Comissões Marketplace</p>
+                                        <p className="text-xl font-black text-white">{formatCurrency(report.details.marketplace_commissions)}</p>
                                     </div>
-                                    <div className="flex justify-between text-xs">
-                                        <span className="text-zinc-500">Lucro Logístico</span>
-                                        <span className="text-zinc-300 font-bold">{formatCurrency(report.details.logistics_margin)}</span>
+                                    <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
+                                        <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Margem Logística (27.5%)</p>
+                                        <p className="text-xl font-black text-white">{formatCurrency(report.details.logistics_margin)}</p>
                                     </div>
-                                    <div className="flex justify-between text-xs">
-                                        <span className="text-zinc-500">Taxas de Saque</span>
-                                        <span className="text-zinc-300 font-bold">{formatCurrency(report.details.withdrawal_fees)}</span>
+                                    <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
+                                        <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Taxas de Manutenção</p>
+                                        <p className="text-xl font-black text-white">{formatCurrency(report.details.quota_maintenance_fees)}</p>
+                                    </div>
+                                    <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
+                                        <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Juros de Empréstimos</p>
+                                        <p className="text-xl font-black text-white">{formatCurrency(report.details.loan_interest_revenue)}</p>
                                     </div>
                                 </div>
                             </div>

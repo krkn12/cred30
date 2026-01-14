@@ -1,66 +1,27 @@
-const { Pool } = require('pg');
 require('dotenv').config({ path: 'packages/backend/.env' });
-const fs = require('fs');
+const { Pool } = require('pg');
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-});
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-async function safeQuery(pool, label, query) {
+async function debugFull() {
     try {
-        console.log(`Querying ${label}...`);
-        const res = await pool.query(query);
-        console.log(`✅ ${label}: ${res.rowCount} rows`);
-        return res.rows;
-    } catch (err) {
-        console.error(`❌ Error querying ${label}:`, err.message);
-        return [];
-    }
-}
+        console.log('\n=== ALL TRANSACTIONS ===');
+        const tx = await pool.query("SELECT id, user_id, type, amount, status, metadata FROM transactions ORDER BY id DESC");
+        tx.rows.forEach(r => {
+            console.log(`[${r.id}] ${r.type} | R$ ${r.amount} | ${r.status} | Meta: ${JSON.stringify(r.metadata)}`);
+        });
 
-async function dump() {
-    try {
-        console.log('--- DUMPING FULL DB CONTEXT (ROBUST) ---');
-
-        const users = await safeQuery(pool, 'Users', 'SELECT id, name, email, balance, score, pix_key, created_at, is_admin FROM users');
-
-        const loans = await safeQuery(pool, 'Loans', `
-            SELECT l.*, u.name as user_name 
-            FROM loans l 
-            JOIN users u ON l.user_id = u.id 
-            ORDER BY l.created_at DESC
-        `);
-
-        // Transaction tables often change schemas, let's keep it simple
-        const transactions = await safeQuery(pool, 'Transactions', `
-            SELECT t.*, u.name as user_name 
-            FROM transactions t 
-            JOIN users u ON t.user_id = u.id 
-            ORDER BY t.created_at DESC 
-            LIMIT 200
-        `);
-
-        // Check loan_installments columns blindly first or just select *
-        const installments = await safeQuery(pool, 'Installments', 'SELECT * FROM loan_installments');
-
-        const dumpData = {
-            timestamp: new Date().toISOString(),
-            users,
-            loans,
-            transactions,
-            installments
-        };
-
-        const filename = 'full_db_dump.json';
-        fs.writeFileSync(filename, JSON.stringify(dumpData, null, 2));
-        console.log(`\nDump completo salvo em ${filename}`);
+        console.log('\n=== ALL LOANS ===');
+        const loans = await pool.query("SELECT * FROM loans");
+        loans.rows.forEach(r => {
+            console.log(`Loan [${r.id}] User: ${r.user_id} | Amount: ${r.amount} | Status: ${r.status}`);
+        });
 
     } catch (err) {
-        console.error('Fatal dump error:', err);
+        console.error(err);
     } finally {
         await pool.end();
     }
 }
 
-dump();
+debugFull();

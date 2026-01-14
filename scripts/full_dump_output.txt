@@ -1,0 +1,7 @@
+[dotenv@17.2.3] injecting env (15) from packages\backend\.env -- tip: ÔÜÖ´©Å  load multiple .env files with { path: ['.env.local', '.env'] }
+
+=== ALL TRANSACTIONS ===
+[95] BUY_QUOTA | R$ 150.00 | APPROVED | Meta: {"quantity":3,"serviceFee":24,"useBalance":true,"paymentMethod":"balance"}
+[94] DEPOSIT | R$ 500.00 | APPROVED | Meta: {"method":"MANUAL_PIX"}
+
+=== ALL LOANS ===

@@ -582,30 +582,34 @@ export class AdminFinanceController {
             const revenueFromMarketplace = parseFloat(marketplaceRes.rows[0].marketplace_fees);
             const revenueFromFees = parseFloat(feesRes.rows[0].direct_fees);
             const revenueFromLogistics = parseFloat(logisticsProfitRes.rows[0].logistics_profit);
+            const revenueFromQuotas = parseFloat(quotaFeesRes.rows[0].quota_fees);
+            const revenueFromLoans = parseFloat(loanInterestRes.rows[0].loan_revenue);
 
-            const grossRevenue = revenueFromMarketplace + revenueFromFees + revenueFromLogistics; // Faturamento do Sistema
-            const netProfit = grossRevenue - totalDividends; // Lucro Real (Faturamento - Repasses aos Sócios)
+            const grossRevenue = revenueFromMarketplace + revenueFromFees + revenueFromLogistics + revenueFromQuotas + revenueFromLoans;
+            const netProfit = grossRevenue - totalDividends;
 
             const fiscalSummary = {
                 period: isAllTime ? 'Histórico Completo' : `${month}/${year}`,
 
                 // Fluxo de Caixa
-                total_inflow: totalInflow,   // Entradas
-                total_outflow: totalOutflow, // Saídas
+                total_inflow: totalInflow,
+                total_outflow: totalOutflow,
 
                 // Resultado Econômico
-                gross_revenue: grossRevenue, // Faturamento (Receita Tributável)
-                total_dividends: totalDividends, // Distribuição de Lucros
-                net_profit: netProfit,       // Lucro Líquido Real
+                gross_revenue: grossRevenue,
+                total_dividends: totalDividends,
+                net_profit: netProfit,
 
                 // Detalhamento
                 details: {
                     marketplace_commissions: revenueFromMarketplace,
                     logistics_margin: revenueFromLogistics,
                     withdrawal_fees: revenueFromFees,
+                    quota_maintenance_fees: revenueFromQuotas,
+                    loan_interest_revenue: revenueFromLoans,
                     total_owner_profit: parseFloat(config.total_owner_profit || 0),
                     system_balance: parseFloat(config.system_balance || 0),
-                    volume_transitory: totalInflow - grossRevenue // Dinheiro de terceiros
+                    volume_transitory: totalInflow - grossRevenue
                 },
 
                 legal_notice: "Relatório gerencial de fluxo de caixa e resultado econômico."
