@@ -512,12 +512,17 @@ export class AdminFinanceController {
             }
 
             // 1. Entradas Totais (Gross Inflow) - Dinheiro NOVO entrando
-            // Depósitos, Pagamentos de Pedidos (Pix), Compra de Cotas (Pix/Saldo)
+            // Apenas Depósitos e Pagamentos via PIX externo.
+            // Uso de saldo (Circular) NÃO deve somar aqui para evitar duplicidade.
             const inflowRes = await pool.query(`
                 SELECT COALESCE(SUM(amount), 0) as total_inflow
                 FROM transactions 
                 WHERE status = 'APPROVED' 
-                AND type IN ('DEPOSIT', 'ORDER_PAYMENT', 'BUY_QUOTA', 'LOAN_REPAYMENT')
+                AND (
+                    type = 'DEPOSIT' 
+                    OR (type = 'BUY_QUOTA' AND metadata->>'paymentMethod' = 'pix')
+                    OR (type = 'ORDER_PAYMENT' AND metadata->>'paymentMethod' = 'pix')
+                )
                 ${dateFilter}
             `, params);
 
