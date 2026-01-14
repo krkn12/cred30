@@ -3,7 +3,8 @@ import {
     Image as ImageIcon,
     Zap,
     MapPin,
-    Plus
+    Plus,
+    Truck
 } from 'lucide-react';
 import { VEHICLE_ICONS } from './marketplace.constants';
 
@@ -64,7 +65,7 @@ export const ListingCard = memo(({ item, currentUserId, onBoost, onDetails, onAd
                     )}
                     {item.item_type !== 'DIGITAL' && (
                         <div className="bg-zinc-900/80 backdrop-blur-md text-white text-[8px] px-2 py-1 rounded-full font-black flex items-center gap-1 border border-white/10 shadow-lg">
-                            {React.createElement(VEHICLE_ICONS[item.required_vehicle || 'MOTO'] || Zap, { size: 10 })}
+                            {React.createElement(VEHICLE_ICONS[item.required_vehicle || 'MOTO'] || Truck, { size: 10 })}
                             {item.required_vehicle || 'MOTO'}
                         </div>
                     )}

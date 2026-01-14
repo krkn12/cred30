@@ -1,6 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Truck, Package, Clock, Search, User, Store, Check, X, Eye, UserCheck, Bike, Car, Zap } from 'lucide-react';
+import { Truck, Package, Clock, Search, User, Store, Check, X, Eye, UserCheck, Bike, Car } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
+
+// Ícone de Moto customizado
+const MotorcycleIcon = ({ size = 12, className = '' }: { size?: number, className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="5" cy="17" r="2.5" />
+        <circle cx="19" cy="17" r="2.5" />
+        <path d="M12 17h-7" />
+        <path d="M16.5 17h-4.5" />
+        <path d="M14.5 17l1-5h3.5l2 5" />
+        <path d="M5.5 14l2-7h3l2.5 7" />
+        <path d="M9.5 7l1-2h2" />
+    </svg>
+);
 
 interface AdminLogisticsProps {
     state: any;
@@ -311,7 +324,7 @@ export const AdminLogistics = ({ state, onRefresh, onSuccess, onError }: AdminLo
                                                         <p className="text-zinc-500 text-xs">{courier.email}</p>
                                                     </div>
                                                     <span className="bg-primary-500/10 text-primary-400 border border-primary-500/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                                                        {courier.vehicle === 'BIKE' ? <Bike size={12} /> : courier.vehicle === 'MOTO' ? <Zap size={12} /> : <Car size={12} />}
+                                                        {courier.vehicle === 'BIKE' ? <Bike size={12} /> : courier.vehicle === 'MOTO' ? <MotorcycleIcon size={12} /> : <Car size={12} />}
                                                         {courier.vehicle}
                                                     </span>
                                                 </div>
