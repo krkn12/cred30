@@ -42,7 +42,7 @@ export class MarketplaceListingsController {
                 COALESCE(l.item_type, 'PHYSICAL') as item_type,
                 COALESCE(l.required_vehicle, 'MOTO') as required_vehicle,
                 COALESCE(l.stock, 1) as stock,
-                l.pickup_address
+                COALESCE(l.pickup_address, CONCAT_WS(', ', u.seller_address_neighborhood, u.seller_address_city, u.seller_address_state)) as pickup_address
          FROM marketplace_listings l 
          JOIN users u ON l.seller_id = u.id
              WHERE l.status = 'ACTIVE'
@@ -287,10 +287,24 @@ export class MarketplaceListingsController {
             const result = await pool.query(`
                 SELECT 
                     l.id, l.title, l.price, l.description, l.image_url, l.seller_id,
-                    u.name as seller_name, u.phone as seller_phone, u.address as seller_address,
+                    u.name as seller_name, 
+                    COALESCE(u.phone, u.pix_key) as seller_phone, 
+                    COALESCE(
+                        u.address,
+                        CONCAT_WS(', ', 
+                            u.seller_address_street, 
+                            u.seller_address_number, 
+                            u.seller_address_neighborhood, 
+                            CONCAT_WS('/', u.seller_address_city, u.seller_address_state)
+                        )
+                    ) as seller_address,
                     u.is_verified as seller_verified,
                     l.stock,
-                    l.pickup_address
+                    COALESCE(l.pickup_address, CONCAT_WS(', ', 
+                        u.seller_address_neighborhood, 
+                        u.seller_address_city, 
+                        u.seller_address_state
+                    )) as pickup_address
                 FROM marketplace_listings l
                 JOIN users u ON l.seller_id = u.id
                 WHERE l.id = $1 AND l.status = 'ACTIVE'
