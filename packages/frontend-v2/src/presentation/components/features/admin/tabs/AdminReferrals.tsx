@@ -23,7 +23,7 @@ export const AdminReferrals = ({ onSuccess, onError }: AdminReferralsProps) => {
         try {
             const response = await apiService.get<ReferralCode[]>('/admin/referral-codes');
             if (response.success) {
-                setReferralCodes(response.data || []);
+                setReferralCodes(Array.isArray(response.data) ? response.data : []);
             }
         } catch (error) {
             console.error('Erro ao buscar códigos:', error);
