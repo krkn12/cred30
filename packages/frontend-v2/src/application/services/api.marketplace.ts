@@ -130,3 +130,5 @@ export class MarketplaceApi extends ApiBase {
         return await this.request<any>(`/marketplace/seller/${sellerId}/profile`);
     }
 }
+
+export const apiMarketplace = new MarketplaceApi();
