@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Heart } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { apiMarketplace } from '../../../application/services/api.marketplace';
 
 interface FavoriteButtonProps {
@@ -47,32 +46,14 @@ export const FavoriteButton: React.FC<FavoriteButtonProps> = ({
     return (
         <button
             onClick={handleToggle}
-            className={`flex items-center justify-center transition-all active:scale-90 ${className}`}
+            className={`flex items-center justify-center transition-transform active:scale-90 ${className}`}
             disabled={isLoading}
             aria-label={isFavorited ? "Desfavoritar" : "Favoritar"}
         >
-            <AnimatePresence mode='wait'>
-                {isFavorited ? (
-                    <motion.div
-                        key="filled"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                    >
-                        <Heart size={size} className="fill-red-500 text-red-500 shadow-glow-red" />
-                    </motion.div>
-                ) : (
-                    <motion.div
-                        key="outline"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0 }}
-                    >
-                        <Heart size={size} className="text-zinc-400 hover:text-red-400 transition-colors" />
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <Heart
+                size={size}
+                className={`transition-colors duration-300 ${isFavorited ? 'fill-red-500 text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'text-zinc-400 hover:text-red-400'}`}
+            />
         </button>
     );
 };
