@@ -73,6 +73,7 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         const userDataRes = await pool.query(`
             SELECT 
                 u.score, 
+                u.membership_type,
                 u.created_at,
                 (SELECT COUNT(*) FROM quotas WHERE user_id = $1 AND (status = 'ACTIVE' OR status IS NULL)) as quotas_count,
                 (SELECT COALESCE(SUM(current_value), 0) FROM quotas WHERE user_id = $1 AND (status = 'ACTIVE' OR status IS NULL)) as total_quotas_value,
@@ -128,16 +129,21 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         // Fator: (Score / 1000) * 0.10. Ou seja, Score 1000 dá +10% de limite. Score 500 dá +5%.
         const scoreBonus = (score / 1000) * 0.10;
 
-        const userProfitShare = (systemProfitPool * (quotasCount / systemTotalQuotas));
+        // BÔNUS DE ASSINATURA PRO (Novo Pedido):
+        // Membros PRO ganham +5% de limite garantido pelo pagamento recorrente
+        const isPro = userData.membership_type === 'PRO';
+        const proBonus = isPro ? 0.05 : 0;
 
-        // Limite = (70% + bônus lucro + bônus score) do gasto + (70% + bônus lucro + bônus score) do valor das cotas
+        // Limite = (70% + bônus lucro + bônus score + bônus PRO) do gasto + (70% + bônus lucro + bônus score + bônus PRO) do valor das cotas
         // O Score potencializa tanto o mérito quanto a confiança na garantia
-        const totalBonus = profitBonusFactor + scoreBonus;
+        const totalBonus = profitBonusFactor + scoreBonus + proBonus;
 
         const spentLimit = totalSpent * (LIMIT_PERCENTAGE_OF_SPENT + totalBonus);
         const quotasLimit = quotasValue * (LIMIT_PERCENTAGE_OF_QUOTAS + totalBonus);
 
-        const maxLoanAmount = Math.floor(spentLimit + quotasLimit + userProfitShare);
+        // CORREÇÃO DE RISCO: Não somamos mais o userProfitShare direto.
+        // O lucro do sistema serve apenas para ativar o 'profitBonusFactor'.
+        const maxLoanAmount = Math.floor(spentLimit + quotasLimit);
 
         // NOVA VERIFICAÇÃO: O usuário já é fiador de alguém?
         const isGuarantorResult = await pool.query(`
