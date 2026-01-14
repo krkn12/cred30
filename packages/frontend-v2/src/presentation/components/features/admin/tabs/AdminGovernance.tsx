@@ -28,7 +28,7 @@ export const AdminGovernance: React.FC<AdminGovernanceProps> = ({ onSuccess, onE
         try {
             const res = await apiService.getProposals() as any;
             if (res.success) {
-                setProposals(res.data || []);
+                setProposals(Array.isArray(res.data) ? res.data : []);
             }
         } catch (e) {
             console.error('Erro ao buscar propostas:', e);

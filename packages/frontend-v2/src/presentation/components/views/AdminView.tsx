@@ -71,10 +71,10 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                 apiService.get<any>('/bugs/admin?status=open')
             ]);
 
-            setPendingApprovalsCount(approvalsRes?.length || 0);
-            setPendingPayoutsCount(payoutRes.transactions?.length || 0);
-            setPendingReviewsCount(reviewsRes.data?.filter((r: any) => r.is_public && !r.is_approved).length || 0);
-            setPendingBugsCount(bugsRes.data?.length || 0);
+            setPendingApprovalsCount(Array.isArray(approvalsRes?.data) ? approvalsRes.data.length : 0);
+            setPendingPayoutsCount(Array.isArray(payoutRes?.data?.transactions) ? payoutRes.data.transactions.length : 0);
+            setPendingReviewsCount(Array.isArray(reviewsRes?.data) ? reviewsRes.data.filter((r: any) => r.is_public && !r.is_approved).length : 0);
+            setPendingBugsCount(Array.isArray(bugsRes?.data) ? bugsRes.data.length : 0);
         } catch (e) {
             console.error('Error fetching admin counts:', e);
         }

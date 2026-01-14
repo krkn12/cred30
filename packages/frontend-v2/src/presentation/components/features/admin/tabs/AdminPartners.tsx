@@ -46,9 +46,9 @@ export const AdminPartners = ({ onSuccess, onError }: AdminPartnersProps) => {
 
             if (response.success) {
                 if (tab === 'couriers') {
-                    setCouriers(response.data || []);
+                    setCouriers(Array.isArray(response.data) ? response.data : []);
                 } else {
-                    setSellers(response.data || []);
+                    setSellers(Array.isArray(response.data) ? response.data : []);
                 }
             } else {
                 onError('Erro', response.message || 'Falha ao carregar dados');
