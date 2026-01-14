@@ -366,6 +366,9 @@ export class MonetizationController {
                     throw new Error(`Saldo insuficiente. A consulta custa R$ ${REPUTATION_CHECK_PRICE.toFixed(2)}.`);
                 }
 
+                // FIX: Debit the user's balance!
+                await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [REPUTATION_CHECK_PRICE, user.id]);
+
                 const targetRes = await client.query(
                     'SELECT name, score, is_verified, membership_type, created_at, status FROM users WHERE email = $1',
                     [targetEmail]
