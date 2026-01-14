@@ -25,7 +25,7 @@ export const AdminReviews: React.FC<AdminReviewsProps> = ({ onSuccess, onError }
         try {
             const res = await apiService.getAdminReviews() as any;
             if (res.success) {
-                setReviews(res.data || []);
+                setReviews(Array.isArray(res.data) ? res.data : []);
             }
         } catch (e) {
             console.error('Erro ao buscar avaliações:', e);

@@ -27,7 +27,8 @@ export const AdminLogistics = ({ state, onRefresh, onSuccess, onError }: AdminLo
         setLoading(true);
         try {
             const response = await apiService.get<any>('/logistics/my-deliveries');
-            setDeliveries(response.data?.deliveries || []);
+            const data = response.data || {};
+            setDeliveries(Array.isArray(data.deliveries) ? data.deliveries : []);
         } catch (error) {
             console.error('Error fetching logistics:', error);
         } finally {
@@ -39,7 +40,7 @@ export const AdminLogistics = ({ state, onRefresh, onSuccess, onError }: AdminLo
         setLoading(true);
         try {
             const response = await apiService.listPendingCouriers();
-            setPendingCouriers(response.data || []);
+            setPendingCouriers(Array.isArray(response.data) ? response.data : []);
         } catch (error) {
             console.error('Error fetching pending couriers:', error);
         } finally {
