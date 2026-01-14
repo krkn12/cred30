@@ -676,19 +676,19 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center mb-4">
                                         <div className="bg-background rounded-xl p-2 border border-surfaceHighlight">
                                             <p className="text-[8px] text-zinc-500 font-bold uppercase tracking-tighter">Views Totais</p>
-                                            <p className="font-black text-white text-xs">{campaign.totalViews.toLocaleString()}</p>
+                                            <p className="font-black text-white text-xs">{(campaign.totalViews || 0).toLocaleString()}</p>
                                         </div>
                                         <div className="bg-background rounded-xl p-2 border border-surfaceHighlight">
                                             <p className="text-[8px] text-zinc-500 font-bold uppercase tracking-tighter">Completas</p>
-                                            <p className="font-black text-emerald-400 text-xs">{campaign.completedViews.toLocaleString()}</p>
+                                            <p className="font-black text-emerald-400 text-xs">{(campaign.completedViews || 0).toLocaleString()}</p>
                                         </div>
                                         <div className="bg-background rounded-xl p-2 border border-surfaceHighlight">
                                             <p className="text-[8px] text-zinc-500 font-bold uppercase tracking-tighter">Investido</p>
-                                            <p className="font-black text-white text-xs">{campaign.spent.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                            <p className="font-black text-white text-xs">{(campaign.spent || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                                         </div>
                                         <div className="bg-background rounded-xl p-2 border border-primary-500/20 bg-primary-500/5">
                                             <p className="text-[8px] text-primary-500/70 font-bold uppercase tracking-tighter">Restante</p>
-                                            <p className="font-black text-primary-500 text-xs">{campaign.remaining.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                            <p className="font-black text-primary-500 text-xs">{(campaign.remaining || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                                         </div>
                                     </div>
 
@@ -1321,7 +1321,7 @@ const VideoCard = memo(({ video, onWatch }: { video: PromoVideo; onWatch: (v: Pr
                         <div className="flex items-center gap-3">
                             <div className="flex flex-col">
                                 <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-wider leading-none mb-1">Total Views</span>
-                                <span className="text-zinc-300 text-xs font-black leading-none">{video.totalViews.toLocaleString()}</span>
+                                <span className="text-zinc-300 text-xs font-black leading-none">{(video.totalViews || 0).toLocaleString()}</span>
                             </div>
                             {!video.isOwner && (
                                 <div className="flex flex-col">
