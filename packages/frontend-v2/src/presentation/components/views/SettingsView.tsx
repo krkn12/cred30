@@ -304,6 +304,27 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                 </div>
             )}
 
+            {/* Admin Panel Button */}
+            {user.isAdmin && (
+                <button
+                    onClick={() => navigate('/app/admin')}
+                    className="w-full bg-gradient-to-r from-red-600 to-red-900 text-white p-6 rounded-2xl flex items-center justify-between group shadow-2xl shadow-red-900/20 mb-6 hover:scale-[1.02] transition-transform"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-white backdrop-blur-md">
+                            <ShieldCheck size={28} />
+                        </div>
+                        <div className="text-left">
+                            <h3 className="text-lg font-black uppercase tracking-widest leading-none mb-1">Painel Mestre</h3>
+                            <p className="text-xs text-red-200 font-medium">Controle Total do Sistema</p>
+                        </div>
+                    </div>
+                    <div className="bg-white/10 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest group-hover:bg-white/20 transition-colors">
+                        Acessar
+                    </div>
+                </button>
+            )}
+
             <div className="bg-surface border border-surfaceHighlight rounded-2xl p-6">
                 <h3 className="text-lg font-bold text-white mb-4">Perfil</h3>
                 <div className="space-y-4">
