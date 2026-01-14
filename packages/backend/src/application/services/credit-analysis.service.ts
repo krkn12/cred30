@@ -119,9 +119,9 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         const systemProfitPool = parseFloat(systemProfitRes.rows[0]?.profit_pool || 0);
         const systemTotalQuotas = parseInt(systemProfitRes.rows[0]?.system_total_quotas || 1);
 
-        // REGRA DE OURO DO JOSIAS: Se a plataforma está lucrando, o sócio ganha muito mais confiança!
-        // Aumentamos o bônus de 5% para 20% no limite (Impacto Real)
-        const profitBonusFactor = systemProfitPool > 0 ? 0.20 : 0;
+        // REGRA DE OURO DO JOSIAS: Se a plataforma está lucrando, o sócio ganha confiança!
+        // Bônus de 5% no limite se houver lucro real (Conservador)
+        const profitBonusFactor = systemProfitPool > 0 ? 0.05 : 0;
         const userProfitShare = (systemProfitPool * (quotasCount / systemTotalQuotas));
 
         // Limite = (70% + bônus) do gasto + (100% + bônus) do valor das cotas + Lucro Real Proporcional
