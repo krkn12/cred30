@@ -12,7 +12,7 @@ export class SellerController {
             const pool = getDbPool(c);
 
             const result = await pool.query(
-                `SELECT is_seller, seller_status, asaas_wallet_id, seller_company_name 
+                `SELECT is_seller, seller_status, seller_company_name 
                  FROM users WHERE id = $1`,
                 [user.id]
             );
@@ -23,7 +23,8 @@ export class SellerController {
                 success: true,
                 isSeller: userData?.is_seller || false,
                 status: userData?.seller_status || null,
-                hasWallet: !!userData?.asaas_wallet_id,
+                // hasWallet agora é derivado de is_seller + seller_status approved
+                hasWallet: userData?.is_seller && userData?.seller_status === 'approved',
                 companyName: userData?.seller_company_name || null,
             });
         } catch (error: any) {
@@ -119,7 +120,7 @@ export class SellerController {
     }
 
     /**
-     * Obter wallet do próprio vendedor
+     * Verificar se vendedor está aprovado (usado internamente pelo sistema)
      */
     static async getWallet(c: Context) {
         try {
@@ -127,21 +128,22 @@ export class SellerController {
             const pool = getDbPool(c);
 
             const result = await pool.query(
-                `SELECT asaas_wallet_id, asaas_account_id FROM users WHERE id = $1 AND is_seller = TRUE`,
+                `SELECT is_seller, seller_status, pix_key FROM users WHERE id = $1 AND is_seller = TRUE`,
                 [user.id]
             );
 
-            if (!result.rows[0]?.asaas_wallet_id) {
+            if (!result.rows[0] || result.rows[0].seller_status !== 'approved') {
                 return c.json({
                     success: false,
-                    message: 'Você não é um vendedor registrado'
+                    message: 'Você não é um vendedor aprovado'
                 }, 404);
             }
 
             return c.json({
                 success: true,
-                walletId: result.rows[0].asaas_wallet_id,
-                accountId: result.rows[0].asaas_account_id,
+                // Retornamos o pix_key do usuário como "wallet" para pagamentos manuais
+                walletId: result.rows[0].pix_key || 'MANUAL_PAYMENT',
+                paymentMethod: 'MANUAL_PIX'
             });
         } catch (error: any) {
             console.error('[SELLER] Erro ao buscar wallet:', error);
@@ -150,7 +152,7 @@ export class SellerController {
     }
 
     /**
-     * Obter wallet de um vendedor específico
+     * Verificar se um vendedor específico está aprovado
      */
     static async getSellerWalletById(c: Context) {
         try {
@@ -158,12 +160,12 @@ export class SellerController {
             const pool = getDbPool(c);
 
             const result = await pool.query(
-                `SELECT asaas_wallet_id, seller_company_name FROM users 
+                `SELECT is_seller, seller_status, seller_company_name, pix_key FROM users 
                  WHERE id = $1 AND is_seller = TRUE AND seller_status = 'approved'`,
                 [sellerId]
             );
 
-            if (!result.rows[0]?.asaas_wallet_id) {
+            if (!result.rows[0]) {
                 return c.json({
                     success: false,
                     message: 'Vendedor não encontrado ou não aprovado'
@@ -172,8 +174,9 @@ export class SellerController {
 
             return c.json({
                 success: true,
-                walletId: result.rows[0].asaas_wallet_id,
+                walletId: result.rows[0].pix_key || 'MANUAL_PAYMENT',
                 sellerName: result.rows[0].seller_company_name,
+                paymentMethod: 'MANUAL_PIX'
             });
         } catch (error: any) {
             console.error('[SELLER] Erro ao buscar wallet do vendedor:', error);

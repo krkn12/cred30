@@ -30,8 +30,8 @@ export const QUOTA_STATUS = {
   PENDING: 'PENDING'
 } as const;
 
-// Fee Constants (Sincronizado com Asaas / business.constants.ts)
-export const WITHDRAWAL_FEE_PERCENTAGE = 0; // Taxa percentual removida (Asaas é fixo)
+// Fee Constants
+export const WITHDRAWAL_FEE_PERCENTAGE = 0; // Taxa percentual removida (PIX manual fixo)
 export const WITHDRAWAL_FEE_FIXED = 3.50;   // Taxa de manutenção da cooperativa por saque
 export const WITHDRAWAL_MIN_AMOUNT = 1.00; // Valor mínimo para saque
 export const LOAN_INTEREST_RATE = 0.20;

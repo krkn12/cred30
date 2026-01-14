@@ -4,7 +4,6 @@ export interface User {
   email: string;
   pixKey: string;
   balance: number;
-  asaas_wallet_id?: string;
   joinedAt: string;
   referralCode: string;
   isAdmin?: boolean;
