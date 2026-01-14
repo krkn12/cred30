@@ -36,6 +36,7 @@ import { bugReportsRoutes } from './presentation/http/routes/bug-reports.routes'
 import { earnRoutes } from './presentation/http/routes/earn.routes';
 import { sellerRoutes } from './presentation/http/routes/seller.routes';
 import { tutorRoutes } from './presentation/http/routes/tutors.routes';
+import { logisticsRoutes } from './presentation/http/routes/logistics.routes';
 
 // ... (existing helper imports)
 
