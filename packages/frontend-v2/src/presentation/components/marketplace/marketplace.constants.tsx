@@ -10,34 +10,11 @@ import {
     Shirt,
     Package
 } from 'lucide-react';
-
-// Ícone de Moto customizado (Lucide não tem Motorcycle/Motorbike oficial)
-export const MotorcycleIcon = ({ size = 24, className = '' }: { size?: number, className?: string }) => (
-    <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width={size}
-        height={size}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className={className}
-    >
-        <circle cx="5" cy="17" r="2.5" />
-        <circle cx="19" cy="17" r="2.5" />
-        <path d="M12 17h-7" />
-        <path d="M16.5 17h-4.5" />
-        <path d="M14.5 17l1-5h3.5l2 5" />
-        <path d="M5.5 14l2-7h3l2.5 7" />
-        <path d="M9.5 7l1-2h2" />
-    </svg>
-);
+import { Motorcycle } from '@phosphor-icons/react';
 
 export const VEHICLE_ICONS: Record<string, any> = {
     'BIKE': Bike,
-    'MOTO': MotorcycleIcon,
+    'MOTO': Motorcycle,
     'CAR': Car,
     'TRUCK': Truck
 };
