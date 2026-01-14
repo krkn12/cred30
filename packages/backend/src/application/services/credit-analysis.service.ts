@@ -120,9 +120,24 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         const systemProfitPool = parseFloat(systemProfitRes.rows[0]?.profit_pool || 0);
         const systemTotalQuotas = parseInt(systemProfitRes.rows[0]?.system_total_quotas || 1);
 
-        // REGRA DE OURO DO JOSIAS: Se a plataforma está lucrando, o sócio ganha confiança!
-        // Bônus de 5% no limite se houver lucro real (Conservador)
-        const profitBonusFactor = systemProfitPool > 0 ? 0.05 : 0;
+        // VERIFICAÇÃO DE HISTÓRICO DE ATRASOS (Para bônus de lucro - Elite)
+        const lateHistoryRes = await pool.query(`
+            SELECT COUNT(*) as late_count 
+            FROM transactions 
+            WHERE user_id = $1 
+            AND type = 'LOAN_REPAYMENT' 
+            AND (metadata->>'penaltyPaid')::numeric > 0
+        `, [userId]);
+        const hasLateHistory = parseInt(lateHistoryRes.rows[0].late_count) > 0;
+
+        // REGRA DE OURO DO JOSIAS (ELITE): 
+        // Bônus de 5% no limite APENAS se:
+        // 1. Score >= 950
+        // 2. Conta com > 90 dias
+        // 3. NENHUM histórico de atraso
+        // 4. Lucro Real > 0
+        const isElite = score >= 950 && accountAgeDays >= 90 && !hasLateHistory;
+        const profitBonusFactor = (systemProfitPool > 0 && isElite) ? 0.05 : 0;
 
         // INFLUÊNCIA DO SCORE (Novo Pedido):
         // Score 0 a 1000.
