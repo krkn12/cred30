@@ -86,6 +86,25 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                         </div>
                     )}
 
+                    {/* Endereço do Vendedor para Retirada (SELF_PICKUP) */}
+                    {order.delivery_type === 'SELF_PICKUP' && order.buyer_id === currentUser?.id && (
+                        <div className="w-full mt-3 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+                            <div className="flex items-center gap-2 mb-1">
+                                <Navigation2 size={12} className="text-amber-400" />
+                                <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">LOCAL DE RETIRADA</span>
+                            </div>
+                            <p className="text-xs text-white font-medium">
+                                {order.pickup_address || order.seller_address || 'Endereço não informado'}
+                            </p>
+                            {order.seller_phone && (
+                                <div className="flex items-center gap-1 mt-2 text-[10px] text-zinc-400">
+                                    <Phone size={10} />
+                                    <span className="font-mono">{order.seller_phone}</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {order.courier_name && (
                         <div className="flex flex-col gap-1 mt-4">
                             <div className="flex items-center gap-2 text-[10px] text-amber-500 font-black">

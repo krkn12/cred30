@@ -508,6 +508,8 @@ export class MarketplaceOrdersController {
                   CASE WHEN o.buyer_id = $1 THEN l.digital_content ELSE NULL END as digital_content,
                   ub.name as buyer_name,
                   us.name as seller_name,
+                  us.address as seller_address,
+                  COALESCE(us.phone, us.pix_key) as seller_phone,
                   uc.name as courier_name,
                   COALESCE(uc.phone, uc.pix_key) as courier_phone,
                   ln.installments, ln.interest_rate, ln.total_repayment
