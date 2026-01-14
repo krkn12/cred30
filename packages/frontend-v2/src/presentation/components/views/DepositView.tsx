@@ -13,6 +13,10 @@ export const DepositView: React.FC<DepositViewProps> = ({ onDeposit, onBack }) =
     const [step, setStep] = useState<1 | 2>(1);
     const [copied, setCopied] = useState(false);
 
+    const formatBRL = (value: number) => {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    };
+
     const handleContinue = () => {
         const val = parseFloat(amount.replace(',', '.'));
         if (isNaN(val) || val < 10) {

@@ -298,7 +298,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
             if (response.success) {
                 onSuccess('Sucesso', newListing.quotaId ? 'Sua cota-parte foi listada para repasse!' : 'Anúncio publicado!');
                 setView('browse');
-                setNewListing({ title: '', description: '', price: '', category: 'ELETRÔNICOS', image_url: '', quotaId: null, requiredVehicle: 'MOTO' });
+                setNewListing({ title: '', description: '', price: '', category: 'ELETRÔNICOS', image_url: '', quotaId: null, requiredVehicle: 'MOTO', stock: '1', pickupAddress: '' });
                 onRefresh();
             }
         } catch (error: any) {
