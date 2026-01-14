@@ -208,13 +208,8 @@ export const loadState = async (): Promise<AppState> => {
           }
 
           // DEBUG: Verificar valores extraídos
-          console.log('DEBUG - Valores extraídos:', {
-            systemBalance,
-            profitPool,
-            stats,
-            'dashboard.systemConfig?.system_balance': dashboard.systemConfig?.system_balance,
-            'dashboard.systemConfig?.profit_pool': dashboard.systemConfig?.profit_pool
-          });
+          // DEBUG: Valores extraídos com sucesso
+          console.log('Valores do dashboard extraídos com sucesso.');
 
           // Atualizar cache do dashboard
           cachedDashboard = { systemBalance, profitPool, stats };
