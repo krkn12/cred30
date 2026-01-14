@@ -46,8 +46,8 @@ export const HistoryView = ({ transactions: initialTransactions }: HistoryViewPr
     // Traduzir tipos
     const translateType = (type: string) => {
         const map: Record<string, string> = {
-            'DEPOSIT': 'Adesão Social',
-            'WITHDRAWAL': 'Resgate de Capital',
+            'DEPOSIT': 'Depósito',
+            'WITHDRAWAL': 'Saque',
             'DIVIDEND': 'Excedente Operacional',
             'REFERRAL_BONUS': 'Bônus de Indicação',
             'LOAN_RECEIVED': 'Apoio Mútuo Recebido',
@@ -141,7 +141,7 @@ export const HistoryView = ({ transactions: initialTransactions }: HistoryViewPr
                 <div className="glass p-4">
                     <div className="flex items-center gap-2 mb-2">
                         <TrendingDown size={16} className="text-red-400" />
-                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Retiradas</span>
+                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Saídas</span>
                     </div>
                     <p className="text-lg sm:text-xl font-bold text-red-400">{formatCurrency(totals.outgoing)}</p>
                 </div>
