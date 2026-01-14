@@ -37,7 +37,7 @@ export const AdminBugs: React.FC<AdminBugsProps> = ({ onSuccess, onError }) => {
             // Using any here because the API returns counts alongside data, which is non-standard for ApiResponse<T>
             const res = await apiService.get<BugReport[]>(`/bugs/admin?status=${statusFilter}`) as any;
             if (res.success) {
-                setBugs(res.data || []);
+                setBugs(Array.isArray(res.data) ? res.data : []);
                 setCounts(res.counts || { open: 0, inProgress: 0 });
             }
         } catch (error) {

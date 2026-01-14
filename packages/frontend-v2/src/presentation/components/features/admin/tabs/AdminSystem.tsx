@@ -38,7 +38,7 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
         try {
             const res = await apiService.get<SystemCost[]>('/admin/costs');
             if (res.success) {
-                setSystemCosts(res.data || []);
+                setSystemCosts(Array.isArray(res.data) ? res.data : []);
             }
         } catch (e) {
             console.error('Erro ao buscar custos:', e);

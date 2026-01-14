@@ -313,7 +313,7 @@ export const AdminLogistics = ({ state, onRefresh, onSuccess, onError }: AdminLo
                                                         <p className="text-zinc-500 text-xs">{courier.email}</p>
                                                     </div>
                                                     <span className="bg-primary-500/10 text-primary-400 border border-primary-500/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                                                        {courier.vehicle === 'BIKE' ? <Bike size={12} /> : courier.vehicle === 'MOTO' ? <MotorcycleIcon size={12} /> : <Car size={12} />}
+                                                        {courier.vehicle === 'BIKE' ? <Bike size={12} /> : courier.vehicle === 'MOTO' ? <Motorcycle size={12} /> : <Car size={12} />}
                                                         {courier.vehicle}
                                                     </span>
                                                 </div>
@@ -404,27 +404,30 @@ export const AdminLogistics = ({ state, onRefresh, onSuccess, onError }: AdminLo
                         </div>
                     )}
                 </>
-            )}
+            )
+            }
 
             {/* Photo Preview Modal */}
-            {selectedPhotos && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 animate-in fade-in duration-300">
-                    <div className="relative max-w-4xl w-full h-[80vh] bg-zinc-900 rounded-[2rem] overflow-hidden border border-zinc-800 flex flex-col shadow-2xl">
-                        <div className="p-6 flex items-center justify-between border-b border-zinc-800">
-                            <h3 className="text-white font-black uppercase tracking-widest">{selectedPhotos.title}</h3>
-                            <button
-                                onClick={() => setSelectedPhotos(null)}
-                                className="p-3 bg-zinc-800 hover:bg-zinc-700 rounded-full text-zinc-400 transition-colors"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <div className="flex-1 p-4 bg-black/50 flex items-center justify-center overflow-auto">
-                            <img src={selectedPhotos.url} className="max-w-full max-h-full object-contain shadow-2xl" alt="Preview" />
+            {
+                selectedPhotos && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 animate-in fade-in duration-300">
+                        <div className="relative max-w-4xl w-full h-[80vh] bg-zinc-900 rounded-[2rem] overflow-hidden border border-zinc-800 flex flex-col shadow-2xl">
+                            <div className="p-6 flex items-center justify-between border-b border-zinc-800">
+                                <h3 className="text-white font-black uppercase tracking-widest">{selectedPhotos.title}</h3>
+                                <button
+                                    onClick={() => setSelectedPhotos(null)}
+                                    className="p-3 bg-zinc-800 hover:bg-zinc-700 rounded-full text-zinc-400 transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div className="flex-1 p-4 bg-black/50 flex items-center justify-center overflow-auto">
+                                <img src={selectedPhotos.url} className="max-w-full max-h-full object-contain shadow-2xl" alt="Preview" />
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
