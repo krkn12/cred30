@@ -40,9 +40,6 @@ import { tutorRoutes } from './presentation/http/routes/tutors.routes';
 // ... (existing helper imports)
 
 // ... inside startServer function
-app.route('/api/seller', sellerRoutes);
-app.route('/api/logistics', logisticsRoutes);
-app.route('/api/tutors', tutorRoutes);
 
 // Infraestrutura
 import { initializeScheduler } from './scheduler';
@@ -129,6 +126,7 @@ async function startServer() {
     app.route('/api/earn', earnRoutes);
     app.route('/api/seller', sellerRoutes);
     app.route('/api/logistics', logisticsRoutes);
+    app.route('/api/tutors', tutorRoutes);
 
     // Rota raiz para o Health Check do Render
     app.get('/', (c: Context) => c.json({
