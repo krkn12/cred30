@@ -25,7 +25,7 @@ const MIN_MARKETPLACE_TRANSACTIONS = 0; // Se tem cota, já é parceiro
 const MIN_ACCOUNT_AGE_DAYS = 0;  // Liberação imediata para detentores de cotas
 const SYSTEM_LIQUIDITY_RESERVE = 0.30;
 const LIMIT_PERCENTAGE_OF_SPENT = 0.70; // 70% do que "sumiu" (gastou/taxas)
-const LIMIT_PERCENTAGE_OF_QUOTAS = 1.00; // 100% do capital social (cotas) - Garantia Real Integral
+const LIMIT_PERCENTAGE_OF_QUOTAS = 0.70; // 70% do capital social (cotas) - Margem de Segurança (LTV)
 
 // Tabela de juros baseada na garantia
 const INTEREST_RATES: { [key: number]: number } = {
