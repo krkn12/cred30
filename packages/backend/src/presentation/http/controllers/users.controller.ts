@@ -239,7 +239,7 @@ export class UsersController {
                     FROM users u WHERE u.id = $1
                 ),
                 recent_tx AS (
-                    SELECT json_agg(t) FROM (SELECT id, type, amount, created_at as date, description, status, metadata FROM transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20) t
+                    SELECT json_agg(t) FROM (SELECT id, user_id as "userId", type, amount, created_at as date, description, status, metadata FROM transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20) t
                 ),
                 active_quotas AS (
                     SELECT json_agg(q) FROM (SELECT id, user_id as "userId", purchase_price as "purchasePrice", current_value as "currentValue", purchase_date as "purchaseDate", status, yield_rate as "yieldRate" FROM quotas WHERE user_id = $1 ORDER BY purchase_date DESC) q

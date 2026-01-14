@@ -511,17 +511,36 @@ export class AdminFinanceController {
                 params = [startDate, endDate];
             }
 
-            // 1. Volume Total Bruto (Tudo que entrou no sistema)
-            // Inclui depósitos, pagamentos de pedidos e compras de cotas
-            const volumeRes = await pool.query(`
-                SELECT COALESCE(SUM(amount), 0) as total_volume
+            // 1. Entradas Totais (Gross Inflow) - Dinheiro NOVO entrando
+            // Depósitos, Pagamentos de Pedidos (Pix), Compra de Cotas (Pix/Saldo)
+            const inflowRes = await pool.query(`
+                SELECT COALESCE(SUM(amount), 0) as total_inflow
                 FROM transactions 
                 WHERE status = 'APPROVED' 
                 AND type IN ('DEPOSIT', 'ORDER_PAYMENT', 'BUY_QUOTA', 'LOAN_REPAYMENT')
                 ${dateFilter}
             `, params);
 
-            // 2. Receita de Marketplace (Taxas descontadas dos vendedores)
+            // 2. Saídas Totais (Gross Outflow) - Dinheiro SAINDO do sistema
+            // Saques processados
+            const outflowRes = await pool.query(`
+                SELECT COALESCE(SUM(amount), 0) as total_outflow
+                FROM transactions
+                WHERE status IN ('APPROVED', 'COMPLETED', 'PAID')
+                AND type IN ('WITHDRAWAL')
+                ${dateFilter}
+            `, params);
+
+            // 3. Distribuição de Lucros (Dividends Paid)
+            const dividendsRes = await pool.query(`
+                SELECT COALESCE(SUM(amount), 0) as total_dividends
+                FROM transactions
+                WHERE status = 'APPROVED'
+                AND type = 'DIVIDEND'
+                ${dateFilter}
+            `, params);
+
+            // 4. Receita de Marketplace (Faturamento)
             const marketplaceRes = await pool.query(`
                 SELECT COALESCE(SUM(fee_amount), 0) as marketplace_fees
                 FROM marketplace_orders
@@ -529,7 +548,7 @@ export class AdminFinanceController {
                 ${dateFilter}
             `, params);
 
-            // 3. Taxas de Saque e Outras Taxas Diretas
+            // 5. Taxas Diretas (Faturamento)
             const feesRes = await pool.query(`
                 SELECT COALESCE(SUM(amount), 0) as direct_fees
                 FROM transactions
@@ -538,7 +557,7 @@ export class AdminFinanceController {
                 ${dateFilter}
             `, params);
 
-            // 4. Lucro nas Entregas (27.5% de margem sobre o frete)
+            // 6. Lucro Logístico (Faturamento)
             const logisticsProfitRes = await pool.query(`
                 SELECT COALESCE(SUM(delivery_fee * 0.275), 0) as logistics_profit
                 FROM marketplace_orders
@@ -546,33 +565,51 @@ export class AdminFinanceController {
                 ${dateFilter}
             `, params);
 
-            // 5. Lucros Acumulados do Sistema (Fallback para visão geral)
+            // 7. Configurações Gerais
             const configResult = await pool.query('SELECT profit_pool, total_owner_profit, system_balance FROM system_config LIMIT 1');
             const config = configResult.rows[0] || {};
 
-            const taxableRevenue = parseFloat(marketplaceRes.rows[0].marketplace_fees) +
-                parseFloat(feesRes.rows[0].direct_fees) +
-                parseFloat(logisticsProfitRes.rows[0].logistics_profit);
+            // Cálculos Finais
+            const totalInflow = parseFloat(inflowRes.rows[0].total_inflow);
+            const totalOutflow = parseFloat(outflowRes.rows[0].total_outflow);
+            const totalDividends = parseFloat(dividendsRes.rows[0].total_dividends);
+
+            const revenueFromMarketplace = parseFloat(marketplaceRes.rows[0].marketplace_fees);
+            const revenueFromFees = parseFloat(feesRes.rows[0].direct_fees);
+            const revenueFromLogistics = parseFloat(logisticsProfitRes.rows[0].logistics_profit);
+
+            const grossRevenue = revenueFromMarketplace + revenueFromFees + revenueFromLogistics; // Faturamento do Sistema
+            const netProfit = grossRevenue - totalDividends; // Lucro Real (Faturamento - Repasses aos Sócios)
 
             const fiscalSummary = {
                 period: isAllTime ? 'Histórico Completo' : `${month}/${year}`,
-                gross_volume: parseFloat(volumeRes.rows[0].total_volume),
-                taxable_revenue: taxableRevenue,
-                transitory_funds: parseFloat(volumeRes.rows[0].total_volume) - taxableRevenue,
+
+                // Fluxo de Caixa
+                total_inflow: totalInflow,   // Entradas
+                total_outflow: totalOutflow, // Saídas
+
+                // Resultado Econômico
+                gross_revenue: grossRevenue, // Faturamento (Receita Tributável)
+                total_dividends: totalDividends, // Distribuição de Lucros
+                net_profit: netProfit,       // Lucro Líquido Real
+
+                // Detalhamento
                 details: {
-                    marketplace_commissions: parseFloat(marketplaceRes.rows[0].marketplace_fees),
-                    logistics_margin: parseFloat(logisticsProfitRes.rows[0].logistics_profit),
-                    withdrawal_fees: parseFloat(feesRes.rows[0].direct_fees),
-                    accumulated_system_profit: parseFloat(config.total_owner_profit || 0),
-                    total_system_balance: parseFloat(config.system_balance || 0)
+                    marketplace_commissions: revenueFromMarketplace,
+                    logistics_margin: revenueFromLogistics,
+                    withdrawal_fees: revenueFromFees,
+                    total_owner_profit: parseFloat(config.total_owner_profit || 0),
+                    system_balance: parseFloat(config.system_balance || 0),
+                    volume_transitory: totalInflow - grossRevenue // Dinheiro de terceiros
                 },
-                legal_notice: "Relatório baseado no Art. 653 do Código Civil (Mandato). Valores transientes não compõem faturamento próprio."
+
+                legal_notice: "Relatório gerencial de fluxo de caixa e resultado econômico."
             };
 
             return c.json({
                 success: true,
                 data: fiscalSummary,
-                message: isAllTime ? "Relatório consolidado de todo o histórico do sistema." : "Relatório mensal detalhado."
+                message: isAllTime ? "Relatório consolidado." : "Relatório mensal."
             });
         } catch (error: any) {
             console.error('Erro ao gerar relatório fiscal:', error);

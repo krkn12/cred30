@@ -1,0 +1,17 @@
+[dotenv@17.2.3] injecting env (15) from packages\backend\.env -- tip: ÔÜÖ´©Å  override existing env vars with { override: true }
+
+=== ULTIMAS 30 TRANSACOES ===
+
+ID: 95 | User: 34 | Type: BUY_QUOTA | R$ 150.00 | APPROVED | Aquisi├º├úo de 3 participa├º├úo(├Áes) (+ R$ 24.00 manuten├º├úo) - APROVADA
+ID: 94 | User: 34 | Type: DEPOSIT | R$ 500.00 | APPROVED | Dep├│sito manual pendente (Depositante: N├úo informado)
+
+=== RESUMO POR TIPO ===
+
+DEPOSIT: 1 transa├º├Áes | Total: R$ 500.00
+BUY_QUOTA: 1 transa├º├Áes | Total: R$ 150.00
+
+=== VOLUME TOTAL (Fiscal) ===
+
+Dep├│sitos Aprovados: R$ 500.00
+Saques Aprovados: R$ 0.00
+Outros Pagamentos: R$ 150.00
