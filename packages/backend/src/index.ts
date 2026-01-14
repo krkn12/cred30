@@ -37,6 +37,7 @@ import { earnRoutes } from './presentation/http/routes/earn.routes';
 import { sellerRoutes } from './presentation/http/routes/seller.routes';
 import { tutorRoutes } from './presentation/http/routes/tutors.routes';
 import { logisticsRoutes } from './presentation/http/routes/logistics.routes';
+import { consortiumRoutes } from './presentation/http/routes/consortium.routes';
 
 // ... (existing helper imports)
 
@@ -128,6 +129,7 @@ async function startServer() {
     app.route('/api/seller', sellerRoutes);
     app.route('/api/logistics', logisticsRoutes);
     app.route('/api/tutors', tutorRoutes);
+    app.route('/api/consortium', consortiumRoutes);
 
     // Rota raiz para o Health Check do Render
     app.get('/', (c: Context) => c.json({

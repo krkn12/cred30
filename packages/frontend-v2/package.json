@@ -1,7 +1,7 @@
 {
     "name": "cred30-frontend-v2",
     "private": true,
-    "version": "1.0.553",
+    "version": "1.0.554",
     "type": "module",
     "scripts": {
         "dev": "vite",
