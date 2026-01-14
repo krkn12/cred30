@@ -16,7 +16,7 @@ export const AdminApprovals: React.FC<AdminApprovalsProps> = ({ onSuccess, onErr
         setIsLoading(true);
         try {
             const response = await apiService.getPendingTransactions();
-            setPendingTransactions(response.data || []);
+            setPendingTransactions(Array.isArray(response.data) ? response.data : []);
         } catch (e) {
             console.error('Erro ao buscar transações pendentes:', e);
         } finally {

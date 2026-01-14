@@ -21,7 +21,11 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ onSuccess, onError }
     const fetchPayoutQueue = useCallback(async () => {
         try {
             const response = await apiService.getPayoutQueue();
-            setPayoutQueue(response.data || { transactions: [], loans: [] });
+            const data = response.data || {};
+            setPayoutQueue({
+                transactions: Array.isArray(data.transactions) ? data.transactions : [],
+                loans: Array.isArray(data.loans) ? data.loans : []
+            });
         } catch (e) {
             console.error('Erro ao buscar fila de pagamentos:', e);
         }
