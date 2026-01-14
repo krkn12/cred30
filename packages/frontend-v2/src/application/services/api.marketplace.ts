@@ -94,4 +94,39 @@ export class MarketplaceApi extends ApiBase {
     async getDeliveryStats(): Promise<ApiResponse<any>> {
         return await this.request<any>('/logistics/stats');
     }
+
+    // --- FAVORITOS ---
+    async toggleFavorite(listingId: number): Promise<ApiResponse<any>> {
+        return await this.post<any>(`/marketplace/listing/${listingId}/favorite`, {});
+    }
+
+    async getMyFavorites(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/marketplace/favorites');
+    }
+
+    // --- PERGUNTAS ---
+    async askQuestion(listingId: number, question: string): Promise<ApiResponse<any>> {
+        return await this.post<any>(`/marketplace/listing/${listingId}/question`, { question });
+    }
+
+    async getQuestions(listingId: number): Promise<ApiResponse<any>> {
+        return await this.request<any>(`/marketplace/listing/${listingId}/questions`);
+    }
+
+    async answerQuestion(questionId: number, answer: string): Promise<ApiResponse<any>> {
+        return await this.post<any>(`/marketplace/question/${questionId}/answer`, { answer });
+    }
+
+    // --- AVALIAÇÕES ---
+    async reviewOrder(orderId: number, rating: number, comment?: string): Promise<ApiResponse<any>> {
+        return await this.post<any>(`/marketplace/order/${orderId}/review`, { rating, comment });
+    }
+
+    async getSellerReviews(sellerId: string): Promise<ApiResponse<any>> {
+        return await this.request<any>(`/marketplace/seller/${sellerId}/reviews`);
+    }
+
+    async getSellerProfile(sellerId: string): Promise<ApiResponse<any>> {
+        return await this.request<any>(`/marketplace/seller/${sellerId}/profile`);
+    }
 }
