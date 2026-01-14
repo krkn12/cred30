@@ -40,8 +40,8 @@ export const AdminRewardsTab: React.FC<{ onSuccess: (t: string, m: string) => vo
                 apiService.getRewardsAdmin(),
                 apiService.getRewardRedemptionsAdmin()
             ]);
-            if (rewardsRes.success) setRewards(rewardsRes.data);
-            if (redemptionsRes.success) setRedemptions(redemptionsRes.data);
+            if (rewardsRes.success) setRewards(rewardsRes.data || []);
+            if (redemptionsRes.success) setRedemptions(redemptionsRes.data || []);
         } catch (error) {
             console.error(error);
         } finally {
