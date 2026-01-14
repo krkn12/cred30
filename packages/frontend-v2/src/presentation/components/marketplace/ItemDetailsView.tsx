@@ -7,7 +7,6 @@ import {
     Clock,
     User,
     ShieldCheck,
-    Sparkles,
     Package,
     Phone,
     Truck,
@@ -16,6 +15,9 @@ import {
     Zap
 } from 'lucide-react';
 import { DELIVERY_MIN_FEES } from './marketplace.constants';
+import { FavoriteButton } from './FavoriteButton';
+import { ItemQuestions } from './ItemQuestions';
+import { SellerReputationBadge } from './SellerReputationBadge';
 
 interface ItemDetailsViewProps {
     item: any;
@@ -70,7 +72,7 @@ export const ItemDetailsView = ({
                     </div>
                 </div>
 
-                <div className="aspect-square bg-zinc-900 relative">
+                <div className="aspect-square bg-zinc-900 relative group">
                     {item.image_url ? (
                         <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
                     ) : (
@@ -79,6 +81,16 @@ export const ItemDetailsView = ({
                             <span className="text-xs font-bold uppercase mt-2">Sem imagem disponível</span>
                         </div>
                     )}
+
+                    {/* Botão de Favorito Flutuante */}
+                    <div className="absolute top-4 right-4 z-20">
+                        <FavoriteButton
+                            listingId={item.id}
+                            size={28}
+                            className="w-12 h-12 bg-black/40 backdrop-blur-md rounded-full shadow-lg border border-white/10 hover:bg-black/60"
+                        />
+                    </div>
+
                     <div className="absolute bottom-6 left-6 right-6">
                         <div className="bg-black/60 backdrop-blur-xl p-4 rounded-2xl border border-white/10 inline-block">
                             <p className="text-2xl font-black text-primary-400 tabular-nums">
@@ -125,13 +137,12 @@ export const ItemDetailsView = ({
                             </div>
                             <div>
                                 <h4 className="text-sm font-black text-white">{item.seller_name}</h4>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                    <div className="flex items-center gap-0.5">
-                                        {[1, 2, 3, 4, 5].map(i => (
-                                            <Sparkles key={i} size={8} className={i <= 4 ? "text-primary-400" : "text-zinc-800"} />
-                                        ))}
-                                    </div>
-                                    <span className="text-[9px] text-zinc-500 font-bold uppercase">Membro desde 2024</span>
+                                <div className="mt-1">
+                                    <SellerReputationBadge
+                                        reputation={item.seller_reputation || 'NOVO'}
+                                        sales={item.seller_total_sales || 0}
+                                        rating={Number(item.seller_rating || 0)}
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -265,6 +276,15 @@ export const ItemDetailsView = ({
                                 <input placeholder="Endereço completo" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white" />
                             </div>
                         )}
+                    </div>
+
+                    {/* SEÇÃO DE PERGUNTAS E RESPOSTAS */}
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6">
+                        <ItemQuestions
+                            listingId={item.id}
+                            currentUser={currentUser}
+                            sellerId={item.seller_id}
+                        />
                     </div>
 
                     <div className="sticky bottom-6 mt-12 bg-black/80 backdrop-blur-xl border border-zinc-800 p-4 rounded-3xl space-y-3">
