@@ -109,3 +109,13 @@ export const VIP_LEVELS = {
     OURO: { name: 'Ouro', minQuotas: 50, multiplier: 2.0 },
     FOUNDER: { name: 'Fundador', minQuotas: 100, multiplier: 3.0 }
 };
+
+// Define o limite máximo de sócios ativos antes de ativar a WAITLIST automática.
+// Manter baixo para caracterizar "Private Placement" (Grupo Fechado).
+export const MAX_ACTIVE_MEMBERS = 100;
+export const WAITLIST_ENABLED = true;
+
+// --- PROTEÇÃO ANTI-BALEIA (ANTI-WHALE) ---
+// Limite máximo de cotas que um único CPF pode deter.
+// R$ 50.000,00 (1000 cotas) para evitar domínio econômico e PLD (Prevenção Lavagem Dinheiro).
+export const MAX_QUOTAS_PER_USER = 1000;

@@ -570,6 +570,24 @@ export class AdminFinanceController {
                 ${dateFilter}
             `, params);
 
+            // 8. Taxas de Cotas (SVA - Metadata serviceFee)
+            const quotaFeesRes = await pool.query(`
+                SELECT COALESCE(SUM(CAST(metadata->>'serviceFee' AS NUMERIC)), 0) as quota_fees
+                FROM transactions
+                WHERE type = 'BUY_QUOTA'
+                AND status = 'APPROVED'
+                ${dateFilter}
+            `, params);
+
+            // 9. Receita de Juros de Empréstimos (Metadata interestAmount)
+            const loanInterestRes = await pool.query(`
+                SELECT COALESCE(SUM(CAST(metadata->>'interestAmount' AS NUMERIC)), 0) as loan_revenue
+                FROM transactions
+                WHERE type = 'LOAN_PAYMENT'
+                AND status IN ('COMPLETED', 'APPROVED')
+                ${dateFilter}
+            `, params);
+
             // 7. Configurações Gerais
             const configResult = await pool.query('SELECT profit_pool, total_owner_profit, system_balance FROM system_config LIMIT 1');
             const config = configResult.rows[0] || {};

@@ -39,7 +39,7 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
                         Faça parte da <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-primary-600">Revolução Financeira</span> Colaborativa.
                     </h1>
                     <p className="text-base sm:text-lg text-zinc-500 max-w-2xl mx-auto leading-relaxed">
-                        Ao adquirir suas cotas-parte, você se torna dono do negócio, participa das decisões e recebe excedentes proporcionais ao capital investido.
+                        Ao integralizar suas cotas-parte, você se torna dono do negócio, participa das decisões e recebe sobras operacionais proporcionais ao capital aportado.
                     </p>
                 </div>
 
@@ -47,7 +47,7 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
                     <BenefitCard
                         icon={<TrendingUp size={20} />}
-                        title="Distribuição de Excedentes"
+                        title="Distribuição de Sobras"
                         color="primary"
                         description="Receba parte dos resultados operacionais da cooperativa diretamente em sua conta."
                     />
@@ -141,7 +141,7 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
 
                                 <div className="pt-4 mt-4 border-t border-white/5">
                                     <div className="flex justify-between items-baseline">
-                                        <span className="text-sm font-black text-white uppercase tracking-wider">Total Final</span>
+                                        <span className="text-sm font-black text-white uppercase tracking-wider">Total Aporte</span>
                                         <span className="text-3xl font-black text-primary-400">
                                             {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                         </span>
@@ -233,9 +233,9 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
                         <div className="space-y-3 sm:space-y-4 text-[11px] sm:text-xs text-zinc-500 leading-relaxed font-medium">
                             <p className="text-black font-black bg-emerald-500 p-3 sm:p-4 rounded-2xl text-center shadow-lg shadow-emerald-500/20 uppercase tracking-tighter">Economia Circular Cooperativa</p>
 
-                            <TermItem num="01" text="Natureza Associativa: O Cred30 é um sistema de suporte mútuo privado. Você não está comprando um 'investimento', mas sim integralizando capital em uma Sociedade Cooperativa Digital." />
+                            <TermItem num="01" text="Natureza Associativa: O Cred30 é um sistema de suporte mútuo privado. Você não está realizando um 'investimento financeiro', mas sim integralizando capital em uma Sociedade Cooperativa Digital." />
                             <TermItem num="02" text="Sustentabilidade Real: A receita da plataforma provém de serviços reais de marketing (vídeos), taxas de marketplace e contribuições de apoio social." highlight />
-                            <TermItem num="03" text="Rentabilidade Variável: A distribuição de lucros (excedentes) é variável e depende exclusivamente do faturamento real da comunidade." highlight />
+                            <TermItem num="03" text="Retorno Variável (Sobras): A distribuição de resultados é variável e depende exclusivamente do faturamento real da comunidade, sem garantia de lucro fixo." highlight />
                             <TermItem num="04" text="Circulação de Valor: O capital social é utilizado para fomentar o apoio interno entre associados, gerando riqueza que volta para você." />
                             <TermItem num="05" text="Carência e Segurança: O resgate integral (100%) é liberado após 365 dias da primeira cota. Antes disso, há multa de 40% em prol da cooperativa." />
                         </div>
