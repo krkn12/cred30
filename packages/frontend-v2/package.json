@@ -1,7 +1,7 @@
 {
     "name": "cred30-frontend-v2",
     "private": true,
-    "version": "1.0.526",
+    "version": "1.0.527",
     "type": "module",
     "scripts": {
         "dev": "vite",
@@ -12,6 +12,7 @@
     "dependencies": {
         "@google/genai": "^1.34.0",
         "@headlessui/react": "^1.7.18",
+        "@phosphor-icons/react": "^2.1.10",
         "@types/leaflet": "^1.9.21",
         "@yudiel/react-qr-scanner": "^2.5.0",
         "axios": "^1.6.7",
