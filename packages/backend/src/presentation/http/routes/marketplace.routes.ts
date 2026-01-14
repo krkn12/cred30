@@ -3,6 +3,7 @@ import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middl
 import { MarketplaceController } from '../controllers/marketplace.controller';
 import { MarketplaceListingsController } from '../controllers/marketplace.listings.controller';
 import { MarketplaceOrdersController } from '../controllers/marketplace.orders.controller';
+import { MarketplaceEnhancementsController } from '../controllers/marketplace.enhancements.controller';
 
 const marketplaceRoutes = new Hono();
 
@@ -43,5 +44,22 @@ marketplaceRoutes.post('/logistic/mission/:id/pickup', authMiddleware, Marketpla
 marketplaceRoutes.post('/logistic/mission/:id/location', authMiddleware, MarketplaceController.updateMissionLocation);
 marketplaceRoutes.post('/order/:id/anticipate', authMiddleware, MarketplaceController.anticipate);
 marketplaceRoutes.post('/offline/sync', authMiddleware, MarketplaceController.syncOffline);
+
+/**
+ * ENHANCEMENTS - Mercado Livre Features (Favoritos, Perguntas, Avaliações)
+ */
+// Favoritos
+marketplaceRoutes.post('/listing/:id/favorite', authMiddleware, MarketplaceEnhancementsController.toggleFavorite);
+marketplaceRoutes.get('/favorites', authMiddleware, MarketplaceEnhancementsController.getMyFavorites);
+
+// Perguntas e Respostas
+marketplaceRoutes.post('/listing/:id/question', authMiddleware, MarketplaceEnhancementsController.askQuestion);
+marketplaceRoutes.get('/listing/:id/questions', authMiddleware, MarketplaceEnhancementsController.getQuestions);
+marketplaceRoutes.post('/question/:id/answer', authMiddleware, MarketplaceEnhancementsController.answerQuestion);
+
+// Avaliações
+marketplaceRoutes.post('/order/:id/review', authMiddleware, MarketplaceEnhancementsController.rateUser);
+marketplaceRoutes.get('/seller/:id/reviews', authMiddleware, MarketplaceEnhancementsController.getUserReviews);
+marketplaceRoutes.get('/seller/:id/profile', authMiddleware, MarketplaceEnhancementsController.getSellerProfile);
 
 export { marketplaceRoutes };
