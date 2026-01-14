@@ -206,7 +206,7 @@ export const ItemDetailsView = ({
                                     <div className="text-left">
                                         <p className="text-xs font-black text-white uppercase">Retirada Pessoal</p>
                                         <p className="text-[10px] text-zinc-500">
-                                            {item.pickup_address ? `Retirar em: ${item.pickup_address}` : 'Você vai até o vendedor.'}
+                                            Retire com o vendedor após a compra.
                                         </p>
                                     </div>
                                 </div>
