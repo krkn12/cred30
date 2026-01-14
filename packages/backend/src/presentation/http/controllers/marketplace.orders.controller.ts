@@ -187,9 +187,9 @@ export class MarketplaceOrdersController {
                 const baseFeeRate = isVerified ? MARKETPLACE_ESCROW_FEE_RATE : MARKETPLACE_NON_VERIFIED_FEE_RATE;
 
                 // ===== SISTEMA DE BENEFÍCIO DE BOAS-VINDAS =====
-                const welcomeBenefit = await getWelcomeBenefit(pool, user.id, 'MARKETPLACE');
-                // Se o comprador tem benefício, aplica 50% de desconto sobre a taxa base
-                const effectiveEscrowRate = welcomeBenefit.hasDiscount ? welcomeBenefit.newRate : baseFeeRate;
+                const welcomeBenefit = await getWelcomeBenefit(pool, user.id);
+                // Se o comprador tem benefício, aplica taxa especial do marketplace
+                const effectiveEscrowRate = welcomeBenefit.hasDiscount ? welcomeBenefit.marketplaceEscrowFeeRate : baseFeeRate;
 
                 console.log(`[MARKETPLACE] ${isDigitalLote ? 'DIGITAL' : 'FÍSICO'} | Vendedor ${isVerified ? 'VERIFICADO' : 'NÃO VERIFICADO'}. Comprador ${user.id} - Benefício: ${welcomeBenefit.hasDiscount ? 'ATIVO' : 'INATIVO'}, Taxa Escrow Final: ${(effectiveEscrowRate * 100).toFixed(1)}%`);
 
@@ -402,8 +402,8 @@ export class MarketplaceOrdersController {
             const isVerified = !!sellerRes.rows[0]?.asaas_wallet_id;
             const baseFeeRate = isVerified ? MARKETPLACE_ESCROW_FEE_RATE : MARKETPLACE_NON_VERIFIED_FEE_RATE;
 
-            const welcomeBenefit = await getWelcomeBenefit(pool, user.id, 'MARKETPLACE');
-            const effectiveEscrowRate = welcomeBenefit.hasDiscount ? welcomeBenefit.newRate : baseFeeRate;
+            const welcomeBenefit = await getWelcomeBenefit(pool, user.id);
+            const effectiveEscrowRate = welcomeBenefit.hasDiscount ? welcomeBenefit.marketplaceEscrowFeeRate : baseFeeRate;
 
             const escrowFee = totalPrice * effectiveEscrowRate;
             const sellerAmount = totalPrice - escrowFee;
