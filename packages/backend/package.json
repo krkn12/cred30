@@ -1,6 +1,6 @@
 {
   "name": "cred30-backend",
-  "version": "1.0.506",
+  "version": "1.0.507",
   "description": "Backend para Plataforma Associativa Cred30",
   "main": "src/index.ts",
   "scripts": {
@@ -25,7 +25,6 @@
     "firebase-admin": "^13.6.0",
     "hono": "^4.11.2",
     "jsonwebtoken": "^9.0.3",
-    "mercadopago": "^2.1.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.11",
     "otplib": "^12.0.1",

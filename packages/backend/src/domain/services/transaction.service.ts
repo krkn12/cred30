@@ -616,7 +616,8 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
       const boostFee = Math.abs(parseFloat(transaction.amount));
       let gatewayCost = 0;
 
-      if (metadata.asaas_id || metadata.external_reference) {
+      // Gateway externo removido - processamento interno apenas
+      if (false) { // Bloco desativado - era: metadata.asaas_id || metadata.external_reference
         const paymentMethod = metadata.paymentMethod || 'pix';
         gatewayCost = calculateGatewayCost(boostFee, paymentMethod as any);
 

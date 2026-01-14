@@ -5,7 +5,7 @@ import { CacheService, addCacheHeaders } from '../../../infrastructure/cache/mem
 import { QUOTA_PRICE } from '../../../shared/constants/business.constants';
 import { executeInTransaction, processTransactionApproval } from '../../../domain/services/transaction.service';
 import { distributeProfits } from '../../../application/services/profit-distribution.service';
-import { simulatePaymentApproval } from '../../../infrastructure/gateways/mercadopago.service';
+// Removido: import mercadopago.service (gateway desativado)
 import { PoolClient } from 'pg';
 
 // Schemas (Moved from router)
@@ -15,10 +15,7 @@ export const createCostSchema = z.object({
     isRecurring: z.boolean().default(true),
 });
 
-export const simulateMpSchema = z.object({
-    paymentId: z.coerce.number(),
-    transactionId: z.string()
-});
+// Schema simulateMpSchema removido (gateway desativado)
 
 export class AdminFinanceController {
 
@@ -417,40 +414,7 @@ export class AdminFinanceController {
         }
     }
 
-    /**
-     * Simular aprovação de pagamento via Mercado Pago (Apenas Sandbox)
-     */
-    static async simulatePayment(c: Context) {
-        try {
-            const body = await c.req.json();
-            const { paymentId, transactionId } = simulateMpSchema.parse(body);
-
-            console.log(`[ADMIN] Simulando aprovação MP para Pagamento ${paymentId}, Transação ${transactionId}`);
-
-            try {
-                await simulatePaymentApproval(paymentId);
-            } catch (mpError: any) {
-                console.warn(`[ADMIN] Aviso: Não foi possível atualizar no Mercado Pago: ${mpError.message}`);
-            }
-
-            const pool = getDbPool(c);
-            const result = await executeInTransaction(pool, async (client: PoolClient) => {
-                return await processTransactionApproval(client, transactionId, 'APPROVE');
-            });
-
-            if (!result.success) {
-                return c.json({ success: false, message: result.error || 'Erro ao processar aprovação interna' }, 400);
-            }
-
-            return c.json({
-                success: true,
-                message: 'Simulação realizada com sucesso! Transação aprovada e Mercado Pago atualizado.'
-            });
-        } catch (error: any) {
-            console.error('Erro na simulação administrativa:', error);
-            return c.json({ success: false, message: error.message || 'Erro interno do servidor' }, 500);
-        }
-    }
+    // Função simulatePayment removida (gateway Mercado Pago desativado)
 
     /**
      * Registrar Custo Manual (Despesa)
