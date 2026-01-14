@@ -1273,7 +1273,12 @@ const VideoCard = memo(({ video, onWatch }: { video: PromoVideo; onWatch: (v: Pr
     const getThumbnail = (video: PromoVideo) => {
         if (video.thumbnailUrl) return video.thumbnailUrl;
         if (video.platform === 'YOUTUBE') {
-            const id = video.videoUrl.split('v=')[1]?.split('&')[0] || video.videoUrl.split('/').pop();
+            // Tenta extrair ID lidando com parametros de URL (?list=, etc)
+            let id = video.videoUrl.split('v=')[1]?.split('&')[0];
+            if (!id) {
+                // Fallback para URLs curtas (youtu.be/ID) removendo query params
+                id = video.videoUrl.split('/').pop()?.split('?')[0];
+            }
             return `https://img.youtube.com/vi/${id}/mqdefault.jpg`;
         }
         return 'https://placehold.co/400x225/111/444?text=PREVIEW';
