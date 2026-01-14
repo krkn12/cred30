@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Bug, CheckCircle2, Clock, AlertTriangle, Trash2, RefreshCw } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
@@ -31,10 +31,11 @@ export const AdminBugs: React.FC<AdminBugsProps> = ({ onSuccess, onError }) => {
     const [adminNotes, setAdminNotes] = useState('');
     const [counts, setCounts] = useState({ open: 0, inProgress: 0 });
 
-    const fetchBugs = async () => {
+    const fetchBugs = useCallback(async () => {
         setIsLoading(true);
         try {
-            const res = await apiService.get<any>(`/bugs/admin?status=${statusFilter}`) as any;
+            // Using any here because the API returns counts alongside data, which is non-standard for ApiResponse<T>
+            const res = await apiService.get<BugReport[]>(`/bugs/admin?status=${statusFilter}`) as any;
             if (res.success) {
                 setBugs(res.data || []);
                 setCounts(res.counts || { open: 0, inProgress: 0 });
@@ -44,15 +45,15 @@ export const AdminBugs: React.FC<AdminBugsProps> = ({ onSuccess, onError }) => {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [statusFilter]);
 
     useEffect(() => {
         fetchBugs();
-    }, [statusFilter]);
+    }, [fetchBugs]);
 
     const handleUpdateStatus = async (bugId: number, newStatus: string) => {
         try {
-            const res = await apiService.patch<any>(`/bugs/admin/${bugId}`, {
+            const res = await apiService.patch<BugReport>(`/bugs/admin/${bugId}`, {
                 status: newStatus,
                 adminNotes: adminNotes || undefined
             });
@@ -72,7 +73,7 @@ export const AdminBugs: React.FC<AdminBugsProps> = ({ onSuccess, onError }) => {
     const handleDelete = async (bugId: number) => {
         if (!window.confirm('Excluir este bug definitivamente?')) return;
         try {
-            const res = await apiService.delete<any>(`/bugs/admin/${bugId}`);
+            const res = await apiService.delete<void>(`/bugs/admin/${bugId}`);
             if (res.success) {
                 onSuccess('Excluído', 'Bug removido com sucesso.');
                 fetchBugs();

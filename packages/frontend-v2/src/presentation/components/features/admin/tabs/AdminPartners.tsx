@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Truck, Store, CheckCircle, XCircle, Loader2, RefreshCw, User, MapPin, Phone, Search, ShieldCheck } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
@@ -38,11 +38,7 @@ export const AdminPartners = ({ onSuccess, onError }: AdminPartnersProps) => {
         'TRUCK': '🚚 Utilitário'
     };
 
-    useEffect(() => {
-        loadData();
-    }, [tab, filter]);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
         try {
             const endpoint = tab === 'couriers' ? `/admin/couriers?status=${filter}` : `/admin/sellers?status=${filter}`;
@@ -62,7 +58,11 @@ export const AdminPartners = ({ onSuccess, onError }: AdminPartnersProps) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [tab, filter, onError]);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
 
     const handleApprove = async (type: 'courier' | 'seller', userId: number) => {
         setActionLoading(userId);

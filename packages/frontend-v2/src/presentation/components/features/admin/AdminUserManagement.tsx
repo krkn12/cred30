@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Shield, UserX, UserCheck, ShieldCheck, Mail, Calendar, DollarSign, Award, Plus, X as XIcon, UserPlus, Loader2, ChevronDown } from 'lucide-react';
 import { apiService } from '../../../../application/services/api.service';
 
@@ -16,7 +16,7 @@ interface User {
     quotas_value: number;
 }
 
-export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: any, onError: any }) => {
+export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title: string, message: string) => void, onError: (title: string, message: string) => void }) => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -37,11 +37,7 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: any, on
         pixKey: ''
     });
 
-    useEffect(() => {
-        fetchUsers();
-    }, [roleFilter, statusFilter]);
-
-    const fetchUsers = async (isLoadMore = false) => {
+    const fetchUsers = useCallback(async (isLoadMore = false) => {
         if (!isLoadMore) {
             setLoading(true);
             setOffset(0);
@@ -71,7 +67,11 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: any, on
             setLoading(false);
             setIsLoadingMore(false);
         }
-    };
+    }, [search, roleFilter, statusFilter, offset, onError]);
+
+    useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
 
     const handleUpdateAccess = async (userId: number, role?: string, status?: string) => {
         try {

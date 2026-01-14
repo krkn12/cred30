@@ -59,7 +59,24 @@ export class AdminApi extends ApiBase {
     }
 
     async getAllProductsAdmin(): Promise<any> {
-        return await this.request<any>('/admin/products');
+        return await this.request<any>('/products/admin/all');
+    }
+
+    async createProduct(data: any): Promise<ApiResponse<any>> {
+        return await this.post<any>('/products', data);
+    }
+
+    async updateProduct(id: string | number, data: any): Promise<ApiResponse<any>> {
+        return await this.put<any>(`/products/${id}`, data);
+    }
+
+    async deleteProduct(id: string | number): Promise<ApiResponse<any>> {
+        return await this.delete<any>(`/products/${id}`);
+    }
+
+    async fetchProductMetadata(url: string): Promise<any> {
+        const response = await this.post<any>('/products/fetch-metadata', { url });
+        return response.data || response;
     }
 
     async getRewardsAdmin(): Promise<ApiResponse<any>> {
@@ -76,5 +93,13 @@ export class AdminApi extends ApiBase {
 
     async getRewardRedemptionsAdmin(): Promise<ApiResponse<any>> {
         return await this.request<any>('/admin/rewards/redemptions');
+    }
+
+    async approveReview(id: number): Promise<ApiResponse<void>> {
+        return await this.post<void>(`/admin/reviews/${id}/approve`, {});
+    }
+
+    async rejectReview(id: number): Promise<ApiResponse<void>> {
+        return await this.post<void>(`/admin/reviews/${id}/reject`, {});
     }
 }

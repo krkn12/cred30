@@ -182,7 +182,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
         const isInTransit = data.delivery_status === 'IN_TRANSIT' || data.status === 'IN_TRANSIT';
         let destLat = isInTransit ? (data.delivery_lat ? parseFloat(data.delivery_lat) : null) : (data.pickup_lat ? parseFloat(data.pickup_lat) : null);
         let destLng = isInTransit ? (data.delivery_lng ? parseFloat(data.delivery_lng) : null) : (data.pickup_lng ? parseFloat(data.pickup_lng) : null);
-        let targetIcon = isInTransit ? destinationIcon : pickupIcon;
+        const targetIcon = isInTransit ? destinationIcon : pickupIcon;
 
         if (!destLat || !destLng) {
             const targetAddress = isInTransit ? data.delivery_address : data.pickup_address;
@@ -194,7 +194,9 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
                         destLat = parseFloat(geoData[0].lat);
                         destLng = parseFloat(geoData[0].lon);
                     }
-                } catch (err) { }
+                } catch (err) {
+                    console.error('Geocoding error:', err);
+                }
             }
         }
 
@@ -219,6 +221,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
                     initMap(res.data);
                 }
             } catch (error) {
+                console.error('Fetch tracking error:', error);
             } finally {
                 setIsLoading(false);
             }
@@ -234,7 +237,9 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
                     if (res.success && res.data.courier_lat) {
                         updateCourierMarker(res.data.courier_lat, res.data.courier_lng);
                     }
-                } catch (e) { }
+                } catch (e) {
+                    console.error('Poll tracking error:', e);
+                }
             }, 4000); // 4 segundos para movimentos mais fluídos
         }
 
@@ -255,7 +260,9 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
                     try {
                         // Usa rota específica de logística que aceita status 'ACCEPTED' e 'IN_TRANSIT'
                         await apiService.post(`/logistics/location/${orderId}`, { lat: latitude, lng: longitude });
-                    } catch (e) { }
+                    } catch (e) {
+                        console.error('Location update error:', e);
+                    }
                 },
                 (err) => console.error('GPS Error', err),
                 {

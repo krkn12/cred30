@@ -17,6 +17,7 @@ marketplaceRoutes.use('/boost', securityLockMiddleware);
  * LISTINGS (Anúncios)
  */
 marketplaceRoutes.get('/listings', authMiddleware, MarketplaceListingsController.getListings);
+marketplaceRoutes.get('/listings/:id', authMiddleware, MarketplaceListingsController.getListingDetails);
 marketplaceRoutes.get('/my-listings', authMiddleware, MarketplaceListingsController.getMyListings);
 marketplaceRoutes.post('/create', authMiddleware, MarketplaceListingsController.createListing);
 marketplaceRoutes.delete('/delete/:id', authMiddleware, MarketplaceListingsController.deleteListing);

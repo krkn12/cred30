@@ -54,9 +54,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const navigate = useNavigate();
 
     // Defensive check
-    if (!state) {
-        return <LoadingScreen message="Carregando marketplace..." />;
-    }
+
 
     const [view, setView] = useState<'browse' | 'create' | 'my-orders' | 'details' | 'missions' | 'offline' | 'cart'>('browse');
     const [pendingOfflineSales, setPendingOfflineSales] = useState<any[]>(() => {
@@ -155,6 +153,8 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         price: string;
         category: string;
         image_url: string;
+        images: string[];
+        variants: { name?: string; color?: string; size?: string; stock: number; price?: number }[];
         quotaId: number | null;
         requiredVehicle: 'BIKE' | 'MOTO' | 'CAR' | 'TRUCK';
         stock: string;
@@ -165,6 +165,8 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         price: '',
         category: 'ELETRÔNICOS',
         image_url: '',
+        images: [],
+        variants: [],
         quotaId: null,
         requiredVehicle: 'MOTO',
         stock: '1',
@@ -285,7 +287,10 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 price: parseFloat(newListing.price),
                 category: newListing.category,
                 imageUrl: newListing.image_url || undefined,
+                images: newListing.images,
+                variants: newListing.variants,
                 requiredVehicle: newListing.requiredVehicle,
+                stock: parseInt(newListing.stock),
                 ...(gpsLocation ? gpsLocation : {})
             };
 
@@ -298,7 +303,11 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
             if (response.success) {
                 onSuccess('Sucesso', newListing.quotaId ? 'Sua cota-parte foi listada para repasse!' : 'Anúncio publicado!');
                 setView('browse');
-                setNewListing({ title: '', description: '', price: '', category: 'ELETRÔNICOS', image_url: '', quotaId: null, requiredVehicle: 'MOTO', stock: '1', pickupAddress: '' });
+                setNewListing({
+                    title: '', description: '', price: '', category: 'ELETRÔNICOS',
+                    image_url: '', images: [], variants: [],
+                    quotaId: null, requiredVehicle: 'MOTO', stock: '1', pickupAddress: ''
+                });
                 onRefresh();
             }
         } catch (error: any) {
@@ -388,6 +397,10 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     };
 
     // Loading principal
+    if (!state) {
+        return <LoadingScreen message="Carregando marketplace..." />;
+    }
+
     if ((isLoading || isGpsLoading) && view === 'browse' && listings.length === 0) {
         return <LoadingScreen fullScreen message="Carregando Mercado..." />;
     }

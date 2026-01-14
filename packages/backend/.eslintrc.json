@@ -1,12 +1,11 @@
 {
     "env": {
-        "browser": true,
-        "es2021": true
+        "es2021": true,
+        "node": true
     },
     "extends": [
         "eslint:recommended",
-        "plugin:@typescript-eslint/recommended",
-        "plugin:react-hooks/recommended"
+        "plugin:@typescript-eslint/recommended"
     ],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
@@ -23,11 +22,20 @@
             {
                 "argsIgnorePattern": "^_"
             }
+        ],
+        "no-console": [
+            "warn",
+            {
+                "allow": [
+                    "log",
+                    "error",
+                    "warn"
+                ]
+            }
         ]
     },
     "ignorePatterns": [
         "dist",
-        "node_modules",
-        "vite.config.ts"
+        "node_modules"
     ]
 }

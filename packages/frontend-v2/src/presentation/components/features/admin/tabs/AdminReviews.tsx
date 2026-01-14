@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MessageSquare, Check, X as XIcon } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
@@ -7,23 +7,34 @@ interface AdminReviewsProps {
     onError: (title: string, message: string) => void;
 }
 
+interface Review {
+    id: number;
+    user_name: string;
+    user_email: string;
+    rating: number;
+    comment: string;
+    transaction_amount: number;
+    is_approved: boolean;
+    is_public: boolean;
+}
+
 export const AdminReviews: React.FC<AdminReviewsProps> = ({ onSuccess, onError }) => {
-    const [reviews, setReviews] = useState<any[]>([]);
+    const [reviews, setReviews] = useState<Review[]>([]);
 
-    useEffect(() => {
-        fetchReviews();
-    }, []);
-
-    const fetchReviews = async () => {
+    const fetchReviews = useCallback(async () => {
         try {
-            const res = await apiService.getAdminReviews();
+            const res = await apiService.getAdminReviews() as any;
             if (res.success) {
                 setReviews(res.data || []);
             }
         } catch (e) {
             console.error('Erro ao buscar avaliações:', e);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchReviews();
+    }, [fetchReviews]);
 
     return (
         <div className="space-y-6">

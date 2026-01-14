@@ -80,7 +80,7 @@ export const ViewFarmView: React.FC<ViewFarmViewProps> = ({ onBack, onSuccess, o
             if (playerRef.current) {
                 try {
                     playerRef.current.destroy();
-                } catch (e) { }
+                } catch (e) { /* ignore */ }
             }
         };
     }, []);

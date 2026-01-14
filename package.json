@@ -1,7 +1,7 @@
 {
   "name": "cred30",
   "private": true,
-  "version": "1.0.519",
+  "version": "1.0.520",
   "description": "Plataforma Associativa Cred30 - Monorepo",
   "workspaces": [
     "packages/*"
@@ -45,6 +45,9 @@
     "npm": ">=9.0.0"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.2.3",
+    "pg": "^8.16.3",
     "postgres": "^3.4.7"
   }
 }

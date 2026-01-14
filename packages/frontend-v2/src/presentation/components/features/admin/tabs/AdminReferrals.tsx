@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { UserPlus, Users, Trash2 } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
@@ -7,25 +7,32 @@ interface AdminReferralsProps {
     onError: (title: string, message: string) => void;
 }
 
+interface ReferralCode {
+    id: number;
+    code: string;
+    current_uses: number;
+    max_uses: number | null;
+}
+
 export const AdminReferrals = ({ onSuccess, onError }: AdminReferralsProps) => {
-    const [referralCodes, setReferralCodes] = useState<any[]>([]);
+    const [referralCodes, setReferralCodes] = useState<ReferralCode[]>([]);
     const [newReferralCode, setNewReferralCode] = useState('');
     const [referralMaxUses, setReferralMaxUses] = useState('');
 
-    useEffect(() => {
-        fetchReferralCodes();
-    }, []);
-
-    const fetchReferralCodes = async () => {
+    const fetchReferralCodes = useCallback(async () => {
         try {
-            const response = await apiService.get<any[]>('/admin/referral-codes');
+            const response = await apiService.get<ReferralCode[]>('/admin/referral-codes');
             if (response.success) {
                 setReferralCodes(response.data || []);
             }
         } catch (error) {
             console.error('Erro ao buscar códigos:', error);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchReferralCodes();
+    }, [fetchReferralCodes]);
 
     const handleCreateReferralCode = async () => {
         if (!newReferralCode) return;

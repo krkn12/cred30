@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Vote, Send, BarChart3, Gavel, ShieldCheck, Info } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
@@ -7,20 +7,26 @@ interface AdminGovernanceProps {
     onError: (title: string, message: string) => void;
 }
 
+interface Proposal {
+    id: number;
+    title: string;
+    description: string;
+    status: 'active' | 'closed';
+    yes_votes_power: string | number;
+    no_votes_power: string | number;
+    created_at: string;
+}
+
 export const AdminGovernance: React.FC<AdminGovernanceProps> = ({ onSuccess, onError }) => {
-    const [proposals, setProposals] = useState<any[]>([]);
+    const [proposals, setProposals] = useState<Proposal[]>([]);
     const [newPropTitle, setNewPropTitle] = useState('');
     const [newPropDesc, setNewPropDesc] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    useEffect(() => {
-        fetchProposals();
-    }, []);
-
-    const fetchProposals = async () => {
+    const fetchProposals = useCallback(async () => {
         setIsLoading(true);
         try {
-            const res = await apiService.getProposals();
+            const res = await apiService.getProposals() as any;
             if (res.success) {
                 setProposals(res.data || []);
             }
@@ -29,7 +35,11 @@ export const AdminGovernance: React.FC<AdminGovernanceProps> = ({ onSuccess, onE
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchProposals();
+    }, [fetchProposals]);
 
     const handleCreateProposal = async () => {
         if (!newPropTitle || !newPropDesc) return;
@@ -148,13 +158,13 @@ export const AdminGovernance: React.FC<AdminGovernanceProps> = ({ onSuccess, onE
                                             <p className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-1 flex items-center gap-2">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> PODER SIM
                                             </p>
-                                            <p className="text-2xl font-black text-white tabular-nums">{parseFloat(prop.yes_votes_power || 0).toFixed(1)}</p>
+                                            <p className="text-2xl font-black text-white tabular-nums">{Number(prop.yes_votes_power || 0).toFixed(1)}</p>
                                         </div>
                                         <div className="bg-zinc-900/60 p-4 rounded-2xl border border-white/5">
                                             <p className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-1 flex items-center gap-2">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-red-500" /> PODER NÃO
                                             </p>
-                                            <p className="text-2xl font-black text-zinc-500 tabular-nums">{parseFloat(prop.no_votes_power || 0).toFixed(1)}</p>
+                                            <p className="text-2xl font-black text-zinc-500 tabular-nums">{Number(prop.no_votes_power || 0).toFixed(1)}</p>
                                         </div>
                                     </div>
 

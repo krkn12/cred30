@@ -1,4 +1,4 @@
-import { MARKETPLACE_ESCROW_FEE_RATE as _MARKETPLACE_ESCROW_FEE_RATE } from '../constants/app.constants';
+
 
 // Sistema de PIX Manual - Sem taxas de gateway externo
 // O pagamento é feito diretamente para a chave PIX do administrador

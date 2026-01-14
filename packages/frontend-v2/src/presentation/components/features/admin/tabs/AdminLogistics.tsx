@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Truck, Package, Clock, Search, User, Store, Check, X, Eye, UserCheck, Bike, Car, Zap } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
@@ -22,11 +22,7 @@ export const AdminLogistics = ({ state, onRefresh, onSuccess, onError }: AdminLo
     const [globalKmPrice, setGlobalKmPrice] = useState(state.stats?.systemConfig?.courier_price_per_km?.toString() || '2.50');
     const [isUpdatingConfig, setIsUpdatingConfig] = useState(false);
 
-    useEffect(() => {
-        fetchDeliveries();
-    }, []);
-
-    const fetchDeliveries = async () => {
+    const fetchDeliveries = useCallback(async () => {
         setLoading(true);
         try {
             const response = await apiService.get<any>('/logistics/my-deliveries');
@@ -36,9 +32,9 @@ export const AdminLogistics = ({ state, onRefresh, onSuccess, onError }: AdminLo
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const fetchPendingCouriers = async () => {
+    const fetchPendingCouriers = useCallback(async () => {
         setLoading(true);
         try {
             const response = await apiService.listPendingCouriers();
@@ -48,12 +44,12 @@ export const AdminLogistics = ({ state, onRefresh, onSuccess, onError }: AdminLo
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         if (activeSubTab === 'monitor') fetchDeliveries();
         else fetchPendingCouriers();
-    }, [activeSubTab]);
+    }, [activeSubTab, fetchDeliveries, fetchPendingCouriers]);
 
     const handleApprove = async (userId: number) => {
         setProcessingId(userId);

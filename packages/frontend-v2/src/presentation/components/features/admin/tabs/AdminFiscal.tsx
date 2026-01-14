@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FileText, Download, TrendingUp, Wallet, ArrowUpRight, Loader2, Calendar } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
@@ -8,11 +8,7 @@ export const AdminFiscal = () => {
     const [selectedMonth, setSelectedMonth] = useState(0);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-    useEffect(() => {
-        loadReport();
-    }, [selectedMonth, selectedYear]);
-
-    const loadReport = async () => {
+    const loadReport = useCallback(async () => {
         setLoading(true);
         try {
             const res = await apiService.get<any>(`/admin/fiscal/report?month=${selectedMonth}&year=${selectedYear}`);
@@ -24,7 +20,11 @@ export const AdminFiscal = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedMonth, selectedYear]);
+
+    useEffect(() => {
+        loadReport();
+    }, [loadReport]);
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
