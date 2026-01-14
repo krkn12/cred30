@@ -74,6 +74,7 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
             SELECT 
                 u.score, 
                 u.membership_type,
+                u.role,
                 u.created_at,
                 (SELECT COUNT(*) FROM quotas WHERE user_id = $1 AND (status = 'ACTIVE' OR status IS NULL)) as quotas_count,
                 (SELECT COALESCE(SUM(current_value), 0) FROM quotas WHERE user_id = $1 AND (status = 'ACTIVE' OR status IS NULL)) as total_quotas_value,
@@ -138,6 +139,24 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         // 4. Lucro Real > 0
         const isElite = score >= 950 && accountAgeDays >= 90 && !hasLateHistory;
         const profitBonusFactor = (systemProfitPool > 0 && isElite) ? 0.05 : 0;
+
+        // --- BYPASS PARA ADMIN ---
+        if (userData.role === 'ADMIN') {
+            const adminDetails = {
+                score: 1000,
+                quotasCount: quotasCount || 100,
+                quotasValue: quotasValue || 5000,
+                marketplaceTransactions: 999,
+                accountAgeDays: 999,
+                hasOverdue: false,
+                totalSpent: totalSpent || 10000,
+                maxLoanAmount: 1000000, // 1 Milhão de limite
+                isCurrentlyGuarantor: false
+            };
+
+            console.log(`[DEBUG_CREDIT] 👑 ADMIN DETECTED (${userId}): Bypassing limits.`);
+            return { eligible: true, details: adminDetails };
+        }
 
         // INFLUÊNCIA DO SCORE (Novo Pedido):
         // Score 0 a 1000.

@@ -2,7 +2,7 @@ import { Context } from 'hono';
 import { z } from 'zod'; // Import zod here as schemas will be moved or redefined
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { CacheService, addCacheHeaders } from '../../../infrastructure/cache/memory-cache.service';
-import { QUOTA_PRICE } from '../../../shared/constants/business.constants';
+import { QUOTA_PRICE, LOGISTICS_SUSTAINABILITY_FEE_RATE } from '../../../shared/constants/business.constants';
 import { executeInTransaction, processTransactionApproval } from '../../../domain/services/transaction.service';
 import { distributeProfits } from '../../../application/services/profit-distribution.service';
 // Removido: import mercadopago.service (gateway desativado)
@@ -574,11 +574,11 @@ export class AdminFinanceController {
 
             // 6. Lucro Logístico (Faturamento)
             const logisticsProfitRes = await pool.query(`
-                SELECT COALESCE(SUM(delivery_fee * 0.275), 0) as logistics_profit
+                SELECT COALESCE(SUM(delivery_fee * $1), 0) as logistics_profit
                 FROM marketplace_orders
                 WHERE delivery_status = 'DELIVERED'
                 ${dateFilter}
-            `, params);
+            `, [...params, LOGISTICS_SUSTAINABILITY_FEE_RATE]); // Adiciona share constante aos params
 
             // 8. Taxas de Cotas (SVA - Metadata serviceFee)
             const quotaFeesRes = await pool.query(`

@@ -107,20 +107,26 @@ export class QuotasController {
             const userQuotaCountRes = await pool.query('SELECT COUNT(*) FROM quotas WHERE user_id = $1 AND status = \'ACTIVE\'', [user.id]);
             const currentQuotas = parseInt(userQuotaCountRes.rows[0].count);
 
-            // 2. Bloquear se exceder o limite individual
-            if (currentQuotas + quantity > MAX_QUOTAS_PER_USER) {
-                return c.json({
-                    success: false,
-                    message: `Proteção Anti-Concentração Ativa: O limite por associado é de ${MAX_QUOTAS_PER_USER} cotas. Você já possui ${currentQuotas} e tentou comprar mais ${quantity}.`
-                }, 403); // Forbidden
+            // 2. Bloquear se exceder o limite individual (EXCETO ADMIN)
+            if (!user.isAdmin) {
+                if (currentQuotas + quantity > MAX_QUOTAS_PER_USER) {
+                    return c.json({
+                        success: false,
+                        message: `Proteção Anti-Concentração Ativa: O limite por associado é de ${MAX_QUOTAS_PER_USER} cotas. Você já possui ${currentQuotas} e tentou comprar mais ${quantity}.`
+                    }, 403); // Forbidden
+                }
+            } else {
+                console.log(`[QUOTAS] 🛡️ ADMIN BYPASS ACTIVATED: User ${user.email} ignoring Anti-Whale limits.`);
             }
 
-            // 3. Travas de Volume por Operação
-            if (quantity > 200) { // Trava hardcode operacional (ex: 10k reais)
-                return c.json({
-                    success: false,
-                    message: 'Volume alto detectado. Para aportes acima de 200 cotas, entre em contato com a administração para KYC reforçado.'
-                }, 400);
+            // 3. Travas de Volume por Operação (EXCETO ADMIN)
+            if (!user.isAdmin) {
+                if (quantity > 200) { // Trava hardcode operacional (ex: 10k reais)
+                    return c.json({
+                        success: false,
+                        message: 'Volume alto detectado. Para aportes acima de 200 cotas, entre em contato com a administração para KYC reforçado.'
+                    }, 400);
+                }
             }
 
             // Validar limites antigos (podem ser relaxados se a trava anti-baleia for confiável, mas vamos manter por redundância)

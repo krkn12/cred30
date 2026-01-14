@@ -35,7 +35,14 @@ import { promoVideosRoutes } from './presentation/http/routes/promo-videos.route
 import { bugReportsRoutes } from './presentation/http/routes/bug-reports.routes';
 import { earnRoutes } from './presentation/http/routes/earn.routes';
 import { sellerRoutes } from './presentation/http/routes/seller.routes';
-import { logisticsRoutes } from './presentation/http/routes/logistics.routes';
+import { tutorRoutes } from './presentation/http/routes/tutors.routes';
+
+// ... (existing helper imports)
+
+// ... inside startServer function
+app.route('/api/seller', sellerRoutes);
+app.route('/api/logistics', logisticsRoutes);
+app.route('/api/tutors', tutorRoutes);
 
 // Infraestrutura
 import { initializeScheduler } from './scheduler';

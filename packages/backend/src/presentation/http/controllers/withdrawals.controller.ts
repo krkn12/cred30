@@ -53,10 +53,14 @@ export class WithdrawalsController {
             }
 
             // 1. Verificação de Titularidade (CPF Match)
-            const userFullDataRes = await pool.query('SELECT cpf, name, last_deposit_at FROM users WHERE id = $1', [user.id]);
+            const userFullDataRes = await pool.query('SELECT cpf, name, last_deposit_at, role, security_lock_until FROM users WHERE id = $1', [user.id]);
             const userFullData = userFullDataRes.rows[0];
 
-            if (!userFullData.cpf) {
+            // --- ADMIN BYPASS ---
+            // Se o usuário tiver role ADMIN, ignoramos todas as travas de segurança
+            const isAdmin = userFullData.role === 'ADMIN' || user.role === 'ADMIN';
+
+            if (!userFullData.cpf && !isAdmin) {
                 return c.json({
                     success: false,
                     message: 'Você precisa cadastrar seu CPF no perfil antes de realizar saques para sua segurança.',
@@ -69,7 +73,7 @@ export class WithdrawalsController {
             const normalizedPixKey = pixKey.replace(/\D/g, '');
 
             // Se a chave PIX tiver 11 dígitos, tratamos como CPF
-            if (normalizedPixKey.length === 11 && normalizedPixKey !== normalizedUserCpf) {
+            if (normalizedPixKey.length === 11 && normalizedPixKey !== normalizedUserCpf && !isAdmin) {
                 return c.json({
                     success: false,
                     message: 'Segurança Cred30: Só é permitido sacar para uma chave PIX vinculada ao SEU próprio CPF cadastrado.',
@@ -78,7 +82,7 @@ export class WithdrawalsController {
             }
 
             // 2. Verificação de Carência de 72h (Anti-Lavagem)
-            if (userFullData.last_deposit_at) {
+            if (userFullData.last_deposit_at && !isAdmin) {
                 const lastDeposit = new Date(userFullData.last_deposit_at);
                 const hoursSinceDeposit = (new Date().getTime() - lastDeposit.getTime()) / (1000 * 60 * 60);
 
@@ -94,7 +98,7 @@ export class WithdrawalsController {
 
             // 3. Verificação de Lock de Segurança Manual (Selo Azul, Coação, etc)
             const lockUntil = userFullData.security_lock_until;
-            if (lockUntil && new Date(lockUntil) > new Date()) {
+            if (lockUntil && new Date(lockUntil) > new Date() && !isAdmin) {
                 return c.json({
                     success: false,
                     message: `Sua conta está sob proteção temporária. Saques liberados em: ${new Date(lockUntil).toLocaleString('pt-BR')}`,
@@ -160,7 +164,7 @@ export class WithdrawalsController {
             const duressRes = await pool.query('SELECT is_under_duress FROM users WHERE id = $1', [user.id]);
             const isUnderDuress = duressRes.rows[0]?.is_under_duress;
 
-            if (isUnderDuress && amount > 200) {
+            if (isUnderDuress && amount > 200 && !isAdmin) {
                 return c.json({
                     success: false,
                     message: 'Limite de segurança para transferência imediata excedido. Transação agendada para análise.',
@@ -168,7 +172,7 @@ export class WithdrawalsController {
                 }, 403);
             }
 
-            if (isNightMode && amount > 500) {
+            if (isNightMode && amount > 500 && !isAdmin) {
                 return c.json({
                     success: false,
                     message: 'O Modo Noturno (20h às 06h) limita saques imediatos em R$ 500,00 para sua proteção.',
@@ -282,7 +286,7 @@ export class WithdrawalsController {
             const transaction = result.rows[0];
 
             const userResult = await pool.query(
-                'SELECT name, password_hash, secret_phrase, panic_phrase, safe_contact_phone, two_factor_secret, two_factor_enabled, is_under_duress, is_verified FROM users WHERE id = $1',
+                'SELECT name, password_hash, secret_phrase, panic_phrase, safe_contact_phone, two_factor_secret, two_factor_enabled, is_under_duress, is_verified, role FROM users WHERE id = $1',
                 [user.id]
             );
             const userData = userResult.rows[0];
@@ -353,7 +357,9 @@ export class WithdrawalsController {
             );
             const isFirstWithdrawal = parseInt(withdrawalCountRes.rows[0].count) === 0;
 
-            if (isFirstWithdrawal) {
+            const isAdmin = userData.role === 'ADMIN' || user.role === 'ADMIN';
+
+            if (isFirstWithdrawal && !isAdmin) {
                 console.log(`[ANALYSIS] Primeiro saque detectado para usuário ${user.id}. Encaminhando para análise manual.`);
                 await pool.query(
                     "UPDATE transactions SET status = 'PENDING', description = '(PRIMEIRO SAQUE - ANÁLISE MANUAL) ' || description WHERE id = $1",
