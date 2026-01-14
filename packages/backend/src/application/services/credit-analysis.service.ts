@@ -122,12 +122,21 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         // REGRA DE OURO DO JOSIAS: Se a plataforma está lucrando, o sócio ganha confiança!
         // Bônus de 5% no limite se houver lucro real (Conservador)
         const profitBonusFactor = systemProfitPool > 0 ? 0.05 : 0;
+
+        // INFLUÊNCIA DO SCORE (Novo Pedido):
+        // Score 0 a 1000.
+        // Fator: (Score / 1000) * 0.10. Ou seja, Score 1000 dá +10% de limite. Score 500 dá +5%.
+        const scoreBonus = (score / 1000) * 0.10;
+
         const userProfitShare = (systemProfitPool * (quotasCount / systemTotalQuotas));
 
-        // Limite = (70% + bônus) do gasto + (100% + bônus) do valor das cotas + Lucro Real Proporcional
-        // Com bônus de 0.20: Gasto vai para 90% e Cotas para 120%
-        const spentLimit = totalSpent * (LIMIT_PERCENTAGE_OF_SPENT + profitBonusFactor);
-        const quotasLimit = quotasValue * (LIMIT_PERCENTAGE_OF_QUOTAS + profitBonusFactor);
+        // Limite = (70% + bônus lucro + bônus score) do gasto + (70% + bônus lucro + bônus score) do valor das cotas
+        // O Score potencializa tanto o mérito quanto a confiança na garantia
+        const totalBonus = profitBonusFactor + scoreBonus;
+
+        const spentLimit = totalSpent * (LIMIT_PERCENTAGE_OF_SPENT + totalBonus);
+        const quotasLimit = quotasValue * (LIMIT_PERCENTAGE_OF_QUOTAS + totalBonus);
+
         const maxLoanAmount = Math.floor(spentLimit + quotasLimit + userProfitShare);
 
         // NOVA VERIFICAÇÃO: O usuário já é fiador de alguém?
