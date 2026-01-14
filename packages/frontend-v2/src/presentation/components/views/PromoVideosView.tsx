@@ -142,7 +142,7 @@ const PaymentSuccessModal: React.FC<{
                             <div className="flex justify-between items-center py-2 border-b border-white/5">
                                 <span className="text-zinc-500 text-[11px] sm:text-xs font-bold uppercase">Valor</span>
                                 <span className="text-emerald-400 text-lg sm:text-xl font-black">
-                                    {totalToPay.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    {(totalToPay || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                 </span>
                             </div>
 
@@ -1225,11 +1225,11 @@ const CreateCampaignModal: React.FC<{
                         <div className="space-y-2">
                             <div className="flex justify-between text-xs">
                                 <span className="text-zinc-500 font-semibold">Custo por View (Net)</span>
-                                <span className="text-emerald-400 font-black">{viewerEarning.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                <span className="text-emerald-400 font-black">{(viewerEarning || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                             </div>
                             <div className="flex justify-between text-[10px]">
                                 <span className="text-zinc-600 font-medium">Fundo Social - Cotistas (40%)</span>
-                                <span className="text-zinc-500 font-bold">{(form.budget * 0.4).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                <span className="text-zinc-500 font-bold">{((form.budget || 0) * 0.4).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                             </div>
                         </div>
                     </div>
