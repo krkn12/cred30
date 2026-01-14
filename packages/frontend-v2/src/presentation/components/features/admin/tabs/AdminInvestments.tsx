@@ -103,8 +103,8 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
         try {
             const res = await apiService.get<any>('/admin/investments');
             if (res.success) {
-                setInvestments(res.data.investments || []);
-                setSoldHistory(res.data.sold || []);
+                setInvestments(Array.isArray(res.data.investments) ? res.data.investments : []);
+                setSoldHistory(Array.isArray(res.data.sold) ? res.data.sold : []);
                 setSummary(res.data.summary || null);
             }
         } catch (error) {
