@@ -1,6 +1,6 @@
 {
   "name": "cred30-backend",
-  "version": "1.0.508",
+  "version": "1.0.509",
   "description": "Backend para Plataforma Associativa Cred30",
   "main": "src/index.ts",
   "scripts": {
