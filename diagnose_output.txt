@@ -1,0 +1,34 @@
+[dotenv@17.2.3] injecting env (15) from packages\backend\.env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+🔍 INICIANDO DIAGNÓSTICO DE LIQUIDEZ...
+
+--- DADOS ATUAIS (Baseados em admin.finance.controller.ts) ---
+💰 Saldo do Sistema (System Balance): R$ 453.00
+
+📉 PASSIVOS (Compromissos):
+   - Saldos dos Usuários:    R$ 343.50
+   - Reserva Fiscal:         R$ 6.63
+   - Reserva Operacional:    R$ 6.63
+   - Lucro do Dono (Retido): R$ 6.63
+   - Custos Mensais (Abertos): R$ 137.00
+   -------------------------------------------
+   = TOTAL PASSIVOS:         R$ 500.39
+
+📊 RESULTADO:
+   Liquidez Real = Balance - Passivos
+   R$ -47.39
+
+--- OUTRAS RESERVAS (Não subtraídas na fórmula atual, mas existem) ---
+   - Reserva de Investimento: R$ 182.63
+   - Pool de Lucros (Sobras): R$ 4.00
+
+--- ANÁLISE ---
+⚠️  LIQUIDEZ NEGATIVA DETECTADA!
+   Significa que o dinheiro "físico" (System Balance) é menor que a soma das dívidas (Saldos + Reservas).
+   Possíveis causas:
+   1. Bônus de boas-vindas dados sem injeção de capital correspondente.
+   2. Adição manual de saldo a usuários sem atualizar system_balance.
+   3. Custos cadastrados (mensais) que ainda não foram pagos mas já abatem da liquidez visual.
+
+💡 SOLUÇÃO SUGERIDA:
+   Para zerar, você precisa INJETAR R$ 47.39 no sistema.
+   Você pode usar a função de "Adicionar Lucro/Capital" no painel, ou rodar um script de ajuste.

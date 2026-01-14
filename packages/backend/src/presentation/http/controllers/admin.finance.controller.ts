@@ -384,6 +384,9 @@ export class AdminFinanceController {
                 );
             });
 
+            // Limpar cache para atualização imediata
+            CacheService.invalidateAdminDashboard();
+
             return c.json({
                 success: true,
                 message: `R$ ${amountVal.toFixed(2)} adicionado ao acumulado e ao saldo do sistema!`,
@@ -402,6 +405,10 @@ export class AdminFinanceController {
         try {
             const pool = getDbPool(c);
             const result = await distributeProfits(pool);
+
+            if (result.success) {
+                CacheService.invalidateAdminDashboard();
+            }
 
             if (!result.success) {
                 return c.json(result, 400);
@@ -443,6 +450,9 @@ export class AdminFinanceController {
                     [user.id, JSON.stringify({ addedCost: amount, description: body.description || 'Custo manual' }), new Date()]
                 );
             });
+
+            // Limpar cache para atualização imediata
+            CacheService.invalidateAdminDashboard();
 
             return c.json({
                 success: true,
