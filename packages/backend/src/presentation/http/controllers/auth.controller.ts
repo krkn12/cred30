@@ -103,6 +103,9 @@ export class AuthController {
             }
 
             if (user.status && user.status !== 'ACTIVE') {
+                if (user.status === 'WAITLIST') {
+                    return c.json({ success: false, message: 'Você está na Lista de Espera. Aguarde a liberação de novas vagas.' }, 403);
+                }
                 return c.json({ success: false, message: 'Esta conta está suspensa ou bloqueada.' }, 403);
             }
 
@@ -176,6 +179,22 @@ export class AuthController {
             const isAdminEmail = userEmail === (process.env.ADMIN_EMAIL || '').toLowerCase();
             const hashedPassword = await bcrypt.hash(validatedData.password, 10);
 
+            // --- WAITLIST CHECK ---
+            const { MAX_ACTIVE_MEMBERS, WAITLIST_ENABLED } = await import('../../../shared/constants/business.constants');
+
+            let status = 'ACTIVE';
+            let message = 'Cadastro realizado!';
+
+            if (WAITLIST_ENABLED && !isAdminEmail) {
+                const countRes = await pool.query("SELECT COUNT(*) FROM users WHERE status = 'ACTIVE'");
+                const activeCount = parseInt(countRes.rows[0].count);
+
+                if (activeCount >= MAX_ACTIVE_MEMBERS) {
+                    status = 'WAITLIST';
+                    message = 'Cadastro realizado! Você está na LISTA DE ESPERA devido à alta demanda. Avisaremos quando liberar.';
+                }
+            }
+
             if (!isAdminEmail) {
                 if (!validatedData.referralCode || validatedData.referralCode.trim() === '') {
                     return c.json({ success: false, message: 'Código de indicação é obrigatório.' }, 403);
@@ -206,10 +225,10 @@ export class AuthController {
             const qrCode = await twoFactorService.generateQrCode(otpUri);
 
             const newUserResult = await pool.query(
-                `INSERT INTO users (name, email, password_hash, secret_phrase, pix_key, balance, referral_code, is_admin, score, two_factor_secret, two_factor_enabled, is_email_verified, accepted_terms_at, cpf, phone)
-                 VALUES ($1, $2, $3, $4, $5, 0, $6, $7, 0, $8, FALSE, TRUE, CURRENT_TIMESTAMP, $9, $10)
-                 RETURNING id, name, email, pix_key, balance, score, created_at, referral_code, is_admin`,
-                [validatedData.name, userEmail, hashedPassword, validatedData.secretPhrase, validatedData.pixKey || null, referralCode, isAdminEmail, tfaSecret, validatedData.cpf || null, validatedData.phone || null]
+                `INSERT INTO users (name, email, password_hash, secret_phrase, pix_key, balance, referral_code, is_admin, score, two_factor_secret, two_factor_enabled, is_email_verified, accepted_terms_at, cpf, phone, status)
+                 VALUES ($1, $2, $3, $4, $5, 0, $6, $7, 0, $8, FALSE, TRUE, CURRENT_TIMESTAMP, $9, $10, $11)
+                 RETURNING id, name, email, pix_key, balance, score, created_at, referral_code, is_admin, status`,
+                [validatedData.name, userEmail, hashedPassword, validatedData.secretPhrase, validatedData.pixKey || null, referralCode, isAdminEmail, tfaSecret, validatedData.cpf || null, validatedData.phone || null, status]
             );
 
             const newUser = newUserResult.rows[0];

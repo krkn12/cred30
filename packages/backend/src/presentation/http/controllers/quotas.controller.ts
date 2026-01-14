@@ -11,7 +11,8 @@ import {
     QUOTA_FEE_OPERATIONAL_SHARE,
     QUOTA_FEE_OWNER_SHARE,
     QUOTA_FEE_INVESTMENT_SHARE,
-    ADMIN_PIX_KEY
+    ADMIN_PIX_KEY,
+    MAX_QUOTAS_PER_USER
 } from '../../../shared/constants/business.constants';
 import { UserContext } from '../../../shared/types/hono.types';
 import {
@@ -101,20 +102,40 @@ export class QuotasController {
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
 
-            // Validar limites
-            if (quantity > 20) {
+            // --- PROTEÇÃO ANTI-BALEIA (ANTI-WHALE) ---
+            // 1. Verificar estoque atual do usuário
+            const userQuotaCountRes = await pool.query('SELECT COUNT(*) FROM quotas WHERE user_id = $1 AND status = \'ACTIVE\'', [user.id]);
+            const currentQuotas = parseInt(userQuotaCountRes.rows[0].count);
+
+            // 2. Bloquear se exceder o limite individual
+            if (currentQuotas + quantity > MAX_QUOTAS_PER_USER) {
                 return c.json({
                     success: false,
-                    message: 'Quantidade máxima por ativação é 20 licenças (R$ 1.000,00)'
+                    message: `Proteção Anti-Concentração Ativa: O limite por associado é de ${MAX_QUOTAS_PER_USER} cotas. Você já possui ${currentQuotas} e tentou comprar mais ${quantity}.`
+                }, 403); // Forbidden
+            }
+
+            // 3. Travas de Volume por Operação
+            if (quantity > 200) { // Trava hardcode operacional (ex: 10k reais)
+                return c.json({
+                    success: false,
+                    message: 'Volume alto detectado. Para aportes acima de 200 cotas, entre em contato com a administração para KYC reforçado.'
                 }, 400);
             }
 
-            if (baseCost > 1000) {
-                return c.json({
-                    success: false,
-                    message: 'Valor máximo por ativação é R$ 1.000,00'
-                }, 400);
+            // Validar limites antigos (podem ser relaxados se a trava anti-baleia for confiável, mas vamos manter por redundância)
+            /*
+            if (quantity > 20) {
+                 // Removido limite de 20 para permitir investidores maiores (até o teto da baleia), mas mantendo a lógica Anti-Whale global
             }
+            */
+
+            /*
+           if (baseCost > 1000) {
+                // Removido também
+           }
+            */
+
 
             const result = await executeInTransaction(pool, async (client) => {
                 console.log(`[QUOTAS] Initiating transaction for user ${user.id}, paymentMethod: ${paymentMethod}`);

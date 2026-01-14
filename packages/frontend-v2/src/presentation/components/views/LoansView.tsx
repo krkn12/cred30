@@ -280,7 +280,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                                 : 'bg-zinc-900 border-white/5 text-zinc-500 hover:text-white'}`}
                                         >
                                             {pct}% Gar.
-                                            <div className="text-[9px] opacity-70">Taxa: {(getInterestRate(pct) * 100).toFixed(0)}%</div>
+                                            <div className="text-[9px] opacity-70">Taxa Serv.: {(getInterestRate(pct) * 100).toFixed(0)}%</div>
                                         </button>
                                     ))}
                                 </div>
