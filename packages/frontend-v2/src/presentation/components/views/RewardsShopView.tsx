@@ -236,14 +236,14 @@ export const RewardsShopView = ({ state, onBack, onSuccess, onError, onRefresh }
                                 </div>
                             )}
 
-                            {/* Image/Icon Area */}
-                            <div className={`relative ${style.bgColor} flex items-center justify-center overflow-hidden w-full h-40 sm:h-48`}>
+                            {/* Image/Icon Area - Proporção 16:9 Padronizada */}
+                            <div className={`relative ${style.bgColor} flex items-center justify-center overflow-hidden w-full aspect-[4/3]`}>
                                 <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none z-10" />
                                 {item.image_url && !imgError[item.id] ? (
                                     <img
                                         src={item.image_url}
                                         alt={item.name}
-                                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                        className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-110"
                                         onError={(e) => {
                                             console.error(`[RewardsShop] Erro ao carregar imagem para ${item.id}:`, item.image_url, e);
                                             setImgError(prev => ({ ...prev, [item.id]: true }));
