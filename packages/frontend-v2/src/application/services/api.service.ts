@@ -87,6 +87,12 @@ class ApiService extends ApiBase {
   saveRewardAdmin = this.admin.saveRewardAdmin.bind(this.admin);
   addRewardInventoryAdmin = this.admin.addRewardInventoryAdmin.bind(this.admin);
   getRewardRedemptionsAdmin = this.admin.getRewardRedemptionsAdmin.bind(this.admin);
+  approveReview = this.admin.approveReview.bind(this.admin);
+  rejectReview = this.admin.rejectReview.bind(this.admin);
+  createProduct = this.admin.createProduct.bind(this.admin);
+  updateProduct = this.admin.updateProduct.bind(this.admin);
+  deleteProduct = this.admin.deleteProduct.bind(this.admin);
+  fetchProductMetadata = this.admin.fetchProductMetadata.bind(this.admin);
 
 
   // Aliases required by AdminUserManagement.tsx
@@ -122,6 +128,8 @@ class ApiService extends ApiBase {
   // Voting
   getProposals = this.misc.getProposals.bind(this.misc);
   vote = this.misc.vote.bind(this.misc);
+  createProposal = this.misc.createProposal.bind(this.misc);
+  closeProposal = this.misc.closeProposal.bind(this.misc);
 
   getDeliveryStats = async () => {
     return await this.get<any>('/logistics/stats');

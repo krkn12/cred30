@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     TrendingUp, Plus, RefreshCw, Briefcase, PiggyBank,
     ArrowUpRight, ArrowDownRight, Coins, AlertTriangle,
@@ -98,7 +98,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
     const [updateData, setUpdateData] = useState({ currentValue: '' });
     const [reserveData, setReserveData] = useState({ amount: '', description: '' });
 
-    const fetchInvestments = async () => {
+    const fetchInvestments = useCallback(async () => {
         setIsLoading(true);
         try {
             const res = await apiService.get<any>('/admin/investments');
@@ -112,11 +112,11 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchInvestments();
-    }, []);
+    }, [fetchInvestments]);
 
     const handleAddInvestment = async () => {
         try {

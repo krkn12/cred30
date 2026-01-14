@@ -60,7 +60,7 @@ export const NotificationBell: React.FC = () => {
             }
 
             // Tocar som suave
-            try { new Audio('/notification.mp3').play().catch(() => { }); } catch { }
+            try { new Audio('/notification.mp3').play().catch(() => { /* mute */ }); } catch { /* ignore */ }
         });
 
         return cleanup;

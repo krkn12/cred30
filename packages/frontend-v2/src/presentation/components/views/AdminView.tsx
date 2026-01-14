@@ -42,14 +42,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const [isLoading, setIsLoading] = useState(false);
     const [confirmMP, setConfirmMP] = useState<{ id: string, tid: string } | null>(null);
 
-    // Early return se o usuário ainda não carregou
-    if (!state?.currentUser) {
-        return (
-            <div className="flex items-center justify-center min-h-[50vh]">
-                <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
-            </div>
-        );
-    }
+
 
     // Lógica robusta para determinar o papel do usuário
     const userRole = (() => {
@@ -69,6 +62,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const [pendingBugsCount, setPendingBugsCount] = useState(0);
 
     const fetchCounts = useCallback(async () => {
+        if (!state?.currentUser) return;
         try {
             const [approvalsRes, payoutRes, reviewsRes, bugsRes] = await Promise.all([
                 apiService.getPendingTransactions(),
@@ -140,6 +134,14 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         { id: 'fiscal', name: 'Fiscal', icon: FileText, roles: ['ADMIN'] },
     ].filter(tab => tab.roles.includes(userRole)), [userRole, pendingApprovalsCount, pendingPayoutsCount, pendingReviewsCount, pendingBugsCount]);
 
+
+    if (!state?.currentUser) {
+        return (
+            <div className="flex items-center justify-center min-h-[50vh]">
+                <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 sm:space-y-8 pb-32 max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-8 min-h-screen bg-black">

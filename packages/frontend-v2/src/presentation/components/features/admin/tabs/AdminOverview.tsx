@@ -6,8 +6,16 @@ interface AdminOverviewProps {
     state: AppState;
 }
 
-const MetricCard = memo(({ title, value, subtitle, icon: Icon, color }: any) => {
-    const colorClasses: any = {
+interface MetricCardProps {
+    title: string;
+    value: string | number;
+    subtitle: string;
+    icon: any;
+    color: 'blue' | 'cyan' | 'emerald' | 'yellow' | 'red' | 'orange' | 'purple';
+}
+
+const MetricCard = memo(({ title, value, subtitle, icon: Icon, color }: MetricCardProps) => {
+    const colorClasses: Record<MetricCardProps['color'], string> = {
         blue: "from-blue-600 to-blue-700 border-blue-500/30 shadow-blue-500/10",
         cyan: "from-primary-600 to-primary-700 border-primary-500/30 shadow-primary-500/10",
         emerald: "from-emerald-600 to-emerald-700 border-emerald-500/30 shadow-emerald-500/10",

@@ -24,6 +24,7 @@ import { getWelcomeBenefit, consumeWelcomeBenefitUse } from '../../../applicatio
 const buyListingSchema = z.object({
     listingId: z.any().optional(), // Aceita UUID ou Inteiro (SERIAL)
     listingIds: z.array(z.any()).optional(), // Novo campo para múltiplos itens
+    selectedVariantId: z.number().optional(), // ID da variante (NOVO)
     deliveryAddress: z.string().min(3),
     contactPhone: z.string(),
     offlineToken: z.string().optional(),
@@ -59,6 +60,7 @@ const buyListingSchema = z.object({
 const buyOnCreditSchema = z.object({
     listingId: z.any().optional(), // Aceita UUID ou Inteiro (SERIAL)
     listingIds: z.array(z.any()).optional(), // Novo campo para múltiplos itens
+    selectedVariantId: z.number().optional(), // ID da variante (NOVO)
     installments: z.number().int().min(1).max(24),
     deliveryAddress: z.string().min(3),
     contactPhone: z.string(),
@@ -102,7 +104,7 @@ export class MarketplaceOrdersController {
 
             const parsedBody = parseResult.data;
             const {
-                listingId, listingIds, deliveryAddress, contactPhone, offlineToken,
+                listingId, listingIds, selectedVariantId, deliveryAddress, contactPhone, offlineToken,
                 paymentMethod, deliveryType, offeredDeliveryFee, invitedCourierId,
                 deliveryLat, deliveryLng, pickupLat, pickupLng, pickupAddress
             } = parsedBody;
@@ -117,9 +119,22 @@ export class MarketplaceOrdersController {
             const sellerId = listings[0].seller_id;
             const quantity = parsedBody.quantity || 1;
 
-            // Validar Estoque
-            if (listings.length === 1 && listings[0].current_stock < quantity) {
-                return c.json({ success: false, message: `Quantidade solicitada (${quantity}) excede o estoque disponível (${listings[0].current_stock}).` }, 400);
+            // Check Variants
+            let variantPrice = null;
+            if (selectedVariantId) {
+                const variantRes = await pool.query('SELECT * FROM marketplace_listing_variants WHERE id = $1 AND listing_id = $2', [selectedVariantId, listings[0].id]);
+                if (variantRes.rows.length === 0) return c.json({ success: false, message: 'Variação não encontrada.' }, 404);
+
+                const variant = variantRes.rows[0];
+                if (variant.stock < quantity) {
+                    return c.json({ success: false, message: `Estoque da variação insuficiente: ${variant.stock} disponíveis.` }, 400);
+                }
+                if (variant.price) variantPrice = parseFloat(variant.price);
+            } else {
+                // Validar Estoque Geral se não for variante
+                if (listings.length === 1 && listings[0].current_stock < quantity) {
+                    return c.json({ success: false, message: `Quantidade solicitada (${quantity}) excede o estoque disponível (${listings[0].current_stock}).` }, 400);
+                }
             }
 
             // Validar se todos são do mesmo vendedor
@@ -132,7 +147,12 @@ export class MarketplaceOrdersController {
             let finalPickupAddress = pickupAddress || listings[0].pickup_address || 'Endereço informado pelo vendedor no chat';
 
             // Cálculos Agregados
-            const baseAmount = listings.reduce((acc: number, item: any) => acc + (parseFloat(item.price) * (listings.length === 1 ? quantity : 1)), 0);
+            const baseAmount = listings.reduce((acc: number, item: any) => {
+                let price = parseFloat(item.price);
+                if (selectedVariantId && variantPrice) price = variantPrice;
+                return acc + (price * (listings.length === 1 ? quantity : 1));
+            }, 0);
+
             let totalPrice = baseAmount;
             let maxVehicleRank = -1;
             const vehicleRank: Record<string, number> = { 'BIKE': 0, 'MOTO': 1, 'CAR': 2, 'TRUCK': 3 };
@@ -214,12 +234,12 @@ export class MarketplaceOrdersController {
                             listing_id, listing_ids, is_lote, buyer_id, seller_id, amount, fee_amount, seller_amount, 
                             status, payment_method, delivery_address, pickup_address, contact_phone, 
                             offline_token, delivery_status, delivery_fee, pickup_code, invited_courier_id,
-                            pickup_lat, pickup_lng, delivery_lat, delivery_lng, quantity
+                            pickup_lat, pickup_lng, delivery_lat, delivery_lng, quantity, variant_id
                         ) VALUES (
                             $1::INTEGER, $2::INTEGER[], $3::BOOLEAN, $4::INTEGER, $5::INTEGER, $6::NUMERIC, $7::NUMERIC, $8::NUMERIC,
                             $9, $10, $11, $12, $13,
                             $14, $15, $16::NUMERIC, $17, $18::UUID,
-                            $19::NUMERIC, $20::NUMERIC, $21::NUMERIC, $22::NUMERIC, $23::INTEGER
+                            $19::NUMERIC, $20::NUMERIC, $21::NUMERIC, $22::NUMERIC, $23::INTEGER, $24::INTEGER
                         ) RETURNING id`,
                         [
                             listings[0].id, idsToProcess, listings.length > 1, user.id, sellerId, totalPrice, fee, sellerAmount,
@@ -227,7 +247,7 @@ export class MarketplaceOrdersController {
                             offlineToken, deliveryStatus, isDigitalLote ? 0 : calculatedDeliveryFee, pickupCode,
                             (invitedCourierId && invitedCourierId.length > 30) ? invitedCourierId : null,
                             pickupLat || null, pickupLng || null, deliveryLat || null, deliveryLng || null,
-                            quantity
+                            quantity, selectedVariantId || null
                         ]
                     );
                     const orderId = orderResult.rows[0].id;
@@ -241,14 +261,20 @@ export class MarketplaceOrdersController {
                     if (isDigitalLote) {
                         await updateUserBalance(client, sellerId, sellerAmount, 'credit');
                         await createTransaction(client, sellerId, 'MARKET_SALE', sellerAmount, `Venda Digital: ${listings[0].title}`, 'APPROVED', { orderId });
+                    } else {
+                        // RESERVAR ESTOQUE AGORA (FÍSICO)
+                        if (selectedVariantId) {
+                            await client.query('UPDATE marketplace_listing_variants SET stock = GREATEST(0, stock - $1) WHERE id = $2', [quantity, selectedVariantId]);
+                        }
+                        // Sempre decrementar estoque principal (como cache ou item único)
+                        for (const l of listings) {
+                            await client.query('UPDATE marketplace_listings SET stock = GREATEST(0, stock - $1) WHERE id = $2', [quantity, l.id]);
+                            // Se estoque zerar, pausar
+                            await client.query("UPDATE marketplace_listings SET status = 'PAUSED' WHERE id = $1 AND stock <= 0", [l.id]);
+                        }
                     }
 
                     await createTransaction(client, user.id, 'MARKET_PURCHASE', totalPrice, `Compra${isDigitalLote ? ' Digital' : ''}: ${listings.length > 1 ? `Lote (${listings.length} itens)` : listings[0].title}${welcomeBenefit.hasDiscount ? ' (🎁 Taxa reduzida)' : ''}`, 'APPROVED', { orderId, listingId: listings[0].id, welcomeBenefitApplied: welcomeBenefit.hasDiscount, isDigital: isDigitalLote });
-
-                    // Desativar anúncios
-                    for (const l of listings) {
-                        await client.query('UPDATE marketplace_listings SET status = $1 WHERE id = $2', ['SOLD', l.id]);
-                    }
 
                     return { orderId, welcomeBenefitApplied: welcomeBenefit.hasDiscount, usesRemaining: welcomeBenefit.hasDiscount ? welcomeBenefit.usesRemaining - 1 : 0, isDigitalItem: isDigitalLote, digitalContent: isDigitalLote ? listings[0].digital_content : null };
                 });
@@ -300,7 +326,7 @@ export class MarketplaceOrdersController {
                 }, 400);
             }
 
-            const { listingId, listingIds, installments, deliveryAddress, contactPhone, invitedCourierId, quantity, pickupAddress } = parseResult.data;
+            const { listingId, listingIds, selectedVariantId, installments, deliveryAddress, contactPhone, invitedCourierId, quantity, pickupAddress } = parseResult.data;
 
             const idsToProcess = listingIds || (listingId ? [listingId] : []);
             if (idsToProcess.length === 0) return c.json({ success: false, message: 'Nenhum item selecionado.' }, 400);
@@ -344,17 +370,35 @@ export class MarketplaceOrdersController {
             const listings = listingsResult.rows;
             const sellerId = listings[0].seller_id;
 
-            // Validar Estoque
-            if (listings.length === 1 && listings[0].current_stock < quantity) {
-                return c.json({ success: false, message: `Quantidade solicitada (${quantity}) excede o estoque disponível (${listings[0].current_stock}).` }, 400);
+            // Check Variants
+            let variantPrice = null;
+            if (selectedVariantId) {
+                const variantRes = await pool.query('SELECT * FROM marketplace_listing_variants WHERE id = $1 AND listing_id = $2', [selectedVariantId, listings[0].id]);
+                if (variantRes.rows.length === 0) return c.json({ success: false, message: 'Variação não encontrada.' }, 404);
+
+                const variant = variantRes.rows[0];
+                if (variant.stock < quantity) {
+                    return c.json({ success: false, message: `Estoque da variação insuficiente: ${variant.stock} disponíveis.` }, 400);
+                }
+                if (variant.price) variantPrice = parseFloat(variant.price);
+            } else {
+                // Validar Estoque
+                if (listings.length === 1 && listings[0].current_stock < quantity) {
+                    return c.json({ success: false, message: `Quantidade solicitada (${quantity}) excede o estoque disponível (${listings[0].current_stock}).` }, 400);
+                }
             }
 
             if (listings.some(l => l.seller_id !== sellerId)) {
                 return c.json({ success: false, message: 'Todos os itens de um lote devem ser do mesmo vendedor.' }, 400);
             }
 
-            const baseAmount = listings.reduce((acc: number, item: any) => acc + (parseFloat(item.price) * (listings.length === 1 ? quantity : 1)), 0);
-            const totalPrice = baseAmount;
+            const baseAmount = listings.reduce((acc: number, item: any) => {
+                let price = parseFloat(item.price);
+                if (selectedVariantId && variantPrice) price = variantPrice;
+                return acc + (price * (listings.length === 1 ? quantity : 1));
+            }, 0);
+
+            let totalPrice = baseAmount;
             if (totalPrice > availableLimit) return c.json({ success: false, message: `O valor do lote (R$ ${totalPrice.toFixed(2)}) excede seu limite de crédito (R$ ${availableLimit.toFixed(2)}).` }, 403);
 
             if (sellerId === user.id) return c.json({ success: false, message: 'Você não pode comprar de si mesmo.' }, 400);
@@ -429,19 +473,19 @@ export class MarketplaceOrdersController {
                         listing_id, listing_ids, is_lote, buyer_id, seller_id, amount, fee_amount, seller_amount, 
                         status, payment_method, delivery_address, pickup_address, contact_phone, 
                         delivery_status, delivery_fee, pickup_code, invited_courier_id,
-                        pickup_lat, pickup_lng, delivery_lat, delivery_lng, quantity
+                        pickup_lat, pickup_lng, delivery_lat, delivery_lng, quantity, variant_id
                     ) VALUES (
                         $1::INTEGER, $2::INTEGER[], $3::BOOLEAN, $4::INTEGER, $5::INTEGER, $6::NUMERIC, $7::NUMERIC, $8::NUMERIC,
                         $9, $10, $11, $12, $13,
                         $14, $15, $16, $17::UUID,
-                        $18::NUMERIC, $19::NUMERIC, $20::NUMERIC, $21::NUMERIC, $22::INTEGER
+                        $18::NUMERIC, $19::NUMERIC, $20::NUMERIC, $21::NUMERIC, $22::INTEGER, $23::INTEGER
                     ) RETURNING id`,
                     [
                         listings[0].id, idsToProcess, listings.length > 1, user.id, sellerId, totalWithFee, escrowFee, sellerAmount,
                         'WAITING_SHIPPING', 'CRED30_CREDIT', deliveryAddress, finalPickupAddress, contactPhone,
                         deliveryStatus, fee, pickupCode, (invitedCourierId && invitedCourierId.length > 30) ? invitedCourierId : null,
                         body.pickupLat || null, body.pickupLng || null, body.deliveryLat || null, body.deliveryLng || null,
-                        quantity
+                        quantity, selectedVariantId || null
                     ]
                 );
                 const orderId = orderResult.rows[0].id;
@@ -471,8 +515,14 @@ export class MarketplaceOrdersController {
                     await consumeWelcomeBenefitUse(client, user.id, 'MARKETPLACE');
                 }
 
+                // RESERVAR ESTOQUE AGORA
+                if (selectedVariantId) {
+                    await client.query('UPDATE marketplace_listing_variants SET stock = GREATEST(0, stock - $1) WHERE id = $2', [quantity, selectedVariantId]);
+                }
                 for (const l of listings) {
-                    await client.query('UPDATE marketplace_listings SET status = $1 WHERE id = $2', ['SOLD', l.id]);
+                    await client.query('UPDATE marketplace_listings SET stock = GREATEST(0, stock - $1) WHERE id = $2', [quantity, l.id]);
+                    // Se estoque zerar, pausar
+                    await client.query("UPDATE marketplace_listings SET status = 'PAUSED' WHERE id = $1 AND stock <= 0", [l.id]);
                 }
 
                 return { orderId, loanId, welcomeBenefitApplied: welcomeBenefit.hasDiscount, usesRemaining: welcomeBenefit.hasDiscount ? welcomeBenefit.usesRemaining - 1 : 0 };
@@ -713,19 +763,8 @@ export class MarketplaceOrdersController {
                     ['COMPLETED', 'DELIVERED', orderId]
                 );
 
-                // 1.0 Baixa de Estoque (Se for produto físico)
-                if (order.listing_id) {
-                    await client.query(
-                        'UPDATE marketplace_listings SET stock = GREATEST(0, stock - $1) WHERE id = $2',
-                        [order.quantity || 1, order.listing_id]
-                    );
-
-                    // Se o estoque chegar a zero, pausar o anúncio
-                    await client.query(
-                        "UPDATE marketplace_listings SET status = 'PAUSED' WHERE id = $1 AND stock <= 0",
-                        [order.listing_id]
-                    );
-                }
+                // 1.0 Baixa de Estoque (REMOVIDO - Agora feito na criação do pedido para reservar)
+                // Mantemos apenas a lógica de transferência de Cota se houver
 
                 // 1.1 Se for uma cota, transferir propriedade
                 if (order.quota_id) {

@@ -24,14 +24,7 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
     const [showAdModal, setShowAdModal] = useState(false);
     const [countDown, setCountDown] = useState(15);
 
-    // Early return se o usuário ainda não carregou
-    if (!state?.currentUser) {
-        return (
-            <div className="flex items-center justify-center min-h-[50vh]">
-                <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
-            </div>
-        );
-    }
+
 
     const user = state.currentUser;
 
@@ -172,6 +165,14 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
             setBuyingBoost(false);
         }
     };
+
+    if (!state?.currentUser) {
+        return (
+            <div className="flex items-center justify-center min-h-[50vh]">
+                <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 pb-20 relative">

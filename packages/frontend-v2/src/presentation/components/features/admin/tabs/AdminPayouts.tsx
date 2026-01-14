@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowUpRight, Check, Clipboard } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
@@ -7,21 +7,29 @@ interface AdminPayoutsProps {
     onError: (title: string, message: string) => void;
 }
 
+interface PayoutItem {
+    id: number;
+    user_name: string;
+    user_pix: string;
+    pix_key: string;
+    amount: number | string;
+}
+
 export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ onSuccess, onError }) => {
-    const [payoutQueue, setPayoutQueue] = useState<{ transactions: any[], loans: any[] }>({ transactions: [], loans: [] });
+    const [payoutQueue, setPayoutQueue] = useState<{ transactions: PayoutItem[], loans: any[] }>({ transactions: [], loans: [] });
 
-    useEffect(() => {
-        fetchPayoutQueue();
-    }, []);
-
-    const fetchPayoutQueue = async () => {
+    const fetchPayoutQueue = useCallback(async () => {
         try {
             const response = await apiService.getPayoutQueue();
             setPayoutQueue(response.data || { transactions: [], loans: [] });
         } catch (e) {
             console.error('Erro ao buscar fila de pagamentos:', e);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchPayoutQueue();
+    }, [fetchPayoutQueue]);
 
     const handleConfirmPayout = async (id: any, type: 'TRANSACTION' | 'LOAN') => {
         try {

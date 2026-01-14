@@ -18,26 +18,8 @@ async function seed() {
     try {
         await client.query('BEGIN');
 
-        // 1. Criar Admin
-        console.log(`Creating Admin User: ${ADMIN_EMAIL}...`);
-        const hashedPassword = await bcrypt.hash(ADMIN_PASS, 8);
-
-        // Verificar se já existe
-        const userCheck = await client.query('SELECT id FROM users WHERE email = $1', [ADMIN_EMAIL]);
-        let adminId;
-
-        if (userCheck.rows.length === 0) {
-            const userRes = await client.query(`
-                INSERT INTO users (name, email, password, role, is_admin, is_verified, score, balance, created_at)
-                VALUES ($1, $2, $3, 'ADMIN', true, true, 1000, 0, NOW())
-                RETURNING id
-            `, [ADMIN_NAME, ADMIN_EMAIL, hashedPassword]);
-            adminId = userRes.rows[0].id;
-            console.log('✅ Admin criado!');
-        } else {
-            adminId = userCheck.rows[0].id;
-            console.log('ℹ️ Admin já existe.');
-        }
+        // 1. Criar Admin (REMOVIDO - LOGIN VIA GOOGLE)
+        console.log(`Skipping manual admin creation for ${ADMIN_EMAIL}. Google Auth will handle it.`);
 
         // 2. Configurar Sistema (System Config)
         console.log('Initializing System Config...');

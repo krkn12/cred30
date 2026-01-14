@@ -26,6 +26,7 @@ interface RewardItem {
     value?: number;
     canAfford?: boolean;
     stock?: number;
+    image_url?: string;
 }
 
 // Mapeamento de ícones e cores por tipo/id
@@ -51,33 +52,27 @@ const getRewardStyle = (id: string, type: string) => {
 };
 
 export const RewardsShopView = ({ state, onBack, onSuccess, onError, onRefresh }: RewardsShopViewProps) => {
-    // Early return se o usuário ainda não carregou
-    if (!state?.currentUser) {
-        return (
-            <div className="flex items-center justify-center min-h-[50vh]">
-                <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
-            </div>
-        );
-    }
 
-    const user = state.currentUser;
 
-    const [farmPoints, setFarmPoints] = useState(user.ad_points || 0);
+    const [farmPoints, setFarmPoints] = useState(state?.currentUser?.ad_points || 0);
     const [catalog, setCatalog] = useState<RewardItem[]>([]);
     const [loadingCatalog, setLoadingCatalog] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<'ALL' | 'GIFT_CARD' | 'COUPON' | 'PIX_CASHBACK' | 'MEMBERSHIP'>('ALL');
     const [loading, setLoading] = useState<string | null>(null);
     const [confirmItem, setConfirmItem] = useState<RewardItem | null>(null);
     const [redeemedCodes, setRedeemedCodes] = useState<{ code: string, item: string }[]>([]);
+    const [imgError, setImgError] = useState<Record<string, boolean>>({});
 
     // Carregar catálogo da API
     const loadCatalog = useCallback(async () => {
         setLoadingCatalog(true);
         try {
-            const res = await apiService.get<any>('/earn/rewards-catalog');
+            const res = await apiService.get<any>(`/earn/rewards-catalog?t=${Date.now()}`);
             if (res.success && res.data) {
                 setFarmPoints(res.data.currentPoints || 0);
-                setCatalog(res.data.catalog || []);
+                const catalog = res.data.catalog || [];
+                console.log('[RewardsShop] Catálogo carregado:', catalog);
+                setCatalog(catalog);
             }
         } catch (e) {
             console.error('Erro ao carregar catálogo:', e);
@@ -129,10 +124,18 @@ export const RewardsShopView = ({ state, onBack, onSuccess, onError, onRefresh }
         { id: 'MEMBERSHIP', label: 'PRO', icon: Crown },
     ];
 
+    if (!state?.currentUser) {
+        return (
+            <div className="flex items-center justify-center min-h-[50vh]">
+                <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-6 pb-24">
+        <div className="space-y-6 pb-safe pt-safe min-h-screen">
             {/* Header */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 px-1">
                 <button onClick={onBack} className="text-zinc-400 hover:text-white transition p-2 -ml-2">
                     <ArrowLeft size={24} />
                 </button>
@@ -207,7 +210,7 @@ export const RewardsShopView = ({ state, onBack, onSuccess, onError, onRefresh }
             </div>
 
             {/* Grid de Recompensas */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {loadingCatalog ? (
                     <div className="col-span-2 flex justify-center py-8">
                         <Loader2 className="w-8 h-8 animate-spin text-primary-400" />
@@ -233,10 +236,22 @@ export const RewardsShopView = ({ state, onBack, onSuccess, onError, onRefresh }
                                 </div>
                             )}
 
-                            {/* Icon Area */}
-                            <div className={`p-8 ${style.bgColor} flex items-center justify-center relative overflow-hidden`}>
-                                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
-                                <IconComponent size={44} className={`${style.color} group-hover:scale-110 transition-transform duration-500`} />
+                            {/* Image/Icon Area */}
+                            <div className={`relative ${style.bgColor} flex items-center justify-center overflow-hidden w-full h-40 sm:h-48`}>
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none z-10" />
+                                {item.image_url && !imgError[item.id] ? (
+                                    <img
+                                        src={item.image_url}
+                                        alt={item.name}
+                                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                        onError={(e) => {
+                                            console.error(`[RewardsShop] Erro ao carregar imagem para ${item.id}:`, item.image_url, e);
+                                            setImgError(prev => ({ ...prev, [item.id]: true }));
+                                        }}
+                                    />
+                                ) : (
+                                    <IconComponent size={44} className={`${style.color} group-hover:scale-110 transition-transform duration-500`} />
+                                )}
                             </div>
 
                             {/* Content */}

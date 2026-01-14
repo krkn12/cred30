@@ -229,7 +229,7 @@ export const loadState = async (): Promise<AppState> => {
 
     // NÃO carregar todos os usuários aqui (economia de banda). 
     // A lista de usuários será carregada sob demanda na aba de Gestão de Usuários.
-    let allUsers: User[] = [currentUser].filter(Boolean) as User[];
+    const allUsers: User[] = [currentUser].filter(Boolean) as User[];
 
     return {
       currentUser,

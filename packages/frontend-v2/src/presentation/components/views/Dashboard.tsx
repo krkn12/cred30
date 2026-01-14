@@ -25,7 +25,14 @@ interface DashboardProps {
     onVoting: () => void;
 }
 
-const TransactionRow = memo(({ t, formatCurrency, isPositive, showValues }: any) => (
+interface TransactionRowProps {
+    t: Transaction;
+    formatCurrency: (val: number) => string;
+    isPositive: (type: string) => boolean;
+    showValues: boolean;
+}
+
+const TransactionRow = memo(({ t, formatCurrency, isPositive, showValues }: TransactionRowProps) => (
     <div key={t.id} className="group glass glass-hover p-6 rounded-[2rem] flex items-center justify-between">
         <div className="flex items-center gap-6">
             <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-2xl shadow-black transition-transform group-hover:scale-110 duration-500 ${isPositive(t.type) ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
@@ -63,38 +70,28 @@ const TransactionRow = memo(({ t, formatCurrency, isPositive, showValues }: any)
 TransactionRow.displayName = 'TransactionRow';
 export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, onRefer, onSuccess, onError, onEducation, onVoting }: DashboardProps) => {
     const user = state?.currentUser;
-
-    // Guard clause: prevent crash if state or user is not loaded yet
-    if (!state || !user) {
-        return <LoadingScreen fullScreen message="Sincronizando seu Painel..." />;
-    }
-
-    // Usuários PRO não veem anúncios
-    const isPro = user?.membership_type === 'PRO';
+    const navigate = useNavigate();
 
     const { userQuotas, totalInvested, totalCurrentValue, totalEarnings, earningsPercentage } = useMemo(() => {
-        const quotas = state.quotas?.filter((q: Quota) =>
+        if (!state?.quotas || !user) return { userQuotas: [], totalInvested: 0, totalCurrentValue: 0, totalEarnings: 0, earningsPercentage: 0 };
+        const quotas = state.quotas.filter((q: Quota) =>
             q.userId === user.id && (q.status === 'ACTIVE' || !q.status)
-        ) ?? [];
+        );
         const invested = quotas.reduce((acc: number, q: Quota) => acc + q.purchasePrice, 0);
         const current = quotas.reduce((acc: number, q: Quota) => acc + (q.currentValue || q.purchasePrice), 0);
         const earnings = current - invested;
         const percentage = invested > 0 ? (earnings / invested) * 100 : 0;
         return { userQuotas: quotas, totalInvested: invested, totalCurrentValue: current, totalEarnings: earnings, earningsPercentage: percentage };
-    }, [state.quotas, user.id]);
+    }, [state?.quotas, user?.id]);
 
     const { userLoans, totalDebt } = useMemo(() => {
-        const loans = state.loans?.filter((l: Loan) =>
+        if (!state?.loans || !user) return { userLoans: [], totalDebt: 0 };
+        const loans = state.loans.filter((l: Loan) =>
             l.userId === user.id && ['APPROVED', 'PAYMENT_PENDING', 'PENDING', 'WAITING_GUARANTOR'].includes(l.status)
-        ) ?? [];
+        );
         const debt = loans.reduce((acc: number, l: Loan) => acc + (l.remainingAmount ?? l.totalRepayment), 0);
         return { userLoans: loans, totalDebt: debt };
-    }, [state.loans, user.id]);
-
-    const navigate = useNavigate();
-
-    // Benefício de boas-vindas vem do estado global (sincronizado)
-    const welcomeBenefit = state.welcomeBenefit;
+    }, [state?.loans, user?.id]);
 
     // Estados para o Baú de Recompensas (sincronizado com backend)
     const [chestCountdown, setChestCountdown] = useState(0);
@@ -104,6 +101,7 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
 
     // Buscar status do baú do backend ao carregar
     useEffect(() => {
+        if (!state || !user) return;
         const fetchChestStatus = async () => {
             try {
                 const response = await apiService.get('/earn/chest-status') as any;
@@ -116,19 +114,18 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
             }
         };
         fetchChestStatus();
-    }, []);
+    }, [state, user]);
 
     // Memoizar transações recentes do estado global
     const recentTransactions = useMemo(() => {
-        if (!state.transactions) return [];
+        if (!state?.transactions || !user) return [];
         return [...state.transactions]
             .filter(t => t.userId === user.id)
             .sort((a: Transaction, b: Transaction) =>
                 new Date((b.created_at || b.date)!).getTime() - new Date((a.created_at || a.date)!).getTime()
             )
             .slice(0, 5);
-    }, [state.transactions, user.id]);
-
+    }, [state?.transactions, user?.id]);
 
     const handleOpenChest = useCallback(async () => {
         if (chestsRemaining <= 0 || chestCountdown > 0 || isOpeningChest) return;
@@ -160,6 +157,18 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
         }
         return () => clearInterval(timer);
     }, [chestCountdown]);
+
+    // Guard clause: prevent crash if state or user is not loaded yet
+    if (!state || !user) {
+        return <LoadingScreen fullScreen message="Sincronizando seu Painel..." />;
+    }
+
+    // Usuários PRO não veem anúncios
+    const isPro = user?.membership_type === 'PRO';
+
+    // Benefício de boas-vindas vem do estado global (sincronizado)
+    const welcomeBenefit = state.welcomeBenefit;
+
 
     const formatCountdown = (s: number) => {
         const m = Math.floor(s / 60);

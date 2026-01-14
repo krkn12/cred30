@@ -29,7 +29,7 @@ adminRoutes.post('/system-balance', adminMiddleware, AdminFinanceController.syst
 adminRoutes.post('/profit-pool', adminMiddleware, auditMiddleware('MANUAL_PROFIT_ADD', 'SYSTEM_CONFIG'), AdminFinanceController.addProfitPool);
 adminRoutes.post('/manual-cost', adminMiddleware, auditMiddleware('ADD_MANUAL_COST', 'SYSTEM_CONFIG'), AdminFinanceController.addManualCost);
 adminRoutes.post('/distribute-dividends', adminMiddleware, auditMiddleware('DISTRIBUTE_DIVIDENDS', 'SYSTEM_CONFIG'), AdminFinanceController.distributeDividends);
-adminRoutes.post('/simulate-mp-payment', adminMiddleware, AdminFinanceController.simulatePayment);
+
 adminRoutes.patch('/config', adminMiddleware, auditMiddleware('UPDATE_SYSTEM_CONFIG', 'SYSTEM_CONFIG'), AdminFinanceController.updateConfig);
 
 // --- APROVAÇÕES E FILAS ---
@@ -48,7 +48,7 @@ adminRoutes.post('/run-liquidation', adminMiddleware, auditMiddleware('FORCE_LIQ
 // --- GESTÃO DE USUÁRIOS E EQUIPE ---
 adminRoutes.post('/users/add-quota', adminMiddleware, auditMiddleware('MANUAL_ADD_QUOTA', 'QUOTA'), AdminUsersController.addQuota);
 adminRoutes.post('/users/add-balance', adminMiddleware, auditMiddleware('MANUAL_ADD_BALANCE', 'USER'), AdminUsersController.addBalance);
-adminRoutes.post('/users/reset-security-lock', adminMiddleware, auditMiddleware('RESET_SECURITY_LOCK', 'USER'), AdminUsersController.resetSecurityLock);
+
 adminRoutes.get('/users', adminMiddleware, AdminUsersController.listUsers);
 adminRoutes.post('/users/update-access', adminMiddleware, auditMiddleware('UPDATE_USER_ACCESS', 'USER'), AdminUsersController.updateUserAccess);
 adminRoutes.post('/users/create-attendant', adminMiddleware, auditMiddleware('CREATE_ATTENDANT', 'USER'), AdminUsersController.createAttendant);

@@ -5,80 +5,150 @@ import { executeInTransaction, lockUserBalance, updateUserBalance, createTransac
 import { UserContext } from '../../../shared/types/hono.types';
 
 // Schemas
+// Update Schema to include variants and images
 const createListingSchema = z.object({
     title: z.string().min(3),
     description: z.string().min(10),
     price: z.coerce.number().min(0.01),
     category: z.string().optional().default('OUTROS'),
-    imageUrl: z.string().optional(),
+    imageUrl: z.string().optional(), // Mantido para compatibilidade (será a imagem principal)
+    images: z.array(z.string()).optional(), // Array de URLs (Base64 ou Links)
+    variants: z.array(z.object({
+        name: z.string().optional(),
+        color: z.string().optional(),
+        size: z.string().optional(),
+        stock: z.coerce.number().int().min(0).default(0),
+        price: z.coerce.number().optional()
+    })).optional(),
     itemType: z.enum(['PHYSICAL', 'DIGITAL']).optional().default('PHYSICAL'),
-    digitalContent: z.string().optional(), // Link/código para itens digitais
+    digitalContent: z.string().optional(),
     requiredVehicle: z.enum(['BIKE', 'MOTO', 'CAR', 'TRUCK']).optional().default('MOTO'),
-    stock: z.coerce.number().int().min(1).optional().default(1),
+    stock: z.coerce.number().int().min(1).optional().default(1), // Estoque total/fallback
     pickupAddress: z.string().optional(),
 });
 
 export class MarketplaceListingsController {
 
     /**
-     * Listar todos os anúncios ativos
+     * Listar todos os anúncios ativos com filtros
      */
     static async getListings(c: Context) {
         try {
             const pool = getDbPool(c);
-            const limit = parseInt(c.req.query('limit') || '20');
-            const offset = parseInt(c.req.query('offset') || '0');
-            const category = c.req.query('category');
-            const search = c.req.query('search');
-            const city = c.req.query('city');
-            const uf = c.req.query('uf');
-            const neighborhood = c.req.query('neighborhood');
+            const { category, search, city, state, minPrice, maxPrice } = c.req.query();
 
-            const combinedResult = await pool.query(`
-        SELECT * FROM (
-            (SELECT l.id::text, l.title, l.description, l.price::float, l.image_url, l.category, 
-                    u.name as seller_name, l.seller_id::text, l.is_boosted, l.created_at, l.status, 'P2P' as type,
-                u.seller_address_city as city, u.seller_address_state as uf, u.seller_address_neighborhood as neighborhood,
-                COALESCE(l.item_type, 'PHYSICAL') as item_type,
-                COALESCE(l.required_vehicle, 'MOTO') as required_vehicle,
-                COALESCE(l.stock, 1) as stock,
-                COALESCE(l.pickup_address, CONCAT_WS(', ', u.seller_address_neighborhood, u.seller_address_city, u.seller_address_state)) as pickup_address
-         FROM marketplace_listings l 
-         JOIN users u ON l.seller_id = u.id
-             WHERE l.status = 'ACTIVE'
-             AND ($3::text IS NULL OR $3 = 'TODOS' OR l.category = $3)
-             AND ($4::text IS NULL OR (l.title ILIKE '%' || $4 || '%' OR l.description ILIKE '%' || $4 || '%'))
-             AND ($5::text IS NULL OR u.seller_address_city ILIKE '%' || $5 || '%')
-             AND ($6::text IS NULL OR u.seller_address_state = $6)
-             AND ($7::text IS NULL OR u.seller_address_neighborhood ILIKE '%' || $7 || '%'))
-            UNION ALL
-            (SELECT p.id::text, p.title, p.description, p.price::float, p.image_url, p.category, 
-                    'Cred30 Parceiros' as seller_name, '0' as seller_id, true as is_boosted, p.created_at, 'ACTIVE' as status, 'AFFILIATE' as type,
-                    '' as city, '' as uf, '' as neighborhood, 'PHYSICAL' as item_type, 'MOTO' as required_vehicle,
-                    999999 as stock, -- Affiliate products usually have high stock
-                    NULL as pickup_address
-             FROM products p 
-             WHERE p.active = true
-             AND ($3::text IS NULL OR $3 = 'TODOS' OR p.category = $3)
-             AND ($4::text IS NULL OR (p.title ILIKE '%' || $4 || '%' OR p.description ILIKE '%' || $4 || '%'))
-             )
-        ) as combined
-        ORDER BY is_boosted DESC, created_at DESC
-        LIMIT $1 OFFSET $2
-      `, [limit, offset, category || null, search || null, city || null, uf || null, neighborhood || null]);
+            let query = `
+                SELECT l.*, u.name as seller_name, u.is_verified as seller_verified,
+                u.seller_address_city as city, u.seller_address_state as state,
+                u.seller_address_neighborhood as neighborhood
+                FROM marketplace_listings l
+                JOIN users u ON l.seller_id = u.id
+                WHERE l.status = 'ACTIVE' AND l.stock > 0
+            `;
+            const params: any[] = [];
+            let pIndex = 1;
+
+            if (category && category !== 'TODOS') {
+                query += ` AND l.category = $${pIndex++}`;
+                params.push(category);
+            }
+
+            if (search) {
+                query += ` AND (l.title ILIKE $${pIndex} OR l.description ILIKE $${pIndex})`;
+                params.push(`%${search}%`);
+                pIndex++;
+            }
+
+            if (city) {
+                query += ` AND u.seller_address_city = $${pIndex++}`;
+                params.push(city);
+            }
+
+            if (state) {
+                query += ` AND u.seller_address_state = $${pIndex++}`;
+                params.push(state);
+            }
+
+            if (minPrice) {
+                query += ` AND l.price >= $${pIndex++}`;
+                params.push(parseFloat(minPrice));
+            }
+
+            if (maxPrice) {
+                query += ` AND l.price <= $${pIndex++}`;
+                params.push(parseFloat(maxPrice));
+            }
+
+            query += ` ORDER BY l.is_boosted DESC, l.created_at DESC LIMIT 100`;
+
+            const result = await pool.query(query, params);
+            return c.json({ success: true, data: result.rows });
+        } catch (error) {
+            console.error('Get Listings Error:', error);
+            return c.json({ success: false, message: 'Erro ao buscar anúncios' }, 500);
+        }
+    }
+
+    /**
+     * Obter detalhes do anúncio (Publico)
+     */
+    static async getListingDetails(c: Context) {
+        try {
+            const pool = getDbPool(c);
+            const id = c.req.param('id');
+
+            const listingRes = await pool.query(`
+                SELECT 
+                    l.*, 
+                    u.name as seller_name, 
+                    u.is_verified as seller_verified,
+                    u.avatar_url as seller_avatar,
+                    COALESCE(u.seller_rating, 0) as seller_rating,
+                    (SELECT COUNT(*) FROM marketplace_orders WHERE seller_id = l.seller_id AND status = 'COMPLETED') as sales_count,
+                    COALESCE(
+                        u.address,
+                        CONCAT_WS(', ', 
+                            u.seller_address_street, 
+                            u.seller_address_number, 
+                            u.seller_address_neighborhood, 
+                            CONCAT_WS('/', u.seller_address_city, u.seller_address_state)
+                        )
+                    ) as seller_address
+                FROM marketplace_listings l
+                JOIN users u ON l.seller_id = u.id
+                WHERE l.id = $1
+            `, [id]);
+
+            if (listingRes.rows.length === 0) return c.json({ success: false, message: 'Anúncio não encontrado' }, 404);
+            const listing = listingRes.rows[0];
+
+            // Buscar imagens
+            const imagesRes = await pool.query(
+                'SELECT image_url, id FROM marketplace_listing_images WHERE listing_id = $1 ORDER BY display_order ASC',
+                [id]
+            );
+
+            // Buscar variantes
+            const variantsRes = await pool.query(
+                'SELECT id, name, color, size, stock, price FROM marketplace_listing_variants WHERE listing_id = $1 ORDER BY id ASC',
+                [id]
+            );
 
             return c.json({
                 success: true,
                 data: {
-                    listings: combinedResult.rows,
-                    pagination: { limit, offset }
+                    ...listing,
+                    images: imagesRes.rows.map(r => r.image_url),
+                    variants: variantsRes.rows
                 }
             });
+
         } catch (error) {
-            console.error('Erro ao listar anúncios:', error);
-            return c.json({ success: false, message: 'Erro ao buscar anúncios' }, 500);
+            console.error('Error fetching details:', error);
+            return c.json({ success: false, message: 'Erro ao buscar detalhes' }, 500);
         }
     }
+
 
     /**
      * Criar novo anúncio
@@ -99,11 +169,11 @@ export class MarketplaceListingsController {
             }
 
             const {
-                title, description, price, category, imageUrl,
+                title, description, price, category, imageUrl, images, variants,
                 itemType, digitalContent, requiredVehicle, stock, pickupAddress
             } = parseResult.data;
 
-            // Itens digitais precisam de conteúdo digital
+            // ... (digital check kept)
             if (itemType === 'DIGITAL' && !digitalContent) {
                 return c.json({
                     success: false,
@@ -111,10 +181,7 @@ export class MarketplaceListingsController {
                 }, 400);
             }
 
-            // Se for uma cota, verificar se pertence ao usuário e está ativa
-            // Removed quotaId check as it's no longer in the schema
-
-            // Atualizar localização do vendedor se fornecida (GPS)
+            // Atualizar GPS do vendedor
             const { city, state, neighborhood } = body;
             if (city && state) {
                 await pool.query(
@@ -123,24 +190,74 @@ export class MarketplaceListingsController {
                 );
             }
 
-            const result = await pool.query(
-                `INSERT INTO marketplace_listings (
-                    seller_id, title, description, price, category, image_url, 
-                    item_type, digital_content, required_vehicle, stock, pickup_address
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-                [
-                    user.id, title, description, price, category, imageUrl || null,
-                    itemType, digitalContent || null, requiredVehicle, stock || 1, pickupAddress || null
-                ]
-            );
+            // Transaction
+            const client = await pool.connect();
+            try {
+                await client.query('BEGIN');
 
-            return c.json({
-                success: true,
-                listing: result.rows[0],
-                message: itemType === 'DIGITAL'
-                    ? 'Item digital publicado! O conteúdo será entregue automaticamente após a compra.'
-                    : 'Anúncio publicado com sucesso!'
-            });
+                // 1. Insert Main Listing
+                // Se variants exist, 'stock' can be sum of variants or just the fallback. 
+                // We keep it as is, frontend sends total.
+                const mainImage = imageUrl || (images && images.length > 0 ? images[0] : null);
+
+                const result = await client.query(
+                    `INSERT INTO marketplace_listings (
+                        seller_id, title, description, price, category, image_url, 
+                        item_type, digital_content, required_vehicle, stock, pickup_address
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, *`,
+                    [
+                        user.id, title, description, price, category, mainImage,
+                        itemType, digitalContent || null, requiredVehicle, stock || 1, pickupAddress || null
+                    ]
+                );
+                const listing = result.rows[0];
+                const listingId = listing.id;
+
+                // 2. Insert Images (Gallery)
+                if (images && images.length > 0) {
+                    // Start loop from 0, or 1 if index 0 is used as main? 
+                    // Let's insert ALL into gallery for completeness.
+                    let order = 0;
+                    for (const img of images) {
+                        await client.query(
+                            'INSERT INTO marketplace_listing_images (listing_id, image_url, display_order) VALUES ($1, $2, $3)',
+                            [listingId, img, order++]
+                        );
+                    }
+                } else if (imageUrl) {
+                    // Backward compatibility: insert main image into gallery too
+                    await client.query(
+                        'INSERT INTO marketplace_listing_images (listing_id, image_url, display_order) VALUES ($1, $2, 0)',
+                        [listingId, imageUrl]
+                    );
+                }
+
+                // 3. Insert Variants
+                if (variants && variants.length > 0) {
+                    for (const v of variants) {
+                        await client.query(
+                            `INSERT INTO marketplace_listing_variants (listing_id, name, color, size, stock, price) 
+                             VALUES ($1, $2, $3, $4, $5, $6)`,
+                            [listingId, v.name || `${v.color || ''} ${v.size || ''}`.trim(), v.color || null, v.size || null, v.stock, v.price || null]
+                        );
+                    }
+                }
+
+                await client.query('COMMIT');
+
+                return c.json({
+                    success: true,
+                    listing: listing,
+                    message: 'Anúncio publicado com sucesso!'
+                });
+
+            } catch (e) {
+                await client.query('ROLLBACK');
+                throw e;
+            } finally {
+                client.release();
+            }
+
         } catch (error) {
             console.error('Erro ao criar anúncio:', error);
             return c.json({ success: false, message: 'Erro ao publicar anúncio' }, 500);

@@ -370,8 +370,11 @@ export class EarnController {
                 type: r.type,
                 value: parseFloat(r.value),
                 stock: parseInt(r.stock),
+                image_url: r.image_url,
                 canAfford: currentPoints >= r.points_cost
             }));
+
+            console.log('[EarnController] Catálogo de recompensas enviado:', catalog);
 
             return c.json({
                 success: true,

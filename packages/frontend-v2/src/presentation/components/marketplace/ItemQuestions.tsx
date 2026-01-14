@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageCircle, Send, CornerDownRight, User } from 'lucide-react';
+import { MessageCircle, Send, CornerDownRight } from 'lucide-react';
 import { apiMarketplace } from '../../../application/services/api.marketplace';
 import { toast } from 'sonner';
 

@@ -20,8 +20,7 @@ promoVideosRoutes.get('/farm/next', PromoVideosController.getNextFarmVideo);
 // Criar nova campanha
 promoVideosRoutes.post('/create', PromoVideosController.createCampaign);
 
-// Buscar dados de pagamento de uma campanha PENDING (PIX Manual)
-promoVideosRoutes.get('/:id/payment', PromoVideosController.getPaymentInfo);
+
 
 // Registrar início de view
 promoVideosRoutes.post('/:videoId/start-view', PromoVideosController.startView);

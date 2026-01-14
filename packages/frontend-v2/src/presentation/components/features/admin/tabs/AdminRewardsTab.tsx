@@ -1,22 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Gift, Key, List, Clock, CheckCircle2, AlertCircle, Save, X } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
+interface Reward {
+    id: string;
+    name: string;
+    type: 'GIFT_CARD' | 'COUPON' | 'MEMBERSHIP';
+    points_cost: number;
+    value: number;
+    used_count: number;
+    stock_count: number;
+    is_active: boolean;
+    image_url?: string;
+}
+
+interface Redemption {
+    id: number;
+    created_at: string;
+    user_name: string;
+    user_email: string;
+    reward_name: string;
+    code_delivered: string | null;
+}
+
 export const AdminRewardsTab: React.FC<{ onSuccess: (t: string, m: string) => void, onError: (t: string, m: string) => void }> = ({ onSuccess, onError }) => {
-    const [rewards, setRewards] = useState<any[]>([]);
-    const [redemptions, setRedemptions] = useState<any[]>([]);
+    const [rewards, setRewards] = useState<Reward[]>([]);
+    const [redemptions, setRedemptions] = useState<Redemption[]>([]);
     const [loading, setLoading] = useState(false);
     const [showRewardModal, setShowRewardModal] = useState(false);
     const [showInventoryModal, setShowInventoryModal] = useState(false);
-    const [editingReward, setEditingReward] = useState<any | null>(null);
+    const [editingReward, setEditingReward] = useState<Reward | null>(null);
     const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
     const [inventoryCodes, setInventoryCodes] = useState('');
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
         try {
             const [rewardsRes, redemptionsRes] = await Promise.all([
@@ -30,22 +47,52 @@ export const AdminRewardsTab: React.FC<{ onSuccess: (t: string, m: string) => vo
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    const [formData, setFormData] = useState<Partial<Reward>>({});
+    const [imagePreviewError, setImagePreviewError] = useState(false);
+
+    useEffect(() => {
+        if (showRewardModal) {
+            if (editingReward) {
+                setFormData(editingReward);
+            } else {
+                setFormData({
+                    type: 'GIFT_CARD',
+                    is_active: true,
+                    points_cost: 0,
+                    value: 0
+                });
+            }
+            setImagePreviewError(false);
+        }
+    }, [showRewardModal, editingReward]);
 
     const handleSaveReward = async (e: React.FormEvent) => {
         e.preventDefault();
-        const formData = new FormData(e.currentTarget as HTMLFormElement);
-        const data = Object.fromEntries(formData.entries());
+
+        console.log('[AdminRewards] Salvando recompensa:', formData);
+
+        // Remove empty strings for optional fields
+        const dataToSave = { ...formData };
+        if (!dataToSave.image_url?.trim()) {
+            delete dataToSave.image_url;
+        }
 
         try {
             const res = await apiService.saveRewardAdmin({
-                ...data,
-                points_cost: parseInt(data.points_cost as string),
-                value: parseFloat(data.value as string),
-                is_active: data.is_active === 'on'
+                ...dataToSave,
+                points_cost: Number(dataToSave.points_cost),
+                value: Number(dataToSave.value),
+                is_active: Boolean(dataToSave.is_active)
             });
 
             if (res.success) {
+                console.log('[AdminRewards] Recompensa salva:', res.data);
                 onSuccess('Sucesso', 'Recompensa salva com sucesso!');
                 setShowRewardModal(false);
                 loadData();
@@ -117,9 +164,18 @@ export const AdminRewardsTab: React.FC<{ onSuccess: (t: string, m: string) => vo
                             {rewards.map(reward => (
                                 <tr key={reward.id} className="hover:bg-white/5 transition-colors group">
                                     <td className="px-6 py-4 font-bold text-white">
-                                        <div className="flex flex-col">
-                                            <span>{reward.name}</span>
-                                            <span className="text-[10px] text-zinc-500 font-mono tracking-tighter uppercase">{reward.id}</span>
+                                        <div className="flex items-center gap-3">
+                                            {reward.image_url ? (
+                                                <img src={reward.image_url} alt={reward.name} className="w-10 h-10 rounded-xl object-cover border border-zinc-800" />
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center text-zinc-500">
+                                                    <Gift size={20} />
+                                                </div>
+                                            )}
+                                            <div className="flex flex-col">
+                                                <span>{reward.name}</span>
+                                                <span className="text-[10px] text-zinc-500 font-mono tracking-tighter uppercase">{reward.id}</span>
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
@@ -214,22 +270,36 @@ export const AdminRewardsTab: React.FC<{ onSuccess: (t: string, m: string) => vo
 
             {/* Modal de Recompensa */}
             {showRewardModal && (
-                <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4 backdrop-blur-xl animate-in fade-in duration-300">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] w-full max-w-lg p-8 shadow-2xl overflow-y-auto max-h-[90vh] ring-1 ring-white/10">
+                <div className="fixed inset-0 bg-black/95 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-xl animate-in fade-in duration-300">
+                    {/* HMR FORCE UPDATE: 2026-01-14T02:18:00 */}
+                    <div className="bg-zinc-900 border-t-2 border-red-500 sm:border border-zinc-800 rounded-t-[2.5rem] sm:rounded-[2.5rem] w-full max-w-lg p-6 sm:p-8 shadow-2xl overflow-y-auto max-h-[85vh] sm:max-h-[85vh] ring-1 ring-white/10 pb-20 sm:pb-8">
                         <div className="flex justify-between items-center mb-8">
                             <h3 className="text-2xl font-black text-white tracking-tight">{editingReward ? 'Editar' : 'Nova'} Recompensa</h3>
                             <button onClick={() => setShowRewardModal(false)} className="text-zinc-600 hover:text-white bg-white/5 p-2 rounded-full transition-colors"><X size={24} /></button>
                         </div>
 
-                        <form onSubmit={handleSaveReward} className="space-y-6">
+                        <form key={editingReward?.id || 'new-reward-form'} onSubmit={handleSaveReward} className="space-y-6">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="col-span-1">
                                     <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2 px-1">ID Único (Fixo)</label>
-                                    <input name="id" defaultValue={editingReward?.id} readOnly={!!editingReward} required className="w-full bg-black/50 border border-zinc-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-primary-500 transition-colors" placeholder="gc-netflix-25" />
+                                    <input
+                                        name="id"
+                                        value={formData.id || ''}
+                                        onChange={e => setFormData({ ...formData, id: e.target.value })}
+                                        readOnly={!!editingReward}
+                                        required
+                                        className="w-full bg-black/50 border border-zinc-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-primary-500 transition-colors"
+                                        placeholder="gc-netflix-25"
+                                    />
                                 </div>
                                 <div className="col-span-1">
                                     <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2 px-1">Tipo</label>
-                                    <select name="type" defaultValue={editingReward?.type || 'GIFT_CARD'} className="w-full bg-black/50 border border-zinc-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-primary-500 transition-colors appearance-none">
+                                    <select
+                                        name="type"
+                                        value={formData.type || 'GIFT_CARD'}
+                                        onChange={e => setFormData({ ...formData, type: e.target.value as any })}
+                                        className="w-full bg-black/50 border border-zinc-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-primary-500 transition-colors appearance-none"
+                                    >
                                         <option value="GIFT_CARD">GIFT_CARD</option>
                                         <option value="COUPON">COUPON</option>
                                         <option value="MEMBERSHIP">MEMBERSHIP</option>
@@ -239,23 +309,107 @@ export const AdminRewardsTab: React.FC<{ onSuccess: (t: string, m: string) => vo
 
                             <div>
                                 <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2 px-1">Nome de Exibição</label>
-                                <input name="name" defaultValue={editingReward?.name} required className="w-full bg-black/50 border border-zinc-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-primary-500 transition-colors" placeholder="Gift Card Netflix R$ 25" />
+                                <input
+                                    name="name"
+                                    value={formData.name || ''}
+                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                    required
+                                    className="w-full bg-black/50 border border-zinc-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-primary-500 transition-colors"
+                                    placeholder="Gift Card Netflix R$ 25"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-primary-400 mb-2 px-1">LINK DA IMAGEM DO PRÊMIO</label>
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex gap-2">
+                                        <textarea
+                                            name="image_url"
+                                            value={formData.image_url || ''}
+                                            onChange={e => {
+                                                setFormData({ ...formData, image_url: e.target.value });
+                                                setImagePreviewError(false);
+                                            }}
+                                            className="w-full bg-black/50 border border-zinc-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-primary-500 transition-colors text-xs font-mono h-24 resize-none leading-relaxed"
+                                            placeholder="https://exemplo.com/imagem.png"
+                                        />
+                                        {/* Preview e Paste */}
+                                        <div className="flex flex-col gap-2 shrink-0">
+                                            <div className="w-24 h-24 rounded-2xl bg-zinc-800 border border-zinc-700 overflow-hidden flex items-center justify-center">
+                                                {formData.image_url && !imagePreviewError ? (
+                                                    <img
+                                                        src={formData.image_url}
+                                                        alt="Preview"
+                                                        className="w-full h-full object-cover"
+                                                        onError={() => setImagePreviewError(true)}
+                                                    />
+                                                ) : (
+                                                    <Gift size={24} className="text-zinc-600" />
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            try {
+                                                const text = await navigator.clipboard.readText();
+                                                if (text) {
+                                                    setFormData({ ...formData, image_url: text });
+                                                    setImagePreviewError(false);
+                                                }
+                                            } catch (err) {
+                                                console.error('Failed to read clipboard', err);
+                                            }
+                                        }}
+                                        className="text-xs font-bold text-primary-400 hover:text-primary-300 flex items-center gap-2 px-1 uppercase tracking-wider"
+                                    >
+                                        <List size={14} /> Colar Link da Área de Transferência
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-zinc-500 mt-2 px-1">
+                                    Recomendado: Imagens na proporção 16:9 (ex: 1280x720).
+                                </p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2 px-1">Custo em Pontos</label>
-                                    <input name="points_cost" type="number" defaultValue={editingReward?.points_cost} required className="w-full bg-black/50 border border-zinc-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-primary-500 transition-colors" placeholder="2500" />
+                                    <input
+                                        name="points_cost"
+                                        type="number"
+                                        value={formData.points_cost || ''}
+                                        onChange={e => setFormData({ ...formData, points_cost: Number(e.target.value) })}
+                                        required
+                                        className="w-full bg-black/50 border border-zinc-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-primary-500 transition-colors"
+                                        placeholder="2500"
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2 px-1">Valor Comercial (R$)</label>
-                                    <input name="value" type="number" step="0.01" defaultValue={editingReward?.value} required className="w-full bg-black/50 border border-zinc-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-primary-500 transition-colors" placeholder="25.00" />
+                                    <input
+                                        name="value"
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.value || ''}
+                                        onChange={e => setFormData({ ...formData, value: Number(e.target.value) })}
+                                        required
+                                        className="w-full bg-black/50 border border-zinc-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-primary-500 transition-colors"
+                                        placeholder="25.00"
+                                    />
                                 </div>
                             </div>
 
                             <div className="flex items-center gap-4 bg-black/30 p-4 rounded-2xl border border-zinc-800">
                                 <label className="flex items-center gap-3 cursor-pointer select-none flex-1">
-                                    <input type="checkbox" name="is_active" defaultChecked={editingReward?.is_active ?? true} className="w-5 h-5 rounded border-zinc-800 text-primary-500 bg-zinc-900 focus:ring-offset-black" />
+                                    <input
+                                        type="checkbox"
+                                        name="is_active"
+                                        checked={formData.is_active ?? true}
+                                        onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
+                                        className="w-5 h-5 rounded border-zinc-800 text-primary-500 bg-zinc-900 focus:ring-offset-black"
+                                    />
                                     <span className="text-sm font-bold text-white uppercase tracking-widest">Recompensa Ativa</span>
                                 </label>
                             </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ShieldCheck, Check, X, ArrowDownCircle, Phone } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
@@ -12,11 +12,7 @@ export const AdminApprovals: React.FC<AdminApprovalsProps> = ({ onSuccess, onErr
     const [pendingTransactions, setPendingTransactions] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        fetchPending();
-    }, []);
-
-    const fetchPending = async () => {
+    const fetchPending = useCallback(async () => {
         setIsLoading(true);
         try {
             const response = await apiService.getPendingTransactions();
@@ -26,7 +22,11 @@ export const AdminApprovals: React.FC<AdminApprovalsProps> = ({ onSuccess, onErr
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchPending();
+    }, [fetchPending]);
 
     const handleAction = async (id: any, type: 'TRANSACTION' | 'LOAN', action: 'APPROVE' | 'REJECT') => {
         try {

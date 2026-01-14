@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Activity, Cpu, Database, Search, Clock, HardDrive } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 import { useDebounce } from '../../../../hooks/use-performance';
@@ -10,13 +10,7 @@ export const AdminMetrics = () => {
     const debouncedMetricsSearch = useDebounce(metricsSearch, 300);
     void debouncedMetricsSearch;
 
-    useEffect(() => {
-        fetchHealthMetrics();
-        const metricsInterval = setInterval(fetchHealthMetrics, 10000);
-        return () => clearInterval(metricsInterval);
-    }, []);
-
-    const fetchHealthMetrics = async () => {
+    const fetchHealthMetrics = useCallback(async () => {
         if (!healthMetrics) setIsMetricsLoading(true);
         try {
             const data = await apiService.getHealthMetrics();
@@ -26,7 +20,13 @@ export const AdminMetrics = () => {
         } finally {
             setIsMetricsLoading(false);
         }
-    };
+    }, [healthMetrics]);
+
+    useEffect(() => {
+        fetchHealthMetrics();
+        const metricsInterval = setInterval(fetchHealthMetrics, 10000);
+        return () => clearInterval(metricsInterval);
+    }, [fetchHealthMetrics]);
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">

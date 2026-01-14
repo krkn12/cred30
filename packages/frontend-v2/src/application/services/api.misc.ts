@@ -47,6 +47,14 @@ export class MiscApi extends ApiBase {
         return await this.post<any>(`/voting/proposal/${proposalId}/vote`, { optionId });
     }
 
+    async createProposal(title: string, description: string): Promise<any> {
+        return await this.post<any>('/voting/proposals', { title, description });
+    }
+
+    async closeProposal(id: number): Promise<any> {
+        return await this.post<any>(`/voting/proposals/${id}/close`, {});
+    }
+
     // --- MONETIZATION ---
     async dailyCheckin(): Promise<any> {
         return this.post<any>('/monetization/daily-checkin', {});

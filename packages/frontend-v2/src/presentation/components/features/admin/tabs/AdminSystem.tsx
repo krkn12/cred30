@@ -1,7 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { TrendingUp, Activity, ArrowUpRight, ArrowDownLeft, Trash2, Check, Settings as SettingsIcon, AlertTriangle, DollarSign } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 import { AppState } from '../../../../../domain/types/common.types';
+
+interface SystemCost {
+    id: number;
+    description: string;
+    amount: string | number;
+}
+
+interface FinanceLog {
+    id: number;
+    action: string;
+    created_at: string;
+    admin_name: string;
+    new_values: any;
+}
 
 interface AdminSystemProps {
     state: AppState;
@@ -11,37 +25,31 @@ interface AdminSystemProps {
 }
 
 export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSystemProps) => {
-    const [systemCosts, setSystemCosts] = useState<any[]>([]);
+    const [systemCosts, setSystemCosts] = useState<SystemCost[]>([]);
     const [newCostDescription, setNewCostDescription] = useState('');
     const [newCostAmount, setNewCostAmount] = useState('');
-    const [financeHistory, setFinanceHistory] = useState<any[]>([]);
+    const [financeHistory, setFinanceHistory] = useState<FinanceLog[]>([]);
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
     const [historyOffset, setHistoryOffset] = useState(0);
     const [hasMoreHistory, setHasMoreHistory] = useState(false);
     const LIMIT = 50;
 
-
-    useEffect(() => {
-        fetchSystemCosts();
-        fetchFinanceHistory();
-    }, []);
-
-    const fetchSystemCosts = async () => {
+    const fetchSystemCosts = useCallback(async () => {
         try {
-            const res = await apiService.get<any>('/admin/costs');
+            const res = await apiService.get<SystemCost[]>('/admin/costs');
             if (res.success) {
                 setSystemCosts(res.data || []);
             }
         } catch (e) {
             console.error('Erro ao buscar custos:', e);
         }
-    };
+    }, []);
 
-    const fetchFinanceHistory = async (isLoadMore = false) => {
+    const fetchFinanceHistory = useCallback(async (isLoadMore = false) => {
         setIsHistoryLoading(true);
         try {
             const currentOffset = isLoadMore ? historyOffset + LIMIT : 0;
-            const res = await apiService.get<any>(`/admin/finance-history?limit=${LIMIT}&offset=${currentOffset}`);
+            const res = await apiService.get<FinanceLog[]>(`/admin/finance-history?limit=${LIMIT}&offset=${currentOffset}`);
             if (res.success) {
                 const newLogs = res.data || [];
                 setFinanceHistory(prev => isLoadMore ? [...prev, ...newLogs] : newLogs);
@@ -53,7 +61,12 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
         } finally {
             setIsHistoryLoading(false);
         }
-    };
+    }, [historyOffset]);
+
+    useEffect(() => {
+        fetchSystemCosts();
+        fetchFinanceHistory();
+    }, [fetchSystemCosts, fetchFinanceHistory]);
 
     const handleAddCost = async () => {
         if (!newCostDescription || !newCostAmount) return;

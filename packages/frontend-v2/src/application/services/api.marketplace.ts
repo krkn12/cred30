@@ -14,6 +14,10 @@ export class MarketplaceApi extends ApiBase {
         return await this.request<any>('/marketplace/my-listings');
     }
 
+    async getListingDetails(id: string | number): Promise<ApiResponse<any>> {
+        return await this.request<any>(`/marketplace/listings/${id}`);
+    }
+
     async cancelListing(listingId: number): Promise<ApiResponse<any>> {
         return await this.post<any>(`/marketplace/listing/${listingId}/cancel`, {});
     }
