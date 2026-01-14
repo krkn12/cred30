@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { TutorsController } from '../controllers/tutors.controller';
-import { authMiddleware } from '../../middlewares/auth.middleware';
+import { authMiddleware } from '../../middleware/auth.middleware';
 
 const tutorRoutes = new Hono();
 
