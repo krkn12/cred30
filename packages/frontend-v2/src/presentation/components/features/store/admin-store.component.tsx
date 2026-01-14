@@ -27,7 +27,7 @@ export const AdminStoreManager: React.FC<{ onSuccess: (title: string, msg: strin
     const loadProducts = async () => {
         try {
             const data = await apiService.getAllProductsAdmin();
-            setProducts(data);
+            setProducts(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error(error);
         }
