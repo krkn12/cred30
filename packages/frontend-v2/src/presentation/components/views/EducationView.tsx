@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, GraduationCap, Video, ChevronRight, Plus, PlayCircle, Users, DollarSign, X, Upload, Check, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, GraduationCap, Video, ChevronRight, Plus, PlayCircle, Users, DollarSign, X, Upload, Check, ShoppingCart, Award } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
+import { CertificateModal } from '../features/academy/CertificateModal';
 
 interface Course {
     id: number;
@@ -49,6 +50,7 @@ export const EducationView = ({ onBack, onSuccess, onError }: EducationViewProps
     const [loading, setLoading] = useState(false);
     const [showCreateCourse, setShowCreateCourse] = useState(false);
     const [showAddLesson, setShowAddLesson] = useState(false);
+    const [showCertificate, setShowCertificate] = useState(false);
 
     // Form states
     const [courseForm, setCourseForm] = useState({ title: '', description: '', price: 0, category: 'GERAL' });
@@ -297,6 +299,17 @@ export const EducationView = ({ onBack, onSuccess, onError }: EducationViewProps
                                 {selectedCourse.instructor_verified && <Check className="inline w-3 h-3 ml-1 text-blue-400" />}
                             </span>
                         </div>
+
+                        {/* Certificate Button - Show if purchased and has lessons (assuming simplified 100% check for now or always available if purchased/owner for demo) */}
+                        {selectedCourse.hasPurchased && selectedCourse.lessons && selectedCourse.lessons.length > 0 && (
+                            <button
+                                onClick={() => setShowCertificate(true)}
+                                className="w-full mt-4 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 text-sm font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2"
+                            >
+                                <Award className="w-4 h-4" />
+                                GERAR CERTIFICADO DE CONCLUSÃO
+                            </button>
+                        )}
 
                         {!selectedCourse.hasPurchased && (
                             <button
@@ -657,6 +670,18 @@ export const EducationView = ({ onBack, onSuccess, onError }: EducationViewProps
                         </div>
                     </div>
                 </div>
+            )}
+            {/* Certificate Modal */}
+            {selectedCourse && (
+                <CertificateModal
+                    isOpen={showCertificate}
+                    onClose={() => setShowCertificate(false)}
+                    courseTitle={selectedCourse.title}
+                    studentName="Aluno Cred30" // Idealmente pegar do Contexto do Usuário
+                    instructorName={selectedCourse.instructor_name}
+                    hours={selectedCourse.lessons ? Math.ceil(selectedCourse.lessons.reduce((acc, l) => acc + (l.duration_minutes || 0), 0) / 60) : 10}
+                    completionDate={new Date().toLocaleDateString('pt-BR')}
+                />
             )}
         </div>
     );
