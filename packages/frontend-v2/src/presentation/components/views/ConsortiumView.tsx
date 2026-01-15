@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Users, DollarSign, Calendar, ChevronRight, Loader2, CheckCircle, Clock } from 'lucide-react';
+import { Users, DollarSign, Calendar, ChevronRight, Loader2, CheckCircle, Clock, Gavel } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
+import { AssemblyView } from './AssemblyView';
 
 interface ConsortiumGroup {
     id: string;
@@ -36,6 +37,7 @@ export const ConsortiumView: React.FC<ConsortiumViewProps> = ({ onSuccess, onErr
     const [myMemberships, setMyMemberships] = useState<MyMembership[]>([]);
     const [loading, setLoading] = useState(true);
     const [joining, setJoining] = useState<string | null>(null);
+    const [selectedAssembly, setSelectedAssembly] = useState<MyMembership | null>(null);
 
     useEffect(() => {
         loadData();
@@ -76,6 +78,20 @@ export const ConsortiumView: React.FC<ConsortiumViewProps> = ({ onSuccess, onErr
 
     const formatCurrency = (value: number) =>
         Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    // Se estiver visualizando uma assembleia, mostrar a tela de assembleia
+    if (selectedAssembly) {
+        return (
+            <AssemblyView
+                groupId={selectedAssembly.group_id}
+                groupName={selectedAssembly.group_name}
+                totalValue={selectedAssembly.total_value}
+                onSuccess={onSuccess}
+                onError={onError}
+                onClose={() => setSelectedAssembly(null)}
+            />
+        );
+    }
 
     if (loading) {
         return (
@@ -210,10 +226,13 @@ export const ConsortiumView: React.FC<ConsortiumViewProps> = ({ onSuccess, onErr
                                 <div className="bg-black/20 p-3 rounded-lg flex justify-between items-center">
                                     <div className="text-xs text-zinc-400">
                                         <p className="font-bold text-white">Próxima Assembleia</p>
-                                        <p>Assembleia #{m.current_assembly_number + 1}</p>
+                                        <p>Assembleia #{(m.current_assembly_number || 0) + 1}</p>
                                     </div>
-                                    <button className="bg-zinc-800 text-white text-xs px-4 py-2 rounded-lg font-bold hover:bg-zinc-700 transition">
-                                        Ver Detalhes
+                                    <button
+                                        onClick={() => setSelectedAssembly(m)}
+                                        className="bg-primary-500/10 border border-primary-500/20 text-primary-400 text-xs px-4 py-2 rounded-lg font-bold hover:bg-primary-500/20 transition flex items-center gap-2"
+                                    >
+                                        <Gavel size={14} /> Assembleia
                                     </button>
                                 </div>
                             </div>
