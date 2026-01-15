@@ -1,59 +1,34 @@
 
-> cred30-frontend-v2@1.0.465 build
+> cred30-frontend-v2@1.0.574 build
 > vite build
 
 [36mvite v5.4.0 [32mbuilding for production...[36m[39m
 transforming...
-[32mÔ£ô[39m 1976 modules transformed.
-rendering chunks...
-computing gzip size...
-[2mdist/[22m[32mmanifest.webmanifest                        [39m[1m[2m  1.00 kB[22m[1m[22m
-[2mdist/[22m[32mindex.html                                  [39m[1m[2m  4.47 kB[22m[1m[22m[2m Ôöé gzip:   1.58 kB[22m
-[2mdist/[22m[35massets/index-nkOnAoiW.css                   [39m[1m[2m123.14 kB[22m[1m[22m[2m Ôöé gzip:  17.79 kB[22m
-[2mdist/[22m[36massets/app.constants-B1URSzYw.js            [39m[1m[2m  0.09 kB[22m[1m[22m[2m Ôöé gzip:   0.10 kB[22m
-[2mdist/[22m[36massets/LoadingButton-D684uljf.js            [39m[1m[2m  0.92 kB[22m[1m[22m[2m Ôöé gzip:   0.51 kB[22m
-[2mdist/[22m[36massets/use-location-B0jD0eiw.js             [39m[1m[2m  1.00 kB[22m[1m[22m[2m Ôöé gzip:   0.52 kB[22m
-[2mdist/[22m[36massets/LoadingScreen-B_LIoAMO.js            [39m[1m[2m  1.56 kB[22m[1m[22m[2m Ôöé gzip:   0.65 kB[22m
-[2mdist/[22m[36massets/FaqView-Bozn2vaK.js                  [39m[1m[2m  4.28 kB[22m[1m[22m[2m Ôöé gzip:   1.95 kB[22m
-[2mdist/[22m[36massets/security.page-Dd2Rcd_O.js            [39m[1m[2m  4.98 kB[22m[1m[22m[2m Ôöé gzip:   1.67 kB[22m
-[2mdist/[22m[36massets/RankingWidget-BMlphLJG.js            [39m[1m[2m  5.22 kB[22m[1m[22m[2m Ôöé gzip:   1.36 kB[22m
-[2mdist/[22m[36massets/workbox-window.prod.es5-vqzQaGvo.js  [39m[1m[2m  5.72 kB[22m[1m[22m[2m Ôöé gzip:   2.35 kB[22m
-[2mdist/[22m[36massets/welcome.page-B3pGYQBi.js             [39m[1m[2m  6.52 kB[22m[1m[22m[2m Ôöé gzip:   2.47 kB[22m
-[2mdist/[22m[36massets/DepositView-DBvnGXEu.js              [39m[1m[2m  6.59 kB[22m[1m[22m[2m Ôöé gzip:   2.19 kB[22m
-[2mdist/[22m[36massets/MyBugReportsView-CPMmS0NK.js         [39m[1m[2m  6.90 kB[22m[1m[22m[2m Ôöé gzip:   2.06 kB[22m
-[2mdist/[22m[36massets/CourierRegistrationView-Dsyjf5oQ.js  [39m[1m[2m  7.61 kB[22m[1m[22m[2m Ôöé gzip:   2.39 kB[22m
-[2mdist/[22m[36massets/RewardsShopView-CEFNRusY.js          [39m[1m[2m  8.44 kB[22m[1m[22m[2m Ôöé gzip:   3.04 kB[22m
-[2mdist/[22m[36massets/HistoryView-BKolmSSj.js              [39m[1m[2m  8.71 kB[22m[1m[22m[2m Ôöé gzip:   2.96 kB[22m
-[2mdist/[22m[36massets/ViewFarmView-DjXfC1Gj.js             [39m[1m[2m  9.38 kB[22m[1m[22m[2m Ôöé gzip:   3.29 kB[22m
-[2mdist/[22m[36massets/ServicesView-B-jLEEK3.js             [39m[1m[2m  9.55 kB[22m[1m[22m[2m Ôöé gzip:   2.72 kB[22m
-[2mdist/[22m[36massets/SellerRegistrationView-JMowsOUB.js   [39m[1m[2m 10.83 kB[22m[1m[22m[2m Ôöé gzip:   2.78 kB[22m
-[2mdist/[22m[36massets/privacy.page-CXVoKFnx.js             [39m[1m[2m 12.80 kB[22m[1m[22m[2m Ôöé gzip:   3.31 kB[22m
-[2mdist/[22m[36massets/VotingView-Bf_21Ncd.js               [39m[1m[2m 12.84 kB[22m[1m[22m[2m Ôöé gzip:   3.89 kB[22m
-[2mdist/[22m[36massets/WithdrawView-6tnNCxB_.js             [39m[1m[2m 13.24 kB[22m[1m[22m[2m Ôöé gzip:   4.30 kB[22m
-[2mdist/[22m[36massets/PortfolioView-Kn5et7M2.js            [39m[1m[2m 14.78 kB[22m[1m[22m[2m Ôöé gzip:   4.64 kB[22m
-[2mdist/[22m[36massets/terms.page-Djh2ubJT.js               [39m[1m[2m 15.39 kB[22m[1m[22m[2m Ôöé gzip:   4.38 kB[22m
-[2mdist/[22m[36massets/LogisticsView-ClGnM4zQ.js            [39m[1m[2m 15.78 kB[22m[1m[22m[2m Ôöé gzip:   4.15 kB[22m
-[2mdist/[22m[36massets/InvestView-sEybEzOl.js               [39m[1m[2m 17.48 kB[22m[1m[22m[2m Ôöé gzip:   4.92 kB[22m
-[2mdist/[22m[36massets/EarnView-BM5n0z2l.js                 [39m[1m[2m 18.64 kB[22m[1m[22m[2m Ôöé gzip:   4.92 kB[22m
-[2mdist/[22m[36massets/EducationView-G_EoN_Wm.js            [39m[1m[2m 18.96 kB[22m[1m[22m[2m Ôöé gzip:   4.62 kB[22m
-[2mdist/[22m[36massets/purify.es-B9ZVCkUG.js                [39m[1m[2m 22.64 kB[22m[1m[22m[2m Ôöé gzip:   8.75 kB[22m
-[2mdist/[22m[36massets/Dashboard-CxE_UitF.js                [39m[1m[2m 28.04 kB[22m[1m[22m[2m Ôöé gzip:   7.63 kB[22m
-[2mdist/[22m[36massets/LoansView-lVKVYbl1.js                [39m[1m[2m 29.07 kB[22m[1m[22m[2m Ôöé gzip:   7.98 kB[22m
-[2mdist/[22m[36massets/SettingsView-CFQu2mNh.js             [39m[1m[2m 32.69 kB[22m[1m[22m[2m Ôöé gzip:   6.72 kB[22m
-[2mdist/[22m[36massets/PromoVideosView-bul7MGJf.js          [39m[1m[2m 41.90 kB[22m[1m[22m[2m Ôöé gzip:  10.00 kB[22m
-[2mdist/[22m[36massets/MarketplaceView-xKMTxmhT.js          [39m[1m[2m 71.53 kB[22m[1m[22m[2m Ôöé gzip:  17.65 kB[22m
-[2mdist/[22m[36massets/index.es-BaAKulbq.js                 [39m[1m[2m150.49 kB[22m[1m[22m[2m Ôöé gzip:  51.44 kB[22m
-[2mdist/[22m[36massets/AvailableDeliveriesMap-DnHJVOGZ.js   [39m[1m[2m171.01 kB[22m[1m[22m[2m Ôöé gzip:  49.16 kB[22m
-[2mdist/[22m[36massets/chunk-admin-hOgVZ225.js              [39m[1m[2m172.15 kB[22m[1m[22m[2m Ôöé gzip:  36.01 kB[22m
-[2mdist/[22m[36massets/html2canvas.esm-BfxBtG_O.js          [39m[1m[2m201.41 kB[22m[1m[22m[2m Ôöé gzip:  48.03 kB[22m
-[2mdist/[22m[36massets/index-CgtQKOum.js                    [39m[1m[2m243.71 kB[22m[1m[22m[2m Ôöé gzip:  55.38 kB[22m
-[2mdist/[22m[36massets/vendor-react-CS-tJu5e.js             [39m[1m[2m373.89 kB[22m[1m[22m[2m Ôöé gzip: 127.21 kB[22m
-[2mdist/[22m[36massets/vendor-heavy-DtEZXxKB.js             [39m[1m[2m388.75 kB[22m[1m[22m[2m Ôöé gzip: 127.82 kB[22m
-[32mÔ£ô built in 14.86s[39m
+[32mÔ£ô[39m 2765 modules transformed.
 
 PWA v0.21.2
 mode      generateSW
-precache  55 entries (8188.78 KiB)
+precache  57 entries (8304.63 KiB)
 files generated
   dist/sw.js
   dist/workbox-1c4dc35e.js
+x Build failed in 42.40s
+error during build:
+[vite-plugin-pwa:build] [plugin vite-plugin-pwa:build] src/presentation/components/features/admin/tabs/AdminCompliance.tsx: There was an error during the build:
+  Could not resolve "../../../../application/services/api.service" from "src/presentation/components/features/admin/tabs/AdminCompliance.tsx"
+Additionally, handling the error in the 'buildEnd' hook caused the following error:
+  Could not resolve "../../../../application/services/api.service" from "src/presentation/components/features/admin/tabs/AdminCompliance.tsx"
+file: C:/Users/josia/Desktop/projetos/cred30/packages/frontend-v2/src/presentation/components/features/admin/tabs/AdminCompliance.tsx
+    at getRollupError (file:///C:/Users/josia/Desktop/projetos/cred30/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at file:///C:/Users/josia/Desktop/projetos/cred30/node_modules/rollup/dist/es/shared/node-entry.js:23390:39
+    at async catchUnfinishedHookActions (file:///C:/Users/josia/Desktop/projetos/cred30/node_modules/rollup/dist/es/shared/node-entry.js:22848:16)
+    at async rollupInternal (file:///C:/Users/josia/Desktop/projetos/cred30/node_modules/rollup/dist/es/shared/node-entry.js:23373:5)
+    at async build (file:///C:/Users/josia/Desktop/projetos/cred30/node_modules/vite/dist/node/chunks/dep-NjL7WTE1.js:65317:14)
+    at async CAC.<anonymous> (file:///C:/Users/josia/Desktop/projetos/cred30/node_modules/vite/dist/node/cli.js:828:5)
+npm error Lifecycle script `build` failed with error:
+npm error code 1
+npm error path C:\Users\josia\Desktop\projetos\cred30\packages\frontend-v2
+npm error workspace cred30-frontend-v2@1.0.574
+npm error location C:\Users\josia\Desktop\projetos\cred30\packages\frontend-v2
+npm error command failed
+npm error command C:\Windows\system32\cmd.exe /d /s /c vite build
