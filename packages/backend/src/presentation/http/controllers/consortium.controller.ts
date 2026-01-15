@@ -115,6 +115,10 @@ export class ConsortiumController {
                 const adminFee = entryCost * (adminFeePercent / 100);
                 const poolContribution = entryCost - adminFee;
 
+                // Divisão da taxa: 80% para cotistas (profit_pool), 20% para o projeto (owner_profit)
+                const cotistasShare = adminFee * 0.8;
+                const platformShare = adminFee * 0.2;
+
                 // 6. Debita do usuário
                 await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [entryCost, user.id]);
 
@@ -125,12 +129,13 @@ export class ConsortiumController {
                     WHERE id = $2
                 `, [poolContribution, groupId]);
 
-                // 8. Taxa administrativa vai para o fundo mútuo da plataforma
+                // 8. Taxas divididas entre cotistas e plataforma
                 await client.query(`
                     UPDATE system_config 
-                    SET mutual_reserve = COALESCE(mutual_reserve, 0) + $1 
+                    SET profit_pool = COALESCE(profit_pool, 0) + $1,
+                        total_owner_profit = COALESCE(total_owner_profit, 0) + $2
                     WHERE id = 1
-                `, [adminFee]);
+                `, [cotistasShare, platformShare]);
 
                 // 9. Registra transação de saída (Débito do usuário)
                 await client.query(`
@@ -328,11 +333,16 @@ export class ConsortiumController {
                     WHERE id = $2
                 `, [poolContribution, member.group_id]);
 
+                // Divisão da taxa: 80% para cotistas (profit_pool), 20% para o projeto (owner_profit)
+                const cotistasShare = adminFee * 0.8;
+                const platformShare = adminFee * 0.2;
+
                 await client.query(`
                     UPDATE system_config 
-                    SET mutual_reserve = COALESCE(mutual_reserve, 0) + $1 
+                    SET profit_pool = COALESCE(profit_pool, 0) + $1,
+                        total_owner_profit = COALESCE(total_owner_profit, 0) + $2
                     WHERE id = 1
-                `, [adminFee]);
+                `, [cotistasShare, platformShare]);
 
                 // 5. Atualizar Membro
                 const nextDueDate = new Date(member.next_due_date || new Date());
