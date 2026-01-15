@@ -112,8 +112,8 @@ export class ConsortiumController {
 
                 // Registra transação de saída (Débito)
                 await client.query(`
-                    INSERT INTO transactions (id, user_id, type, amount, description, status, created_at)
-                    VALUES (gen_random_uuid(), $1, 'CONSORTIUM_ENTRY', $2, $3, 'APPROVED', NOW())
+                    INSERT INTO transactions (user_id, type, amount, description, status, created_at)
+                    VALUES ($1, 'CONSORTIUM_ENTRY', $2, $3, 'APPROVED', NOW())
                 `, [user.id, -entryCost, `Entrada Consórcio: ${group.name} (Cota ${nextQuota})`]);
 
                 await client.query(`
