@@ -12,6 +12,7 @@ interface ConsortiumGroup {
     admin_fee_percent: number;
     monthly_installment_value: number;
     status: string;
+    member_count: number;
 }
 
 interface MyMembership {
@@ -171,6 +172,9 @@ export const ConsortiumView: React.FC<ConsortiumViewProps> = ({ onSuccess, onErr
                                             <h3 className="text-lg font-bold text-white">{group.name}</h3>
                                         </div>
                                         <div className="text-right">
+                                            <div className="flex items-center gap-1 text-[10px] text-zinc-500 uppercase font-black mb-1 justify-end">
+                                                <Users size={10} /> {group.member_count || 0} participantes
+                                            </div>
                                             <p className="text-[10px] text-zinc-500 uppercase font-black">Carta</p>
                                             <p className="text-xl font-black text-white">{formatCurrency(group.total_value)}</p>
                                         </div>
