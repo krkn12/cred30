@@ -33,12 +33,13 @@ const TermsPage = () => {
             <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-24 sm:pt-32 pb-20">
                 <div className="mb-8 sm:mb-12">
                     <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-emerald-400 text-xs sm:text-sm font-bold mb-4 sm:mb-6">
-                        <ShieldCheck size={14} /> Estatuto Social e Blindagem Jurídica
+                        <ShieldCheck size={14} /> Estatuto de Economia Solidária e Blindagem
                     </div>
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-3 sm:mb-4 tracking-tight">Regulamento Interno</h1>
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-3 sm:mb-4 tracking-tight">Regulamento do Clube</h1>
                     <p className="text-zinc-400 text-sm sm:text-base leading-relaxed max-w-2xl">
                         A Cred30 NÃO é um banco, NÃO é uma fintech e NÃO é uma instituição financeira.
-                        Este software gere um <strong>Clube de Benefícios Privado</strong> baseado em ajuda mútua e troca comunitária.
+                        Este software gere um <strong>Clube de Benefícios Privado</strong> baseado na <strong>Economia Solidária</strong>,
+                        fomentando a ajuda mútua e a aquisição programada entre cidadãos.
                     </p>
                 </div>
 
