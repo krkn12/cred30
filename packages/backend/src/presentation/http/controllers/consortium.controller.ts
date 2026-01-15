@@ -103,25 +103,56 @@ export class ConsortiumController {
                     throw new Error(`Saldo insuficiente. A entrada custa R$ ${entryCost.toFixed(2)}.`);
                 }
 
+
                 // 4. Determina número da cota (Sequencial)
                 const quotaRes = await client.query('SELECT COUNT(*) as total FROM consortium_members WHERE group_id = $1', [groupId]);
                 const nextQuota = Number(quotaRes.rows[0].total) + 1;
 
-                // 5. Executa Pagamento e Adesão
+                // 5. Calcula taxa administrativa e valor líquido para o pool
+                const adminFeePercent = Number(group.admin_fee_percent || 10);
+                const adminFee = entryCost * (adminFeePercent / 100);
+                const poolContribution = entryCost - adminFee;
+
+                // 6. Debita do usuário
                 await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [entryCost, user.id]);
 
-                // Registra transação de saída (Débito)
+                // 7. Acumula no pool do grupo (valor líquido)
+                await client.query(`
+                    UPDATE consortium_groups 
+                    SET current_pool = COALESCE(current_pool, 0) + $1 
+                    WHERE id = $2
+                `, [poolContribution, groupId]);
+
+                // 8. Taxa administrativa vai para o fundo mútuo da plataforma
+                await client.query(`
+                    UPDATE system_config 
+                    SET mutual_fund_balance = COALESCE(mutual_fund_balance, 0) + $1 
+                    WHERE id = 1
+                `, [adminFee]);
+
+                // 9. Registra transação de saída (Débito do usuário)
                 await client.query(`
                     INSERT INTO transactions (user_id, type, amount, description, status, created_at)
                     VALUES ($1, 'CONSORTIUM_ENTRY', $2, $3, 'APPROVED', NOW())
                 `, [user.id, -entryCost, `Entrada Consórcio: ${group.name} (Cota ${nextQuota})`]);
 
+                // 10. Registra receita da taxa admin
                 await client.query(`
-                    INSERT INTO consortium_members (group_id, user_id, quota_number, status)
-                    VALUES ($1, $2, $3, 'ACTIVE')
-                `, [groupId, user.id, nextQuota]);
+                    INSERT INTO transactions (user_id, type, amount, description, status, created_at)
+                    VALUES ($1, 'CONSORTIUM_ADMIN_FEE', $2, $3, 'APPROVED', NOW())
+                `, [user.id, adminFee, `Taxa Admin Consórcio: ${group.name}`]);
 
-                return { success: true, message: `Bem-vindo ao grupo! Sua cota é #${nextQuota}.` };
+                // 11. Próximo vencimento = 30 dias a partir de hoje
+                const nextDueDate = new Date();
+                nextDueDate.setDate(nextDueDate.getDate() + 30);
+
+                // 12. Insere membro com tracking de pagamentos
+                await client.query(`
+                    INSERT INTO consortium_members (group_id, user_id, quota_number, status, paid_installments, total_paid, next_due_date)
+                    VALUES ($1, $2, $3, 'ACTIVE', 1, $4, $5)
+                `, [groupId, user.id, nextQuota, entryCost, nextDueDate.toISOString().split('T')[0]]);
+
+                return { success: true, message: `Bem-vindo ao grupo! Sua cota é #${nextQuota}. Pool: R$${poolContribution.toFixed(2)} | Taxa: R$${adminFee.toFixed(2)}` };
             });
 
             if (result.success) {
@@ -249,6 +280,189 @@ export class ConsortiumController {
             );
 
             return c.json({ success: true, message: 'Voto registrado.' });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    // --- PAGAMENTOS MENSAIS ---
+
+    static async payInstallment(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const { memberId } = await c.req.json();
+            const pool = getDbPool(c);
+
+            const result = await executeInTransaction(pool, async (client: PoolClient) => {
+                // 1. Validar Membro e Grupo
+                const memberRes = await client.query(`
+                    SELECT cm.*, cg.name as group_name, cg.monthly_installment_value, cg.admin_fee_percent, cg.id as group_id
+                    FROM consortium_members cm
+                    JOIN consortium_groups cg ON cm.group_id = cg.id
+                    WHERE cm.id = $1 AND cm.user_id = $2
+                `, [memberId, user.id]);
+
+                if (memberRes.rows.length === 0) throw new Error('Membro não encontrado.');
+                const member = memberRes.rows[0];
+
+                // 2. Verificar Saldo
+                const installmentValue = Number(member.monthly_installment_value);
+                const userRes = await client.query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [user.id]);
+                if (Number(userRes.rows[0].balance) < installmentValue) {
+                    throw new Error('Saldo insuficiente para pagar a parcela.');
+                }
+
+                // 3. Calcular Taxa Admin e Pool
+                const adminFeePercent = Number(member.admin_fee_percent || 10);
+                const adminFee = installmentValue * (adminFeePercent / 100);
+                const poolContribution = installmentValue - adminFee;
+
+                // 4. Executar Débito e Créditos
+                await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [installmentValue, user.id]);
+
+                await client.query(`
+                    UPDATE consortium_groups 
+                    SET current_pool = COALESCE(current_pool, 0) + $1 
+                    WHERE id = $2
+                `, [poolContribution, member.group_id]);
+
+                await client.query(`
+                    UPDATE system_config 
+                    SET mutual_fund_balance = COALESCE(mutual_fund_balance, 0) + $1 
+                    WHERE id = 1
+                `, [adminFee]);
+
+                // 5. Atualizar Membro
+                const nextDueDate = new Date(member.next_due_date || new Date());
+                nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+
+                await client.query(`
+                    UPDATE consortium_members 
+                    SET paid_installments = paid_installments + 1,
+                        total_paid = COALESCE(total_paid, 0) + $1,
+                        next_due_date = $2
+                    WHERE id = $3
+                `, [installmentValue, nextDueDate.toISOString().split('T')[0], memberId]);
+
+                // 6. Registrar Transações
+                await client.query(`
+                    INSERT INTO transactions (user_id, type, amount, description, status, created_at)
+                    VALUES ($1, 'CONSORTIUM_INSTALLMENT', $2, $3, 'APPROVED', NOW())
+                `, [user.id, -installmentValue, `Parcela Consórcio: ${member.group_name} (${member.paid_installments + 1}ª)`]);
+
+                return { success: true, message: 'Parcela paga com sucesso!' };
+            });
+
+            return c.json(result.data || { success: false, message: result.error });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 400);
+        }
+    }
+
+    // --- ADMIN: GERENCIAMENTO DE ASSEMBLEIAS ---
+
+    static async createAssembly(c: Context) {
+        try {
+            const { groupId, monthYear } = await c.req.json();
+            const pool = getDbPool(c);
+
+            const groupRes = await pool.query('SELECT current_assembly_number FROM consortium_groups WHERE id = $1', [groupId]);
+            if (groupRes.rows.length === 0) return c.json({ success: false, message: 'Grupo não encontrado.' }, 404);
+
+            const nextNumber = (groupRes.rows[0].current_assembly_number || 0) + 1;
+
+            const assemblyRes = await pool.query(`
+                INSERT INTO consortium_assemblies (group_id, assembly_number, month_year, status)
+                VALUES ($1, $2, $3, 'OPEN_FOR_BIDS')
+                RETURNING id
+            `, [groupId, nextNumber, monthYear]);
+
+            await pool.query('UPDATE consortium_groups SET current_assembly_number = $1 WHERE id = $2', [nextNumber, groupId]);
+
+            return c.json({ success: true, assemblyId: assemblyRes.rows[0].id });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    static async closeAssembly(c: Context) {
+        try {
+            const { assemblyId, winnerMemberId, winningBidAmount } = await c.req.json();
+            const pool = getDbPool(c);
+
+            const result = await executeInTransaction(pool, async (client: PoolClient) => {
+                // 1. Buscar Assembleia
+                const assemblyRes = await client.query('SELECT * FROM consortium_assemblies WHERE id = $1', [assemblyId]);
+                if (assemblyRes.rows.length === 0) throw new Error('Assembleia não encontrada.');
+                const assembly = assemblyRes.rows[0];
+
+                // 2. Buscar Grupo
+                const groupRes = await client.query('SELECT * FROM consortium_groups WHERE id = $1', [assembly.group_id]);
+                const group = groupRes.rows[0];
+
+                // 3. Se houver vencedor, processar contemplação
+                if (winnerMemberId) {
+                    const memberRes = await client.query('SELECT * FROM consortium_members WHERE id = $1', [winnerMemberId]);
+                    const member = memberRes.rows[0];
+
+                    // Transfere o valor da carta de crédito (total_value)
+                    const creditValue = Number(group.total_value);
+
+                    await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [creditValue, member.user_id]);
+
+                    await client.query(`
+                        INSERT INTO transactions (user_id, type, amount, description, status, created_at)
+                        VALUES ($1, 'CONSORTIUM_CONTEMPLATION', $2, $3, 'APPROVED', NOW())
+                    `, [member.user_id, creditValue, `Contemplação Consórcio: ${group.name}`]);
+
+                    await client.query(`
+                        UPDATE consortium_members 
+                        SET status = 'CONTEMPLATED', contemplated_at = NOW()
+                        WHERE id = $1
+                    `, [winnerMemberId]);
+
+                    // Desconta o lance do pool se for o caso, ou apenas registra
+                    if (winningBidAmount) {
+                        await client.query(`
+                            UPDATE consortium_bids SET status = 'WINNER' 
+                            WHERE assembly_id = $1 AND member_id = $2
+                        `, [assemblyId, winnerMemberId]);
+                    }
+                }
+
+                // 4. Fechar Assembleia
+                await client.query(`
+                    UPDATE consortium_assemblies 
+                    SET status = 'FINISHED', 
+                        winner_member_id = $1, 
+                        winning_bid_amount = $2,
+                        finished_at = NOW()
+                    WHERE id = $3
+                `, [winnerMemberId, winningBidAmount, assemblyId]);
+
+                return { success: true };
+            });
+
+            return c.json(result.data || { success: false, message: result.error });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    static async listMembers(c: Context) {
+        try {
+            const groupId = c.req.param('groupId');
+            const pool = getDbPool(c);
+
+            const result = await pool.query(`
+                SELECT cm.*, u.name as user_name, u.email as user_email
+                FROM consortium_members cm
+                JOIN users u ON cm.user_id = u.id
+                WHERE cm.group_id = $1
+                ORDER BY cm.quota_number ASC
+            `, [groupId]);
+
+            return c.json({ success: true, data: result.rows });
         } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }

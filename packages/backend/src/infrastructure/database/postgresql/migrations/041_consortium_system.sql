@@ -3,7 +3,7 @@
 
 -- Consortium Groups (created by admin)
 CREATE TABLE IF NOT EXISTS consortium_groups (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     total_value DECIMAL(15,2) NOT NULL,
     duration_months INTEGER NOT NULL,
@@ -18,9 +18,9 @@ CREATE TABLE IF NOT EXISTS consortium_groups (
 
 -- Consortium Members (users who join a group)
 CREATE TABLE IF NOT EXISTS consortium_members (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    group_id UUID NOT NULL REFERENCES consortium_groups(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER NOT NULL REFERENCES consortium_groups(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     quota_number INTEGER NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', -- ACTIVE, CONTEMPLATED, WITHDRAWN
     contemplated_at TIMESTAMPTZ,
@@ -31,13 +31,13 @@ CREATE TABLE IF NOT EXISTS consortium_members (
 
 -- Consortium Assemblies (monthly meetings for contemplation)
 CREATE TABLE IF NOT EXISTS consortium_assemblies (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    group_id UUID NOT NULL REFERENCES consortium_groups(id) ON DELETE CASCADE,
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER NOT NULL REFERENCES consortium_groups(id) ON DELETE CASCADE,
     assembly_number INTEGER NOT NULL,
     month_year VARCHAR(7) NOT NULL, -- YYYY-MM format
     status VARCHAR(20) NOT NULL DEFAULT 'SCHEDULED', -- SCHEDULED, OPEN_FOR_BIDS, VOTING, FINISHED
     total_pool_collected DECIMAL(15,2) NOT NULL DEFAULT 0,
-    winner_member_id UUID REFERENCES consortium_members(id),
+    winner_member_id INTEGER REFERENCES consortium_members(id),
     winning_bid_amount DECIMAL(15,2),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     finished_at TIMESTAMPTZ,
@@ -46,9 +46,9 @@ CREATE TABLE IF NOT EXISTS consortium_assemblies (
 
 -- Consortium Bids (bids placed during assembly)
 CREATE TABLE IF NOT EXISTS consortium_bids (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    assembly_id UUID NOT NULL REFERENCES consortium_assemblies(id) ON DELETE CASCADE,
-    member_id UUID NOT NULL REFERENCES consortium_members(id) ON DELETE CASCADE,
+    id SERIAL PRIMARY KEY,
+    assembly_id INTEGER NOT NULL REFERENCES consortium_assemblies(id) ON DELETE CASCADE,
+    member_id INTEGER NOT NULL REFERENCES consortium_members(id) ON DELETE CASCADE,
     amount DECIMAL(15,2) NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING, WINNER, REJECTED
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -57,10 +57,10 @@ CREATE TABLE IF NOT EXISTS consortium_bids (
 
 -- Consortium Votes (votes on bids during assembly)
 CREATE TABLE IF NOT EXISTS consortium_votes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    assembly_id UUID NOT NULL REFERENCES consortium_assemblies(id) ON DELETE CASCADE,
-    voter_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    target_bid_id UUID NOT NULL REFERENCES consortium_bids(id) ON DELETE CASCADE,
+    id SERIAL PRIMARY KEY,
+    assembly_id INTEGER NOT NULL REFERENCES consortium_assemblies(id) ON DELETE CASCADE,
+    voter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    target_bid_id INTEGER NOT NULL REFERENCES consortium_bids(id) ON DELETE CASCADE,
     vote BOOLEAN NOT NULL, -- true = approve, false = reject
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(assembly_id, voter_id, target_bid_id)
