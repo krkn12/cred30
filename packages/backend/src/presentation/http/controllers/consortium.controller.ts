@@ -128,7 +128,7 @@ export class ConsortiumController {
                 // 8. Taxa administrativa vai para o fundo mútuo da plataforma
                 await client.query(`
                     UPDATE system_config 
-                    SET mutual_fund_balance = COALESCE(mutual_fund_balance, 0) + $1 
+                    SET mutual_reserve = COALESCE(mutual_reserve, 0) + $1 
                     WHERE id = 1
                 `, [adminFee]);
 
@@ -330,7 +330,7 @@ export class ConsortiumController {
 
                 await client.query(`
                     UPDATE system_config 
-                    SET mutual_fund_balance = COALESCE(mutual_fund_balance, 0) + $1 
+                    SET mutual_reserve = COALESCE(mutual_reserve, 0) + $1 
                     WHERE id = 1
                 `, [adminFee]);
 
