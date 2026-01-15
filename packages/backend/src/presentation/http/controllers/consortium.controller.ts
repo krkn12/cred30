@@ -47,7 +47,7 @@ export class ConsortiumController {
                 WHERE status IN ('OPEN', 'ACTIVE') 
                 ORDER BY created_at DESC
             `);
-            return c.json({ success: true, groups: result.rows });
+            return c.json({ success: true, data: result.rows });
         } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -66,7 +66,7 @@ export class ConsortiumController {
                 WHERE cm.user_id = $1
             `, [user.id]);
 
-            return c.json({ success: true, memberships: result.rows });
+            return c.json({ success: true, data: result.rows });
         } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
