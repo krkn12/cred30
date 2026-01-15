@@ -43,9 +43,11 @@ export class ConsortiumController {
         try {
             const pool = getDbPool(c);
             const result = await pool.query(`
-                SELECT * FROM consortium_groups 
-                WHERE status IN ('OPEN', 'ACTIVE') 
-                ORDER BY created_at DESC
+                SELECT cg.*, 
+                       (SELECT COUNT(*)::int FROM consortium_members cm WHERE cm.group_id = cg.id) as member_count
+                FROM consortium_groups cg
+                WHERE cg.status IN ('OPEN', 'ACTIVE') 
+                ORDER BY cg.created_at DESC
             `);
             return c.json({ success: true, data: result.rows });
         } catch (error: any) {

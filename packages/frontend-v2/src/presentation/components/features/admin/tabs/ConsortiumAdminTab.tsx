@@ -14,6 +14,7 @@ interface ConsortiumGroup {
     start_date: string;
     current_pool: number;
     current_assembly_number: number;
+    member_count: number;
 }
 
 interface ConsortiumMember {
@@ -152,8 +153,9 @@ export const ConsortiumAdminView: React.FC = () => {
                                 </span>
                                 <h3 className="text-lg font-bold text-white">{group.name}</h3>
                             </div>
-                            <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center">
-                                <Users size={20} className="text-zinc-400" />
+                            <div className="w-10 h-10 bg-zinc-800 rounded-lg flex flex-col items-center justify-center">
+                                <Users size={16} className="text-zinc-400" />
+                                <span className="text-[10px] text-zinc-500 font-bold">{group.member_count || 0}</span>
                             </div>
                         </div>
 
