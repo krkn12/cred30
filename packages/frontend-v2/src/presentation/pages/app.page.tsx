@@ -64,6 +64,7 @@ const CourierRegistrationView = lazyWithRetry(() => import('../components/views/
 const DepositView = lazyWithRetry(() => import('../components/views/DepositView').then(m => ({ default: m.DepositView })));
 const ServicesView = lazyWithRetry(() => import('../components/views/ServicesView').then(m => ({ default: m.ServicesView })));
 const RewardsShopView = lazyWithRetry(() => import('../components/views/RewardsShopView').then(m => ({ default: m.RewardsShopView })));
+const ConsortiumView = lazyWithRetry(() => import('../components/views/ConsortiumView').then(m => ({ default: m.ConsortiumView })));
 
 export default function App() {
   const [state, setState] = useState<AppState>({
@@ -667,6 +668,14 @@ export default function App() {
                       onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
                       onError={(title, message) => setShowError({ isOpen: true, title, message })}
                       onRefresh={refreshState}
+                    />
+                  </Suspense>
+                } />
+                <Route path="consortium" element={
+                  <Suspense fallback={null}>
+                    <ConsortiumView
+                      onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                      onError={(title, message) => setShowError({ isOpen: true, title, message })}
                     />
                   </Suspense>
                 } />
