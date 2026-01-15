@@ -9,7 +9,9 @@ const pool = new Pool({
 async function checkSystemConfig() {
     try {
         const res = await pool.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'system_config';");
-        console.log(JSON.stringify(res.rows.map(r => r.column_name), null, 2));
+        const fs = require('fs');
+        fs.writeFileSync('columns.txt', res.rows.map(r => r.column_name).join('\n'));
+        console.log('Colunas escritas em columns.txt');
     } catch (e: any) {
         console.error('Erro:', e.message);
     } finally {
