@@ -1,8 +1,8 @@
 
 import { Context } from 'hono';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { UserContext } from '../../../types';
-import { executeInTransaction } from '../../../infrastructure/database/postgresql/connection/pool';
+import { executeInTransaction } from '../../../domain/services/transaction.service';
+import { PoolClient } from 'pg';
 
 export class ConsortiumController {
 
@@ -79,7 +79,7 @@ export class ConsortiumController {
             const { groupId } = await c.req.json();
             const pool = getDbPool(c);
 
-            return await executeInTransaction(pool, async (client) => {
+            return await executeInTransaction(pool, async (client: PoolClient) => {
                 // 1. Verifica Grupo e Status
                 const groupRes = await client.query('SELECT * FROM consortium_groups WHERE id = $1 FOR UPDATE', [groupId]);
                 if (groupRes.rows.length === 0) throw new Error('Grupo não encontrado.');
@@ -165,7 +165,7 @@ export class ConsortiumController {
             const { assemblyId, amount } = await c.req.json();
             const pool = getDbPool(c);
 
-            return await executeInTransaction(pool, async (client) => {
+            return await executeInTransaction(pool, async (client: PoolClient) => {
                 // 1. Validar Assembleia
                 const assemblyRes = await client.query('SELECT * FROM consortium_assemblies WHERE id = $1', [assemblyId]);
                 if (assemblyRes.rows.length === 0) throw new Error('Assembleia não encontrada.');
