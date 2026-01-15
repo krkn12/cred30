@@ -444,7 +444,7 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                         </div>
                     </div>
 
-                    <div className="flex overflow-x-auto no-scrollbar -mx-5 px-5 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-7 gap-4 mb-10 pb-4 sm:pb-0">
+                    <div className="flex overflow-x-auto no-scrollbar -mx-5 px-5 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-8 gap-4 mb-10 pb-4 sm:pb-0">
                         {[
                             { icon: Crown, label: 'Shopping', sub: 'VIP', act: () => navigate('/app/services'), color: 'text-pink-400', bg: 'bg-pink-500/10' },
                             { icon: Gift, label: 'Prêmios', sub: 'Resgatar', act: () => navigate('/app/rewards-shop'), color: 'text-amber-400', bg: 'bg-amber-500/10' },
@@ -452,7 +452,8 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                             { icon: Wallet, label: 'Apoio', sub: 'Mútuo', act: onLoans, color: 'text-zinc-400', bg: 'bg-zinc-500/10' },
                             { icon: BookOpen, label: 'Aprender', sub: 'Academy', act: onEducation, color: 'text-blue-400', bg: 'bg-blue-500/10' },
                             { icon: Users, label: 'Indicar', sub: 'Invite', act: onRefer, color: 'text-primary-400', bg: 'bg-primary-500/10' },
-                            { icon: BarChart3, label: 'Votar', sub: 'Club', act: onVoting, color: 'text-emerald-400', bg: 'bg-emerald-500/10' }
+                            { icon: BarChart3, label: 'Votar', sub: 'Club', act: onVoting, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+                            { icon: Users, label: 'Consórcio', sub: 'Grupo', act: () => navigate('/app/consortium'), color: 'text-teal-400', bg: 'bg-teal-500/10' }
                         ].map((item, idx) => (
                             <button
                                 key={idx}
