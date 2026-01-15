@@ -24,6 +24,9 @@ interface MyMembership {
     monthly_installment_value: number;
     group_status: string;
     current_assembly_number: number;
+    paid_installments: number;
+    next_due_date: string;
+    total_paid: number;
 }
 
 interface ConsortiumViewProps {
@@ -73,6 +76,20 @@ export const ConsortiumView: React.FC<ConsortiumViewProps> = ({ onSuccess, onErr
             onError('Erro', e.message);
         } finally {
             setJoining(null);
+        }
+    };
+
+    const handlePayInstallment = async (memberId: string) => {
+        try {
+            const res = await apiService.post<{ message: string }>('/consortium/pay-installment', { memberId });
+            if (res.success) {
+                onSuccess('Sucesso', res.data?.message || 'Parcela paga com sucesso!');
+                loadData();
+            } else {
+                onError('Erro', res.message || 'Não foi possível pagar.');
+            }
+        } catch (e: any) {
+            onError('Erro', e.message);
         }
     };
 
@@ -178,8 +195,8 @@ export const ConsortiumView: React.FC<ConsortiumViewProps> = ({ onSuccess, onErr
                                         onClick={() => !alreadyJoined && handleJoin(group.id)}
                                         disabled={alreadyJoined || joining === group.id}
                                         className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${alreadyJoined
-                                                ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-                                                : 'bg-primary-500 text-black hover:bg-primary-400'
+                                            ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                                            : 'bg-primary-500 text-black hover:bg-primary-400'
                                             }`}
                                     >
                                         {joining === group.id ? (
@@ -223,17 +240,44 @@ export const ConsortiumView: React.FC<ConsortiumViewProps> = ({ onSuccess, onErr
                                     </div>
                                 </div>
 
-                                <div className="bg-black/20 p-3 rounded-lg flex justify-between items-center">
-                                    <div className="text-xs text-zinc-400">
-                                        <p className="font-bold text-white">Próxima Assembleia</p>
-                                        <p>Assembleia #{(m.current_assembly_number || 0) + 1}</p>
+
+                                <div className="space-y-4">
+                                    <div className="bg-black/20 p-4 rounded-xl space-y-3">
+                                        <div className="flex justify-between items-center text-xs">
+                                            <span className="text-zinc-400">Progresso do Plano</span>
+                                            <span className="text-white font-bold">{m.paid_installments} parcelas pagas</span>
+                                        </div>
+                                        <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-emerald-500 transition-all"
+                                                style={{ width: `${(m.paid_installments / 60) * 100}%` }}
+                                            ></div>
+                                        </div>
+                                        <div className="flex justify-between items-center text-[10px]">
+                                            <div className="flex items-center gap-1 text-zinc-400">
+                                                <Calendar size={10} />
+                                                <span>Próximo: {m.next_due_date ? new Date(m.next_due_date).toLocaleDateString('pt-BR') : 'A definir'}</span>
+                                            </div>
+                                            <div className="text-emerald-400 font-bold">
+                                                Total Pago: {formatCurrency(m.total_paid)}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <button
-                                        onClick={() => setSelectedAssembly(m)}
-                                        className="bg-primary-500/10 border border-primary-500/20 text-primary-400 text-xs px-4 py-2 rounded-lg font-bold hover:bg-primary-500/20 transition flex items-center gap-2"
-                                    >
-                                        <Gavel size={14} /> Assembleia
-                                    </button>
+
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => handlePayInstallment(m.id)}
+                                            className="flex-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500/20 transition-all"
+                                        >
+                                            <DollarSign size={16} /> Pagar Parcela
+                                        </button>
+                                        <button
+                                            onClick={() => setSelectedAssembly(m)}
+                                            className="flex-1 bg-primary-500/10 border border-primary-500/20 text-primary-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary-500/20 transition-all"
+                                        >
+                                            <Gavel size={16} /> Assembleia
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ))
