@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Users, DollarSign, Calendar, AlertCircle } from 'lucide-react';
+import { Plus, Users, DollarSign, Calendar } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 
 interface ConsortiumGroup {
