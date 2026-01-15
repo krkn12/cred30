@@ -3,6 +3,7 @@ import { Context } from 'hono';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { executeInTransaction } from '../../../domain/services/transaction.service';
 import { PoolClient } from 'pg';
+import { UserContext } from '../../../shared/types/hono.types';
 
 export class ConsortiumController {
 
