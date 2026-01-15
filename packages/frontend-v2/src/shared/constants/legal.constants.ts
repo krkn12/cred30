@@ -32,6 +32,8 @@ export const DISCLAIMERS = {
 
     ARBITRATION: 'Eventuais conflitos serão resolvidos preferencialmente por mediação entre as partes. Persistindo o impasse, fica eleito o foro da comarca de Belém/PA para dirimir questões relativas a este regulamento.',
 
+    CONSORTIUM_PRIVATE: 'O sistema de "Consórcio" aqui descrito é um modelo de aquisição programada privativa entre membros do clube SCP, não se confundindo com administradoras de consórcio reguladas pela Lei 11.795/08. A participação é restrita e baseada em autofinanciamento comunitário.',
+
     FOOTER_LEGAL: '© 2024 Cred30 - Clube de Benefícios Privado. CNPJ em processo de formalização. Operação sob regime de SCP (Art. 991 CC). Esta plataforma não realiza operações privativas de instituições financeiras. Dúvidas: suporte@cred30.site'
 };
 
@@ -64,7 +66,10 @@ export const LEGAL_TERMINOLOGY = {
     'cobrança': 'lembrete de reposição',
     'inadimplência': 'atraso de reposição',
     'garantia': 'lastro',
-    'colateral': 'lastro em participações'
+    'colateral': 'lastro em participações',
+    'consórcio': 'Aquisição Programada Coletiva',
+    'lance': 'Oferta de Antecipação',
+    'contemplação': 'Liberação de Crédito Comunitário'
 };
 
 // Cláusulas Obrigatórias no Contrato de Apoio Mútuo
