@@ -23,6 +23,7 @@ interface Bid {
 
 interface AssemblyViewProps {
     groupId: string;
+    memberId: string;
     groupName: string;
     totalValue: number;
     onSuccess: (title: string, message: string) => void;
@@ -32,6 +33,7 @@ interface AssemblyViewProps {
 
 export const AssemblyView: React.FC<AssemblyViewProps> = ({
     groupId,
+    memberId,
     groupName,
     totalValue,
     onSuccess,
@@ -45,7 +47,7 @@ export const AssemblyView: React.FC<AssemblyViewProps> = ({
 
     const loadAssembly = useCallback(async () => {
         try {
-            const res = await apiService.get<Assembly>(`/consortium/groups/${groupId}/assembly`);
+            const res = await apiService.get<Assembly>(`/consortium/groups/${groupId}/active-assembly`);
             if (res.success && res.data) {
                 setAssembly(res.data);
             }
@@ -69,6 +71,7 @@ export const AssemblyView: React.FC<AssemblyViewProps> = ({
         try {
             const res = await apiService.post<{ message: string }>('/consortium/bid', {
                 assemblyId: assembly.id,
+                memberId,
                 amount: parseFloat(bidAmount)
             });
             if (res.success) {
@@ -133,9 +136,9 @@ export const AssemblyView: React.FC<AssemblyViewProps> = ({
 
             {/* Status Banner */}
             <div className={`p-5 rounded-2xl border text-center ${assembly?.status === 'OPEN_FOR_BIDS' ? 'bg-emerald-500/10 border-emerald-500/20' :
-                    assembly?.status === 'VOTING' ? 'bg-amber-500/10 border-amber-500/20' :
-                        assembly?.status === 'FINISHED' ? 'bg-zinc-800 border-zinc-700' :
-                            'bg-zinc-900 border-zinc-800'
+                assembly?.status === 'VOTING' ? 'bg-amber-500/10 border-amber-500/20' :
+                    assembly?.status === 'FINISHED' ? 'bg-zinc-800 border-zinc-700' :
+                        'bg-zinc-900 border-zinc-800'
                 }`}>
                 {assembly?.status === 'OPEN_FOR_BIDS' && (
                     <>

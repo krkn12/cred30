@@ -28,6 +28,8 @@ interface MyMembership {
     paid_installments: number;
     next_due_date: string;
     total_paid: number;
+    current_pool: number;
+    last_winner_name?: string;
 }
 
 interface ConsortiumViewProps {
@@ -102,6 +104,7 @@ export const ConsortiumView: React.FC<ConsortiumViewProps> = ({ onSuccess, onErr
         return (
             <AssemblyView
                 groupId={selectedAssembly.group_id}
+                memberId={selectedAssembly.id}
                 groupName={selectedAssembly.group_name}
                 totalValue={selectedAssembly.total_value}
                 onSuccess={onSuccess}
@@ -242,6 +245,26 @@ export const ConsortiumView: React.FC<ConsortiumViewProps> = ({ onSuccess, onErr
                                         <p className="text-white font-black">{formatCurrency(m.total_value)}</p>
                                         <p className="text-xs text-zinc-500">Parcela: {formatCurrency(m.monthly_installment_value)}</p>
                                     </div>
+                                </div>
+
+                                {m.last_winner_name && (
+                                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-4 flex items-center gap-3">
+                                        <div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center">
+                                            <CheckCircle size={16} className="text-amber-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-amber-400 uppercase font-black">Última Contemplação</p>
+                                            <p className="text-sm font-bold text-white">{m.last_winner_name}</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="bg-primary-500/10 border border-primary-500/20 rounded-xl p-4 mb-4">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <p className="text-[10px] text-primary-400 uppercase font-black">Fundo Acumulado do Grupo</p>
+                                        <Users size={12} className="text-primary-400 opacity-50" />
+                                    </div>
+                                    <p className="text-2xl font-black text-white">{formatCurrency(m.current_pool)}</p>
                                 </div>
 
 

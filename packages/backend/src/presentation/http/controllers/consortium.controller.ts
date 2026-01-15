@@ -61,8 +61,13 @@ export class ConsortiumController {
             const pool = getDbPool(c);
 
             const result = await pool.query(`
-                SELECT cm.*, cg.name as group_name, cg.total_value, cg.monthly_installment_value, cg.status as group_status,
-                       cg.current_assembly_number
+                SELECT cm.*, cg.name as group_name, cg.total_value, cg.monthly_installment_value, 
+                       cg.status as group_status, cg.current_assembly_number, cg.current_pool,
+                       (SELECT u.name FROM consortium_assemblies ca 
+                        JOIN consortium_members win_cm ON ca.winner_member_id = win_cm.id
+                        JOIN users u ON win_cm.user_id = u.id
+                        WHERE ca.group_id = cg.id AND ca.status = 'FINISHED'
+                        ORDER BY ca.assembly_number DESC LIMIT 1) as last_winner_name
                 FROM consortium_members cm
                 JOIN consortium_groups cg ON cm.group_id = cg.id
                 WHERE cm.user_id = $1
@@ -170,125 +175,6 @@ export class ConsortiumController {
 
         } catch (error: any) {
             return c.json({ success: false, message: error.message }, 400);
-        }
-    }
-
-    // --- ASSEMBLEIA & LANCES ---
-
-    static async getAssembly(c: Context) {
-        try {
-            const groupId = c.req.param('groupId');
-            const pool = getDbPool(c);
-
-            // Pega a assembleia atual ou a última
-            const result = await pool.query(`
-                SELECT ca.*, 
-                       (SELECT json_agg(json_build_object('amount', cb.amount, 'status', cb.status, 'member_quota', cm.quota_number)) 
-                        FROM consortium_bids cb 
-                        JOIN consortium_members cm ON cb.member_id = cm.id
-                        WHERE cb.assembly_id = ca.id) as bids
-                FROM consortium_assemblies ca
-                WHERE ca.group_id = $1
-                ORDER BY ca.assembly_number DESC
-                LIMIT 1
-            `, [groupId]);
-
-            if (result.rows.length === 0) {
-                return c.json({ success: true, assembly: null, message: 'Nenhuma assembleia ativa.' });
-            }
-
-            return c.json({ success: true, assembly: result.rows[0] });
-
-        } catch (error: any) {
-            return c.json({ success: false, message: error.message }, 500);
-        }
-    }
-
-    static async placeBid(c: Context) {
-        try {
-            const user = c.get('user') as UserContext;
-            const { assemblyId, amount } = await c.req.json();
-            const pool = getDbPool(c);
-
-            const result = await executeInTransaction(pool, async (client: PoolClient) => {
-                // 1. Validar Assembleia
-                const assemblyRes = await client.query('SELECT * FROM consortium_assemblies WHERE id = $1', [assemblyId]);
-                if (assemblyRes.rows.length === 0) throw new Error('Assembleia não encontrada.');
-                const assembly = assemblyRes.rows[0];
-
-                if (assembly.status !== 'OPEN_FOR_BIDS') throw new Error('A fase de lances está fechada.');
-
-                // 2. Validar Membro
-                const memberRes = await client.query(
-                    'SELECT * FROM consortium_members WHERE group_id = $1 AND user_id = $2',
-                    [assembly.group_id, user.id]
-                );
-                if (memberRes.rows.length === 0) throw new Error('Você não faz parte deste grupo.');
-                const member = memberRes.rows[0];
-
-                if (member.status !== 'ACTIVE') throw new Error('Apenas membros ativos podem dar lances.');
-
-                // 3. Validar Score (Anti-Default Rule)
-                // Assumindo que o score está na tabela users. Se não, precisaria de join.
-                const userRes = await client.query('SELECT score, balance FROM users WHERE id = $1', [user.id]);
-                if (userRes.rows[0].score < 300) {
-                    throw new Error('Score insuficiente. Mínimo de 300 pontos para dar lances.');
-                }
-                if (parseFloat(userRes.rows[0].balance) < Number(amount)) {
-                    throw new Error('Você precisa ter o valor do lance em saldo para garantir a oferta.');
-                }
-
-                // 4. Registrar Lance
-                // Verifica se já deu lance
-                const existingBid = await client.query(
-                    'SELECT id FROM consortium_bids WHERE assembly_id = $1 AND member_id = $2',
-                    [assemblyId, member.id]
-                );
-
-                if (existingBid.rows.length > 0) {
-                    await client.query(
-                        'UPDATE consortium_bids SET amount = $1 WHERE id = $2',
-                        [amount, existingBid.rows[0].id]
-                    );
-                } else {
-                    await client.query(
-                        `INSERT INTO consortium_bids (assembly_id, member_id, amount, status)
-                         VALUES ($1, $2, $3, 'PENDING')`,
-                        [assemblyId, member.id, amount]
-                    );
-                }
-
-                return { success: true, message: 'Lance registrado com sucesso!' };
-            });
-
-            if (result.success) {
-                return c.json(result.data);
-            } else {
-                return c.json({ success: false, message: result.error }, 400);
-            }
-
-        } catch (error: any) {
-            return c.json({ success: false, message: error.message }, 400);
-        }
-    }
-
-    static async voteOnBid(c: Context) {
-        try {
-            const user = c.get('user') as UserContext;
-            const { assemblyId, bidId, vote } = await c.req.json(); // vote: true (Sim) or false (Não)
-            const pool = getDbPool(c);
-
-            await pool.query(
-                `INSERT INTO consortium_votes (assembly_id, voter_id, target_bid_id, vote)
-                 VALUES ($1, $2, $3, $4)
-                 ON CONFLICT (assembly_id, voter_id, target_bid_id) 
-                 DO UPDATE SET vote = EXCLUDED.vote`,
-                [assemblyId, user.id, bidId, vote]
-            );
-
-            return c.json({ success: true, message: 'Voto registrado.' });
-        } catch (error: any) {
-            return c.json({ success: false, message: error.message }, 500);
         }
     }
 
@@ -475,6 +361,142 @@ export class ConsortiumController {
             `, [groupId]);
 
             return c.json({ success: true, data: result.rows });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    // --- INTERAÇÃO COM ASSEMBLEIAS ---
+
+    static async getActiveAssembly(c: Context) {
+        try {
+            const groupId = c.req.param('groupId');
+            const pool = getDbPool(c);
+
+            // Pega a assembleia atual ou a última para o grupo
+            const result = await pool.query(`
+                SELECT ca.*, cg.name as group_name, cg.total_value, cg.current_pool
+                FROM consortium_assemblies ca
+                JOIN consortium_groups cg ON ca.group_id = cg.id
+                WHERE ca.group_id = $1
+                ORDER BY ca.assembly_number DESC
+                LIMIT 1
+            `, [groupId]);
+
+            if (result.rows.length === 0) return c.json({ success: true, data: null });
+
+            const assembly = result.rows[0];
+
+            // Buscar lances
+            const bidsRes = await pool.query(`
+                SELECT cb.*, u.name as user_name,
+                       (SELECT COUNT(*) FROM consortium_votes cv WHERE cv.target_bid_id = cb.id AND cv.vote = true) as votes_yes,
+                       (SELECT COUNT(*) FROM consortium_votes cv WHERE cv.target_bid_id = cb.id AND cv.vote = false) as votes_no
+                FROM consortium_bids cb
+                JOIN consortium_members cm ON cb.member_id = cm.id
+                JOIN users u ON cm.user_id = u.id
+                WHERE cb.assembly_id = $1
+                ORDER BY cb.amount DESC
+            `, [assembly.id]);
+
+            return c.json({
+                success: true,
+                data: {
+                    ...assembly,
+                    bids: bidsRes.rows
+                }
+            });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    static async getAssembly(c: Context) {
+        try {
+            const assemblyId = c.req.param('id');
+            const pool = getDbPool(c);
+
+            const assemblyRes = await pool.query(`
+                SELECT ca.*, cg.name as group_name, cg.total_value, cg.current_pool
+                FROM consortium_assemblies ca
+                JOIN consortium_groups cg ON ca.group_id = cg.id
+                WHERE ca.id = $1
+            `, [assemblyId]);
+
+            if (assemblyRes.rows.length === 0) return c.json({ success: false, message: 'Assembleia não encontrada' }, 404);
+            const assembly = assemblyRes.rows[0];
+
+            const bidsRes = await pool.query(`
+                SELECT cb.*, u.name as user_name,
+                       (SELECT COUNT(*) FROM consortium_votes cv WHERE cv.target_bid_id = cb.id AND cv.vote = true) as votes_yes,
+                       (SELECT COUNT(*) FROM consortium_votes cv WHERE cv.target_bid_id = cb.id AND cv.vote = false) as votes_no
+                FROM consortium_bids cb
+                JOIN consortium_members cm ON cb.member_id = cm.id
+                JOIN users u ON cm.user_id = u.id
+                WHERE cb.assembly_id = $1
+                ORDER BY cb.amount DESC
+            `, [assemblyId]);
+
+            return c.json({
+                success: true,
+                data: {
+                    ...assembly,
+                    bids: bidsRes.rows
+                }
+            });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    static async placeBid(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const { assemblyId, memberId, amount } = await c.req.json();
+            const pool = getDbPool(c);
+
+            // Validar se o membro pertence ao usuário
+            const memberCheck = await pool.query('SELECT id FROM consortium_members WHERE id = $1 AND user_id = $2', [memberId, user.id]);
+            if (memberCheck.rows.length === 0) return c.json({ success: false, message: 'Membro inválido ou não autorizado' }, 403);
+
+            // Verificar se a assembleia está aberta para lances
+            const assemblyRes = await pool.query('SELECT status FROM consortium_assemblies WHERE id = $1', [assemblyId]);
+            if (assemblyRes.rows.length === 0) return c.json({ success: false, message: 'Assembleia não encontrada' }, 404);
+            if (assemblyRes.rows[0].status !== 'OPEN_FOR_BIDS') return c.json({ success: false, message: 'Assembleia não aceita lances no momento.' }, 400);
+
+            await pool.query(`
+                INSERT INTO consortium_bids (assembly_id, member_id, amount, status)
+                VALUES ($1, $2, $3, 'PENDING')
+                ON CONFLICT (assembly_id, member_id) DO UPDATE SET amount = $3
+            `, [assemblyId, memberId, amount]);
+
+            return c.json({ success: true, message: 'Lance registrado com sucesso!' });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    static async voteOnBid(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const { bidId, vote } = await c.req.json();
+            const pool = getDbPool(c);
+
+            // Pegar assembly_id através do bid
+            const bidRes = await pool.query('SELECT assembly_id FROM consortium_bids WHERE id = $1', [bidId]);
+            if (bidRes.rows.length === 0) return c.json({ success: false, message: 'Lance não encontrado' }, 404);
+            const assemblyId = bidRes.rows[0].assembly_id;
+
+            // Verificar se a assembleia está em fase de votação (ou permitindo votos)
+            // No modelo simplificado, permitimos votar enquanto aberta
+
+            await pool.query(`
+                INSERT INTO consortium_votes (assembly_id, voter_id, target_bid_id, vote)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (assembly_id, voter_id, target_bid_id) DO UPDATE SET vote = $4
+            `, [assemblyId, user.id, bidId, vote]);
+
+            return c.json({ success: true, message: 'Voto registrado!' });
         } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
