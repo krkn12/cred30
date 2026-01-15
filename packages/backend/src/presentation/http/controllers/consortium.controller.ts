@@ -80,7 +80,7 @@ export class ConsortiumController {
             const { groupId } = await c.req.json();
             const pool = getDbPool(c);
 
-            return await executeInTransaction(pool, async (client: PoolClient) => {
+            const result = await executeInTransaction(pool, async (client: PoolClient) => {
                 // 1. Verifica Grupo e Status
                 const groupRes = await client.query('SELECT * FROM consortium_groups WHERE id = $1 FOR UPDATE', [groupId]);
                 if (groupRes.rows.length === 0) throw new Error('Grupo não encontrado.');
@@ -124,6 +124,12 @@ export class ConsortiumController {
                 return { success: true, message: `Bem-vindo ao grupo! Sua cota é #${nextQuota}.` };
             });
 
+            if (result.success) {
+                return c.json(result.data);
+            } else {
+                return c.json({ success: false, message: result.error }, 400);
+            }
+
         } catch (error: any) {
             return c.json({ success: false, message: error.message }, 400);
         }
@@ -166,7 +172,7 @@ export class ConsortiumController {
             const { assemblyId, amount } = await c.req.json();
             const pool = getDbPool(c);
 
-            return await executeInTransaction(pool, async (client: PoolClient) => {
+            const result = await executeInTransaction(pool, async (client: PoolClient) => {
                 // 1. Validar Assembleia
                 const assemblyRes = await client.query('SELECT * FROM consortium_assemblies WHERE id = $1', [assemblyId]);
                 if (assemblyRes.rows.length === 0) throw new Error('Assembleia não encontrada.');
@@ -216,6 +222,12 @@ export class ConsortiumController {
 
                 return { success: true, message: 'Lance registrado com sucesso!' };
             });
+
+            if (result.success) {
+                return c.json(result.data);
+            } else {
+                return c.json({ success: false, message: result.error }, 400);
+            }
 
         } catch (error: any) {
             return c.json({ success: false, message: error.message }, 400);

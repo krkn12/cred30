@@ -1,7 +1,7 @@
 
 import { Hono } from 'hono';
 import { ConsortiumController } from '../controllers/consortium.controller';
-import { authMiddleware } from '../../../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
 
 export const consortiumRoutes = new Hono();
 
