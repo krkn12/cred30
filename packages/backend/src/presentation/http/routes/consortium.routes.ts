@@ -21,6 +21,7 @@ consortiumRoutes.post('/pay-installment', ConsortiumController.payInstallment);
 // --- Assembleia & Lances ---
 consortiumRoutes.post('/assemblies', ConsortiumController.createAssembly);
 consortiumRoutes.post('/assemblies/close', ConsortiumController.closeAssembly);
-consortiumRoutes.get('/groups/:groupId/assembly', ConsortiumController.getAssembly);
+consortiumRoutes.get('/groups/:groupId/active-assembly', ConsortiumController.getActiveAssembly);
+consortiumRoutes.get('/assemblies/:id', ConsortiumController.getAssembly);
 consortiumRoutes.post('/bid', ConsortiumController.placeBid);
 consortiumRoutes.post('/vote', ConsortiumController.voteOnBid);
