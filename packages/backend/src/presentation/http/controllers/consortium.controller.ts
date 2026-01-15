@@ -1,8 +1,8 @@
 
 import { Context } from 'hono';
-import { getDbPool } from '../../../infrastructure/database/postgresql';
+import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { UserContext } from '../../../types';
-import { executeInTransaction } from '../../../infrastructure/database/postgresql/transaction';
+import { executeInTransaction } from '../../../infrastructure/database/postgresql/connection/pool';
 
 export class ConsortiumController {
 
