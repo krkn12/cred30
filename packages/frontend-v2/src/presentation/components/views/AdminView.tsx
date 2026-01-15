@@ -25,6 +25,7 @@ import { AdminApprovals } from '../features/admin/tabs/AdminApprovals';
 import { AdminRewardsTab } from '../features/admin/tabs/AdminRewardsTab';
 import { AdminFiscal } from '../features/admin/tabs/AdminFiscal';
 import { ConsortiumAdminView } from '../features/admin/tabs/ConsortiumAdminTab';
+import { AdminCompliance } from '../features/admin/tabs/AdminCompliance';
 
 // Existing Shared Components
 import { AdminStoreManager } from '../features/store/admin-store.component';
@@ -37,7 +38,7 @@ interface AdminViewProps {
     onError: (title: string, message: string) => void;
 }
 
-type TabType = 'overview' | 'approvals' | 'payouts' | 'system' | 'investments' | 'store' | 'rewards' | 'referrals' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics' | 'partners' | 'fiscal' | 'consortium';
+type TabType = 'overview' | 'approvals' | 'payouts' | 'system' | 'investments' | 'store' | 'rewards' | 'referrals' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics' | 'partners' | 'fiscal' | 'consortium' | 'compliance';
 
 export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: AdminViewProps) => {
     const [isLoading, setIsLoading] = useState(false);
@@ -134,6 +135,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         { id: 'partners', name: 'Parceiros', icon: UserPlus, roles: ['ADMIN'] },
         { id: 'fiscal', name: 'Fiscal', icon: FileText, roles: ['ADMIN'] },
         { id: 'consortium', name: 'Consórcios', icon: Users, roles: ['ADMIN'] },
+        { id: 'compliance', name: 'Blindagem', icon: ShieldCheck, roles: ['ADMIN'] },
     ].filter(tab => tab.roles.includes(userRole)), [userRole, pendingApprovalsCount, pendingPayoutsCount, pendingReviewsCount, pendingBugsCount]);
 
 
@@ -236,6 +238,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                 {activeTab === 'partners' && <AdminPartners onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'fiscal' && <AdminFiscal />}
                 {activeTab === 'consortium' && <ConsortiumAdminView />}
+                {activeTab === 'compliance' && <AdminCompliance />}
             </div>
 
             {confirmMP && (

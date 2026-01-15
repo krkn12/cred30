@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Users, DollarSign, Gavel, ThumbsUp, ThumbsDown, Loader2, Trophy, Clock, ArrowLeft } from 'lucide-react';
+import {
+    Gavel, Users, Info, TrendingUp, Send, CheckCircle2, History, MessageSquare, AlertTriangle, Loader2, ArrowLeft, Trophy, DollarSign, ThumbsUp, ThumbsDown, Clock
+} from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -187,20 +189,37 @@ export const AssemblyView: React.FC<AssemblyViewProps> = ({
                         O lance é o valor que você oferece para antecipar sua contemplação. Quanto maior o lance, maiores as chances de ser escolhido.
                     </p>
 
-                    <div className="flex gap-2">
-                        <input
-                            type="number"
-                            value={bidAmount}
-                            onChange={e => setBidAmount(e.target.value)}
-                            placeholder="Valor do Lance (R$)"
-                            className="flex-1 bg-black rounded-xl border border-white/10 p-3 text-white outline-none focus:border-primary-500"
-                        />
+                    {/* Aviso de Risco/Blindagem */}
+                    <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-2xl mb-6">
+                        <div className="flex gap-3">
+                            <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                            <p className="text-[11px] text-zinc-500 leading-relaxed italic">
+                                Ao enviar um lance, você confirma ciência de que este é um processo de
+                                <strong> Aquisição Programada Coletiva</strong>. A liberação do crédito depende do
+                                saldo comum do grupo e da aprovação comunitária dos demais membros.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-4 flex items-center text-zinc-500 font-medium">
+                                R$
+                            </div>
+                            <input
+                                type="number"
+                                value={bidAmount}
+                                onChange={(e) => setBidAmount(e.target.value)}
+                                placeholder="Valor do lance"
+                                className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white font-bold focus:outline-none focus:border-emerald-500/50 transition-colors"
+                            />
+                        </div>
                         <button
                             onClick={handlePlaceBid}
                             disabled={submitting || !bidAmount}
-                            className="bg-primary-500 text-black px-6 rounded-xl font-bold hover:bg-primary-400 transition disabled:opacity-50"
+                            className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-black font-black py-4 rounded-2xl transition-all shadow-lg shadow-emerald-500/10"
                         >
-                            {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Enviar'}
+                            {submitting ? 'Enviando...' : 'Confirmar Lance'}
                         </button>
                     </div>
 
