@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ShieldCheck, Calendar, User, Info, FileText, Activity } from 'lucide-react';
-import { apiService } from '../../../../application/services/api.service';
+import { apiService } from '../../../../../application/services/api.service';
 
 export const AdminCompliance = () => {
     const [logs, setLogs] = useState<any[]>([]);
