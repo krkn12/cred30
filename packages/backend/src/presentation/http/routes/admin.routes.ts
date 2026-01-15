@@ -9,6 +9,7 @@ import { AdminInvestmentsController } from '../controllers/admin.investments.con
 import { AdminMarketplaceController } from '../controllers/admin.marketplace.controller';
 import { AdminReferralController } from '../controllers/admin.referral.controller';
 import { AdminRewardsController } from '../controllers/admin.rewards.controller';
+import { AdminComplianceController } from '../controllers/admin.compliance.controller';
 
 const adminRoutes = new Hono();
 
@@ -94,5 +95,8 @@ adminRoutes.post('/rewards', adminMiddleware, auditMiddleware('SAVE_REWARD', 'SY
 adminRoutes.post('/rewards/inventory', adminMiddleware, auditMiddleware('ADD_REWARD_INVENTORY', 'SYSTEM_CONFIG'), AdminRewardsController.addInventory);
 adminRoutes.get('/rewards/redemptions', adminMiddleware, AdminRewardsController.getRedemptions);
 
-export { adminRoutes };
+// --- COMPLIANCE E BLINDAGEM JURÍDICA ---
+adminRoutes.get('/compliance/terms-acceptances', adminMiddleware, AdminComplianceController.listTermsAcceptances);
+adminRoutes.get('/compliance/stats', adminMiddleware, AdminComplianceController.getComplianceStats);
 
+export { adminRoutes };

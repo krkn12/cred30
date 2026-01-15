@@ -72,8 +72,45 @@ app.use('*', cors({
 app.use('*', compress());
 app.use('*', etag());
 app.use('*', logger());
-app.use('*', secureHeaders());
+app.use('*', secureHeaders({
+  contentSecurityPolicy: {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", "'unsafe-inline'", "https://www.gstatic.com", "https://*.firebaseapp.com"],
+    styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+    imgSrc: ["'self'", "data:", "https://*"],
+    fontSrc: ["'self'", "https://fonts.gstatic.com"],
+    frameSrc: ["'self'", "https://*.firebaseapp.com"],
+    connectSrc: ["'self'", "https://*.googleapis.com", "https://*.firebaseio.com", "https://*.adsterra.com"]
+  },
+  xssProtection: '1; mode=block',
+  noSniff: true,
+  referrerPolicy: 'no-referrer',
+  hidePoweredBy: true
+}));
 app.use('*', timing());
+
+// 🛡️ Rate Limiting Simples (Blindagem contra DoS)
+const rateLimitMap = new Map<string, { count: number, resetAt: number }>();
+app.use('*', async (c, next) => {
+  const ip = c.req.header('x-forwarded-for') || 'local';
+  const now = Date.now();
+  const limit = 100; // 100 requisições
+  const windowMs = 60 * 1000; // 1 minuto
+
+  let record = rateLimitMap.get(ip);
+  if (!record || now > record.resetAt) {
+    record = { count: 0, resetAt: now + windowMs };
+  }
+
+  record.count++;
+  rateLimitMap.set(ip, record);
+
+  if (record.count > limit) {
+    return c.json({ success: false, message: 'Muitas requisições. Tente novamente em 1 minuto.' }, 429);
+  }
+
+  await next();
+});
 
 // 🛡️ Global Error Handler
 app.onError((err, c) => {
