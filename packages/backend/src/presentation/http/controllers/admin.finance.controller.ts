@@ -567,7 +567,7 @@ export class AdminFinanceController {
                 SELECT COALESCE(SUM(ABS(amount)), 0) as total_outflow
                 FROM transactions
                 WHERE status IN ('APPROVED', 'COMPLETED', 'PAID')
-                AND type IN ('WITHDRAWAL', 'LOAN_DISBURSEMENT')
+                AND type IN ('WITHDRAWAL')
                 ${dateFilter}
             `, params);
 
