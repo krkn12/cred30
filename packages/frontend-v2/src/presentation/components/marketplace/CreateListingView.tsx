@@ -1,4 +1,4 @@
-import { MapPin, Navigation2, CheckCircle2, Truck, Image as ImageIcon, Tag, FileText, DollarSign, Archive } from 'lucide-react';
+import { MapPin, Navigation2, CheckCircle2, Truck, Image as ImageIcon, Tag, FileText, DollarSign, Archive, Plus } from 'lucide-react';
 import { VEHICLE_ICONS, MARKETPLACE_CATEGORIES } from './marketplace.constants';
 import { LoadingButton } from '../ui/LoadingButton';
 

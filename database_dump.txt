@@ -1,0 +1,1542 @@
+=====================================
+DUMP COMPLETO DO BANCO DE DADOS
+=====================================
+
+Total de tabelas: 57
+
+
+============================================================
+TABELA: admin_logs
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('admin_logs_id_seq'::regclass))
+  admin_id (integer, NULL)
+  action (character varying(50), NOT NULL)
+  entity_type (character varying(20), NOT NULL)
+  entity_id (character varying(50), NULL)
+  old_values (jsonb, NULL)
+  new_values (jsonb, NULL)
+  ip_address (text, NULL)
+  user_agent (text, NULL)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: audit_logs
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('audit_logs_id_seq'::regclass))
+  user_id (integer, NULL)
+  action (character varying(100), NOT NULL)
+  entity_type (character varying(50), NULL)
+  entity_id (character varying(100), NULL)
+  old_values (jsonb, NULL)
+  new_values (jsonb, NULL)
+  ip_address (character varying(45), NULL)
+  user_agent (text, NULL)
+  created_at (timestamp with time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: bug_reports
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('bug_reports_id_seq'::regclass))
+  user_id (integer, NULL)
+  user_email (character varying(255), NULL)
+  user_name (character varying(255), NULL)
+  title (character varying(255), NOT NULL)
+  description (text, NOT NULL)
+  category (character varying(50), NULL, default: 'general'::character varying)
+  severity (character varying(20), NULL, default: 'low'::character varying)
+  status (character varying(20), NULL, default: 'open'::character varying)
+  screenshot_url (text, NULL)
+  device_info (text, NULL)
+  admin_notes (text, NULL)
+  resolved_by (integer, NULL)
+  resolved_at (timestamp without time zone, NULL)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+  updated_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: consortium_assemblies
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('consortium_assemblies_id_seq'::regclass))
+  group_id (integer, NOT NULL)
+  assembly_number (integer, NOT NULL)
+  month_year (character varying(7), NOT NULL)
+  status (character varying(20), NOT NULL, default: 'SCHEDULED'::character varying)
+  total_pool_collected (numeric, NOT NULL, default: 0)
+  winner_member_id (integer, NULL)
+  winning_bid_amount (numeric, NULL)
+  created_at (timestamp with time zone, NOT NULL, default: now())
+  finished_at (timestamp with time zone, NULL)
+  contemplation_value (numeric, NULL)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: consortium_bids
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('consortium_bids_id_seq'::regclass))
+  assembly_id (integer, NOT NULL)
+  member_id (integer, NOT NULL)
+  amount (numeric, NOT NULL)
+  status (character varying(20), NOT NULL, default: 'PENDING'::character varying)
+  created_at (timestamp with time zone, NOT NULL, default: now())
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: consortium_groups
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('consortium_groups_id_seq'::regclass))
+  name (character varying(255), NOT NULL)
+  total_value (numeric, NOT NULL)
+  duration_months (integer, NOT NULL)
+  admin_fee_percent (numeric, NOT NULL, default: 10)
+  monthly_installment_value (numeric, NOT NULL)
+  start_date (date, NULL)
+  status (character varying(20), NOT NULL, default: 'OPEN'::character varying)
+  current_assembly_number (integer, NOT NULL, default: 0)
+  created_at (timestamp with time zone, NOT NULL, default: now())
+  updated_at (timestamp with time zone, NOT NULL, default: now())
+  current_pool (numeric, NULL, default: 0)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: consortium_members
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('consortium_members_id_seq'::regclass))
+  group_id (integer, NOT NULL)
+  user_id (integer, NOT NULL)
+  quota_number (integer, NOT NULL)
+  status (character varying(20), NOT NULL, default: 'ACTIVE'::character varying)
+  contemplated_at (timestamp with time zone, NULL)
+  created_at (timestamp with time zone, NOT NULL, default: now())
+  paid_installments (integer, NULL, default: 1)
+  next_due_date (date, NULL)
+  total_paid (numeric, NULL, default: 0)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: consortium_votes
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('consortium_votes_id_seq'::regclass))
+  assembly_id (integer, NOT NULL)
+  voter_id (integer, NOT NULL)
+  target_bid_id (integer, NOT NULL)
+  vote (boolean, NOT NULL)
+  created_at (timestamp with time zone, NOT NULL, default: now())
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: course_lessons
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('course_lessons_id_seq'::regclass))
+  course_id (integer, NOT NULL)
+  title (character varying(200), NOT NULL)
+  description (text, NULL)
+  youtube_url (text, NOT NULL)
+  duration_minutes (integer, NULL, default: 0)
+  order_index (integer, NULL, default: 0)
+  is_preview (boolean, NULL, default: false)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: course_progress
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('course_progress_id_seq'::regclass))
+  user_id (integer, NOT NULL)
+  course_id (integer, NOT NULL)
+  lesson_id (integer, NOT NULL)
+  completed (boolean, NULL, default: false)
+  watched_seconds (integer, NULL, default: 0)
+  completed_at (timestamp without time zone, NULL)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: course_purchases
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('course_purchases_id_seq'::regclass))
+  user_id (integer, NOT NULL)
+  course_id (integer, NOT NULL)
+  amount_paid (numeric, NOT NULL)
+  instructor_share (numeric, NOT NULL)
+  platform_share (numeric, NOT NULL)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: course_reviews
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('course_reviews_id_seq'::regclass))
+  user_id (integer, NOT NULL)
+  course_id (integer, NOT NULL)
+  rating (integer, NOT NULL)
+  comment (text, NULL)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: courses
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('courses_id_seq'::regclass))
+  instructor_id (integer, NOT NULL)
+  title (character varying(200), NOT NULL)
+  description (text, NULL)
+  thumbnail_url (text, NULL)
+  price (numeric, NOT NULL, default: 0)
+  category (character varying(50), NULL, default: 'GERAL'::character varying)
+  status (character varying(20), NULL, default: 'PENDING'::character varying)
+  total_students (integer, NULL, default: 0)
+  total_revenue (numeric, NULL, default: 0)
+  rating (numeric, NULL, default: 0)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+  updated_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: credit_applications
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('credit_applications_id_seq'::regclass))
+  user_id (integer, NOT NULL)
+  requested_amount (numeric, NOT NULL)
+  approved_amount (numeric, NULL)
+  purpose (character varying(100), NULL)
+  status (character varying(20), NULL, default: 'PENDING'::character varying)
+  reviewed_by (integer, NULL)
+  reviewed_at (timestamp without time zone, NULL)
+  notes (text, NULL)
+  created_at (timestamp without time zone, NULL, default: now())
+  updated_at (timestamp without time zone, NULL, default: now())
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: deposits
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('deposits_id_seq'::regclass))
+  user_id (integer, NOT NULL)
+  amount (numeric, NOT NULL)
+  source (character varying(50), NULL, default: 'MANUAL'::character varying)
+  source_id (character varying(100), NULL)
+  status (character varying(20), NULL, default: 'PENDING'::character varying)
+  processed_at (timestamp without time zone, NULL)
+  created_at (timestamp without time zone, NULL, default: now())
+  updated_at (timestamp without time zone, NULL, default: now())
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: earnings
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('earnings_id_seq'::regclass))
+  user_id (integer, NOT NULL)
+  source (character varying(50), NOT NULL)
+  source_id (character varying(100), NULL)
+  amount (numeric, NOT NULL)
+  description (text, NULL)
+  status (character varying(20), NULL, default: 'PENDING'::character varying)
+  withdrawn (boolean, NULL, default: false)
+  created_at (timestamp without time zone, NULL, default: now())
+  updated_at (timestamp without time zone, NULL, default: now())
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: education_courses
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('education_courses_id_seq'::regclass))
+  title (text, NOT NULL)
+  description (text, NULL)
+  thumbnail_url (text, NULL)
+  status (text, NULL, default: 'ACTIVE'::text)
+  created_at (timestamp with time zone, NULL, default: now())
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: education_lessons
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('education_lessons_id_seq'::regclass))
+  course_id (integer, NOT NULL)
+  title (text, NOT NULL)
+  video_url (text, NULL)
+  duration_seconds (integer, NULL, default: 300)
+  reward_points (integer, NULL, default: 5)
+  order_index (integer, NULL, default: 1)
+  created_at (timestamp with time zone, NULL, default: now())
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: education_progress
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('education_progress_id_seq'::regclass))
+  user_id (integer, NOT NULL)
+  lesson_id (integer, NOT NULL)
+  completed_at (timestamp with time zone, NULL, default: now())
+  points_earned (integer, NULL, default: 0)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: education_sessions
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('education_sessions_id_seq'::regclass))
+  user_id (integer, NOT NULL)
+  video_id (character varying(50), NOT NULL)
+  started_at (timestamp with time zone, NULL, default: CURRENT_TIMESTAMP)
+  last_ping_at (timestamp with time zone, NULL, default: CURRENT_TIMESTAMP)
+  total_seconds (integer, NULL, default: 0)
+  is_active (boolean, NULL, default: true)
+  ip_address (character varying(45), NULL)
+  user_agent (text, NULL)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: governance_proposals
+============================================================
+
+--- ESTRUTURA ---
+  id (uuid, NOT NULL, default: gen_random_uuid())
+  title (text, NOT NULL)
+  description (text, NOT NULL)
+  creator_id (integer, NULL)
+  status (text, NULL, default: 'active'::text)
+  category (text, NULL, default: 'general'::text)
+  yes_votes_power (numeric, NULL, default: 0)
+  no_votes_power (numeric, NULL, default: 0)
+  min_power_quorum (numeric, NULL, default: 100)
+  created_at (timestamp with time zone, NULL, default: CURRENT_TIMESTAMP)
+  expires_at (timestamp with time zone, NULL, default: (CURRENT_TIMESTAMP + '7 days'::interval))
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: governance_votes
+============================================================
+
+--- ESTRUTURA ---
+  id (uuid, NOT NULL, default: gen_random_uuid())
+  proposal_id (uuid, NULL)
+  user_id (integer, NULL)
+  choice (text, NOT NULL)
+  voting_power (numeric, NOT NULL)
+  created_at (timestamp with time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: investment_pools
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('investment_pools_id_seq'::regclass))
+  name (character varying(100), NOT NULL)
+  description (text, NULL)
+  target_amount (numeric, NULL, default: 0)
+  current_amount (numeric, NULL, default: 0)
+  min_investment (numeric, NULL, default: 10)
+  max_investment (numeric, NULL, default: 1000)
+  interest_rate (numeric, NULL, default: 0.02)
+  duration_days (integer, NULL, default: 30)
+  status (character varying(20), NULL, default: 'PENDING'::character varying)
+  start_date (timestamp without time zone, NULL)
+  end_date (timestamp without time zone, NULL)
+  created_by (integer, NULL)
+  created_at (timestamp without time zone, NULL, default: now())
+  updated_at (timestamp without time zone, NULL, default: now())
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: investments
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('investments_id_seq'::regclass))
+  asset_name (character varying(100), NOT NULL)
+  asset_type (character varying(50), NOT NULL)
+  quantity (numeric, NULL, default: 0)
+  unit_price (numeric, NOT NULL)
+  total_invested (numeric, NOT NULL)
+  current_value (numeric, NULL, default: 0)
+  dividends_received (numeric, NULL, default: 0)
+  broker (character varying(100), NULL)
+  notes (text, NULL)
+  invested_at (timestamp without time zone, NULL, default: now())
+  created_at (timestamp without time zone, NULL, default: now())
+  updated_at (timestamp without time zone, NULL, default: now())
+  status (character varying(20), NULL, default: 'ACTIVE'::character varying)
+  sale_value (numeric, NULL)
+  sold_at (timestamp without time zone, NULL)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: job_applications
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('job_applications_id_seq'::regclass))
+  job_id (integer, NOT NULL)
+  user_id (integer, NOT NULL)
+  message (text, NULL)
+  status (character varying(20), NULL, default: 'PENDING'::character varying)
+  reviewed_by (integer, NULL)
+  reviewed_at (timestamp without time zone, NULL)
+  created_at (timestamp without time zone, NULL, default: now())
+  updated_at (timestamp without time zone, NULL, default: now())
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: jobs
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('jobs_id_seq'::regclass))
+  title (character varying(100), NOT NULL)
+  description (text, NULL)
+  location (character varying(100), NULL)
+  salary (character varying(50), NULL)
+  type (character varying(50), NULL, default: 'PART_TIME'::character varying)
+  status (character varying(20), NULL, default: 'ACTIVE'::character varying)
+  posted_by (integer, NULL)
+  created_at (timestamp without time zone, NULL, default: now())
+  updated_at (timestamp without time zone, NULL, default: now())
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: loan_installments
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('loan_installments_id_seq'::regclass))
+  loan_id (integer, NULL)
+  amount (numeric, NOT NULL)
+  use_balance (boolean, NULL, default: false)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: loans
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('loans_id_seq'::regclass))
+  user_id (integer, NULL)
+  amount (numeric, NOT NULL)
+  interest_rate (numeric, NOT NULL)
+  penalty_rate (numeric, NULL, default: 0.4)
+  total_repayment (numeric, NOT NULL)
+  installments (integer, NULL, default: 1)
+  term_days (integer, NULL, default: 30)
+  status (character varying(20), NULL, default: 'PENDING'::character varying)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+  approved_at (timestamp without time zone, NULL)
+  due_date (timestamp without time zone, NULL)
+  payout_status (character varying(20), NULL, default: 'NONE'::character varying)
+  pix_key_to_receive (character varying(255), NULL)
+  metadata (jsonb, NULL)
+
+--- TOTAL DE REGISTROS: 1 ---
+
+--- AMOSTRA DE DADOS ---
+
+Registro 1:
+  id: 2
+  user_id: 3
+  amount: "70.00"
+  interest_rate: "0.20"
+  penalty_rate: "0.40"
+  total_repayment: "84.00"
+  installments: 1
+  term_days: 30
+  status: "APPROVED"
+  created_at: "2026-01-16T20:22:40.719Z"
+  approved_at: null
+  due_date: "2026-02-15T21:02:40.719Z"
+  payout_status: "NONE"
+  pix_key_to_receive: null
+  metadata: null
+
+============================================================
+TABELA: marketplace_listing_images
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('marketplace_listing_images_id_seq'::regclass))
+  listing_id (integer, NULL)
+  image_url (text, NOT NULL)
+  display_order (integer, NULL, default: 0)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: marketplace_listing_variants
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('marketplace_listing_variants_id_seq'::regclass))
+  listing_id (integer, NULL)
+  name (character varying(100), NULL)
+  color (character varying(50), NULL)
+  size (character varying(50), NULL)
+  stock (integer, NULL, default: 0)
+  price (numeric, NULL)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: marketplace_listings
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('marketplace_listings_id_seq'::regclass))
+  seller_id (integer, NULL)
+  title (character varying(255), NOT NULL)
+  description (text, NULL)
+  price (numeric, NOT NULL)
+  category (character varying(50), NULL, default: 'OUTROS'::character varying)
+  image_url (text, NULL)
+  status (character varying(20), NULL, default: 'ACTIVE'::character varying)
+  is_boosted (boolean, NULL, default: false)
+  boost_expires_at (timestamp without time zone, NULL)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+  updated_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+  quota_id (integer, NULL)
+  item_type (character varying(20), NULL, default: 'PHYSICAL'::character varying)
+  digital_content (text, NULL)
+  required_vehicle (character varying(20), NULL, default: 'MOTO'::character varying)
+  stock (integer, NULL, default: 1)
+  pickup_address (text, NULL)
+  images (ARRAY, NULL, default: '{}'::text[])
+  free_shipping (boolean, NULL, default: false)
+  shipping_cost (numeric, NULL, default: 0)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: marketplace_orders
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('marketplace_orders_id_seq'::regclass))
+  listing_id (integer, NULL)
+  buyer_id (integer, NULL)
+  seller_id (integer, NULL)
+  amount (numeric, NOT NULL)
+  fee_amount (numeric, NOT NULL)
+  seller_amount (numeric, NOT NULL)
+  status (character varying(30), NULL, default: 'WAITING_PAYMENT'::character varying)
+  payment_method (character varying(20), NULL)
+  delivery_address (text, NULL)
+  contact_phone (character varying(20), NULL)
+  dispute_reason (text, NULL)
+  disputed_at (timestamp without time zone, NULL)
+  buyer_rating (integer, NULL)
+  seller_rating (integer, NULL)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+  updated_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+  tracking_code (character varying(100), NULL)
+  offline_token (character varying(50), NULL)
+  pickup_address (text, NULL)
+  delivery_status (character varying(30), NULL, default: 'NONE'::character varying)
+  delivery_fee (numeric, NULL, default: 0)
+  courier_id (integer, NULL)
+  pickup_code (character varying(10), NULL)
+  courier_lat (double precision, NULL)
+  courier_lng (double precision, NULL)
+  picked_up_at (timestamp without time zone, NULL)
+  delivered_at (timestamp without time zone, NULL)
+  delivery_confirmation_code (character varying(10), NULL)
+  delivery_type (character varying(30), NULL, default: 'SELF_PICKUP'::character varying)
+  pickup_lat (numeric, NULL)
+  pickup_lng (numeric, NULL)
+  delivery_lat (numeric, NULL)
+  delivery_lng (numeric, NULL)
+  courier_rating (integer, NULL)
+  is_lote (boolean, NULL, default: false)
+  courier_fee (numeric, NULL)
+  invited_courier_id (uuid, NULL)
+  previous_couriers (ARRAY, NULL)
+  listing_ids (ARRAY, NULL)
+  quantity (integer, NULL, default: 1)
+  variant_id (integer, NULL)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: notifications
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('notifications_id_seq'::regclass))
+  user_id (integer, NULL)
+  title (character varying(255), NOT NULL)
+  message (text, NOT NULL)
+  type (character varying(50), NULL)
+  status (character varying(20), NULL, default: 'UNREAD'::character varying)
+  metadata (jsonb, NULL)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: pending_mission_rewards
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('pending_mission_rewards_id_seq'::regclass))
+  user_id (integer, NULL)
+  video_id (integer, NULL)
+  view_id (integer, NULL)
+  points (integer, NOT NULL)
+  status (character varying(20), NULL, default: 'PENDING'::character varying)
+  created_at (timestamp with time zone, NULL, default: CURRENT_TIMESTAMP)
+  processed_at (timestamp with time zone, NULL)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: products
+============================================================
+
+--- ESTRUTURA ---
+  id (uuid, NOT NULL, default: uuid_generate_v4())
+  title (character varying(255), NOT NULL)
+  description (text, NULL)
+  image_url (text, NULL)
+  affiliate_url (text, NOT NULL)
+  price (numeric, NULL)
+  category (character varying(50), NULL, default: 'geral'::character varying)
+  active (boolean, NULL, default: true)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+  updated_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: promo_video_audits
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('promo_video_audits_id_seq'::regclass))
+  video_id (integer, NULL)
+  checked_at (timestamp with time zone, NULL, default: CURRENT_TIMESTAMP)
+  likes_start (integer, NULL)
+  likes_now (integer, NULL)
+  clicks_recorded (integer, NULL)
+  conversion_rate (numeric, NULL)
+  status (character varying(20), NULL)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: promo_video_views
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('promo_video_views_id_seq'::regclass))
+  video_id (integer, NOT NULL)
+  viewer_id (integer, NOT NULL)
+  watch_time_seconds (integer, NOT NULL, default: 0)
+  completed (boolean, NULL, default: false)
+  earned (numeric, NULL, default: 0)
+  paid_at (timestamp with time zone, NULL)
+  ip_address (character varying(45), NULL)
+  user_agent (text, NULL)
+  device_fingerprint (character varying(100), NULL)
+  started_at (timestamp with time zone, NULL, default: CURRENT_TIMESTAMP)
+  finished_at (timestamp with time zone, NULL)
+  liked (boolean, NULL, default: false)
+  commented (boolean, NULL, default: false)
+  subscribed (boolean, NULL, default: false)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: promo_videos
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('promo_videos_id_seq'::regclass))
+  user_id (integer, NOT NULL)
+  title (character varying(200), NOT NULL)
+  description (text, NULL)
+  video_url (text, NOT NULL)
+  thumbnail_url (text, NULL)
+  platform (character varying(50), NULL, default: 'YOUTUBE'::character varying)
+  duration_seconds (integer, NULL, default: 60)
+  price_per_view (numeric, NOT NULL, default: 0.05)
+  min_watch_seconds (integer, NOT NULL, default: 30)
+  budget (numeric, NOT NULL, default: 0)
+  spent (numeric, NOT NULL, default: 0)
+  max_views (integer, NULL)
+  target_views (integer, NULL, default: 1000)
+  daily_limit (integer, NULL, default: 100)
+  status (character varying(20), NULL, default: 'PENDING'::character varying)
+  is_active (boolean, NULL, default: false)
+  total_views (integer, NULL, default: 0)
+  unique_viewers (integer, NULL, default: 0)
+  total_watch_time (integer, NULL, default: 0)
+  created_at (timestamp with time zone, NULL, default: CURRENT_TIMESTAMP)
+  approved_at (timestamp with time zone, NULL)
+  completed_at (timestamp with time zone, NULL)
+  expires_at (timestamp with time zone, NULL)
+  is_approved (boolean, NULL, default: false)
+  approved_by (integer, NULL)
+  rejection_reason (text, NULL)
+  tag (character varying(30), NULL, default: 'OUTROS'::character varying)
+  budget_gross (numeric, NULL, default: 0)
+  payment_id (character varying(255), NULL)
+  require_like (boolean, NULL, default: false)
+  require_comment (boolean, NULL, default: false)
+  require_subscribe (boolean, NULL, default: false)
+  external_initial_likes (integer, NULL, default: 0)
+  external_current_likes (integer, NULL, default: 0)
+  last_audit_at (timestamp with time zone, NULL)
+  audit_health_score (numeric, NULL, default: 100.00)
+  external_initial_comments (integer, NULL, default: 0)
+  external_current_comments (integer, NULL, default: 0)
+  external_initial_subscribers (integer, NULL, default: 0)
+  external_current_subscribers (integer, NULL, default: 0)
+  min_score_required (integer, NULL, default: 0)
+  verified_only (boolean, NULL, default: false)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: quotas
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('quotas_id_seq'::regclass))
+  user_id (integer, NULL)
+  purchase_price (numeric, NOT NULL)
+  current_value (numeric, NOT NULL)
+  purchase_date (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+  status (character varying(20), NULL, default: 'ACTIVE'::character varying)
+  yield_rate (numeric, NULL, default: 1.001)
+  value (numeric, NULL, default: 50)
+  vesting_start (timestamp with time zone, NULL, default: now())
+
+--- TOTAL DE REGISTROS: 2 ---
+
+--- AMOSTRA DE DADOS ---
+
+Registro 1:
+  id: 3
+  user_id: 3
+  purchase_price: "50.00"
+  current_value: "42.00"
+  purchase_date: "2026-01-16T20:02:40.031Z"
+  status: "ACTIVE"
+  yield_rate: "0.0200"
+  value: "42.00"
+  vesting_start: "2026-01-16T18:02:40.031Z"
+
+Registro 2:
+  id: 4
+  user_id: 3
+  purchase_price: "50.00"
+  current_value: "42.00"
+  purchase_date: "2026-01-16T20:02:40.376Z"
+  status: "ACTIVE"
+  yield_rate: "0.0200"
+  value: "42.00"
+  vesting_start: "2026-01-16T18:02:40.376Z"
+
+============================================================
+TABELA: rate_limit_logs
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('rate_limit_logs_id_seq'::regclass))
+  identifier (character varying(100), NOT NULL)
+  user_id (integer, NULL)
+  count (integer, NOT NULL)
+  ip_address (text, NULL)
+  user_agent (text, NULL)
+  endpoint (character varying(200), NULL)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: referral_codes
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('referral_codes_id_seq'::regclass))
+  code (character varying(20), NOT NULL)
+  created_by (integer, NULL)
+  max_uses (integer, NULL)
+  current_uses (integer, NULL, default: 0)
+  is_active (boolean, NULL, default: true)
+  is_verified (boolean, NULL, default: false)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: reward_catalog
+============================================================
+
+--- ESTRUTURA ---
+  id (character varying(50), NOT NULL)
+  name (character varying(100), NOT NULL)
+  description (text, NULL)
+  points_cost (integer, NOT NULL)
+  type (character varying(20), NOT NULL)
+  value (numeric, NOT NULL)
+  is_active (boolean, NULL, default: true)
+  image_url (text, NULL)
+  created_at (timestamp with time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: reward_inventory
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('reward_inventory_id_seq'::regclass))
+  reward_id (character varying(50), NULL)
+  code (character varying(255), NOT NULL)
+  is_used (boolean, NULL, default: false)
+  used_by_user_id (integer, NULL)
+  used_at (timestamp with time zone, NULL)
+  created_at (timestamp with time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: reward_redemptions
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('reward_redemptions_id_seq'::regclass))
+  user_id (integer, NULL)
+  reward_id (character varying(50), NULL)
+  reward_name (character varying(100), NULL)
+  points_spent (integer, NOT NULL)
+  code_delivered (text, NULL)
+  status (character varying(20), NULL, default: 'COMPLETED'::character varying)
+  created_at (timestamp with time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: support_chats
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('support_chats_id_seq'::regclass))
+  user_id (integer, NULL)
+  status (character varying(20), NULL, default: 'AI_ONLY'::character varying)
+  rating (integer, NULL)
+  feedback_comment (text, NULL)
+  last_message_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: support_messages
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('support_messages_id_seq'::regclass))
+  chat_id (integer, NULL)
+  sender_id (integer, NULL)
+  role (character varying(20), NOT NULL)
+  content (text, NOT NULL)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: system_config
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('system_config_id_seq'::regclass))
+  system_balance (numeric, NULL, default: 0)
+  profit_pool (numeric, NULL, default: 0)
+  total_gateway_costs (numeric, NULL, default: 0)
+  total_tax_reserve (numeric, NULL, default: 0)
+  total_operational_reserve (numeric, NULL, default: 0)
+  total_owner_profit (numeric, NULL, default: 0)
+  quota_price (numeric, NULL, default: 100)
+  loan_interest_rate (numeric, NULL, default: 0.2)
+  penalty_rate (numeric, NULL, default: 0.4)
+  vesting_period_ms (bigint, NULL, default: '31536000000'::bigint)
+  total_manual_costs (numeric, NULL, default: 0)
+  updated_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+  investment_reserve (numeric, NULL, default: 0)
+  courier_price_per_km (numeric, NULL, default: 2.50)
+  mutual_reserve (numeric, NULL, default: 0)
+
+--- TOTAL DE REGISTROS: 1 ---
+
+--- AMOSTRA DE DADOS ---
+
+Registro 1:
+  id: 1
+  system_balance: "0.00"
+  profit_pool: "0.00"
+  total_gateway_costs: "0.00"
+  total_tax_reserve: "4.00"
+  total_operational_reserve: "4.00"
+  total_owner_profit: "4.00"
+  quota_price: "50.00"
+  loan_interest_rate: "0.20"
+  penalty_rate: "0.40"
+  vesting_period_ms: "31536000000"
+  total_manual_costs: "0.00"
+  updated_at: "2026-01-16T20:44:22.645Z"
+  investment_reserve: "84.00"
+  courier_price_per_km: "2.50"
+  mutual_reserve: "4.00"
+
+============================================================
+TABELA: system_costs
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('system_costs_id_seq'::regclass))
+  description (character varying(255), NOT NULL)
+  amount (numeric, NOT NULL)
+  is_recurring (boolean, NULL, default: true)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: terms_acceptance
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('terms_acceptance_id_seq'::regclass))
+  user_id (integer, NOT NULL)
+  terms_version (character varying(20), NOT NULL)
+  privacy_version (character varying(20), NOT NULL)
+  ip_address (character varying(45), NULL)
+  user_agent (text, NULL)
+  accepted_age_requirement (boolean, NULL, default: false)
+  accepted_risk_disclosure (boolean, NULL, default: false)
+  accepted_terms (boolean, NULL, default: false)
+  accepted_privacy (boolean, NULL, default: false)
+  accepted_at (timestamp without time zone, NULL, default: now())
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: transaction_reviews
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('transaction_reviews_id_seq'::regclass))
+  transaction_id (integer, NOT NULL)
+  user_id (integer, NOT NULL)
+  rating (integer, NOT NULL)
+  comment (text, NULL)
+  is_public (boolean, NULL, default: false)
+  is_approved (boolean, NULL, default: false)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: transactions
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('transactions_id_seq'::regclass))
+  user_id (integer, NULL)
+  type (character varying(20), NOT NULL)
+  amount (numeric, NOT NULL)
+  gateway_cost (numeric, NULL, default: 0)
+  description (text, NULL)
+  status (character varying(20), NULL, default: 'PENDING'::character varying)
+  metadata (jsonb, NULL)
+  payout_status (character varying(20), NULL, default: 'NONE'::character varying)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+  processed_at (timestamp without time zone, NULL)
+
+--- TOTAL DE REGISTROS: 5 ---
+
+--- AMOSTRA DE DADOS ---
+
+Registro 1:
+  id: 5
+  user_id: 3
+  type: "DEPOSIT"
+  amount: "100.00"
+  gateway_cost: "0.00"
+  description: "Depósito PIX Inicial"
+  status: "APPROVED"
+  metadata: null
+  payout_status: "NONE"
+  created_at: "2026-01-16T19:02:39.854Z"
+  processed_at: null
+
+Registro 2:
+  id: 6
+  user_id: 3
+  type: "BUY_QUOTA"
+  amount: "-50.00"
+  gateway_cost: "0.00"
+  description: "Compra de Participação Cred30"
+  status: "APPROVED"
+  metadata: null
+  payout_status: "NONE"
+  created_at: "2026-01-16T20:12:40.204Z"
+  processed_at: null
+
+Registro 3:
+  id: 7
+  user_id: 3
+  type: "BUY_QUOTA"
+  amount: "-50.00"
+  gateway_cost: "0.00"
+  description: "Compra de Participação Cred30"
+  status: "APPROVED"
+  metadata: null
+  payout_status: "NONE"
+  created_at: "2026-01-16T20:12:40.547Z"
+  processed_at: null
+
+Registro 4:
+  id: 8
+  user_id: 3
+  type: "LOAN_DISBURSEMENT"
+  amount: "70.00"
+  gateway_cost: "0.00"
+  description: "Empréstimo Recebido (Entrada em Saldo)"
+  status: "APPROVED"
+  metadata: null
+  payout_status: "NONE"
+  created_at: "2026-01-16T20:27:40.892Z"
+  processed_at: null
+
+Registro 5:
+  id: 9
+  user_id: 3
+  type: "WITHDRAWAL"
+  amount: "-70.00"
+  gateway_cost: "0.00"
+  description: "Saque via PIX (Empréstimo)"
+  status: "APPROVED"
+  metadata: null
+  payout_status: "NONE"
+  created_at: "2026-01-16T20:52:41.065Z"
+  processed_at: null
+
+============================================================
+TABELA: tutor_requests
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('tutor_requests_id_seq'::regclass))
+  student_id (integer, NOT NULL)
+  tutor_id (integer, NOT NULL)
+  status (character varying(20), NULL, default: 'PENDING'::character varying)
+  scheduled_at (timestamp without time zone, NULL)
+  duration_hours (integer, NULL, default: 1)
+  subject (text, NULL)
+  message (text, NULL)
+  price_snapshot (numeric, NULL)
+  meeting_link (text, NULL)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+  updated_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: users
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('users_id_seq'::regclass))
+  name (character varying(255), NOT NULL)
+  email (character varying(255), NOT NULL)
+  password_hash (character varying(255), NULL)
+  secret_phrase (character varying(255), NULL)
+  pix_key (character varying(255), NULL)
+  balance (numeric, NULL, default: 0)
+  referral_code (character varying(10), NULL)
+  referred_by (character varying(10), NULL)
+  is_admin (boolean, NULL, default: false)
+  score (integer, NULL, default: 0)
+  is_email_verified (boolean, NULL, default: false)
+  verification_code (character varying(10), NULL)
+  reset_password_token (character varying(255), NULL)
+  two_factor_secret (text, NULL)
+  two_factor_enabled (boolean, NULL, default: false)
+  accepted_terms_at (timestamp without time zone, NULL)
+  title_downloaded (boolean, NULL, default: false)
+  title_downloaded_at (timestamp without time zone, NULL)
+  role (character varying(20), NULL, default: 'MEMBER'::character varying)
+  status (character varying(20), NULL, default: 'ACTIVE'::character varying)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+  is_verified (boolean, NULL, default: false)
+  address (text, NULL)
+  phone (character varying(20), NULL)
+  membership_type (character varying(20), NULL, default: 'FREE'::character varying)
+  last_reward_at (timestamp without time zone, NULL)
+  total_dividends_earned (numeric, NULL, default: 0)
+  security_lock_until (timestamp without time zone, NULL)
+  last_ip (character varying(45), NULL)
+  last_login_at (timestamp without time zone, NULL)
+  panic_phrase (character varying(255), NULL)
+  is_under_duress (boolean, NULL, default: false)
+  safe_contact_phone (character varying(20), NULL)
+  welcome_benefit_uses (integer, NULL, default: 0)
+  last_checkin_at (timestamp without time zone, NULL)
+  cpf (character varying(14), NULL)
+  video_points (integer, NULL, default: 0)
+  daily_chests_opened (integer, NULL, default: 0)
+  last_chest_date (date, NULL)
+  asaas_account_id (character varying(255), NULL)
+  asaas_wallet_id (character varying(255), NULL)
+  is_seller (boolean, NULL, default: false)
+  seller_status (character varying(50), NULL)
+  ad_points (integer, NULL, default: 0)
+  seller_company_name (character varying(255), NULL)
+  seller_cpf_cnpj (character varying(255), NULL)
+  seller_phone (character varying(255), NULL)
+  seller_address_street (character varying(255), NULL)
+  seller_address_number (character varying(255), NULL)
+  seller_address_neighborhood (character varying(255), NULL)
+  seller_address_city (character varying(255), NULL)
+  seller_address_state (character varying(255), NULL)
+  seller_address_postal_code (character varying(255), NULL)
+  seller_created_at (timestamp without time zone, NULL)
+  is_courier (boolean, NULL, default: false)
+  courier_vehicle_type (character varying(50), NULL)
+  courier_vehicle_model (character varying(100), NULL)
+  courier_vehicle_plate (character varying(20), NULL)
+  courier_photo_url (text, NULL)
+  courier_penalty_until (timestamp with time zone, NULL)
+  last_deposit_at (timestamp with time zone, NULL)
+  pending_video_points (integer, NULL, default: 0)
+  courier_status (character varying(20), NULL, default: NULL::character varying)
+  courier_vehicle (character varying(20), NULL, default: NULL::character varying)
+  courier_phone (character varying(20), NULL, default: NULL::character varying)
+  courier_cpf (character varying(14), NULL, default: NULL::character varying)
+  courier_city (character varying(100), NULL, default: NULL::character varying)
+  courier_state (character varying(2), NULL, default: NULL::character varying)
+  courier_created_at (timestamp without time zone, NULL)
+  courier_price_per_km (numeric, NULL, default: 2.00)
+  courier_id_photo (text, NULL)
+  courier_vehicle_photo (text, NULL)
+  courier_doc_photo (text, NULL)
+  seller_rating (numeric, NULL, default: 0)
+  seller_total_reviews (integer, NULL, default: 0)
+  seller_total_sales (integer, NULL, default: 0)
+  seller_reputation (character varying(20), NULL, default: 'NOVO'::character varying)
+  is_tutor (boolean, NULL, default: false)
+  tutor_bio (text, NULL)
+  tutor_price_per_hour (numeric, NULL, default: 50.00)
+  tutor_subjects (text, NULL)
+  tutor_rating (numeric, NULL, default: 5.00)
+
+--- TOTAL DE REGISTROS: 2 ---
+
+--- AMOSTRA DE DADOS ---
+
+Registro 1:
+  id: 3
+  name: "luis fabio"
+  email: "assm701@gmail.com"
+  password_hash: "$2b$10$t3tqVCmRH6ZoihyZqCOdHOZ7skTrCyszW3.AYHmaSVfKYcX6iF2Xq"
+  secret_phrase: null
+  pix_key: "pendente@pix.com"
+  balance: "0.00"
+  referral_code: null
+  referred_by: null
+  is_admin: false
+  score: 100
+  is_email_verified: false
+  verification_code: null
+  reset_password_token: null
+  two_factor_secret: null
+  two_factor_enabled: false
+  accepted_terms_at: null
+  title_downloaded: false
+  title_downloaded_at: null
+  role: "MEMBER"
+  status: "ACTIVE"
+  created_at: "2026-01-16T20:46:55.345Z"
+  is_verified: false
+  address: null
+  phone: "00000000000"
+  membership_type: "NORMAL"
+  last_reward_at: null
+  total_dividends_earned: "0.00"
+  security_lock_until: null
+  last_ip: null
+  last_login_at: null
+  panic_phrase: null
+  is_under_duress: false
+  safe_contact_phone: null
+  welcome_benefit_uses: 0
+  last_checkin_at: null
+  cpf: "00000000000"
+  video_points: 0
+  daily_chests_opened: 0
+  last_chest_date: null
+  asaas_account_id: null
+  asaas_wallet_id: null
+  is_seller: false
+  seller_status: null
+  ad_points: 0
+  seller_company_name: null
+  seller_cpf_cnpj: null
+  seller_phone: null
+  seller_address_street: null
+  seller_address_number: null
+  seller_address_neighborhood: null
+  seller_address_city: null
+  seller_address_state: null
+  seller_address_postal_code: null
+  seller_created_at: null
+  is_courier: false
+  courier_vehicle_type: null
+  courier_vehicle_model: null
+  courier_vehicle_plate: null
+  courier_photo_url: null
+  courier_penalty_until: null
+  last_deposit_at: null
+  pending_video_points: 0
+  courier_status: null
+  courier_vehicle: null
+  courier_phone: null
+  courier_cpf: null
+  courier_city: null
+  courier_state: null
+  courier_created_at: null
+  courier_price_per_km: "2.00"
+  courier_id_photo: null
+  courier_vehicle_photo: null
+  courier_doc_photo: null
+  seller_rating: "0.00"
+  seller_total_reviews: 0
+  seller_total_sales: 0
+  seller_reputation: "NOVO"
+  is_tutor: false
+  tutor_bio: null
+  tutor_price_per_hour: "50.00"
+  tutor_subjects: null
+  tutor_rating: "5.00"
+
+Registro 2:
+  id: 1
+  name: "Josias Silva"
+  email: "josiassm701@gmail.com"
+  password_hash: null
+  secret_phrase: null
+  pix_key: "01558516247"
+  balance: "0.00"
+  referral_code: "QKQA9X"
+  referred_by: null
+  is_admin: true
+  score: 0
+  is_email_verified: true
+  verification_code: null
+  reset_password_token: null
+  two_factor_secret: null
+  two_factor_enabled: false
+  accepted_terms_at: null
+  title_downloaded: false
+  title_downloaded_at: null
+  role: "MEMBER"
+  status: "ACTIVE"
+  created_at: "2026-01-15T00:05:48.428Z"
+  is_verified: false
+  address: null
+  phone: "91980177874"
+  membership_type: "NORMAL"
+  last_reward_at: "2026-01-15T01:48:06.030Z"
+  total_dividends_earned: "0.00"
+  security_lock_until: null
+  last_ip: "179.63.92.58, 172.64.222.43, 10.20.10.1"
+  last_login_at: "2026-01-16T23:12:06.253Z"
+  panic_phrase: null
+  is_under_duress: false
+  safe_contact_phone: null
+  welcome_benefit_uses: 0
+  last_checkin_at: null
+  cpf: "01558516247"
+  video_points: 0
+  daily_chests_opened: 1
+  last_chest_date: "2026-01-14T03:00:00.000Z"
+  asaas_account_id: null
+  asaas_wallet_id: null
+  is_seller: false
+  seller_status: null
+  ad_points: 0
+  seller_company_name: null
+  seller_cpf_cnpj: null
+  seller_phone: null
+  seller_address_street: null
+  seller_address_number: null
+  seller_address_neighborhood: null
+  seller_address_city: null
+  seller_address_state: null
+  seller_address_postal_code: null
+  seller_created_at: null
+  is_courier: false
+  courier_vehicle_type: null
+  courier_vehicle_model: null
+  courier_vehicle_plate: null
+  courier_photo_url: null
+  courier_penalty_until: null
+  last_deposit_at: null
+  pending_video_points: 0
+  courier_status: null
+  courier_vehicle: null
+  courier_phone: null
+  courier_cpf: null
+  courier_city: null
+  courier_state: null
+  courier_created_at: null
+  courier_price_per_km: "2.00"
+  courier_id_photo: null
+  courier_vehicle_photo: null
+  courier_doc_photo: null
+  seller_rating: "0.00"
+  seller_total_reviews: 0
+  seller_total_sales: 0
+  seller_reputation: "NOVO"
+  is_tutor: false
+  tutor_bio: null
+  tutor_price_per_hour: "50.00"
+  tutor_subjects: null
+  tutor_rating: "5.00"
+
+============================================================
+TABELA: voting_proposals
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('voting_proposals_id_seq'::regclass))
+  title (character varying(255), NOT NULL)
+  description (text, NOT NULL)
+  status (character varying(20), NULL, default: 'ACTIVE'::character varying)
+  yes_votes (integer, NULL, default: 0)
+  no_votes (integer, NULL, default: 0)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+  closed_at (timestamp without time zone, NULL)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: voting_votes
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('voting_votes_id_seq'::regclass))
+  proposal_id (integer, NULL)
+  user_id (integer, NULL)
+  vote (character varying(10), NOT NULL)
+  weight (integer, NULL, default: 1)
+  created_at (timestamp without time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: webhook_logs
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('webhook_logs_id_seq'::regclass))
+  provider (character varying(50), NOT NULL)
+  payload (jsonb, NOT NULL)
+  status (character varying(20), NULL, default: 'PENDING'::character varying)
+  error_message (text, NULL)
+  processed_at (timestamp with time zone, NULL)
+  created_at (timestamp with time zone, NULL, default: CURRENT_TIMESTAMP)
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)
+
+============================================================
+TABELA: withdrawals
+============================================================
+
+--- ESTRUTURA ---
+  id (integer, NOT NULL, default: nextval('withdrawals_id_seq'::regclass))
+  user_id (integer, NOT NULL)
+  amount (numeric, NOT NULL)
+  pix_key (character varying(200), NULL)
+  pix_type (character varying(20), NULL)
+  status (character varying(20), NULL, default: 'PENDING'::character varying)
+  processed_at (timestamp without time zone, NULL)
+  created_at (timestamp without time zone, NULL, default: now())
+  updated_at (timestamp without time zone, NULL, default: now())
+
+--- TOTAL DE REGISTROS: 0 ---
+
+(Tabela vazia)

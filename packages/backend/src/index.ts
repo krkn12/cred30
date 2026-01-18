@@ -4,8 +4,11 @@ import dns from 'node:dns';
 dns.setDefaultResultOrder('ipv4first');
 
 import { validateEnv } from './shared/schemas/env.schema';
-// Validar variáveis de ambiente antes de qualquer outra coisa
+import { validateJwtSecret } from './shared/utils/jwt-validation.utils';
+
+// Validar variáveis de ambiente e segurança JWT antes de qualquer outra coisa
 validateEnv();
+validateJwtSecret();
 
 import { serve } from '@hono/node-server';
 import { Hono, Context } from 'hono';
@@ -82,10 +85,9 @@ app.use('*', secureHeaders({
     frameSrc: ["'self'", "https://*.firebaseapp.com"],
     connectSrc: ["'self'", "https://*.googleapis.com", "https://*.firebaseio.com", "https://*.adsterra.com"]
   },
-  xssProtection: '1; mode=block',
-  noSniff: true,
-  referrerPolicy: 'no-referrer',
-  hidePoweredBy: true
+  xXssProtection: '1; mode=block',
+  xContentTypeOptions: 'nosniff',
+  referrerPolicy: 'no-referrer'
 }));
 app.use('*', timing());
 

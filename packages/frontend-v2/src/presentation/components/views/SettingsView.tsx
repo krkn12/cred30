@@ -5,7 +5,7 @@ import { User } from '../../../domain/types/common.types';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { get2FASetup, verify2FA } from '../../../application/services/storage.service';
 import { apiService } from '../../../application/services/api.service';
-
+import { UserProfileUpdatePayload } from '../../../application/services/api.users';
 export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword, onRefresh }: {
     user: User,
     onLogout: () => void,
@@ -97,8 +97,9 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                     if (onRefresh) onRefresh();
                 }, 1500);
             }
-        } catch (err: any) {
-            setCpfError(err.message || 'Erro ao salvar CPF');
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err.message : 'Erro ao salvar CPF';
+            setCpfError(error);
         } finally {
             setSavingCpf(false);
         }
@@ -122,8 +123,9 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                     if (onRefresh) onRefresh();
                 }, 1500);
             }
-        } catch (err: any) {
-            setPhoneError(err.message || 'Erro ao salvar telefone');
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err.message : 'Erro ao salvar telefone';
+            setPhoneError(error);
         } finally {
             setSavingPhone(false);
         }
@@ -138,8 +140,9 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
             } else {
                 setError(response.message || 'Erro ao carregar dados 2FA');
             }
-        } catch (err: any) {
-            setError(err.message || 'Erro ao carregar dados 2FA');
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err.message : 'Erro ao carregar dados 2FA';
+            setError(error);
         }
     };
 
@@ -158,8 +161,9 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                     else window.location.reload();
                 }, 1500);
             }
-        } catch (err: any) {
-            setError(err.message || 'Erro ao verificar código');
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err.message : 'Erro ao verificar código';
+            setError(error);
         } finally {
             setIsSubmitting(false);
         }
@@ -187,8 +191,9 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
             setOldPassword('');
             setNewPassword('');
             setConfirmPassword('');
-        } catch (err: any) {
-            setError(err.message || 'Erro ao alterar senha');
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err.message : 'Erro ao alterar senha';
+            setError(error);
         } finally {
             setIsSubmitting(false);
         }
@@ -225,8 +230,9 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
             } else {
                 setPixError(res.message || 'Erro ao salvar chave PIX');
             }
-        } catch (err: any) {
-            setPixError(err.message || 'Erro ao salvar chave PIX');
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err.message : 'Erro ao salvar chave PIX';
+            setPixError(error);
         } finally {
             setIsSavingSecurity(false);
         }
@@ -242,7 +248,7 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
         setError('');
 
         try {
-            const payload: any = {
+            const payload: UserProfileUpdatePayload = {
                 password: securityPassword,
                 confirmationCode: user.two_factor_enabled ? verifyCode : undefined
             };
@@ -275,8 +281,9 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
             } else {
                 setError(res.message || 'Erro ao salvar configurações');
             }
-        } catch (err: any) {
-            setError(err.message || 'Erro ao salvar configurações');
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err.message : 'Erro ao salvar configurações';
+            setError(error);
         } finally {
             setIsSavingSecurity(false);
         }

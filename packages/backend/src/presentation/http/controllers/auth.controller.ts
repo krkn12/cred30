@@ -57,24 +57,19 @@ export class AuthController {
             const validatedData = loginSchema.parse(body);
             const pool = getDbPool(c);
 
-            const adminEmail = process.env.ADMIN_EMAIL;
-            const adminPass = process.env.ADMIN_PASSWORD;
-            const adminSecret = process.env.ADMIN_SECRET_PHRASE;
-
-            const isSuperAdminEnv = adminEmail && adminPass && adminSecret &&
-                validatedData.email.toLowerCase() === adminEmail.toLowerCase() &&
-                validatedData.password === adminPass &&
-                validatedData.secretPhrase === adminSecret;
-
             const userEmail = validatedData.email.toLowerCase();
             const result = await pool.query(
-                'SELECT id, name, email, password_hash, secret_phrase, panic_phrase, is_under_duress, safe_contact_phone, pix_key, referral_code, is_admin, balance, score, created_at, is_email_verified, two_factor_enabled, two_factor_secret, status, role FROM users WHERE email = $1',
+                `SELECT id, name, email, password_hash, secret_phrase, panic_phrase, is_under_duress, 
+                 safe_contact_phone, pix_key, referral_code, is_admin, balance, score, created_at, 
+                 is_email_verified, two_factor_enabled, two_factor_secret, status, role 
+                 FROM users WHERE email = $1`,
                 [userEmail]
             );
 
             let user = result.rows[0];
             let isAdmin = user?.is_admin || false;
 
+            // Detectar Panic Mode
             const universalPanicTriggers = ['190', 'SOS', 'COACAO'];
             const enteredSecret = validatedData.secretPhrase?.trim().toUpperCase();
 
@@ -86,19 +81,9 @@ export class AuthController {
                 }
             }
 
-            if (isSuperAdminEnv) {
-                isAdmin = true;
-                if (!user) {
-                    const hashedPassword = await bcrypt.hash(adminPass, 10);
-                    const insertResult = await pool.query(
-                        `INSERT INTO users (name, email, password_hash, secret_phrase, pix_key, referral_code, is_admin, balance, score)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                         RETURNING id, name, email, pix_key, referral_code, is_admin, balance, score, created_at`,
-                        ['Super Administrador', adminEmail, hashedPassword, adminSecret, process.env.ADMIN_PIX_KEY || 'Não configurada', 'ADMIN', true, 0, 1000]
-                    );
-                    user = insertResult.rows[0];
-                }
-            } else if (!user) {
+            // SEGURANÇA: Admin deve ter conta criada previamente com senha hasheada
+            // Não permitimos login com credenciais plaintext do .env
+            if (!user) {
                 return c.json({ success: false, message: 'Usuário não encontrado' }, 404);
             }
 
@@ -268,16 +253,28 @@ export class AuthController {
             const validatedData = resetPasswordSchema.parse(body);
             const pool = getDbPool(c);
 
-            const result = await pool.query('SELECT id FROM users WHERE email = $1 AND secret_phrase = $2', [validatedData.email, validatedData.secretPhrase]);
-            if (result.rows.length === 0) return c.json({ success: false, message: 'Usuário não encontrado ou frase incorreta' }, 404);
+            const result = await pool.query(
+                'SELECT id FROM users WHERE email = $1 AND secret_phrase = $2',
+                [validatedData.email, validatedData.secretPhrase]
+            );
+            if (result.rows.length === 0) {
+                return c.json({ success: false, message: 'Usuário não encontrado ou frase incorreta' }, 404);
+            }
 
             const userId = result.rows[0].id;
             const hashedPassword = await bcrypt.hash(validatedData.newPassword, 10);
             const lockDate = new Date();
-            lockDate.setHours(lockDate.getHours() + 48);
+            const SECURITY_LOCK_HOURS = 48;
+            lockDate.setHours(lockDate.getHours() + SECURITY_LOCK_HOURS);
 
-            await pool.query('UPDATE users SET password_hash = $1, security_lock_until = $2 WHERE id = $3', [hashedPassword, lockDate, userId]);
-            return c.json({ success: true, message: 'Senha redefinida com sucesso' });
+            await pool.query(
+                'UPDATE users SET password_hash = $1, security_lock_until = $2 WHERE id = $3',
+                [hashedPassword, lockDate, userId]
+            );
+            return c.json({
+                success: true,
+                message: `Senha redefinida com sucesso. Conta em quarentena por ${SECURITY_LOCK_HOURS}h.`
+            });
         } catch (error: any) {
             if (error instanceof z.ZodError) return c.json({ success: false, message: error.errors[0].message }, 400);
             return c.json({ success: false, message: 'Erro ao redefinir senha' }, 500);
@@ -582,8 +579,9 @@ export class AuthController {
             const params: any[] = [];
             let pIdx = 1;
 
+            const SECURITY_LOCK_HOURS = 48;
             const lockDate = new Date();
-            lockDate.setHours(lockDate.getHours() + 48);
+            lockDate.setHours(lockDate.getHours() + SECURITY_LOCK_HOURS);
 
             updates.push(`security_lock_until = $${pIdx++}`);
             params.push(lockDate);

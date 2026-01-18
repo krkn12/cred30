@@ -1,8 +1,8 @@
 import { ApiBase, ApiResponse } from './api.base';
 
 export class AdminApi extends ApiBase {
-    async getDashboard(): Promise<ApiResponse<any>> {
-        return await this.request<any>('/admin/dashboard');
+    async getDashboard(refresh: boolean = false): Promise<ApiResponse<any>> {
+        return await this.request<any>(`/admin/dashboard${refresh ? '?refresh=true' : ''}`);
     }
 
     async getHealthMetrics(): Promise<ApiResponse<any>> {

@@ -2,11 +2,13 @@ import { Context } from 'hono';
 import { z } from 'zod'; // Import zod here as schemas will be moved or redefined
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { CacheService, addCacheHeaders } from '../../../infrastructure/cache/memory-cache.service';
-import { QUOTA_PRICE, LOGISTICS_SUSTAINABILITY_FEE_RATE } from '../../../shared/constants/business.constants';
+import { QUOTA_PRICE, QUOTA_SHARE_VALUE, LOGISTICS_SUSTAINABILITY_FEE_RATE } from '../../../shared/constants/business.constants';
 import { executeInTransaction, processTransactionApproval } from '../../../domain/services/transaction.service';
 import { distributeProfits } from '../../../application/services/profit-distribution.service';
 // Removido: import mercadopago.service (gateway desativado)
 import { PoolClient } from 'pg';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Schemas (Moved from router)
 export const createCostSchema = z.object({
@@ -167,14 +169,15 @@ export class AdminFinanceController {
      */
     static async getDashboard(c: Context) {
         try {
-            // Verificar cache primeiro
-            const cachedData = CacheService.getAdminDashboard();
-            if (cachedData) {
-                addCacheHeaders(c, true, 120000);
-                return c.json({ success: true, data: cachedData, cached: true });
-            }
-
             const pool = getDbPool(c);
+            const refresh = c.req.query('refresh') === 'true';
+
+            // FORÇAR CACHE OFF (DEBUG)
+            console.error('🔧 [DEBUG] Invalidando cache SEMPRE...');
+            CacheService.invalidateAdminDashboard();
+
+            // NUNCA usar cache (temporário)
+            const cachedData = null;
 
             // Buscar configurações do sistema
             const configResult = await pool.query('SELECT * FROM system_config LIMIT 1');
@@ -195,8 +198,8 @@ export class AdminFinanceController {
             const activeQuotasResult = await pool.query(
                 `SELECT COUNT(*) as count FROM quotas WHERE status = 'ACTIVE'`
             );
-            const activeQuotasCount = parseInt(activeQuotasResult.rows[0].count);
-            const totalQuotasValue = activeQuotasCount * QUOTA_PRICE;
+            const quotasCountCache = parseInt(activeQuotasResult.rows[0].count);
+            const totalQuotasValue = quotasCountCache * QUOTA_PRICE;
 
             const totalLoanedResult = await pool.query(
                 `SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) as total_loaned
@@ -215,6 +218,7 @@ export class AdminFinanceController {
             config.total_operational_reserve = parseFloat(String(config.total_operational_reserve || 0));
             config.total_owner_profit = parseFloat(String(config.total_owner_profit || 0));
             config.investment_reserve = parseFloat(String(config.investment_reserve || 0));
+            config.mutual_reserve = parseFloat(String(config.mutual_reserve || 0));
             config.courier_price_per_km = parseFloat(String(config.courier_price_per_km || '2.50'));
 
             const statsResult = await pool.query(`
@@ -237,14 +241,27 @@ export class AdminFinanceController {
             const totalMonthlyCosts = parseFloat(stats.total_monthly_costs);
             const activeProposalsCount = parseInt(stats.active_proposals_count || 0);
 
-            const totalReservesForRealLiquidity = config.total_tax_reserve +
-                config.total_operational_reserve +
-                config.total_owner_profit +
-                totalMonthlyCosts +
-                totalUserBalances;
+            // FÓRMULA FINAL JOSIAS: Liquidez Real = (Cotas × 42) - Empréstimos
+            const activeQuotasCount = Number(stats.quotas_count || 0);
+            const totalCapitalSocial = activeQuotasCount * QUOTA_SHARE_VALUE; // R$ 42 por cota
+            const totalEmprestimos = Number(totalLoaned || 0);
 
-            config.real_liquidity = config.system_balance - totalReservesForRealLiquidity;
-            config.total_reserves = totalReservesForRealLiquidity;
+            config.real_liquidity = totalCapitalSocial - totalEmprestimos;
+
+            // LOG DE DEBUG
+            console.error('🔍 [LIQUIDEZ] Cotas:', activeQuotasCount, '× R$ 42 = R$', totalCapitalSocial);
+            console.error('🔍 [LIQUIDEZ] Empréstimos: R$', totalEmprestimos);
+            console.error('🔍 [LIQUIDEZ] RESULTADO:', config.real_liquidity);
+
+            // Manter total_reserves para compatibilidade
+            const calcTax = Number(config.total_tax_reserve || 0);
+            const calcOper = Number(config.total_operational_reserve || 0);
+            const calcProfit = Number(config.total_owner_profit || 0);
+            const calcMutual = Number(config.mutual_reserve || 0);
+            const calcInvest = Number(config.investment_reserve || 0);
+            const calcCosts = Number(totalMonthlyCosts || 0);
+            const calcUsers = Number(totalUserBalances || 0);
+            config.total_reserves = calcTax + calcOper + calcProfit + calcMutual + calcInvest + calcCosts + calcUsers;
             config.total_user_balances = totalUserBalances;
             config.theoretical_cash = operationalCash;
             config.monthly_fixed_costs = totalMonthlyCosts;
@@ -261,6 +278,14 @@ export class AdminFinanceController {
                 },
             };
 
+            // LOG GIGANTE PARA O JOSIAS VER
+            console.error('\n\n========================================');
+            console.error('🚨🚨🚨 RETORNANDO LIQUIDEZ PARA O FRONTEND 🚨🚨🚨');
+            console.error('========================================');
+            console.error('VALOR DA LIQUIDEZ:', config.real_liquidity);
+            console.error('========================================\n\n');
+
+            // Salvar no cache
             CacheService.setAdminDashboard(dashboardData);
             addCacheHeaders(c, false, 120000);
 

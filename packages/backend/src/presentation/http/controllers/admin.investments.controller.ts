@@ -1,6 +1,7 @@
 import { Context } from 'hono';
 import { z } from 'zod';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
+import { QUOTA_SHARE_VALUE } from '../../../shared/constants/business.constants';
 import { executeInTransaction } from '../../../domain/services/transaction.service';
 
 // Schema de validação
@@ -32,11 +33,24 @@ export class AdminInvestmentsController {
         SELECT * FROM investments WHERE status = 'SOLD' ORDER BY sold_at DESC
       `);
 
-            const reserveResult = await pool.query(`
-        SELECT COALESCE(investment_reserve, 0) as reserve FROM system_config LIMIT 1
-      `);
+            const configResult = await pool.query('SELECT * FROM system_config LIMIT 1');
+            const config = configResult.rows[0] || {};
 
-            const availableReserve = parseFloat(reserveResult.rows[0]?.reserve || 0);
+            const statsRes = await pool.query(`
+                SELECT 
+                    (SELECT COUNT(*) FROM quotas WHERE status = 'ACTIVE') as quotas_count,
+                    (SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING')) as total_loaned
+            `);
+            const stats = statsRes.rows[0];
+
+            // FÓRMULA FINAL JOSIAS: Liquidez Real = (Cotas × 42) - Empréstimos
+            const activeQuotasCount = Number(stats.quotas_count || 0);
+            const totalCapitalSocial = activeQuotasCount * QUOTA_SHARE_VALUE;
+            const totalEmprestimos = Number(stats.total_loaned || 0);
+
+            const realLiquidity = totalCapitalSocial - totalEmprestimos;
+
+            const availableReserve = parseFloat(config.investment_reserve || 0);
             const totalInvested = activeResult.rows.reduce((acc: any, inv: any) => acc + parseFloat(inv.total_invested), 0);
             const totalCurrentValue = activeResult.rows.reduce((acc: any, inv: any) => acc + parseFloat(inv.current_value || inv.total_invested), 0);
 
@@ -80,6 +94,7 @@ export class AdminInvestmentsController {
                     })),
                     summary: {
                         availableReserve,
+                        realLiquidity,
                         totalInvested,
                         totalCurrentValue,
                         totalDividends,

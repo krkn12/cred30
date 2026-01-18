@@ -212,7 +212,7 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
                         <div className="p-2 bg-primary-500/10 rounded-lg"><Activity className="text-primary-400" size={20} /></div>
                         Reservas de Crescimento (25/25/25/25)
                     </h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                         <div className="bg-black/40 border border-zinc-800/50 p-4 rounded-2xl">
                             <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Impostos (Receita)</p>
                             <p className="text-lg font-black text-white">{formatCurrency(state.stats?.systemConfig?.total_tax_reserve || 0)}</p>
@@ -226,7 +226,11 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
                             <p className="text-lg font-black text-white">{formatCurrency(state.stats?.systemConfig?.total_owner_profit || 0)}</p>
                         </div>
                         <div className="bg-black/40 border border-zinc-800/50 p-4 rounded-2xl">
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Reserva Social</p>
+                            <p className="text-[10px] text-emerald-500/80 font-bold uppercase mb-1">Crescimento (Mutual)</p>
+                            <p className="text-lg font-black text-emerald-400">{formatCurrency(state.stats?.systemConfig?.mutual_reserve || 0)}</p>
+                        </div>
+                        <div className="bg-black/40 border border-zinc-800/50 p-4 rounded-2xl col-span-2 lg:col-span-1">
+                            <p className="text-[10px] text-primary-500/80 font-bold uppercase mb-1">Reserva Social (Social)</p>
                             <p className="text-lg font-black text-primary-400">{formatCurrency(state.stats?.systemConfig?.investment_reserve || 0)}</p>
                         </div>
                     </div>

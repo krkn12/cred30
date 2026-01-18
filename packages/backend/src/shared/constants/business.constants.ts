@@ -1,5 +1,5 @@
 // Estrutura de preço da cota (Total R$ 50,00)
-export const QUOTA_PRICE = 50.00; // Preço de aquisição total
+export const QUOTA_PRICE = 50.00; // Preço de aquisição total (R$ 50)
 export const QUOTA_SHARE_VALUE = 42.00; // Valor que vai para o Capital Social (Resgatável)
 export const QUOTA_ADM_FEE = 8.00;   // Taxa de Manutenção Administrativa (Não resgatável)
 
@@ -46,7 +46,7 @@ export const MAINTENANCE_OWNER_SHARE = 0.05;    // 5% para Seu Pró-labore (Sal�
 
 // --- Taxas de Monetização (Caixa da Cooperativa) ---
 export const QUOTA_PURCHASE_FEE_RATE = 0.0; // Desativado (Substituído pela taxa fixa QUOTA_ADM_FEE)
-export const LOAN_ORIGINATION_FEE_RATE = 0.03; // 3% de taxa de originação (seguro)
+export const LOAN_ORIGINATION_FEE_RATE = 0.00; // Removido por solicitação do Josias (Valor integral no empréstimo)
 export const WITHDRAWAL_FIXED_FEE = 3.50; // Taxa fixa de R$ 3,50 por saque (se não tiver cotas suficientes)
 export const MIN_WITHDRAWAL_AMOUNT = 1.00; // Valor mínimo para saque = R$ 1,00
 export const MARKETPLACE_ESCROW_FEE_RATE = 0.12; // 12% de taxa de garantia (Escrow) para verificados

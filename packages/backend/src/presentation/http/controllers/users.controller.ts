@@ -91,7 +91,7 @@ export class UsersController {
             }
 
             await pool.query(
-                'UPDATE users SET cpf = $1, pix_key = $2, phone = $3, is_verified = TRUE WHERE id = $4',
+                'UPDATE users SET cpf = $1, pix_key = $2, phone = $3 WHERE id = $4',
                 [data.cpf, data.pixKey, data.phone, user.id]
             );
 
@@ -99,7 +99,7 @@ export class UsersController {
 
             return c.json({
                 success: true,
-                message: 'Perfil verificado com sucesso! Agora você pode realizar operações financeiras.'
+                message: 'Dados de perfil salvos com sucesso! Agora você pode realizar operações financeiras.'
             });
         } catch (error) {
             if (error instanceof z.ZodError) {
