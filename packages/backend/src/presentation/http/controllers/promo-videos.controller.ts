@@ -601,7 +601,7 @@ export class PromoVideosController {
                     UPDATE promo_videos SET total_views = total_views + 1, spent = spent + $1 WHERE id = $2
                 `, [viewerEarningAmount, videoId]);
 
-                await client.query('UPDATE users SET ad_points = ad_points + $1 WHERE id = $2', [viewerEarningPoints, userPayload.id]);
+                await client.query('UPDATE users SET ad_points = ad_points + $1, total_ad_points = total_ad_points + $1 WHERE id = $2', [viewerEarningPoints, userPayload.id]);
 
                 if (missionPoints > 0) {
                     await client.query(`
@@ -609,7 +609,7 @@ export class PromoVideosController {
                         VALUES ($1, $2, $3, $4, 'PENDING')
                     `, [userPayload.id, videoId, viewUpdate.rows[0].id, missionPoints]);
 
-                    await client.query('UPDATE users SET pending_ad_points = pending_ad_points + $1 WHERE id = $2', [missionPoints, userPayload.id]);
+                    await client.query('UPDATE users SET pending_ad_points = pending_ad_points + $1, total_ad_points = total_ad_points + $1 WHERE id = $2', [missionPoints, userPayload.id]);
                 }
 
                 // Auditoria Triple-Check (A cada 20 views)

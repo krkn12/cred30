@@ -85,7 +85,7 @@ export class MonetizationController {
                 }
 
                 await client.query(
-                    'UPDATE users SET ad_points = COALESCE(ad_points, 0) + $1, last_reward_at = NOW() WHERE id = $2',
+                    'UPDATE users SET ad_points = COALESCE(ad_points, 0) + $1, total_ad_points = COALESCE(total_ad_points, 0) + $1, last_reward_at = NOW() WHERE id = $2',
                     [REWARD_POINTS, user.id]
                 );
 

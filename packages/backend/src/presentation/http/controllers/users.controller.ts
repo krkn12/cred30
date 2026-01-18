@@ -570,9 +570,9 @@ export class UsersController {
 
             // Buscar Top 3
             const top3Res = await pool.query(`
-                SELECT id, name, COALESCE(ad_points, 0) as points 
+                SELECT id, name, COALESCE(total_ad_points, 0) as points 
                 FROM users 
-                ORDER BY COALESCE(ad_points, 0) DESC, name ASC 
+                ORDER BY COALESCE(total_ad_points, 0) DESC, name ASC 
                 LIMIT 3
             `);
 
@@ -580,10 +580,10 @@ export class UsersController {
             const rankRes = await pool.query(`
                 SELECT COUNT(*) + 1 as rank 
                 FROM users 
-                WHERE COALESCE(ad_points, 0) > (SELECT COALESCE(ad_points, 0) FROM users WHERE id = $1)
+                WHERE COALESCE(total_ad_points, 0) > (SELECT COALESCE(total_ad_points, 0) FROM users WHERE id = $1)
             `, [user.id]);
 
-            const userPointsRes = await pool.query('SELECT COALESCE(ad_points, 0) as points FROM users WHERE id = $1', [user.id]);
+            const userPointsRes = await pool.query('SELECT COALESCE(total_ad_points, 0) as points FROM users WHERE id = $1', [user.id]);
 
             return c.json({
                 success: true,
