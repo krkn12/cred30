@@ -210,8 +210,8 @@ const PrivacyPage = () => {
                     <p className="text-zinc-500 text-xs sm:text-sm">
                         Dúvidas sobre seus dados? Entre em contato com nossa equipe de suporte.
                     </p>
-                    <p className="text-zinc-600 text-xs mt-4">
-                        Cred30 © 2025 - Todos os direitos reservados.
+                    <p className="text-zinc-600 text-[10px] uppercase font-black tracking-widest mt-4">
+                        Cred30 © {new Date().getFullYear()} - Todos os direitos reservados.
                     </p>
                 </footer>
             </main>

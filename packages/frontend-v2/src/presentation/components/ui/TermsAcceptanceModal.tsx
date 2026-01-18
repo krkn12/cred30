@@ -135,13 +135,30 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({ isOp
                     </section>
 
                     <section className="space-y-4">
+                        <h3 className="text-lg md:text-xl font-bold text-primary-400 flex items-center gap-2">
+                            7. Proteção de Dados (LGPD)
+                        </h3>
+                        <p className="text-zinc-400 text-xs md:text-sm leading-relaxed">
+                            O tratamento de seus dados pessoais (Nome, CPF, E-mail, IP e Pix) é fundamentado no <strong className="text-white">Art. 7º, inciso V da Lei 13.709/18</strong>, sendo estritamente necessário para a execução do contrato associativo e segurança das transações. Seus dados não são vendidos a terceiros.
+                        </p>
+                    </section>
+
+                    <section className="space-y-4">
+                        <h3 className="text-lg md:text-xl font-bold text-primary-400 flex items-center gap-2">
+                            8. Eleição de Foro e Jurisdição
+                        </h3>
+                        <p className="text-zinc-400 text-xs md:text-sm leading-relaxed">
+                            As partes elegem o foro da comarca de <strong className="text-white">Belém, Estado do Pará</strong>, para dirimir quaisquer dúvidas ou controvérsias oriundas destes termos, com renúncia expressa a qualquer outro por mais privilegiado que seja.
+                        </p>
+                    </section>
+
+                    <section className="space-y-4">
                         <h3 className="text-lg md:text-xl font-bold text-purple-400 flex items-center gap-2">
-                            7. Elegibilidade
+                            9. Elegibilidade e Aceite Digital
                         </h3>
                         <p className="text-zinc-400 text-xs md:text-sm leading-relaxed">
                             Ao clicar em "Aceitar", você declara ter <strong className="text-white">18 anos ou mais</strong>,
-                            possuir plena capacidade civil e que leu, compreendeu e concorda com todos os termos acima,
-                            incluindo os <strong className="text-white">riscos de perda de capital social</strong>.
+                            possuir plena capacidade civil e que leu, compreendeu e concorda com todos os termos acima. Você entende que este clique possui <strong className="text-white">validade jurídica de assinatura digital</strong> para fins de adesão à associação e contrato de mútuo.
                         </p>
                     </section>
 
@@ -150,7 +167,7 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({ isOp
                             Fim dos termos. Role até o fim para habilitar o botão de aceite.
                         </p>
                         <p className="text-[10px] text-emerald-600 font-bold">
-                            Versão 2.0 • 25/12/2024
+                            Versão 2.1 • 18/01/2026
                         </p>
                     </div>
                 </div>

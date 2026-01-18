@@ -97,7 +97,14 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
     const [chestCountdown, setChestCountdown] = useState(0);
     const [chestsRemaining, setChestsRemaining] = useState(3);
     const [isOpeningChest, setIsOpeningChest] = useState(false);
-    const [showValues, setShowValues] = useState(true);
+    const [showValues, setShowValues] = useState(() => {
+        const stored = localStorage.getItem('dashboard_show_values');
+        return stored === null ? true : stored === 'true';
+    });
+
+    useEffect(() => {
+        localStorage.setItem('dashboard_show_values', showValues.toString());
+    }, [showValues]);
 
     // Buscar status do baú do backend ao carregar
     useEffect(() => {

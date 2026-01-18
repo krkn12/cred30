@@ -9,6 +9,8 @@ const TermsPage = () => {
         window.scrollTo(0, 0);
     }, []);
 
+    const currentYear = new Date().getFullYear();
+
     return (
         <div className="min-h-screen bg-zinc-950 text-white selection:bg-cyan-500/30">
             {/* Navigation */}
@@ -33,13 +35,13 @@ const TermsPage = () => {
             <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-24 sm:pt-32 pb-20">
                 <div className="mb-8 sm:mb-12">
                     <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-emerald-400 text-xs sm:text-sm font-bold mb-4 sm:mb-6">
-                        <ShieldCheck size={14} /> Estatuto de Economia Solidária e Blindagem
+                        <ShieldCheck size={14} /> Estatuto de Economia Solidária e Blindagem Jurídica
                     </div>
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-3 sm:mb-4 tracking-tight">Regulamento do Clube</h1>
                     <p className="text-zinc-400 text-sm sm:text-base leading-relaxed max-w-2xl">
-                        A Cred30 NÃO é um banco, NÃO é uma fintech e NÃO é uma instituição financeira.
-                        Este software gere um <strong>Clube de Benefícios Privado</strong> baseado na <strong>Economia Solidária</strong>,
-                        fomentando a ajuda mútua e a aquisição programada entre cidadãos.
+                        A Cred30 NÃO é um banco, NÃO é uma instituição financeira.
+                        Este software gere um <strong>Clube de Benefícios Privado</strong> baseado na <strong>Economia Solidária</strong> (SCP),
+                        fomentando a ajuda mútua entre associados conforme o Código Civil Brasileiro.
                     </p>
                 </div>
 
@@ -236,21 +238,29 @@ const TermsPage = () => {
                         </p>
                     </section>
 
-                    {/* Foro e Arbitragem */}
+                    {/* Foro e Resolução de Conflitos */}
                     <section className="bg-zinc-900/30 border border-white/5 p-6 sm:p-8 rounded-3xl">
                         <h2 className="text-xl sm:text-2xl font-bold mb-4 flex items-center gap-3 text-cyan-400">
-                            <Gavel size={24} /> 8. Resolução de Conflitos
+                            <Gavel size={24} /> 8. Eleição de Foro e Jurisdição
                         </h2>
                         <p className="text-zinc-400 text-sm leading-relaxed mb-4">
-                            Qualquer disputa oriunda deste contrato será resolvida preferencialmente por:
+                            Este contrato é regido pelas leis da República Federativa do Brasil. Para dirimir quaisquer controvérsias oriundas deste regulamento, as partes elegem:
                         </p>
-                        <ol className="space-y-3 text-zinc-400 text-sm list-decimal list-inside">
-                            <li><strong className="text-white">Negociação direta</strong> através do suporte ao cliente.</li>
-                            <li><strong className="text-white">Mediação/Arbitragem</strong> conforme Lei 9.307/96, em câmara a ser definida pelo Sócio Ostensivo.</li>
-                            <li>Caso necessário, o <strong className="text-white">Foro da Comarca de São Paulo/SP</strong> é eleito para dirimir questões não resolvidas.</li>
-                        </ol>
+                        <div className="bg-cyan-500/5 border border-cyan-500/10 p-4 rounded-xl">
+                            <p className="text-sm text-white font-bold text-center">FORO DA COMARCA DE BELÉM, ESTADO DO PARÁ</p>
+                        </div>
                         <p className="text-zinc-500 text-xs italic mt-4">
-                            As partes renunciam a qualquer outro foro, por mais privilegiado que seja.
+                            As partes renunciam expressamente a qualquer outro foro por mais privilegiado que seja ou venha a ser.
+                        </p>
+                    </section>
+
+                    {/* Proteção de Dados (LGPD) */}
+                    <section className="bg-zinc-900/30 border border-white/5 p-6 sm:p-8 rounded-3xl">
+                        <h2 className="text-xl sm:text-2xl font-bold mb-4 flex items-center gap-3 text-purple-400">
+                            <ShieldCheck size={24} /> 9. Proteção de Dados (LGPD)
+                        </h2>
+                        <p className="text-zinc-400 text-sm leading-relaxed">
+                            O tratamento de dados pessoais (Nome, CPF, E-mail, Chave PIX) é realizado com fundamento no Art. 7, V da Lei 13.709/18, estritamente para execução do contrato associativo e segurança das transações. Seus dados nunca são vendidos a terceiros.
                         </p>
                     </section>
 
@@ -265,14 +275,14 @@ const TermsPage = () => {
                             Qualquer dúvida deve ser sanada via suporte administrativo antes da realização de qualquer contribuição.
                         </p>
                         <p className="text-[10px] text-emerald-600 font-bold mt-4">
-                            Versão 2.0 • Vigente a partir de 25/12/2024
+                            Versão 2.1 • Vigente a partir de 18/01/2026
                         </p>
                     </section>
                 </div>
 
                 <footer className="mt-20 pt-10 border-t border-white/5 text-center">
                     <p className="text-zinc-600 text-[10px] uppercase font-black tracking-widest">
-                        Cred30 © 2025 - Sistema de Gestão Associativa Distribuída
+                        Cred30 © {currentYear} - Sistema de Gestão Associativa Distribuída
                     </p>
                 </footer>
             </main>

@@ -1,6 +1,7 @@
 import { LogOut, Home, PieChart, DollarSign, Settings, TrendingUp, ArrowUpFromLine, ShoppingBag, HelpCircle, Play, ShieldCheck, Gift } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../../../domain/types/common.types';
+import { CookieBanner } from '../ui/CookieBanner';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -175,6 +176,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
           ))}
         </div>
       </div>
+      <CookieBanner />
     </div>
   );
 };

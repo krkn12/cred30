@@ -12,11 +12,26 @@ class SyncService {
 
     private getQueue(): QueuedAction[] {
         const queue = localStorage.getItem(this.queueKey);
-        return queue ? JSON.parse(queue) : [];
+        if (!queue) return [];
+        try {
+            // Ofuscamento simples com Base64 para evitar leitura direta no DevTools
+            const decoded = atob(queue);
+            return JSON.parse(decoded);
+        } catch (e) {
+            // Fallback para dados antigos sem ofuscamento
+            try {
+                return JSON.parse(queue);
+            } catch {
+                return [];
+            }
+        }
     }
 
     private saveQueue(queue: QueuedAction[]) {
-        localStorage.setItem(this.queueKey, JSON.stringify(queue));
+        const data = JSON.stringify(queue);
+        // Ofuscamento simples com Base64
+        const encoded = btoa(data);
+        localStorage.setItem(this.queueKey, encoded);
     }
 
     async enqueue(type: string, payload: any) {
