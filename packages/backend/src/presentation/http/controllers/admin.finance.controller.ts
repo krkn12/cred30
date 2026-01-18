@@ -550,7 +550,7 @@ export class AdminFinanceController {
             // Apenas Depósitos e Pagamentos via PIX externo.
             // Uso de saldo (Circular) NÃO deve somar aqui para evitar duplicidade.
             const inflowRes = await pool.query(`
-                SELECT COALESCE(SUM(amount), 0) as total_inflow
+                SELECT COALESCE(SUM(ABS(amount)), 0) as total_inflow
                 FROM transactions 
                 WHERE status = 'APPROVED' 
                 AND (
@@ -564,10 +564,10 @@ export class AdminFinanceController {
             // 2. Saídas Totais (Gross Outflow) - Dinheiro SAINDO do sistema
             // Saques processados
             const outflowRes = await pool.query(`
-                SELECT COALESCE(SUM(amount), 0) as total_outflow
+                SELECT COALESCE(SUM(ABS(amount)), 0) as total_outflow
                 FROM transactions
                 WHERE status IN ('APPROVED', 'COMPLETED', 'PAID')
-                AND type IN ('WITHDRAWAL')
+                AND type IN ('WITHDRAWAL', 'LOAN_DISBURSEMENT')
                 ${dateFilter}
             `, params);
 
