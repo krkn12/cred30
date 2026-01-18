@@ -35,6 +35,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [showTerms, setShowTerms] = useState(false);
+    const [acceptedLGPD, setAcceptedLGPD] = useState(false);
 
 
 
@@ -73,9 +74,12 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
 
         if (isRegister) {
             // Validar apenas campos básicos para cadastro rápido
-            // CPF, PIX e Telefone serão pedidos depois para verificação
             if (!name || !email || !password || !secretPhrase) {
                 setError("Por favor, preencha todos os campos obrigatórios.");
+                return;
+            }
+            if (!acceptedLGPD) {
+                setError("Você precisa aceitar os termos e a política de privacidade para continuar.");
                 return;
             }
             setShowTerms(true);
@@ -92,6 +96,9 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                 return;
             }
 
+            // Limpar dados sensíveis da memória
+            setPassword('');
+            setSecretPhrase('');
             onLogin(res);
         } catch (error: any) {
             // Se o backend indicar que o email não está verificado
@@ -153,6 +160,9 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
         try {
             const res = await registerUser(name, email, password, '', secretPhrase, '', referralCode, '');
             if (res.user) {
+                // Limpar dados sensíveis da memória
+                setPassword('');
+                setSecretPhrase('');
                 setSuccess('Cadastro realizado com sucesso! Bem-vindo.');
                 setTimeout(() => {
                     onLogin(res.user);
@@ -405,6 +415,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                             placeholder="Senha"
                                             value={password}
                                             onChange={e => setPassword(e.target.value)}
+                                            autoComplete="current-password"
                                             className="w-full glass border-white/5 rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition-all group-focus-within:bg-white/10"
                                             required
                                         />
@@ -417,6 +428,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                             placeholder={isRegister ? "Crie sua Frase Secreta" : "Frase Secreta"}
                                             value={secretPhrase}
                                             onChange={e => setSecretPhrase(e.target.value)}
+                                            autoComplete="off"
                                             className="w-full glass border-white/5 rounded-xl py-3.5 pl-10 text-sm text-white focus:border-primary-500 outline-none transition-all group-focus-within:bg-white/10"
                                             required
                                         />
@@ -436,7 +448,17 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                                 />
                                             </div>
 
-                                            <p className="text-[10px] text-zinc-500 text-center px-4 leading-relaxed">
+                                            {/* Checkbox LGPD */}
+                                            <div className="flex items-center gap-3 px-2 group cursor-pointer" onClick={() => setAcceptedLGPD(!acceptedLGPD)}>
+                                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${acceptedLGPD ? 'bg-primary-500 border-primary-500' : 'bg-white/5 border-white/20 group-hover:border-primary-500/50'}`}>
+                                                    {acceptedLGPD && <Check size={14} className="text-black" strokeWidth={4} />}
+                                                </div>
+                                                <p className="text-[11px] text-zinc-400 leading-tight">
+                                                    Li e aceito os <button type="button" onClick={(e) => { e.stopPropagation(); navigate('/terms'); }} className="text-primary-400 hover:underline">Termos de Uso</button> e a <button type="button" onClick={(e) => { e.stopPropagation(); navigate('/privacy'); }} className="text-primary-400 hover:underline">Política de Privacidade</button> (LGPD).
+                                                </p>
+                                            </div>
+
+                                            <p className="text-[10px] text-zinc-500 text-center px-4 leading-relaxed italic">
                                                 CPF, PIX e Telefone serão solicitados quando você quiser participar das cotas ou solicitar apoio mútuo.
                                             </p>
                                         </>
@@ -527,9 +549,9 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
 
                     <footer className="text-center">
                         <div className="flex justify-center gap-6 text-[10px] text-zinc-600 mb-2">
-                            <a href="/terms" className="hover:text-zinc-400">Termos</a>
-                            <a href="/privacy" className="hover:text-zinc-400">Privacidade</a>
-                            <a href="https://wa.me/5591980177874?text=Olá, preciso de suporte com o Cred30" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400">Suporte</a>
+                            <button type="button" onClick={() => navigate('/terms')} className="hover:text-zinc-400 transition-colors font-medium">Termos</button>
+                            <button type="button" onClick={() => navigate('/privacy')} className="hover:text-zinc-400 transition-colors font-medium">Privacidade</button>
+                            <a href="https://wa.me/5591980177874?text=Olá, preciso de suporte com o Cred30" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors font-medium">Suporte</a>
                         </div>
                         <p className="text-[10px] text-zinc-700">© 2025 Cred30 Comunidade de Apoio</p>
                     </footer>

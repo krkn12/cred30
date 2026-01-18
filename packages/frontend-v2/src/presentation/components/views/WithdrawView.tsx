@@ -296,9 +296,15 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                 </p>
             </div>
 
-            {/* Legal Disclaimer */}
-            <div className="px-4 text-[10px] text-zinc-600 text-center leading-relaxed">
-                <p>O resgate será processado via PIX pelo administrador do Cred30. O Cred30 não armazena dados financeiros. O prazo de processamento pode variar em feriados ou fins de semana. Resgates acima de R$ 2.000,00 podem exigir comprovação de origem dos fundos conforme política anti-lavagem (AML).</p>
+            {/* Legal Disclaimer & Compliance */}
+            <div className="px-6 py-4 bg-zinc-900/30 border border-white/5 rounded-2xl space-y-3">
+                <p className="text-[10px] text-zinc-500 text-center leading-relaxed">
+                    <strong className="text-zinc-400">Natureza da Operação:</strong> Você está solicitando a restituição de aporte/excedente de uma associação de apoio mútuo. Esta operação <strong className="text-zinc-400">NÃO</strong> é um serviço bancário.
+                </p>
+                <div className="h-px bg-white/5 w-1/2 mx-auto" />
+                <p className="text-[9px] text-zinc-600 text-center leading-relaxed italic">
+                    O resgate será processado via PIX pelo administrador. O prazo de 24h úteis depende da liquidez do fundo comum e disponibilidade bancária. Ao confirmar, você declara ciência de que o sistema opera sob regime de cooperação mútua (Art. 991-996 CCB).
+                </p>
             </div>
 
             {/* Anúncio Intersticial - Abre AdsTerra antes do saque */}

@@ -122,7 +122,6 @@ const convertApiUserToUser = (apiUser: ApiUser): User => {
     email: apiUser.email || '',
     secretPhrase: '', // Não é retornado pela API
     pixKey: apiUser.pixKey || apiUser.pix_key || '',
-    passwordHash: apiUser.passwordHash || apiUser.password_hash || '',
     balance: typeof apiUser.balance === 'string' ? parseFloat(apiUser.balance) : (apiUser.balance || 0),
     joinedAt: apiUser.joinedAt || apiUser.created_at || new Date().toISOString(),
     referralCode: apiUser.referralCode || apiUser.referral_code || '',
@@ -310,8 +309,6 @@ export const loadState = async (): Promise<AppState> => {
           // Atualizar cache do dashboard
           cachedDashboard = { systemBalance, profitPool, stats };
           lastDashboardCacheTime = now;
-
-          console.log('Dashboard completo recebido e cache atualizado:', dashboard);
         }
       } catch (error) {
         console.error('Erro ao carregar dashboard administrativo:', error);

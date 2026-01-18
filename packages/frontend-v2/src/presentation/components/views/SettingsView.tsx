@@ -50,6 +50,7 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
     const [isSavingSecurity, setIsSavingSecurity] = useState(false);
     const [securityPassword, setSecurityPassword] = useState('');
     const [showSecurityConfirm, setShowSecurityConfirm] = useState(false);
+    const [show2FASecret, setShow2FASecret] = useState(false);
     const [pendingAction, setPendingAction] = useState<'SECURITY' | 'PIX' | null>(null);
 
     // PIX State
@@ -157,6 +158,8 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                 setTimeout(() => {
                     setShow2FASetup(false);
                     setSuccessMessage('');
+                    setVerifyCode('');
+                    setShow2FASecret(false);
                     if (onRefresh) onRefresh();
                     else window.location.reload();
                 }, 1500);
@@ -791,8 +794,14 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                             <div>
                                 <p className="text-[10px] text-zinc-500 uppercase font-bold mb-2">Chave Secreta</p>
                                 <div className="flex items-center gap-2">
-                                    <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 font-mono text-primary-400 text-sm font-bold tracking-wider overflow-x-auto whitespace-nowrap hide-scrollbar">
-                                        {twoFactorData?.secret}
+                                    <div
+                                        onClick={() => setShow2FASecret(!show2FASecret)}
+                                        className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 font-mono text-primary-400 text-sm font-bold tracking-wider overflow-x-auto whitespace-nowrap hide-scrollbar cursor-pointer group"
+                                    >
+                                        {show2FASecret ? twoFactorData?.secret : '•••• •••• •••• ••••'}
+                                        {!show2FASecret && (
+                                            <span className="ml-2 text-[8px] text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity uppercase">Clique para ver</span>
+                                        )}
                                     </div>
                                     <button
                                         onClick={() => {
