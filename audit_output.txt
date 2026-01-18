@@ -13,9 +13,9 @@ SAÚDE FINANCEIRA:
 - Lucro Admin: R$ 10.00
 
 LISTAGEM DE TODOS OS USUÁRIOS:
-- Josias Silva | josiassm701@gmail.com | Saldo: R$ 0.00 | Score: 0 | Verificado: false
-- Carlos Bruno ferreira | carlosbrunoferreira340@gmail.com | Saldo: R$ 0.00 | Score: 30 | Verificado: false
-- luis fabio | assm701@gmail.com | Saldo: R$ 0.00 | Score: 100 | Verificado: false
+- Josias Silva | josiassm701@gmail.com | Saldo: R$ 0.00 | Score: 0 | Verificado: true
+- Carlos Bruno ferreira | carlosbrunoferreira340@gmail.com | Saldo: R$ 0.00 | Score: 30 | Verificado: true
+- luis fabio | assm701@gmail.com | Saldo: R$ 0.00 | Score: 100 | Verificado: true
 
 EMPRÉSTIMOS:
 - Status [APPROVED]: 1 contratos (Soma: R$ 70.00)
