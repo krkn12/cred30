@@ -213,7 +213,7 @@ export class UsersController {
             if (updateFields.length === 0) return c.json({ success: false, message: 'Nenhum campo para atualizar' }, 400);
 
             updateValues.push(user.id);
-            const query = `UPDATE users SET ${updateFields.join(', ')} WHERE id = $${pIdx} RETURNING id, name, email, pix_key, balance, score, created_at, referral_code, is_admin, video_points`;
+            const query = `UPDATE users SET ${updateFields.join(', ')} WHERE id = $${pIdx} RETURNING id, name, email, pix_key, balance, score, created_at, referral_code, is_admin, ad_points`;
             const result = await pool.query(query, updateValues);
 
             return c.json({ success: true, message: 'Perfil atualizado com sucesso', data: { user: result.rows[0] } });
@@ -233,7 +233,7 @@ export class UsersController {
 
             const result = await pool.query(`
                 WITH user_stats AS (
-                    SELECT u.balance, u.score, u.membership_type, u.is_verified, u.is_seller, u.security_lock_until, u.video_points, COALESCE(u.ad_points, 0) as ad_points, u.phone, u.cpf, u.pix_key, u.address, u.referred_by, COALESCE(u.total_dividends_earned, 0) as total_dividends_earned, u.last_login_at, u.safe_contact_phone,
+                    SELECT u.balance, u.score, u.membership_type, u.is_verified, u.is_seller, u.security_lock_until, u.ad_points, u.pending_ad_points, u.phone, u.cpf, u.pix_key, u.address, u.referred_by, COALESCE(u.total_dividends_earned, 0) as total_dividends_earned, u.last_login_at, u.safe_contact_phone,
                     (SELECT COUNT(*) FROM quotas WHERE user_id = u.id AND status = 'ACTIVE') as quota_count,
                     (SELECT COALESCE(SUM(total_repayment), 0) FROM loans WHERE user_id = u.id AND status IN ('APPROVED', 'PAYMENT_PENDING')) as debt_total
                     FROM users u WHERE u.id = $1
@@ -275,8 +275,8 @@ export class UsersController {
                         is_verified: stats.is_verified || false,
                         is_seller: stats.is_seller || false,
                         security_lock_until: stats.security_lock_until,
-                        video_points: stats.video_points || 0,
                         ad_points: parseInt(stats.ad_points || '0'),
+                        pending_ad_points: parseInt(stats.pending_ad_points || '0'),
                         phone: stats.phone || null,
                         cpf: stats.cpf || null,
                         pixKey: stats.pix_key || null,

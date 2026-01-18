@@ -19,8 +19,8 @@ export interface UserContext {
   membership_type?: string;
   is_verified?: boolean;
   is_seller?: boolean;
-  video_points?: number;
   ad_points?: number;
+  pending_ad_points?: number;
   address?: string;
   total_dividends_earned?: number;
   last_login_at?: string;
