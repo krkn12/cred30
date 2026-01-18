@@ -39,16 +39,19 @@ export class AdminInvestmentsController {
             const statsRes = await pool.query(`
                 SELECT 
                     (SELECT COUNT(*) FROM quotas WHERE status = 'ACTIVE') as quotas_count,
-                    (SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING')) as total_loaned
+                    (SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING', 'ACTIVE')) as total_loaned
             `);
             const stats = statsRes.rows[0];
 
-            // FÓRMULA FINAL JOSIAS: Liquidez Real = (Cotas × 42) - Empréstimos
+            const totalInvestedRes = await pool.query(`SELECT COALESCE(SUM(total_invested), 0) as total FROM investments WHERE status = 'ACTIVE'`);
+            const totalInvestedValue = parseFloat(totalInvestedRes.rows[0].total);
+
+            // FÓRMULA FINAL JOSIAS: Liquidez Real = (Cotas × 42) - Empréstimos - Investimentos
             const activeQuotasCount = Number(stats.quotas_count || 0);
             const totalCapitalSocial = activeQuotasCount * QUOTA_SHARE_VALUE;
             const totalEmprestimos = Number(stats.total_loaned || 0);
 
-            const realLiquidity = totalCapitalSocial - totalEmprestimos;
+            const realLiquidity = totalCapitalSocial - totalEmprestimos - totalInvestedValue;
 
             const availableReserve = parseFloat(config.investment_reserve || 0);
             const totalInvested = activeResult.rows.reduce((acc: any, inv: any) => acc + parseFloat(inv.total_invested), 0);
@@ -119,17 +122,28 @@ export class AdminInvestmentsController {
             const pool = getDbPool(c);
 
             const result = await executeInTransaction(pool, async (client) => {
-                const reserveResult = await client.query(
-                    'SELECT COALESCE(investment_reserve, 0) as reserve FROM system_config LIMIT 1 FOR UPDATE'
-                );
-                const availableReserve = parseFloat(reserveResult.rows[0]?.reserve || 0);
+                const statsRes = await client.query(`
+                    SELECT 
+                        (SELECT COUNT(*) FROM quotas WHERE status = 'ACTIVE') as quotas_count,
+                        (SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING', 'ACTIVE')) as total_loaned,
+                        (SELECT COALESCE(SUM(total_invested), 0) FROM investments WHERE status = 'ACTIVE') as total_invested,
+                        (SELECT system_balance FROM system_config LIMIT 1) as system_balance
+                `);
+                const stats = statsRes.rows[0];
+                const realLiquidity = (Number(stats.quotas_count) * QUOTA_SHARE_VALUE) - Number(stats.total_loaned) - Number(stats.total_invested);
+                const systemBalance = parseFloat(stats.system_balance || 0);
 
-                if (data.totalInvested > availableReserve) {
-                    throw new Error(`Saldo insuficiente na reserva de investimentos. Disponível: R$ ${availableReserve.toFixed(2)}`);
+                if (data.totalInvested > realLiquidity) {
+                    throw new Error(`Saldo insuficiente na Liquidez Real. Disponível: R$ ${realLiquidity.toFixed(2)}`);
                 }
 
+                if (data.totalInvested > systemBalance) {
+                    throw new Error(`Saldo insuficiente no caixa do sistema (PIX). Disponível: R$ ${systemBalance.toFixed(2)}`);
+                }
+
+                // Debita do saldo do sistema (Caixa Real)
                 await client.query(
-                    'UPDATE system_config SET investment_reserve = investment_reserve - $1',
+                    'UPDATE system_config SET system_balance = system_balance - $1',
                     [data.totalInvested]
                 );
 
@@ -235,7 +249,7 @@ export class AdminInvestmentsController {
 
                 if (reinvest) {
                     await client.query(
-                        'UPDATE system_config SET investment_reserve = COALESCE(investment_reserve, 0) + $1',
+                        'UPDATE system_config SET system_balance = COALESCE(system_balance, 0) + $1',
                         [amount]
                     );
                 } else {
@@ -283,7 +297,7 @@ export class AdminInvestmentsController {
                 const profitLoss = saleValue - totalInvested;
 
                 await client.query(
-                    'UPDATE system_config SET investment_reserve = COALESCE(investment_reserve, 0) + $1',
+                    'UPDATE system_config SET system_balance = COALESCE(system_balance, 0) + $1',
                     [saleValue]
                 );
 
@@ -324,7 +338,7 @@ export class AdminInvestmentsController {
             const pool = getDbPool(c);
 
             await pool.query(
-                'UPDATE system_config SET investment_reserve = COALESCE(investment_reserve, 0) + $1, updated_at = NOW()',
+                'UPDATE system_config SET system_balance = COALESCE(system_balance, 0) + $1, updated_at = NOW()',
                 [amount]
             );
 

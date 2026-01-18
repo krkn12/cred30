@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Gift } from 'lucide-react';
+import { Gift, Shield, Zap } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 import { AdminUserManagement } from '../AdminUserManagement';
 
@@ -16,6 +16,11 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ onSuccess, onError }) =>
     const [depositEmail, setDepositEmail] = useState('');
     const [depositAmount, setDepositAmount] = useState('');
     const [depositReason, setDepositReason] = useState('');
+
+    const [loanUserId, setLoanUserId] = useState('');
+    const [loanAmount, setLoanAmount] = useState('');
+    const [loanInterest, setLoanInterest] = useState('20');
+    const [loanInstallments, setLoanInstallments] = useState('12');
 
     const handleGiftQuota = async () => {
         if (!giftEmail || !giftQuantity) return;
@@ -51,6 +56,29 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ onSuccess, onError }) =>
                 setDepositEmail('');
                 setDepositAmount('');
                 setDepositReason('');
+            } else {
+                onError('Erro', response.message);
+            }
+        } catch (e: any) {
+            onError('Erro', e.message);
+        }
+    };
+
+    const handleCreateManualLoan = async () => {
+        if (!loanUserId || !loanAmount || !loanInterest || !loanInstallments) return;
+        if (!window.confirm(`CONFIRMAÇÃO CRÍTICA (EMPRÉSTIMO MANUAL): Criar empréstimo de R$ ${loanAmount} para o Usuário ID ${loanUserId}?`)) return;
+
+        try {
+            const response = await apiService.post<any>('/admin/users/create-manual-loan', {
+                userId: parseInt(loanUserId),
+                amount: parseFloat(loanAmount),
+                interestRate: parseFloat(loanInterest),
+                installments: parseInt(loanInstallments)
+            });
+            if (response.success) {
+                onSuccess('Empréstimo Criado!', response.message);
+                setLoanUserId('');
+                setLoanAmount('');
             } else {
                 onError('Erro', response.message);
             }
@@ -129,6 +157,70 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ onSuccess, onError }) =>
                         onChange={(e) => setDepositReason(e.target.value)}
                         className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-emerald-500/50 font-bold text-sm"
                     />
+                </div>
+            </div>
+
+            <div className="bg-zinc-900 border-2 border-primary-500/20 rounded-3xl p-8 shadow-2xl max-w-2xl mx-auto">
+                <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
+                    <div className="p-2 bg-primary-500/10 rounded-lg"><Shield className="text-primary-400" size={20} /></div>
+                    Empréstimo Manual Especial (Forçar Liberação)
+                </h3>
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-zinc-500 font-black uppercase ml-1">ID do Usuário</label>
+                            <input
+                                type="number"
+                                placeholder="ID Numérico"
+                                value={loanUserId}
+                                onChange={(e) => setLoanUserId(e.target.value)}
+                                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-bold"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-zinc-500 font-black uppercase ml-1">Valor do Empréstimo (R$)</label>
+                            <input
+                                type="number"
+                                placeholder="Ex: 500.00"
+                                value={loanAmount}
+                                onChange={(e) => setLoanAmount(e.target.value)}
+                                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-bold"
+                            />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-zinc-500 font-black uppercase ml-1">Juros Total (%)</label>
+                            <input
+                                type="number"
+                                placeholder="20"
+                                value={loanInterest}
+                                onChange={(e) => setLoanInterest(e.target.value)}
+                                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-bold text-center"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-zinc-500 font-black uppercase ml-1">Parcelas</label>
+                            <select
+                                value={loanInstallments}
+                                onChange={(e) => setLoanInstallments(e.target.value)}
+                                className="w-full h-[60px] bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 text-white outline-none focus:border-primary-500/50 font-bold"
+                            >
+                                {[1, 2, 3, 6, 12, 18, 24, 36].map(n => (
+                                    <option key={n} value={n}>{n}x parcelas</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleCreateManualLoan}
+                        className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black px-6 py-5 rounded-2xl transition-all shadow-xl flex items-center justify-center gap-2 mt-4"
+                    >
+                        <Zap size={20} /> LIBERAR EMPRÉSTIMO MANUAL
+                    </button>
+                    <p className="text-[9px] text-zinc-500 font-bold text-center uppercase tracking-widest px-4">
+                        ESTA AÇÃO É IRREVERSÍVEL E DEDUZ DIRETAMENTE DA LIQUIDEZ REAL DO SISTEMA.
+                    </p>
                 </div>
             </div>
         </div>

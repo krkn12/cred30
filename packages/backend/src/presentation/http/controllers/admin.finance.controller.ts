@@ -203,7 +203,7 @@ export class AdminFinanceController {
 
             const totalLoanedResult = await pool.query(
                 `SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) as total_loaned
-         FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING')`
+                 FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING', 'ACTIVE')`
             );
             const totalLoaned = parseFloat(totalLoanedResult.rows[0].total_loaned);
             const operationalCash = totalQuotasValue - totalLoaned;
@@ -241,17 +241,21 @@ export class AdminFinanceController {
             const totalMonthlyCosts = parseFloat(stats.total_monthly_costs);
             const activeProposalsCount = parseInt(stats.active_proposals_count || 0);
 
-            // FÓRMULA FINAL JOSIAS: Liquidez Real = (Cotas × 42) - Empréstimos
+            const totalInvestedRes = await pool.query(`SELECT COALESCE(SUM(total_invested), 0) as total FROM investments WHERE status = 'ACTIVE'`);
+            const totalInvestedValue = parseFloat(totalInvestedRes.rows[0].total);
+
+            // FÓRMULA FINAL JOSIAS: Liquidez Real = (Cotas × 42) - Empréstimos - Investimentos Ativos
             const activeQuotasCount = Number(stats.quotas_count || 0);
             const totalCapitalSocial = activeQuotasCount * QUOTA_SHARE_VALUE; // R$ 42 por cota
             const totalEmprestimos = Number(totalLoaned || 0);
 
-            config.real_liquidity = totalCapitalSocial - totalEmprestimos;
+            config.real_liquidity = totalCapitalSocial - totalEmprestimos - totalInvestedValue;
 
             // LOG DE DEBUG
             console.error('🔍 [LIQUIDEZ] Cotas:', activeQuotasCount, '× R$ 42 = R$', totalCapitalSocial);
             console.error('🔍 [LIQUIDEZ] Empréstimos: R$', totalEmprestimos);
-            console.error('🔍 [LIQUIDEZ] RESULTADO:', config.real_liquidity);
+            console.error('🔍 [LIQUIDEZ] Investimentos Ativos: R$', totalInvestedValue);
+            console.error('🔍 [LIQUIDEZ] RESULTADO FINAL:', config.real_liquidity);
 
             // Manter total_reserves para compatibilidade
             const calcTax = Number(config.total_tax_reserve || 0);

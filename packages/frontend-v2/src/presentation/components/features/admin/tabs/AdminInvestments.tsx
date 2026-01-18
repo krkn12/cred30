@@ -40,6 +40,7 @@ interface InvestmentSold {
 
 interface InvestmentSummary {
     availableReserve: number;
+    realLiquidity: number;
     totalInvested: number;
     totalCurrentValue: number;
     totalDividends: number;
@@ -231,7 +232,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                             <div className="w-9 h-9 rounded-xl bg-primary-500/20 flex items-center justify-center">
                                 <PiggyBank size={18} className="text-primary-400" />
                             </div>
-                            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Disponível</span>
+                            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Liquidez Real</span>
                         </div>
                         <button
                             onClick={() => setShowReserveModal(true)}
@@ -242,7 +243,7 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                         </button>
                     </div>
                     <p className="text-xl sm:text-2xl font-black text-white relative z-10">
-                        R$ {summary?.availableReserve.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                        R$ {summary?.realLiquidity.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
                     </p>
                     <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
                         <PiggyBank size={80} />

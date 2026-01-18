@@ -436,8 +436,12 @@ export class UsersController {
 
             if (adsToday < 3) {
                 scoreReward = 5;
-                await pool.query('UPDATE users SET score = score + $1 WHERE id = $2', [scoreReward, user.id]);
-                message = `Parabéns! Você ganhou +${scoreReward} pontos de Score!`;
+                await pool.query('UPDATE users SET score = score + $1, ad_points = COALESCE(ad_points, 0) + 1 WHERE id = $2', [scoreReward, user.id]);
+                message = `Parabéns! Você ganhou +${scoreReward} pontos de Score e +1 ponto de Farm!`;
+            } else {
+                // Mesmo após o limite de score, continua ganhando pontos de farm (Top Farm)
+                await pool.query('UPDATE users SET ad_points = COALESCE(ad_points, 0) + 1 WHERE id = $1', [user.id]);
+                message = 'Obrigado por apoiar o projeto! +1 ponto de Farm creditado.';
             }
 
             await pool.query(`INSERT INTO transactions (user_id, type, amount, status, description, metadata) VALUES ($1, 'AD_REWARD', 0, 'APPROVED', $2, $3)`, [user.id, `Visualização de anúncio`, JSON.stringify({ scoreRewarded: scoreReward })]);

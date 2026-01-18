@@ -533,4 +533,98 @@ export class AdminUsersController {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
+
+    /**
+     * Criar Empréstimo Manual (Ação Admin)
+     */
+    static async createManualLoan(c: Context) {
+        try {
+            const body = await c.req.json();
+            const { userId, amount, interestRate, installments, description } = body;
+            const pool = getDbPool(c);
+
+            if (!userId || !amount || !interestRate || !installments) {
+                return c.json({ success: false, message: 'Campos obrigatórios: userId, amount, interestRate, installments' }, 400);
+            }
+
+            const result = await executeInTransaction(pool, async (client) => {
+                // 1. Verificar Liquidez Real
+                const statsRes = await client.query(`
+                    SELECT 
+                        (SELECT COUNT(*) FROM quotas WHERE status = 'ACTIVE') as quotas_count,
+                        (SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING', 'ACTIVE')) as total_loaned,
+                        (SELECT COALESCE(SUM(total_invested), 0) FROM investments WHERE status = 'ACTIVE') as total_invested,
+                        (SELECT system_balance FROM system_config LIMIT 1) as system_balance
+                `);
+                const stats = statsRes.rows[0];
+                const realLiquidity = (Number(stats.quotas_count) * QUOTA_SHARE_VALUE) - Number(stats.total_loaned) - Number(stats.total_invested);
+
+                if (amount > realLiquidity) {
+                    throw new Error(`Saldo insuficiente na Liquidez Real (R$ ${realLiquidity.toFixed(2)}). Empréstimo não autorizado.`);
+                }
+
+                // 2. Buscar Usuário
+                const userRes = await client.query('SELECT name FROM users WHERE id = $1', [userId]);
+                if (userRes.rows.length === 0) throw new Error('Usuário não encontrado');
+
+                // 3. Criar Empréstimo
+                const interestAmount = amount * (interestRate / 100);
+                const totalRepayment = amount + interestAmount;
+                const installmentAmount = totalRepayment / installments;
+                const dueDate = new Date();
+                dueDate.setDate(dueDate.getDate() + 30); // Primeira parcela em 30 dias
+
+                const loanResult = await client.query(`
+                    INSERT INTO loans (user_id, amount, interest_rate, total_repayment, installments, remaining_installments, status, due_date, metadata, created_at)
+                    VALUES ($1, $2, $3, $4, $5, $5, 'APPROVED', $6, $7, NOW())
+                    RETURNING id
+                `, [
+                    userId,
+                    amount,
+                    interestRate / 100,
+                    totalRepayment,
+                    installments,
+                    dueDate,
+                    JSON.stringify({
+                        origin: 'ADMIN_MANUAL',
+                        description: description || 'Empréstimo manual administrativo',
+                        interestAmount,
+                        installmentAmount
+                    })
+                ]);
+
+                // 4. Registrar Transação de Saída do Caixa
+                await client.query(`
+                    INSERT INTO transactions (user_id, type, amount, status, description, metadata, created_at)
+                    VALUES ($1, 'LOAN_DISBURSEMENT', $2, 'APPROVED', $3, $4, NOW())
+                `, [
+                    userId,
+                    -amount,
+                    `Empréstimo Especial Liberado pelo Admin`,
+                    JSON.stringify({ loanId: loanResult.rows[0].id })
+                ]);
+
+                // 5. Adicionar saldo ao usuário (para ele sacar ou usar)
+                await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [amount, userId]);
+
+                // 6. Deduzir do saldo do sistema (Caixa PIX)
+                await client.query('UPDATE system_config SET system_balance = system_balance - $1', [amount]);
+
+                return { loanId: loanResult.rows[0].id, userName: userRes.rows[0].name };
+            });
+
+            if (!result.success) {
+                return c.json({ success: false, message: result.error }, 400);
+            }
+
+            return c.json({
+                success: true,
+                message: `Empréstimo de R$ ${amount.toFixed(2)} criado com sucesso para ${result.data?.userName}!`,
+                data: result.data
+            });
+        } catch (error: any) {
+            console.error('[ADMIN] Erro ao criar empréstimo manual:', error);
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
 }
