@@ -161,6 +161,7 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title:
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-black/40 border-b border-zinc-800">
+                                <th className="px-6 py-5 text-[10px] font-black text-zinc-500 uppercase tracking-widest w-16">ID</th>
                                 <th className="px-6 py-5 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Membro</th>
                                 <th className="px-6 py-5 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Status/Cargo</th>
                                 <th className="px-6 py-5 text-[10px] font-black text-zinc-500 uppercase tracking-widest text-right">Saldo/Score</th>
@@ -181,6 +182,9 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title:
                             ) : (
                                 users.map(user => (
                                     <tr key={user.id} className="hover:bg-white/[0.02] transition-colors group">
+                                        <td className="px-6 py-5">
+                                            <span className="text-[10px] font-black text-zinc-600">#{user.id}</span>
+                                        </td>
                                         <td className="px-6 py-5">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-400 font-black text-xs shadow-inner uppercase tracking-tighter">

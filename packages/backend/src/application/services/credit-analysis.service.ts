@@ -140,23 +140,7 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         const isElite = score >= 950 && accountAgeDays >= 90 && !hasLateHistory;
         const profitBonusFactor = (systemProfitPool > 0 && isElite) ? 0.05 : 0;
 
-        // --- BYPASS PARA ADMIN ---
-        if (userData.role === 'ADMIN') {
-            const adminDetails = {
-                score: 1000,
-                quotasCount: quotasCount || 100,
-                quotasValue: quotasValue || 5000,
-                marketplaceTransactions: 999,
-                accountAgeDays: 999,
-                hasOverdue: false,
-                totalSpent: totalSpent || 10000,
-                maxLoanAmount: 1000000, // 1 Milhão de limite
-                isCurrentlyGuarantor: false
-            };
-
-            console.log(`[DEBUG_CREDIT] 👑 ADMIN DETECTED (${userId}): Bypassing limits.`);
-            return { eligible: true, details: adminDetails };
-        }
+        // Bypass de Admin removido para seguir as mesmas regras dos demais usuários (solicitação Josias)
 
         // INFLUÊNCIA DO SCORE (Novo Pedido):
         // Score 0 a 1000.

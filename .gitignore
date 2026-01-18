@@ -142,17 +142,31 @@ test-*.js
 # Repositórios Externos (Separate projects)
 landing_github/
 
-# Auditoria e Logs do Sistema (Limpeza Josias)
+# Auditoria, Logs e Snapshots (Limpeza Josias)
 *.txt
 *.log
 *.json
+*.md
 !package.json
 !package-lock.json
 !firebase.json
 !render.yaml
-!cred30-prod-app-2025-firebase-adminsdk-*.json
+!tsconfig.json
 
-# Scripts de Auditoria e Diagnóstico (Manter apenas o essencial)
+# Segredos e Chaves (Segurança Crítica)
+.env*
+*-firebase-adminsdk-*.json
+*.key
+*.pem
+
+# Snapshots de Dados e Dumps
+prod_full_snapshot.json
+prod_summary_report.txt
+fiscal_*.txt
+user_limits.txt
+quota_fees_debug.txt
+
+# Scripts de Auditoria (Ignorar execuções, manter fontes essenciais)
 scripts/*.js
 !scripts/release.js
 !scripts/analyze_db.js
@@ -160,5 +174,20 @@ scripts/*.js
 !scripts/set_admin_josias.js
 !scripts/reconcile_finance.js
 !scripts/debug_db.js
-scripts/database/
-scripts/development/
+!scripts/financial_repair.js
+!scripts/find_duplicates.js
+!scripts/cancel_duplicates.js
+!scripts/clean_fiscal_junk.js
+!scripts/fix_quota_metadata.js
+
+# Pastas de ferramentas e cache
+.firebase/
+.vscode/
+node_modules/
+dist/
+build/
+.next/
+tmp/
+temp/
+docs/
+landing_github/
