@@ -247,8 +247,11 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                                 <span className="w-1 h-1 rounded-full bg-zinc-700" />
                                 {new Date().toLocaleDateString('pt-BR', { weekday: 'long' })}
                             </p>
-                            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-none text-gradient truncate">
+                            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-none text-gradient truncate flex items-center gap-2">
                                 {user.name.split(' ')[0]}<span className="text-white">.</span>
+                                <span className="text-[10px] sm:text-xs font-black text-white/50 bg-white/5 px-2 py-1 rounded-lg border border-white/5 align-middle mt-2">
+                                    #{user.id}
+                                </span>
                             </h1>
                         </div>
 

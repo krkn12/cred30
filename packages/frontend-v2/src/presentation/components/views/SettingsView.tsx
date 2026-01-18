@@ -339,6 +339,13 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                 <h3 className="text-lg font-bold text-white mb-4">Perfil</h3>
                 <div className="space-y-4">
                     <div>
+                        <label className="text-xs text-zinc-500">ID da Conta</label>
+                        <p className="text-primary-400 font-black border-b border-surfaceHighlight pb-2 flex items-center gap-2">
+                            #{user.id}
+                            <span className="text-[10px] bg-primary-500/10 px-2 py-0.5 rounded text-primary-500 uppercase">Referência Oficial</span>
+                        </p>
+                    </div>
+                    <div>
                         <label className="text-xs text-zinc-500">Nome</label>
                         <p className="text-white border-b border-surfaceHighlight pb-2">{user.name}</p>
                     </div>
