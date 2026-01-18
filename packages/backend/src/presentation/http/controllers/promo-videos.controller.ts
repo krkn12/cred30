@@ -223,7 +223,7 @@ export class PromoVideosController {
             const result = await pool.query(`
         SELECT 
             COALESCE(SUM(earned), 0) as total_earned,
-            (SELECT video_points FROM users WHERE id = $1) as current_points,
+            (SELECT ad_points FROM users WHERE id = $1) as current_points,
             COUNT(*) FILTER (WHERE completed = TRUE) as videos_watched
         FROM promo_video_views
         WHERE viewer_id = $1
@@ -294,14 +294,14 @@ export class PromoVideosController {
             const userPayload = c.get('user');
             const pool = getDbPool(c);
 
-            const userRes = await pool.query('SELECT video_points, balance FROM users WHERE id = $1', [userPayload.id]);
+            const userRes = await pool.query('SELECT ad_points, balance FROM users WHERE id = $1', [userPayload.id]);
             const user = userRes.rows[0];
 
-            if (user.video_points < MIN_CONVERSION_POINTS) {
+            if (user.ad_points < MIN_CONVERSION_POINTS) {
                 return c.json({ success: false, message: `Mínimo de ${MIN_CONVERSION_POINTS} pontos para conversão.` }, 400);
             }
 
-            const pointsToConvert = Math.floor(user.video_points);
+            const pointsToConvert = Math.floor(user.ad_points);
             const amountToAdd = pointsToConvert / POINTS_PER_REAL;
 
             await executeInTransaction(pool, async (client) => {
@@ -313,7 +313,7 @@ export class PromoVideosController {
                 }
 
                 await client.query('UPDATE system_config SET profit_pool = profit_pool - $1', [amountToAdd]);
-                await client.query('UPDATE users SET video_points = video_points - $1 WHERE id = $2', [pointsToConvert, userPayload.id]);
+                await client.query('UPDATE users SET ad_points = ad_points - $1 WHERE id = $2', [pointsToConvert, userPayload.id]);
                 await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [amountToAdd, userPayload.id]);
                 await client.query(`
           INSERT INTO transactions (user_id, type, amount, description, status)
@@ -601,7 +601,7 @@ export class PromoVideosController {
                     UPDATE promo_videos SET total_views = total_views + 1, spent = spent + $1 WHERE id = $2
                 `, [viewerEarningAmount, videoId]);
 
-                await client.query('UPDATE users SET video_points = video_points + $1 WHERE id = $2', [viewerEarningPoints, userPayload.id]);
+                await client.query('UPDATE users SET ad_points = ad_points + $1 WHERE id = $2', [viewerEarningPoints, userPayload.id]);
 
                 if (missionPoints > 0) {
                     await client.query(`
@@ -609,7 +609,7 @@ export class PromoVideosController {
                         VALUES ($1, $2, $3, $4, 'PENDING')
                     `, [userPayload.id, videoId, viewUpdate.rows[0].id, missionPoints]);
 
-                    await client.query('UPDATE users SET pending_video_points = pending_video_points + $1 WHERE id = $2', [missionPoints, userPayload.id]);
+                    await client.query('UPDATE users SET pending_ad_points = pending_ad_points + $1 WHERE id = $2', [missionPoints, userPayload.id]);
                 }
 
                 // Auditoria Triple-Check (A cada 20 views)
@@ -674,7 +674,7 @@ export class PromoVideosController {
                             `, [videoId]);
 
                             for (const reward of pendingToApprove.rows) {
-                                await client.query('UPDATE users SET video_points = video_points + $1, pending_video_points = pending_video_points - $1 WHERE id = $2', [reward.points, reward.user_id]);
+                                await client.query('UPDATE users SET ad_points = ad_points + $1, pending_ad_points = pending_ad_points - $1 WHERE id = $2', [reward.points, reward.user_id]);
                                 await client.query('UPDATE pending_mission_rewards SET status = \'APPROVED\', processed_at = NOW() WHERE id = $1', [reward.id]);
                             }
                         }

@@ -29,9 +29,9 @@ async function analyze() {
         }
 
         output += `\nLISTAGEM DE TODOS OS USUÁRIOS:\n`;
-        const usersRes = await pool.query('SELECT name, email, balance, score, is_verified FROM users');
+        const usersRes = await pool.query('SELECT name, email, balance, score, is_verified, ad_points FROM users ORDER BY ad_points DESC');
         usersRes.rows.forEach(u => {
-            output += `- ${u.name} | ${u.email} | Saldo: R$ ${u.balance} | Score: ${u.score} | Verificado: ${u.is_verified}\n`;
+            output += `- ${u.name} | ${u.email} | Saldo: R$ ${u.balance} | Score: ${u.score} | Farm: ${u.ad_points || 0} | Verificado: ${u.is_verified}\n`;
         });
 
         output += `\nEMPRÉSTIMOS:\n`;

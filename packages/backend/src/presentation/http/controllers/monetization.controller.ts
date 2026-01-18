@@ -13,8 +13,8 @@ import {
 import { UserContext } from '../../../shared/types/hono.types';
 
 const PRO_UPGRADE_FEE = 29.90;
-const POINTS_RATE = 1000;
-const MONEY_VALUE = 0.01; // Ajustado para lucro sobre anúncios de R$ 0,001 (Paga R$ 0,0005 por vídeo)
+const POINTS_RATE = 100; // 100 pontos = R$ 1,00
+const MONEY_VALUE = 1.00;
 
 const upgradeProSchema = z.object({
     method: z.enum(['balance', 'pix', 'card']).default('balance'),
