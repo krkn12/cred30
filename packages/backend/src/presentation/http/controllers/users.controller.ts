@@ -233,7 +233,7 @@ export class UsersController {
 
             const result = await pool.query(`
                 WITH user_stats AS (
-                    SELECT u.balance, u.score, u.membership_type, u.is_verified, u.is_seller, u.security_lock_until, u.video_points, COALESCE(u.ad_points, 0) as ad_points, u.phone, u.cpf, u.pix_key, u.address, u.referred_by, COALESCE(u.total_dividends_earned, 0) as total_dividends_earned, u.last_login_at, u.safe_contact_phone, u.password_hash, u.panic_phrase, u.secret_phrase,
+                    SELECT u.balance, u.score, u.membership_type, u.is_verified, u.is_seller, u.security_lock_until, u.video_points, COALESCE(u.ad_points, 0) as ad_points, u.phone, u.cpf, u.pix_key, u.address, u.referred_by, COALESCE(u.total_dividends_earned, 0) as total_dividends_earned, u.last_login_at, u.safe_contact_phone,
                     (SELECT COUNT(*) FROM quotas WHERE user_id = u.id AND status = 'ACTIVE') as quota_count,
                     (SELECT COALESCE(SUM(total_repayment), 0) FROM loans WHERE user_id = u.id AND status IN ('APPROVED', 'PAYMENT_PENDING')) as debt_total
                     FROM users u WHERE u.id = $1
@@ -269,7 +269,6 @@ export class UsersController {
                 data: {
                     user: {
                         ...user,
-                        passwordHash: stats.password_hash || null,
                         balance: parseFloat(stats.balance || '0'),
                         score: stats.score || 0,
                         membership_type: stats.membership_type || 'FREE',
@@ -284,8 +283,6 @@ export class UsersController {
                         address: stats.address || null,
                         referred_by: stats.referred_by || null,
                         safeContactPhone: stats.safe_contact_phone || null,
-                        panicPhrase: stats.panic_phrase || null,
-                        secretPhrase: stats.secret_phrase || null,
                         total_dividends_earned: parseFloat(stats.total_dividends_earned || '0'),
                         last_login_at: stats.last_login_at
                     },

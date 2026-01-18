@@ -170,8 +170,24 @@ export class EarnController {
             const REWARD_POINTS = 30;
 
             const result = await executeInTransaction(pool, async (client: PoolClient) => {
+                // Verificar cooldown (30 segundos)
+                const userRes = await client.query(
+                    'SELECT last_video_reward_at FROM users WHERE id = $1 FOR UPDATE',
+                    [user.id]
+                );
+                const lastReward = userRes.rows[0]?.last_video_reward_at;
+                const now = new Date();
+
+                if (lastReward && (now.getTime() - new Date(lastReward).getTime()) < 30000) {
+                    const remaining = Math.ceil((30000 - (now.getTime() - new Date(lastReward).getTime())) / 1000);
+                    throw new Error(`Aguarde ${remaining} segundos para assistir outro vídeo.`);
+                }
+
                 await client.query(
-                    `UPDATE users SET ad_points = COALESCE(ad_points, 0) + $1 WHERE id = $2`,
+                    `UPDATE users SET 
+                        ad_points = COALESCE(ad_points, 0) + $1,
+                        last_video_reward_at = CURRENT_TIMESTAMP
+                     WHERE id = $2`,
                     [REWARD_POINTS, user.id]
                 );
 

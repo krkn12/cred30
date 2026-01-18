@@ -252,6 +252,15 @@ export const initializeDatabase = async () => {
           await client.query('ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP');
         }
 
+        const videoRewardColumn = await client.query(`
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'last_video_reward_at'
+        `);
+        if (videoRewardColumn.rows.length === 0) {
+          console.log('Adicionando coluna last_video_reward_at à tabela users...');
+          await client.query('ALTER TABLE users ADD COLUMN last_video_reward_at TIMESTAMP');
+        }
+
         console.log('Tabela users verificada e atualizada com sucesso');
       }
     }
