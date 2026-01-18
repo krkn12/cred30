@@ -165,8 +165,8 @@ export class LoansController {
             }
             const originationRate = welcomeBenefit.loanOriginationFeeRate;
 
-            const originationFee = amount * originationRate;
-            const amountToDisburse = amount - originationFee;
+            const originationFee = 0;
+            const amountToDisburse = amount;
             const totalRepayment = amount * (1 + finalInterestRate);
 
             const initialStatus = guarantorId ? 'WAITING_GUARANTOR' : 'PENDING';
@@ -246,11 +246,10 @@ export class LoansController {
             }
 
             const isAutoApproved = result.data?.autoApproved;
-
             return c.json({
                 success: true,
                 message: isAutoApproved
-                    ? `Apoio aprovado! R$ ${amountToDisburse.toFixed(2)} já disponível. Garantia de ${offer.guaranteePercentage}% vinculada.`
+                    ? `Apoio aprovado! R$ ${amount.toFixed(2)} já disponível. Garantia de ${offer.guaranteePercentage}% vinculada.`
                     : guarantorId
                         ? `Solicitação enviada! O fiador ${offer.guarantorName} precisa aprovar na conta dele para prosseguir.`
                         : `Solicitação enviada! Aguardando recursos no caixa do Clube Cred30.`,

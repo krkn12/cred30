@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Users, DollarSign, Calendar, ChevronRight, Loader2, CheckCircle, Clock, Gavel } from 'lucide-react';
+import { Users, DollarSign, Calendar, ChevronRight, Loader2, CheckCircle, Clock, Gavel, AlertTriangle } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 import { AssemblyView } from './AssemblyView';
 
@@ -90,6 +90,22 @@ export const ConsortiumView: React.FC<ConsortiumViewProps> = ({ onSuccess, onErr
                 loadData();
             } else {
                 onError('Erro', res.message || 'Não foi possível pagar.');
+            }
+        } catch (e: any) {
+            onError('Erro', e.message);
+        }
+    };
+
+    const handleWithdraw = async (memberId: string) => {
+        if (!window.confirm('ATENÇÃO: Desistir do consórcio implica em MULTA DE 20% sobre o valor pago e o reembolso não é imediato (conforme Lei 11.795/08). Deseja continuar?')) return;
+
+        try {
+            const res = await apiService.post<{ message: string }>('/consortium/withdraw', { memberId });
+            if (res.success) {
+                onSuccess('Solicitação Aceita', res.data?.message || 'Sua cota foi cancelada e aguarda reembolso sorteado.');
+                loadData();
+            } else {
+                onError('Erro', res.message || 'Não foi possível processar desistência.');
             }
         } catch (e: any) {
             onError('Erro', e.message);
@@ -303,6 +319,13 @@ export const ConsortiumView: React.FC<ConsortiumViewProps> = ({ onSuccess, onErr
                                             className="flex-1 bg-primary-500/10 border border-primary-500/20 text-primary-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary-500/20 transition-all"
                                         >
                                             <Gavel size={16} /> Assembleia
+                                        </button>
+                                        <button
+                                            onClick={() => handleWithdraw(m.id)}
+                                            className="px-4 bg-red-500/5 border border-red-500/10 text-red-500/40 py-3 rounded-xl font-bold hover:bg-red-500/10 hover:text-red-500 transition-all"
+                                            title="Desistir do Consórcio"
+                                        >
+                                            <AlertTriangle size={16} />
                                         </button>
                                     </div>
                                 </div>

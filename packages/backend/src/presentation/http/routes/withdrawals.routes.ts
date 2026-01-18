@@ -1,10 +1,14 @@
 import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middleware';
+import { financialRateLimit } from '../middleware/rate-limit.middleware';
 import { WithdrawalsController } from '../controllers/withdrawals.controller';
 
 const withdrawalRoutes = new Hono();
 
-// Solicitar saque
+// Aplicar rate limiting e trava de segurança para saques
+withdrawalRoutes.use('/request', financialRateLimit, securityLockMiddleware);
+
+// Solicitar saque (com rate limiting e security lock)
 withdrawalRoutes.post('/request', authMiddleware, WithdrawalsController.requestWithdrawal);
 
 // Confirmar saque

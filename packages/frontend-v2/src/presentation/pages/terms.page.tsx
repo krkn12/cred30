@@ -59,36 +59,36 @@ const TermsPage = () => {
                         </div>
                     </section>
 
-                    {/* Natureza Jurídica Detalhada */}
+                    {/* Gestão Coletiva de Bens (Consórcio Pro) */}
                     <section className="bg-zinc-900/30 border border-white/5 p-8 rounded-3xl">
                         <h2 className="text-xl sm:text-2xl font-bold mb-6 flex items-center gap-3 text-emerald-400">
-                            <Scale size={24} /> 1. Estrutura de Blindagem (SCP)
+                            <Scale size={24} /> 1. Aquisição Programada e Blindagem
                         </h2>
                         <div className="space-y-6">
                             <div className="flex gap-4">
                                 <div className="text-zinc-600 font-black text-2xl italic select-none">01</div>
                                 <div>
-                                    <h4 className="text-white font-bold mb-1 uppercase text-xs tracking-widest">Sociedade em Conta de Participação</h4>
+                                    <h4 className="text-white font-bold mb-1 uppercase text-xs tracking-widest">Natureza Associativa</h4>
                                     <p className="text-zinc-400 text-sm leading-relaxed">
-                                        O modelo jurídico adotado é o de <strong>SCP (Art. 991 CC)</strong>. O ingresso do membro ocorre como "Sócio Participante". Não há prestação de serviços financeiros ao público em geral, mas sim uma união de capital privado para objetivo comum.
+                                        O modelo jurídico adotado é o de <strong>SCP (Art. 991 CC)</strong> ou <strong>Sociedade de Ajuda Mútua</strong>. O membro ingressa como cotista de um fundo comum gerido pela Cred30. Não há prestação de serviços financeiros regulados, mas sim a gestão de recursos próprios de um grupo fechado.
                                     </p>
                                 </div>
                             </div>
                             <div className="flex gap-4">
                                 <div className="text-zinc-600 font-black text-2xl italic select-none">02</div>
                                 <div>
-                                    <h4 className="text-white font-bold mb-1 uppercase text-xs tracking-widest">Inexistência de Oferta Pública</h4>
+                                    <h4 className="text-white font-bold mb-1 uppercase text-xs tracking-widest">Alienação e Garantia Real</h4>
                                     <p className="text-zinc-400 text-sm leading-relaxed">
-                                        A Cred30 NÃO realiza oferta pública de investimentos. O acesso é restrito a convidados e membros aprovados pelo comitê de score. Isso nos exclui da regulação da CVM (Comissão de Valores Mobiliários) quanto à oferta de títulos financeiros.
+                                        Todo bem adquirido com recursos do fundo comum será objeto de <strong>Alienação Fiduciária ou Reserva de Domínio</strong> em favor da Cred30 até a quitação integral. O inadimplemento autoriza a retomada imediata do bem pela administradora.
                                     </p>
                                 </div>
                             </div>
                             <div className="flex gap-4">
                                 <div className="text-zinc-600 font-black text-2xl italic select-none">03</div>
                                 <div>
-                                    <h4 className="text-white font-bold mb-1 uppercase text-xs tracking-widest">Mútuo Social e Privado</h4>
+                                    <h4 className="text-white font-bold mb-1 uppercase text-xs tracking-widest">Seguro Obrigatório</h4>
                                     <p className="text-zinc-400 text-sm leading-relaxed">
-                                        Os apoios liberados no sistema são contratos civis de <strong>Mútuo Privado</strong> entre membros. As taxas cobradas visam a manutenção da infraestrutura e a proteção do lastro, sem configurar agiotagem ou atividade bancária ilícita.
+                                        A liberação do crédito está condicionada à contratação de <strong>Seguro de Casco/Total</strong> do bem, com cláusula beneficiária em nome da Cred30. Em caso de sinistro, o seguro quita o saldo devedor do membro junto ao clube.
                                     </p>
                                 </div>
                             </div>
@@ -206,22 +206,20 @@ const TermsPage = () => {
                         <p className="text-zinc-400 text-sm leading-relaxed mb-4">
                             A associação se encerra nas seguintes situações:
                         </p>
+                        <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-xl mb-6">
+                            <p className="text-xs text-amber-200 font-bold mb-2">POLÍTICA DE DESISTÊNCIA (LEI 11.795/08):</p>
+                            <p className="text-[10px] text-zinc-500 leading-relaxed italic">
+                                O cancelamento da cota implica em <strong>multa contratual de 20%</strong> sobre o valor pago ao fundo comum. O reembolso não é imediato, ocorrendo apenas por sorteio de cotas excluídas ou no encerramento do grupo, conforme jurisprudência do STJ.
+                            </p>
+                        </div>
                         <ul className="space-y-3 text-zinc-400 text-sm">
                             <li className="flex gap-3">
                                 <span className="text-amber-500 font-bold">•</span>
-                                <span><strong className="text-white">Por vontade do membro:</strong> Mediante solicitação de exclusão de conta nas configurações.</span>
+                                <span><strong className="text-white">Por vontade do membro:</strong> Mediante solicitação formal, sujeita às penalidades acima.</span>
                             </li>
                             <li className="flex gap-3">
                                 <span className="text-amber-500 font-bold">•</span>
-                                <span><strong className="text-white">Por inadimplência:</strong> Após liquidação automática de licenças para quitação de débitos.</span>
-                            </li>
-                            <li className="flex gap-3">
-                                <span className="text-amber-500 font-bold">•</span>
-                                <span><strong className="text-white">Por violação:</strong> Tentativas de fraude, uso de múltiplas contas ou comportamento abusivo.</span>
-                            </li>
-                            <li className="flex gap-3">
-                                <span className="text-amber-500 font-bold">•</span>
-                                <span><strong className="text-white">Por decisão administrativa:</strong> A critério exclusivo do Sócio Ostensivo, sem necessidade de justificativa.</span>
+                                <span><strong className="text-white">Por inadimplência:</strong> Após 2 parcelas em atraso, a cota é cancelada automaticamente.</span>
                             </li>
                         </ul>
                     </section>

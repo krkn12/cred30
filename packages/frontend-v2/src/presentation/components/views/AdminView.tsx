@@ -95,7 +95,10 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const handleRefresh = async () => {
         setIsLoading(true);
         clearAllCache();
-        await onRefresh();
+        // Forçar atualização do dashboard no backend E no estado
+        await apiService.admin.getDashboard(true);
+        // Chamar onRefresh DEPOIS para garantir que o estado local seja atualizado
+        onRefresh();
         await fetchCounts();
         setIsLoading(false);
         onSuccess("Atualizado", "Dados sincronizados com o servidor.");

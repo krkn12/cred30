@@ -5,8 +5,104 @@ import { syncService } from './sync.service';
 // Imports removed as they were unused
 
 
+// Interfaces para os dados brutos da API
+interface ApiUser {
+  id?: string | number;
+  userId?: string | number;
+  name?: string;
+  email?: string;
+  pixKey?: string;
+  pix_key?: string;
+  passwordHash?: string;
+  password_hash?: string;
+  balance?: string | number;
+  joinedAt?: string;
+  created_at?: string;
+  referralCode?: string;
+  referral_code?: string;
+  isAdmin?: boolean;
+  is_admin?: boolean;
+  role?: string;
+  score?: number;
+  twoFactorEnabled?: boolean;
+  two_factor_enabled?: boolean;
+  cpf?: string;
+  phone?: string;
+  membership_type?: string;
+  is_verified?: boolean;
+  video_points?: number;
+  ad_points?: number;
+  status?: string;
+  securityLockUntil?: string;
+  security_lock_until?: string;
+  is_seller?: boolean;
+  total_dividends_earned?: number;
+  last_login_at?: string;
+  safeContactPhone?: string;
+  safe_contact_phone?: string;
+}
+
+interface ApiQuota {
+  id: string;
+  userId?: string | number;
+  user_id?: string | number;
+  purchasePrice?: string | number;
+  purchaseDate?: string;
+  purchase_date?: string;
+  currentValue?: string | number;
+  yieldRate?: string | number;
+  status?: string;
+}
+
+interface ApiLoan {
+  id?: string | number;
+  userId?: string | number;
+  user_id?: string | number;
+  amount?: string | number;
+  totalRepayment?: string | number;
+  installments?: number;
+  interestRate?: string | number;
+  requestDate?: string;
+  status?: string;
+  dueDate?: string;
+  createdAt?: string;
+  created_at?: string;
+  totalPaid?: string | number;
+  remainingAmount?: string | number;
+  paidInstallmentsCount?: number;
+  isFullyPaid?: boolean;
+}
+
+interface ApiTransaction {
+  id: string;
+  userId?: string | number;
+  user_id?: string | number;
+  type: string;
+  amount?: string | number;
+  date?: string;
+  created_at?: string;
+  description?: string;
+  status?: string;
+  metadata?: unknown; // Mantido como 'unknown' por flexibilidade, pode ser refinado se o schema for conhecido
+}
+
+interface SyncResponseData {
+  user: ApiUser;
+  transactions: ApiTransaction[];
+  quotas: ApiQuota[];
+  loans: ApiLoan[];
+  welcomeBenefit: unknown;
+  stats: unknown;
+}
+
+interface DashboardCache {
+  systemBalance: number;
+  profitPool: number;
+  stats: unknown;
+}
+
 // Função para converter dados da API para o formato esperado pelo frontend
-const convertApiUserToUser = (apiUser: any): User => {
+const convertApiUserToUser = (apiUser: ApiUser): User => {
   if (!apiUser) {
     return {
       id: '',
@@ -36,12 +132,12 @@ const convertApiUserToUser = (apiUser: any): User => {
     cpf: apiUser.cpf || null,
     phone: apiUser.phone || null,
     // Campos adicionais que o backend retorna
-    membership_type: apiUser.membership_type || 'FREE',
+    membership_type: (apiUser.membership_type as "FREE" | "PRO") || 'FREE',
     is_verified: apiUser.is_verified || false,
     video_points: apiUser.video_points || 0,
     ad_points: apiUser.ad_points || 0,
-    role: apiUser.role || 'MEMBER',
-    status: apiUser.status || 'ACTIVE',
+    role: (apiUser.role as "ADMIN" | "MEMBER" | "ATTENDANT") || 'MEMBER',
+    status: (apiUser.status as "ACTIVE" | "BLOCKED") || 'ACTIVE',
     securityLockUntil: apiUser.security_lock_until ? new Date(apiUser.security_lock_until).getTime() : undefined,
     is_seller: apiUser.is_seller || false,
     total_dividends_earned: apiUser.total_dividends_earned || 0,
@@ -50,7 +146,7 @@ const convertApiUserToUser = (apiUser: any): User => {
   };
 };
 
-const convertApiQuotaToQuota = (apiQuota: any): Quota => {
+const convertApiQuotaToQuota = (apiQuota: ApiQuota): Quota => {
   const purchasePrice = typeof apiQuota.purchasePrice === 'string'
     ? parseFloat(apiQuota.purchasePrice)
     : (apiQuota.purchasePrice || 0);
@@ -68,11 +164,11 @@ const convertApiQuotaToQuota = (apiQuota: any): Quota => {
     purchaseDate: apiQuota.purchaseDate || apiQuota.purchase_date,
     currentValue: currentValue,
     yieldRate: yieldRate,
-    status: apiQuota.status || 'ACTIVE',
+    status: (apiQuota.status as "ACTIVE" | "SOLD" | "PENDING") || 'ACTIVE',
   };
 };
 
-const convertApiLoanToLoan = (apiLoan: any): Loan => {
+const convertApiLoanToLoan = (apiLoan: ApiLoan): Loan => {
   // Garantir que os valores monetários sejam números válidos
   const amount = typeof apiLoan.amount === 'string'
     ? parseFloat(apiLoan.amount)
@@ -100,8 +196,8 @@ const convertApiLoanToLoan = (apiLoan: any): Loan => {
     totalRepayment: totalRepayment || 0,
     installments: apiLoan.installments || 1,
     interestRate: interestRate || 0,
-    requestDate: apiLoan.requestDate,
-    status: apiLoan.status,
+    requestDate: apiLoan.requestDate as number,
+    status: apiLoan.status as "PENDING" | "APPROVED" | "REJECTED" | "PAID" | "PAYMENT_PENDING" | "WAITING_GUARANTOR",
     dueDate: apiLoan.dueDate,
     createdAt: apiLoan.createdAt || apiLoan.created_at || new Date().toISOString(),
     totalPaid: totalPaid,
@@ -111,7 +207,7 @@ const convertApiLoanToLoan = (apiLoan: any): Loan => {
   };
 };
 
-const convertApiTransactionToTransaction = (apiTransaction: any): Transaction => {
+const convertApiTransactionToTransaction = (apiTransaction: ApiTransaction): Transaction => {
   // Garantir que o amount seja um número válido
   const amount = typeof apiTransaction.amount === 'string'
     ? parseFloat(apiTransaction.amount)
@@ -131,7 +227,7 @@ const convertApiTransactionToTransaction = (apiTransaction: any): Transaction =>
 };
 
 // Cache para dashboard administrativo
-let cachedDashboard: any = null;
+let cachedDashboard: DashboardCache | null = null;
 let lastDashboardCacheTime = 0;
 let isFetchingDashboard = false;
 const DASHBOARD_CACHE_DURATION = 30000; // 30 segundos de cache para dashboard
@@ -154,7 +250,7 @@ export const loadState = async (): Promise<AppState> => {
 
     // Obter dados consolidados (Otimização Máxima)
     // Cache busting adicionado para forçar atualização em tempo real
-    const syncResponse = await apiService.get<any>(`/users/sync?t=${Date.now()}`);
+    const syncResponse = await apiService.get<SyncResponseData>(`/users/sync?t=${Date.now()}`);
     const syncData = syncResponse.data;
 
     const currentUser = convertApiUserToUser(syncData.user);

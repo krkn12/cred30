@@ -45,6 +45,8 @@ export const AssemblyView: React.FC<AssemblyViewProps> = ({
     const [assembly, setAssembly] = useState<Assembly | null>(null);
     const [loading, setLoading] = useState(true);
     const [bidAmount, setBidAmount] = useState('');
+    const [bidType, setBidType] = useState<'FREE' | 'FIXED'>('FREE');
+    const [isEmbedded, setIsEmbedded] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
     const loadAssembly = useCallback(async () => {
@@ -71,10 +73,14 @@ export const AssemblyView: React.FC<AssemblyViewProps> = ({
         if (!assembly || !bidAmount) return;
         setSubmitting(true);
         try {
+            const embeddedAmount = isEmbedded ? parseFloat(bidAmount) : 0;
             const res = await apiService.post<{ message: string }>('/consortium/bid', {
                 assemblyId: assembly.id,
                 memberId,
-                amount: parseFloat(bidAmount)
+                amount: parseFloat(bidAmount),
+                bidType,
+                isEmbedded,
+                embeddedAmount
             });
             if (res.success) {
                 onSuccess('Lance Registrado!', res.data?.message || 'Seu lance foi enviado.');
@@ -201,6 +207,25 @@ export const AssemblyView: React.FC<AssemblyViewProps> = ({
                         </div>
                     </div>
 
+                    <div className="flex gap-2 p-1 bg-black/40 rounded-2xl border border-white/5">
+                        <button
+                            onClick={() => setBidType('FREE')}
+                            className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${bidType === 'FREE' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+                        >
+                            Lance Livre
+                        </button>
+                        <button
+                            onClick={() => {
+                                setBidType('FIXED');
+                                // Sugere o valor fixo baseado em 30% (padrão)
+                                setBidAmount((totalValue * 0.3).toString());
+                            }}
+                            className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${bidType === 'FIXED' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+                        >
+                            Lance Fixo (30%)
+                        </button>
+                    </div>
+
                     <div className="space-y-4">
                         <div className="relative">
                             <div className="absolute inset-y-0 left-4 flex items-center text-zinc-500 font-medium">
@@ -214,6 +239,30 @@ export const AssemblyView: React.FC<AssemblyViewProps> = ({
                                 className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white font-bold focus:outline-none focus:border-emerald-500/50 transition-colors"
                             />
                         </div>
+
+                        <div className="flex items-center justify-between p-4 bg-black/20 rounded-2xl border border-white/5">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isEmbedded ? 'bg-primary-500/10 text-primary-400' : 'bg-zinc-800 text-zinc-500'}`}>
+                                    <Send size={18} />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-white">Lance Embutido</p>
+                                    <p className="text-[10px] text-zinc-500">Usar saldo da própria carta</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsEmbedded(!isEmbedded)}
+                                className={`w-12 h-6 rounded-full relative transition-colors ${isEmbedded ? 'bg-emerald-500' : 'bg-zinc-700'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isEmbedded ? 'left-7' : 'left-1'}`} />
+                            </button>
+                        </div>
+
+                        {isEmbedded && (
+                            <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl text-[10px] text-blue-400">
+                                <strong>Nota:</strong> Este valor será descontado da sua carta de crédito caso você seja contemplado. Você receberá o valor líquido.
+                            </div>
+                        )}
                         <button
                             onClick={handlePlaceBid}
                             disabled={submitting || !bidAmount}

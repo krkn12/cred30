@@ -1,3 +1,4 @@
+// Final data integrity sync - Admin Finance
 import { Hono } from 'hono';
 import { authMiddleware, adminMiddleware, attendantMiddleware } from '../middleware/auth.middleware';
 import { auditMiddleware } from '../../../infrastructure/logging/audit.middleware';

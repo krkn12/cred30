@@ -1,8 +1,14 @@
 import { Hono } from 'hono';
 import { authMiddleware, securityLockMiddleware } from '../middleware/auth.middleware';
+import { financialRateLimit } from '../middleware/rate-limit.middleware';
 import { LoansController } from '../controllers/loans.controller';
 
 const loanRoutes = new Hono();
+
+// Aplicar rate limiting para operações de empréstimo
+loanRoutes.use('/request', financialRateLimit);
+loanRoutes.use('/repay', financialRateLimit);
+loanRoutes.use('/repay-installment', financialRateLimit);
 
 // Aplicar trava de segurança para solicitações e pagamentos
 loanRoutes.use('/request', securityLockMiddleware);

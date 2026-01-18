@@ -12,11 +12,13 @@ consortiumRoutes.use('*', authMiddleware);
 consortiumRoutes.post('/groups', ConsortiumController.createGroup);
 consortiumRoutes.get('/groups', ConsortiumController.listGroups);
 consortiumRoutes.get('/my-groups', ConsortiumController.myConsortiums);
+consortiumRoutes.get('/stats', ConsortiumController.getPerformanceStats);
 consortiumRoutes.get('/groups/:groupId/members', ConsortiumController.listMembers);
 
 // --- Ações ---
 consortiumRoutes.post('/join', ConsortiumController.joinGroup);
 consortiumRoutes.post('/pay-installment', ConsortiumController.payInstallment);
+consortiumRoutes.post('/withdraw', ConsortiumController.withdraw);
 
 // --- Assembleia & Lances ---
 consortiumRoutes.post('/assemblies', ConsortiumController.createAssembly);
@@ -25,3 +27,5 @@ consortiumRoutes.get('/groups/:groupId/active-assembly', ConsortiumController.ge
 consortiumRoutes.get('/assemblies/:id', ConsortiumController.getAssembly);
 consortiumRoutes.post('/bid', ConsortiumController.placeBid);
 consortiumRoutes.post('/vote', ConsortiumController.voteOnBid);
+consortiumRoutes.post('/approve-credit', ConsortiumController.approveCredit);
+consortiumRoutes.post('/documents', ConsortiumController.addMemberDocument);

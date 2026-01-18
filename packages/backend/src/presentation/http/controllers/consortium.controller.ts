@@ -14,19 +14,31 @@ export class ConsortiumController {
             const user = c.get('user') as UserContext;
             if (!user.isAdmin) return c.json({ success: false, message: 'Acesso negado.' }, 403);
 
-            const { name, totalValue, durationMonths, adminFeePercent, startDate } = await c.req.json();
+            const {
+                name, totalValue, durationMonths, adminFeePercent,
+                startDate, reserveFeePercent, fixedBidPercent,
+                maxEmbeddedBidPercent, minMembersToStart
+            } = await c.req.json();
             const pool = getDbPool(c);
 
-            // Calcula parcela: (Valor + Taxa) / Prazo
-            const totalWithFee = Number(totalValue) * (1 + (Number(adminFeePercent) / 100));
-            const installmentValue = totalWithFee / Number(durationMonths);
+            // Calcula parcela: (Valor + Taxa + Reserva) / Prazo
+            // Nota: O fundo de reserva é calculado sobre o valor da carta
+            const adminFee = Number(totalValue) * (Number(adminFeePercent) / 100);
+            const reserveFee = Number(totalValue) * (Number(reserveFeePercent || 1) / 100);
+            const installmentValue = (Number(totalValue) + adminFee + reserveFee) / Number(durationMonths);
 
             const result = await pool.query(
                 `INSERT INTO consortium_groups 
-                (name, total_value, duration_months, admin_fee_percent, monthly_installment_value, start_date, status)
-                VALUES ($1, $2, $3, $4, $5, $6, 'OPEN')
+                (name, total_value, duration_months, admin_fee_percent, monthly_installment_value, 
+                 start_date, status, reserve_fee_percent, fixed_bid_percent, 
+                 max_embedded_bid_percent, min_members_to_start)
+                VALUES ($1, $2, $3, $4, $5, $6, 'OPEN', $7, $8, $9, $10)
                 RETURNING *`,
-                [name, totalValue, durationMonths, adminFeePercent, installmentValue, startDate]
+                [
+                    name, totalValue, durationMonths, adminFeePercent, installmentValue,
+                    startDate, reserveFeePercent || 1, fixedBidPercent || 30,
+                    maxEmbeddedBidPercent || 30, minMembersToStart || 10
+                ]
             );
 
             return c.json({ success: true, group: result.rows[0] });
@@ -127,10 +139,11 @@ export class ConsortiumController {
                 // 6. Debita do usuário
                 await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [entryCost, user.id]);
 
-                // 7. Acumula no pool do grupo (valor líquido)
+                // 7. Acumula no pool do grupo (valor líquido + reserva)
                 await client.query(`
                     UPDATE consortium_groups 
-                    SET current_pool = COALESCE(current_pool, 0) + $1 
+                    SET current_pool = COALESCE(current_pool, 0) + $1,
+                        current_pool_available = COALESCE(current_pool_available, 0) + $1
                     WHERE id = $2
                 `, [poolContribution, groupId]);
 
@@ -215,7 +228,8 @@ export class ConsortiumController {
 
                 await client.query(`
                     UPDATE consortium_groups 
-                    SET current_pool = COALESCE(current_pool, 0) + $1 
+                    SET current_pool = COALESCE(current_pool, 0) + $1,
+                        current_pool_available = COALESCE(current_pool_available, 0) + $1
                     WHERE id = $2
                 `, [poolContribution, member.group_id]);
 
@@ -304,27 +318,51 @@ export class ConsortiumController {
                     const member = memberRes.rows[0];
 
                     // Transfere o valor da carta de crédito (total_value)
-                    const creditValue = Number(group.total_value);
+                    const totalCredit = Number(group.total_value);
+                    const bidAmount = Number(winningBidAmount || 0);
 
-                    await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [creditValue, member.user_id]);
+                    // Se for lance embutido, precisamos saber o quanto foi descontado
+                    // No momento simplificado, assumimos que se bids.is_embedded estiver true, descontamos do crédito
+                    const bidRes = await client.query('SELECT * FROM consortium_bids WHERE assembly_id = $1 AND member_id = $2', [assemblyId, winnerMemberId]);
+                    const bid = bidRes.rows[0];
 
-                    await client.query(`
-                        INSERT INTO transactions (user_id, type, amount, description, status, created_at)
-                        VALUES ($1, 'CONSORTIUM_CONTEMPLATION', $2, $3, 'APPROVED', NOW())
-                    `, [member.user_id, creditValue, `Contemplação Consórcio: ${group.name}`]);
+                    let finalCreditValue = totalCredit;
+                    if (bid && bid.is_embedded) {
+                        finalCreditValue = totalCredit - Number(bid.embedded_amount || 0);
+                    }
 
+                    // BLOQUEIO DE SEGURANÇA: Não libera o saldo na conta do usuário ainda
+                    // O crédito agora precisa de aprovação manual da garantia no Admin
+                    /* 
+                    await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [finalCreditValue, member.user_id]);
+                    */
+
+                    // Apenas atualiza o status do crédito para PENDING
                     await client.query(`
                         UPDATE consortium_members 
-                        SET status = 'CONTEMPLATED', contemplated_at = NOW()
+                        SET status = 'CONTEMPLATED', 
+                            contemplated_at = NOW(),
+                            credit_status = 'PENDING'
                         WHERE id = $1
                     `, [winnerMemberId]);
 
-                    // Desconta o lance do pool se for o caso, ou apenas registra
-                    if (winningBidAmount) {
+                    // Deduz o prêmio do saldo disponível do grupo (reserva o valor)
+                    await client.query(`
+                        UPDATE consortium_groups 
+                        SET current_pool_available = current_pool_available - $1
+                        WHERE id = $2
+                    `, [totalCredit, group.id]);
+
+                    await client.query(`
+                        INSERT INTO transactions (user_id, type, amount, description, status, created_at)
+                        VALUES ($1, 'CONSORTIUM_CONTEMPLATION', $2, $3, 'PENDING', NOW())
+                    `, [member.user_id, finalCreditValue, `Crédito Consórcio: ${group.name}${bid?.is_embedded ? ' (Lance Embutido)' : ''} - Aguardando Garantia`]);
+
+                    if (bid) {
                         await client.query(`
                             UPDATE consortium_bids SET status = 'WINNER' 
-                            WHERE assembly_id = $1 AND member_id = $2
-                        `, [assemblyId, winnerMemberId]);
+                            WHERE id = $1
+                        `, [bid.id]);
                     }
                 }
 
@@ -342,6 +380,123 @@ export class ConsortiumController {
             });
 
             return c.json(result.data || { success: false, message: result.error });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    static async approveCredit(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            if (!user.isAdmin) return c.json({ success: false, message: 'Acesso negado.' }, 403);
+
+            const { memberId, guaranteeDescription } = await c.req.json();
+            const pool = getDbPool(c);
+
+            const result = await executeInTransaction(pool, async (client: PoolClient) => {
+                // 1. Validar Membro e se foi Contemplado
+                const memberRes = await client.query('SELECT * FROM consortium_members WHERE id = $1 FOR UPDATE', [memberId]);
+                if (memberRes.rows.length === 0) throw new Error('Membro não encontrado.');
+                const member = memberRes.rows[0];
+
+                if (member.status !== 'CONTEMPLATED') throw new Error('Este membro ainda não foi contemplado.');
+                if (member.credit_status === 'APPROVED') throw new Error('Crédito já foi liberado.');
+
+                // 2. Buscar o valor do crédito (considerando lance embutido)
+                const groupRes = await client.query('SELECT total_value FROM consortium_groups WHERE id = $1', [member.group_id]);
+                const group = groupRes.rows[0];
+
+                const bidRes = await client.query('SELECT * FROM consortium_bids WHERE member_id = $1 AND status = \'WINNER\'', [memberId]);
+                const bid = bidRes.rows[0];
+
+                let finalCreditValue = Number(group.total_value);
+                if (bid && bid.is_embedded) {
+                    finalCreditValue -= Number(bid.embedded_amount || 0);
+                }
+
+                // 3. Liberar o saldo na conta e aprovar status
+                await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [finalCreditValue, member.user_id]);
+                await client.query(`
+                    UPDATE consortium_members 
+                    SET credit_status = 'APPROVED', 
+                        guarantee_description = $1,
+                        credit_limit_released = $2
+                    WHERE id = $3
+                `, [guaranteeDescription, finalCreditValue, memberId]);
+
+                // 4. Atualizar transação de pendente para aprovado
+                await client.query(`
+                    UPDATE transactions 
+                    SET status = 'APPROVED', 
+                        description = description || ' (Garantia Aprovada)' 
+                    WHERE user_id = $1 AND type = 'CONSORTIUM_CONTEMPLATION' AND status = 'PENDING'
+                `, [member.user_id]);
+
+                return { success: true, message: 'Crédito liberado com sucesso após validação de garantia.' };
+            });
+
+            return c.json(result.success ? result : { success: false, message: result.error });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    static async addMemberDocument(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const { memberId, documentType, documentUrl } = await c.req.json();
+            const pool = getDbPool(c);
+
+            // Se for usuário comum, só pode enviar para si mesmo
+            if (!user.isAdmin) {
+                const memberCheck = await pool.query('SELECT id FROM consortium_members WHERE id = $1 AND user_id = $2', [memberId, user.id]);
+                if (memberCheck.rows.length === 0) return c.json({ success: false, message: 'Não autorizado' }, 403);
+            }
+
+            await pool.query(`
+                INSERT INTO consortium_member_documents (member_id, document_type, document_url, status)
+                VALUES ($1, $2, $3, 'PENDING')
+            `, [memberId, documentType, documentUrl]);
+
+            return c.json({ success: true, message: 'Documento enviado para análise.' });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    static async getPerformanceStats(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            if (!user.isAdmin) return c.json({ success: false, message: 'Acesso negado.' }, 403);
+
+            const pool = getDbPool(c);
+
+            // 1. Total arrecadado em todos os pools
+            const poolRes = await pool.query('SELECT SUM(current_pool) as total_pool, SUM(current_pool_available) as total_available FROM consortium_groups');
+
+            // 2. Lucro da plataforma (config)
+            const statsRes = await pool.query('SELECT total_owner_profit, profit_pool FROM system_config WHERE id = 1');
+
+            // 3. Contagens
+            const countsRes = await pool.query(`
+                SELECT 
+                    (SELECT COUNT(*) FROM consortium_groups) as total_groups,
+                    (SELECT COUNT(*) FROM consortium_members) as total_members,
+                    (SELECT COUNT(*) FROM consortium_members WHERE status = 'CONTEMPLATED') as total_contemplated
+            `);
+
+            return c.json({
+                success: true,
+                data: {
+                    totalPool: Number(poolRes.rows[0].total_pool || 0),
+                    totalAvailable: Number(poolRes.rows[0].total_available || 0),
+                    ownerProfit: Number(statsRes.rows[0].total_owner_profit || 0),
+                    investorsProfit: Number(statsRes.rows[0].profit_pool || 0),
+                    totalGroups: Number(countsRes.rows[0].total_groups || 0),
+                    totalMembers: Number(countsRes.rows[0].total_members || 0),
+                    totalContemplated: Number(countsRes.rows[0].total_contemplated || 0)
+                }
+            });
         } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -452,7 +607,7 @@ export class ConsortiumController {
     static async placeBid(c: Context) {
         try {
             const user = c.get('user') as UserContext;
-            const { assemblyId, memberId, amount } = await c.req.json();
+            const { assemblyId, memberId, amount, bidType, isEmbedded, embeddedAmount } = await c.req.json();
             const pool = getDbPool(c);
 
             // Validar se o membro pertence ao usuário
@@ -464,13 +619,75 @@ export class ConsortiumController {
             if (assemblyRes.rows.length === 0) return c.json({ success: false, message: 'Assembleia não encontrada' }, 404);
             if (assemblyRes.rows[0].status !== 'OPEN_FOR_BIDS') return c.json({ success: false, message: 'Assembleia não aceita lances no momento.' }, 400);
 
+            // Se não for embutido, verificar saldo
+            if (!isEmbedded) {
+                const userBal = await pool.query('SELECT balance FROM users WHERE id = $1', [user.id]);
+                if (Number(userBal.rows[0].balance) < Number(amount)) {
+                    return c.json({ success: false, message: 'Saldo insuficiente para ofertar este lance.' }, 400);
+                }
+            }
+
             await pool.query(`
-                INSERT INTO consortium_bids (assembly_id, member_id, amount, status)
-                VALUES ($1, $2, $3, 'PENDING')
-                ON CONFLICT (assembly_id, member_id) DO UPDATE SET amount = $3
-            `, [assemblyId, memberId, amount]);
+                INSERT INTO consortium_bids (assembly_id, member_id, amount, status, bid_type, is_embedded, embedded_amount)
+                VALUES ($1, $2, $3, 'PENDING', $4, $5, $6)
+                ON CONFLICT (assembly_id, member_id) DO UPDATE SET 
+                    amount = $3, 
+                    bid_type = $4, 
+                    is_embedded = $5, 
+                    embedded_amount = $6
+            `, [assemblyId, memberId, amount, bidType || 'FREE', isEmbedded || false, embeddedAmount || 0]);
 
             return c.json({ success: true, message: 'Lance registrado com sucesso!' });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    static async withdraw(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const { memberId } = await c.req.json();
+            const pool = getDbPool(c);
+
+            const result = await executeInTransaction(pool, async (client: PoolClient) => {
+                // 1. Validar Membro
+                const memberRes = await client.query(`
+                    SELECT * FROM consortium_members WHERE id = $1 AND user_id = $2 FOR UPDATE
+                `, [memberId, user.id]);
+
+                if (memberRes.rows.length === 0) throw new Error('Membro não encontrado.');
+                const member = memberRes.rows[0];
+
+                if (member.status === 'CONTEMPLATED') throw new Error('Cotas contempladas não podem ser canceladas desta forma.');
+                if (member.status === 'WITHDRAWN') throw new Error('Esta cota já foi cancelada.');
+
+                // 2. Calcular Multa e Reembolso
+                const totalPaidToPool = Number(member.total_paid || 0);
+                const penaltyAmount = totalPaidToPool * 0.20; // 20% de multa
+                const refundAmount = totalPaidToPool - penaltyAmount;
+
+                // 3. Registrar Retirada
+                await client.query(`
+                    INSERT INTO consortium_withdrawals (member_id, total_paid_to_pool, penalty_amount, refund_amount_due, status)
+                    VALUES ($1, $2, $3, $4, 'PENDING')
+                `, [memberId, totalPaidToPool, penaltyAmount, refundAmount]);
+
+                // 4. Atualizar Membro
+                await client.query(`UPDATE consortium_members SET status = 'WITHDRAWN' WHERE id = $1`, [memberId]);
+
+                // 5. O valor da multa vai para o lucro da plataforma (ou fundo de reserva conforme regra)
+                // Aqui vamos colocar como plataforma para o Josias ver o lucro
+                await client.query(`
+                    UPDATE system_config SET total_owner_profit = total_owner_profit + $1 WHERE id = 1
+                `, [penaltyAmount]);
+
+                return {
+                    success: true,
+                    message: `Cancelamento realizado. Reembolso pendente de R$ ${refundAmount.toFixed(2)} (Multa de R$ ${penaltyAmount.toFixed(2)} aplicada).`
+                };
+            });
+
+            return c.json(result.data || { success: false, message: result.error });
         } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }

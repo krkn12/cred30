@@ -290,6 +290,19 @@ export const AdminInvestments: React.FC<AdminInvestmentsProps> = ({ onSuccess, o
                         R$ {summary?.totalDividends.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
                     </p>
                 </div>
+
+                {/* Card de Liquidez Real (Solicitado pelo Josias) */}
+                <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-500/20 rounded-3xl p-5 sm:p-6">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                            <Activity size={18} className="text-emerald-400" />
+                        </div>
+                        <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Liquidez Real</span>
+                    </div>
+                    <p className="text-xl sm:text-2xl font-black text-white">
+                        R$ {((summary as any)?.realLiquidity || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                </div>
             </div>
 
             {/* Ações e Lista Ativa */}

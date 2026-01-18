@@ -2,6 +2,7 @@ import { Pool, PoolClient } from 'pg';
 import {
   QUOTA_PRICE,
   QUOTA_SHARE_VALUE,
+  QUOTA_ADM_FEE,
   PLATFORM_FEE_TAX_SHARE,
   PLATFORM_FEE_OPERATIONAL_SHARE,
   PLATFORM_FEE_OWNER_SHARE,
@@ -294,7 +295,7 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
       await client.query(
         `INSERT INTO quotas (user_id, purchase_price, current_value, purchase_date, status)
          VALUES ($1, $2, $3, $4, 'ACTIVE')`,
-        [transaction.user_id, QUOTA_SHARE_VALUE, QUOTA_SHARE_VALUE, new Date()]
+        [transaction.user_id, QUOTA_PRICE, QUOTA_SHARE_VALUE, new Date()]
       );
     }
 
@@ -373,24 +374,25 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
         [parseFloat(transaction.amount), gatewayCost]
       );
 
-      // Distribuir a Taxa de Serviço se existir (externa)
-      if (serviceFee > 0) {
-        await client.query(
-          `UPDATE system_config SET 
-            total_tax_reserve = total_tax_reserve + $1,
-            total_operational_reserve = total_operational_reserve + $2,
-            total_owner_profit = total_owner_profit + $3,
-            investment_reserve = investment_reserve + $4,
-            system_balance = system_balance + $5`,
-          [
-            serviceFee * PLATFORM_FEE_TAX_SHARE,
-            serviceFee * PLATFORM_FEE_OPERATIONAL_SHARE,
-            serviceFee * PLATFORM_FEE_OWNER_SHARE,
-            serviceFee * PLATFORM_FEE_INVESTMENT_SHARE,
-            serviceFee
-          ]
-        );
-      }
+      // Distribuir a Taxa de Serviço e Principal
+      const totalAdmFee = qty * QUOTA_ADM_FEE;
+      const principalAmount = qty * QUOTA_SHARE_VALUE;
+
+      const taxAmount = totalAdmFee * PLATFORM_FEE_TAX_SHARE;
+      const operationalAmount = totalAdmFee * PLATFORM_FEE_OPERATIONAL_SHARE;
+      const ownerAmount = totalAdmFee * PLATFORM_FEE_OWNER_SHARE;
+      const growthAmount = totalAdmFee * PLATFORM_FEE_INVESTMENT_SHARE;
+
+      await client.query(
+        `UPDATE system_config SET 
+          total_tax_reserve = total_tax_reserve + $1,
+          total_operational_reserve = total_operational_reserve + $2,
+          total_owner_profit = total_owner_profit + $3,
+          mutual_reserve = COALESCE(mutual_reserve, 0) + $4,
+          investment_reserve = COALESCE(investment_reserve, 0) + $5,
+          system_balance = system_balance + $6`,
+        [taxAmount, operationalAmount, ownerAmount, growthAmount, principalAmount, parseFloat(transaction.amount)]
+      );
     }
   }
 
@@ -863,6 +865,7 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
 
   // === DÉBITO REAL DO CAIXA (O dinheiro SAI agora) ===
   // O netAmount é o que o usuário vai receber. A originationFee já foi distribuída no requestLoan.
+  // IMPORTANTE: NÃO subtrair da investment_reserve, pois a cota ainda "vale" esse dinheiro (recebível).
   await client.query(
     'UPDATE system_config SET system_balance = system_balance - $1',
     [netAmount]
