@@ -1,8 +1,0 @@
-[dotenv@17.2.3] injecting env (15) from packages\backend\.env -- tip: ÔÜÖ´©Å  specify custom .env file path with { path: '/custom/path/.env' }
-
-=== USERS COLUMNS ===
-id: integer
-loan_id: integer
-amount: numeric
-use_balance: boolean
-created_at: timestamp without time zone

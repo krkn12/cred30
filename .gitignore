@@ -141,3 +141,24 @@ test-*.js
 
 # Repositórios Externos (Separate projects)
 landing_github/
+
+# Auditoria e Logs do Sistema (Limpeza Josias)
+*.txt
+*.log
+*.json
+!package.json
+!package-lock.json
+!firebase.json
+!render.yaml
+!cred30-prod-app-2025-firebase-adminsdk-*.json
+
+# Scripts de Auditoria e Diagnóstico (Manter apenas o essencial)
+scripts/*.js
+!scripts/release.js
+!scripts/analyze_db.js
+!scripts/promote_users.js
+!scripts/set_admin_josias.js
+!scripts/reconcile_finance.js
+!scripts/debug_db.js
+scripts/database/
+scripts/development/
