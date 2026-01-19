@@ -32,6 +32,10 @@ interface TransactionRowProps {
     showValues: boolean;
 }
 
+const isPointTransaction = (type: string) => [
+    'AD_REWARD', 'CHEST_REWARD', 'VIDEO_REWARD', 'EDUCATION_REWARD'
+].includes(type);
+
 const TransactionRow = memo(({ t, formatCurrency, isPositive, showValues }: TransactionRowProps) => (
     <div key={t.id} className="group glass glass-hover p-6 rounded-[2rem] flex items-center justify-between">
         <div className="flex items-center gap-6">
@@ -56,7 +60,7 @@ const TransactionRow = memo(({ t, formatCurrency, isPositive, showValues }: Tran
                 }`}>
                 {showValues ? (
                     <>
-                        {isPositive(t.type) ? '+' : '-'} {formatCurrency(t.amount)}
+                        {isPositive(t.type) ? '+' : '-'} {isPointTransaction(t.type) ? `${t.amount} pts` : formatCurrency(t.amount)}
                     </>
                 ) : '••••••'}
             </p>

@@ -47,6 +47,8 @@ export const HistoryView = ({ transactions: initialTransactions }: HistoryViewPr
     ].includes(type);
     const isOutgoing = (type: string) => ['WITHDRAWAL', 'LOAN_PAYMENT', 'QUOTA_PURCHASE', 'LOAN_INSTALLMENT'].includes(type);
 
+    const isPointTransaction = (type: string) => ['AD_REWARD', 'CHEST_REWARD', 'VIDEO_REWARD', 'EDUCATION_REWARD', 'POINTS_DEPOSIT'].includes(type);
+
     // Traduzir tipos
     const translateType = (type: string) => {
         const map: Record<string, string> = {
@@ -65,6 +67,7 @@ export const HistoryView = ({ transactions: initialTransactions }: HistoryViewPr
             'AD_REWARD': 'Bônus de Anúncio',
             'CHEST_REWARD': 'Bônus de Baú Diário',
             'VIDEO_REWARD': 'Bônus de Vídeo',
+            'POINTS_DEPOSIT': 'Depósito de Pontos Especial',
         };
         return map[type] || type;
     };
@@ -291,7 +294,7 @@ export const HistoryView = ({ transactions: initialTransactions }: HistoryViewPr
                                                 {/* Valor e Status */}
                                                 <div className="text-right shrink-0">
                                                     <p className={`text-sm sm:text-base font-bold ${incoming ? 'text-emerald-400' : 'text-red-400'}`}>
-                                                        {incoming ? '+' : '-'}{formatCurrency(t.amount)}
+                                                        {incoming ? '+' : '-'}{isPointTransaction(t.type) ? `${t.amount} pts` : formatCurrency(t.amount)}
                                                     </p>
                                                     <div className={`flex items-center justify-end gap-1 ${statusColor}`}>
                                                         <StatusIcon size={12} />
