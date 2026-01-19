@@ -91,6 +91,13 @@ export class EarnController {
                     [REWARD_POINTS, dailyChestsOpened + 1, today, user.id]
                 );
 
+                // Registrar transação do baú
+                await client.query(
+                    `INSERT INTO transactions (user_id, type, amount, status, description, metadata) 
+                     VALUES ($1, 'CHEST_REWARD', $2, 'APPROVED', $3, $4)`,
+                    [user.id, REWARD_POINTS, `Bônus de Baú Diário: +${REWARD_POINTS} pts`, JSON.stringify({ points: REWARD_POINTS, chestNumber: dailyChestsOpened + 1 })]
+                );
+
                 const updatedRes = await client.query('SELECT ad_points FROM users WHERE id = $1', [user.id]);
                 const newPoints = updatedRes.rows[0].ad_points || 0;
 
@@ -189,6 +196,13 @@ export class EarnController {
                         last_video_reward_at = CURRENT_TIMESTAMP
                      WHERE id = $2`,
                     [REWARD_POINTS, user.id]
+                );
+
+                // Registrar transação do vídeo
+                await client.query(
+                    `INSERT INTO transactions (user_id, type, amount, status, description, metadata) 
+                     VALUES ($1, 'VIDEO_REWARD', $2, 'APPROVED', $3, $4)`,
+                    [user.id, REWARD_POINTS, `Bônus de Vídeo: +${REWARD_POINTS} pts`, JSON.stringify({ points: REWARD_POINTS })]
                 );
 
                 const updatedRes = await client.query('SELECT ad_points FROM users WHERE id = $1', [user.id]);

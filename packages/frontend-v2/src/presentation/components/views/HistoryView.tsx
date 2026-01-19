@@ -40,7 +40,11 @@ export const HistoryView = ({ transactions: initialTransactions }: HistoryViewPr
     };
 
     // Classificar tipos de transação
-    const isIncoming = (type: string) => ['DEPOSIT', 'DIVIDEND', 'REFERRAL_BONUS', 'LOAN_RECEIVED', 'QUOTA_SELL', 'EDUCATION_REWARD', 'ADMIN_GIFT'].includes(type);
+    const isIncoming = (type: string) => [
+        'DEPOSIT', 'DIVIDEND', 'REFERRAL_BONUS', 'LOAN_RECEIVED',
+        'QUOTA_SELL', 'EDUCATION_REWARD', 'ADMIN_GIFT',
+        'AD_REWARD', 'CHEST_REWARD', 'VIDEO_REWARD'
+    ].includes(type);
     const isOutgoing = (type: string) => ['WITHDRAWAL', 'LOAN_PAYMENT', 'QUOTA_PURCHASE', 'LOAN_INSTALLMENT'].includes(type);
 
     // Traduzir tipos
@@ -58,6 +62,9 @@ export const HistoryView = ({ transactions: initialTransactions }: HistoryViewPr
             'QUOTA_PURCHASE': 'Aporte em Participação',
             'LOAN_INSTALLMENT': 'Reposição de Apoio',
             'PRO_UPGRADE': 'Assinatura Cred30 PRO',
+            'AD_REWARD': 'Bônus de Anúncio',
+            'CHEST_REWARD': 'Bônus de Baú Diário',
+            'VIDEO_REWARD': 'Bônus de Vídeo',
         };
         return map[type] || type;
     };
@@ -125,7 +132,7 @@ export const HistoryView = ({ transactions: initialTransactions }: HistoryViewPr
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-xl sm:text-2xl font-bold text-white">Extrato Completo</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold text-white">Meu Extrato Individual</h1>
                     <p className="text-zinc-400 text-sm mt-1">{filteredTransactions.length} transações encontradas</p>
                 </div>
             </div>

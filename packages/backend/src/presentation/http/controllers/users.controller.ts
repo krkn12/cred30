@@ -461,7 +461,12 @@ export class UsersController {
                 message = 'Obrigado por apoiar o projeto! +1 ponto de Farm creditado.';
             }
 
-            await pool.query(`INSERT INTO transactions (user_id, type, amount, status, description, metadata) VALUES ($1, 'AD_REWARD', 0, 'APPROVED', $2, $3)`, [user.id, `Visualização de anúncio`, JSON.stringify({ scoreRewarded: scoreReward })]);
+            await pool.query(`INSERT INTO transactions (user_id, type, amount, status, description, metadata) VALUES ($1, 'AD_REWARD', $2, 'APPROVED', $3, $4)`, [
+                user.id,
+                scoreReward > 0 ? scoreReward : 1, // Logar pelo menos 1 pt de farm se score for 0
+                scoreReward > 0 ? `Bônus de Anúncio: +${scoreReward} pontos` : `Apoio ao Projeto (Farm)`,
+                JSON.stringify({ scoreRewarded: scoreReward })
+            ]);
 
             return c.json({ success: true, message, data: { scoreRewarded: scoreReward, adsToday: adsToday + (scoreReward > 0 ? 1 : 0) } });
         } catch (error: any) {
