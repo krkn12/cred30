@@ -243,19 +243,19 @@ export class UsersController {
                     FROM users u WHERE u.id = $1
                 ),
                 recent_tx AS (
-                    SELECT json_agg(t) FROM (SELECT id, user_id as "userId", type, amount, created_at as date, description, status, metadata FROM transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20) t
+                    SELECT COALESCE(json_agg(t), '[]'::json) FROM (SELECT id, user_id as "userId", type, amount, created_at as date, description, status, metadata FROM transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20) t
                 ),
                 active_quotas AS (
-                    SELECT json_agg(q) FROM (SELECT id, user_id as "userId", purchase_price as "purchasePrice", current_value as "currentValue", purchase_date as "purchaseDate", status, yield_rate as "yieldRate" FROM quotas WHERE user_id = $1 ORDER BY purchase_date DESC) q
+                    SELECT COALESCE(json_agg(q), '[]'::json) FROM (SELECT id, user_id as "userId", purchase_price as "purchasePrice", current_value as "currentValue", purchase_date as "purchaseDate", status, yield_rate as "yieldRate" FROM quotas WHERE user_id = $1 ORDER BY purchase_date DESC) q
                 ),
                 active_loans AS (
-                    SELECT json_agg(l) FROM (
+                    SELECT COALESCE(json_agg(l), '[]'::json) FROM (
                         SELECT ln.id, ln.user_id as "userId", ln.amount::float as amount, ln.total_repayment::float as "totalRepayment", ln.installments, ln.interest_rate::float as "interestRate", ln.status, ln.created_at as "createdAt", ln.due_date as "dueDate",
                         COALESCE((SELECT SUM(COALESCE(li.amount, li.expected_amount)::float) FROM loan_installments li WHERE li.loan_id = ln.id AND li.status = 'PAID'), 0) as "totalPaid",
                         ln.total_repayment::float - COALESCE((SELECT SUM(COALESCE(li.amount, li.expected_amount)::float) FROM loan_installments li WHERE li.loan_id = ln.id AND li.status = 'PAID'), 0) as "remainingAmount",
                         (SELECT COUNT(*) FROM loan_installments li WHERE li.loan_id = ln.id AND li.status = 'PAID')::int as "paidInstallmentsCount",
                         CASE WHEN COALESCE((SELECT SUM(COALESCE(li.amount, li.expected_amount)::float) FROM loan_installments li WHERE li.loan_id = ln.id AND li.status = 'PAID'), 0) >= ln.total_repayment::float - 0.01 THEN true ELSE false END as "isFullyPaid",
-                        (
+                        COALESCE((
                           SELECT json_agg(json_build_object(
                             'id', li.id,
                             'installmentNumber', li.installment_number,
@@ -267,7 +267,7 @@ export class UsersController {
                           ) ORDER BY li.installment_number ASC NULLS LAST, li.created_at ASC)
                           FROM loan_installments li
                           WHERE li.loan_id = ln.id
-                        ) as "installmentsList"
+                        ), '[]'::json) as "installmentsList"
                         FROM loans ln WHERE ln.user_id = $1 ORDER BY ln.created_at DESC
                     ) l
                 )

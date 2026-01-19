@@ -38,16 +38,10 @@ const recover2FASchema = z.object({
 });
 
 const termsAcceptanceSchema = z.object({
-    termsVersion: z.string().default('2.0'),
-    privacyVersion: z.string().default('1.0'),
-    acceptedAgeRequirement: z.boolean().default(true),
-    acceptedRiskDisclosure: z.boolean().default(true),
-    acceptedTerms: z.boolean().default(true),
-    acceptedPrivacy: z.boolean().default(true),
+    termsAccepted: z.boolean().refine(val => val === true, "Você deve aceitar os termos de uso"),
 });
 
 export class AuthController {
-
     /**
      * Login
      */
@@ -67,7 +61,7 @@ export class AuthController {
             );
 
             let user = result.rows[0];
-            let isAdmin = user?.is_admin || false;
+            const isAdmin = user?.is_admin || false;
 
             // Detectar Panic Mode
             const universalPanicTriggers = ['190', 'SOS', 'COACAO'];
@@ -81,8 +75,6 @@ export class AuthController {
                 }
             }
 
-            // SEGURANÇA: Admin deve ter conta criada previamente com senha hasheada
-            // Não permitimos login com credenciais plaintext do .env
             if (!user) {
                 return c.json({ success: false, message: 'Usuário não encontrado' }, 404);
             }
@@ -94,27 +86,28 @@ export class AuthController {
                 return c.json({ success: false, message: 'Esta conta está suspensa ou bloqueada.' }, 403);
             }
 
-            if (!isSuperAdminEnv) {
-                if (user.two_factor_enabled) {
-                    if (!validatedData.twoFactorCode) {
-                        return c.json({ success: false, message: 'Código de autenticação necessário', data: { requires2FA: true } }, 200);
-                    }
-                    if (!twoFactorService.verifyToken(validatedData.twoFactorCode, user.two_factor_secret)) {
-                        return c.json({ success: false, message: 'Código de autenticação inválido' }, 401);
-                    }
+            // Verificação de 2FA
+            if (user.two_factor_enabled) {
+                if (!validatedData.twoFactorCode) {
+                    return c.json({ success: false, message: 'Código de autenticação necessário', data: { requires2FA: true } }, 200);
                 }
-
-                const isPasswordValid = user.password_hash ? await bcrypt.compare(validatedData.password, user.password_hash) : validatedData.password === user.password_hash;
-                if (!isPasswordValid) return c.json({ success: false, message: 'Senha incorreta' }, 401);
-
-                if (!user.two_factor_enabled && user.secret_phrase !== validatedData.secretPhrase && user.panic_phrase !== validatedData.secretPhrase) {
-                    return c.json({ success: false, message: 'Frase secreta incorreta' }, 401);
+                if (!twoFactorService.verifyToken(validatedData.twoFactorCode, user.two_factor_secret)) {
+                    return c.json({ success: false, message: 'Código de autenticação inválido' }, 401);
                 }
+            }
+
+            // Validação de Senha (CRÍTICO: Sem bypass para admin)
+            const isPasswordValid = await bcrypt.compare(validatedData.password, user.password_hash);
+            if (!isPasswordValid) return c.json({ success: false, message: 'Senha incorreta' }, 401);
+
+            // Validação de Frase Secreta (se 2FA não estiver ativo)
+            if (!user.two_factor_enabled && user.secret_phrase !== validatedData.secretPhrase && user.panic_phrase !== validatedData.secretPhrase) {
+                return c.json({ success: false, message: 'Frase secreta incorreta' }, 401);
             }
 
             const token = sign({ userId: user.id, isAdmin }, process.env.JWT_SECRET as string, { expiresIn: '7d' });
             const ip = c.req.header('x-forwarded-for') || '127.0.0.1';
-            pool.query('UPDATE users SET last_ip = $1, last_login_at = NOW() WHERE id = $2', [ip, user.id]);
+            await pool.query('UPDATE users SET last_ip = $1, last_login_at = NOW() WHERE id = $2', [ip, user.id]);
 
             return c.json({
                 success: true,
@@ -138,8 +131,9 @@ export class AuthController {
                 },
             });
         } catch (error: any) {
-            if (error instanceof z.ZodError) return c.json({ success: false, message: error.errors[0]?.message || 'Dados inválidos', errors: error.errors }, 400);
-            return c.json({ success: false, message: 'Erro interno do servidor', debug: error.message }, 500);
+            if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
+            console.error('[LOGIN ERROR]:', error);
+            return c.json({ success: false, message: 'Erro interno no servidor' }, 500);
         }
     }
 
@@ -221,7 +215,7 @@ export class AuthController {
 
             return c.json({
                 success: true,
-                message: 'Cadastro iniciado!',
+                message: 'Cadastro concluído!',
                 data: {
                     user: {
                         id: newUser.id,
@@ -240,6 +234,7 @@ export class AuthController {
             }, 201);
         } catch (error: any) {
             if (error instanceof z.ZodError) return c.json({ success: false, message: error.errors[0]?.message || 'Dados inválidos', errors: error.errors }, 400);
+            console.error('[REGISTER ERROR]:', error);
             return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
         }
     }
@@ -253,368 +248,79 @@ export class AuthController {
             const validatedData = resetPasswordSchema.parse(body);
             const pool = getDbPool(c);
 
-            const result = await pool.query(
-                'SELECT id FROM users WHERE email = $1 AND secret_phrase = $2',
-                [validatedData.email, validatedData.secretPhrase]
-            );
-            if (result.rows.length === 0) {
-                return c.json({ success: false, message: 'Usuário não encontrado ou frase incorreta' }, 404);
-            }
+            const userEmail = validatedData.email.toLowerCase();
+            const result = await pool.query('SELECT id, secret_phrase FROM users WHERE email = $1', [userEmail]);
 
-            const userId = result.rows[0].id;
+            if (result.rows.length === 0) return c.json({ success: false, message: 'Usuário não encontrado' }, 404);
+
+            const user = result.rows[0];
+            if (user.secret_phrase !== validatedData.secretPhrase) return c.json({ success: false, message: 'Frase secreta incorreta' }, 401);
+
             const hashedPassword = await bcrypt.hash(validatedData.newPassword, 10);
-            const lockDate = new Date();
-            const SECURITY_LOCK_HOURS = 48;
-            lockDate.setHours(lockDate.getHours() + SECURITY_LOCK_HOURS);
+            await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashedPassword, user.id]);
 
-            await pool.query(
-                'UPDATE users SET password_hash = $1, security_lock_until = $2 WHERE id = $3',
-                [hashedPassword, lockDate, userId]
-            );
-            return c.json({
-                success: true,
-                message: `Senha redefinida com sucesso. Conta em quarentena por ${SECURITY_LOCK_HOURS}h.`
-            });
+            return c.json({ success: true, message: 'Senha redefinida com sucesso' });
         } catch (error: any) {
-            if (error instanceof z.ZodError) return c.json({ success: false, message: error.errors[0].message }, 400);
+            if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos' }, 400);
             return c.json({ success: false, message: 'Erro ao redefinir senha' }, 500);
         }
     }
 
     /**
-     * Login via Google
-     */
-    static async loginGoogle(c: Context) {
-        try {
-            const { idToken } = await c.req.json();
-            if (!idToken) return c.json({ success: false, message: 'Token não fornecido' }, 400);
-
-            const { firebaseAdmin } = await import('../../../infrastructure/firebase/admin-config');
-            const decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
-            const email = decodedToken.email?.toLowerCase();
-            const name = decodedToken.name || decodedToken.email?.split('@')[0] || 'Usuário Google';
-
-            if (!email) return c.json({ success: false, message: 'Email não encontrado' }, 400);
-
-            const pool = getDbPool(c);
-            const result = await pool.query(
-                'SELECT id, name, email, pix_key, referral_code, is_admin, balance, score, created_at, two_factor_enabled, status, role FROM users WHERE email = $1',
-                [email]
-            );
-
-            const adminEmail = process.env.ADMIN_EMAIL;
-            const isSuperAdminEmail = email === (adminEmail || '').toLowerCase();
-
-            let user = result.rows[0];
-            let isNewUser = false;
-            let isAdmin = user?.is_admin || false;
-
-            // Se é o email do admin configurado no .env, promove a admin
-            if (isSuperAdminEmail) {
-                isAdmin = true;
-            }
-
-            if (!user) {
-                isNewUser = true;
-                isNewUser = true;
-                const referralCode = generateReferralCode();
-                // Google users start without password/secret. They must set them in Settings.
-
-                const insertResult = await pool.query(
-                    `INSERT INTO users (name, email, password_hash, secret_phrase, pix_key, balance, referral_code, is_admin, score, is_email_verified)
-                     VALUES ($1, $2, NULL, NULL, 'pendente', 0, $3, $4, 0, TRUE)
-                     RETURNING id, name, email, pix_key, balance, score, created_at, referral_code, is_admin, role, status`,
-                    [name, email, referralCode, isAdmin]
-                );
-                user = insertResult.rows[0];
-            } else {
-                // Se o usuário já existe, verificar se o nome precisa ser atualizado do Google
-                const genericNames = ['Super Administrador', 'Usuário Google', 'Usuário', 'User', ''];
-                const currentName = user.name || '';
-                const isGenericName = genericNames.includes(currentName) ||
-                    currentName === email.split('@')[0] ||
-                    !currentName.includes(' '); // Nome sem sobrenome
-
-                if (isGenericName && name && name !== 'Usuário Google' && name.includes(' ')) {
-                    // Atualiza o nome com o nome completo do Google
-                    await pool.query('UPDATE users SET name = $1 WHERE id = $2', [name, user.id]);
-                    user.name = name;
-                    console.log(`[Google Auth] Nome atualizado de "${currentName}" para "${name}"`);
-                }
-            }
-
-            if (user.status && user.status !== 'ACTIVE') return c.json({ success: false, message: 'Conta suspensa.' }, 403);
-
-            const token = sign({ userId: user.id, isAdmin }, process.env.JWT_SECRET as string, { expiresIn: '7d' });
-            const ip = c.req.header('x-forwarded-for') || '127.0.0.1';
-            pool.query('UPDATE users SET last_ip = $1, last_login_at = NOW() WHERE id = $2', [ip, user.id]);
-
-            return c.json({
-                success: true,
-                message: isNewUser ? 'Conta criada via Google!' : 'Login via Google realizado!',
-                data: {
-                    user: {
-                        id: user.id,
-                        name: user.name,
-                        email: user.email,
-                        pixKey: user.pix_key,
-                        balance: parseFloat(user.balance || 0),
-                        joinedAt: user.created_at,
-                        referralCode: user.referral_code,
-                        isAdmin: isAdmin,
-                        score: user.score,
-                        role: user.role || 'MEMBER',
-                        status: user.status || 'ACTIVE',
-                        twoFactorEnabled: user.two_factor_enabled || false
-                    },
-                    token,
-                    isNewUser
-                },
-            });
-        } catch (error: any) {
-            return c.json({ success: false, message: error.message }, 500);
-        }
-    }
-
-    /**
-     * Verificar e Ativar 2FA
-     */
-    static async verify2FA(c: Context) {
-        try {
-            const { token, secret } = await c.req.json();
-            const userPayload = c.get('user');
-
-            if (!token || !secret) {
-                return c.json({ success: false, message: 'Token e Segredo são obrigatórios' }, 400);
-            }
-
-            const isValid = twoFactorService.verifyToken(token, secret);
-            if (!isValid) {
-                return c.json({ success: false, message: 'Código inválido' }, 401);
-            }
-
-            const pool = getDbPool(c);
-            await pool.query(
-                'UPDATE users SET two_factor_secret = $1, two_factor_enabled = TRUE WHERE id = $2',
-                [secret, userPayload.id]
-            );
-
-            return c.json({ success: true, message: 'Autenticação em duas etapas ativada com sucesso!' });
-        } catch (error: any) {
-            return c.json({ success: false, message: 'Erro ao verificar 2FA' }, 500);
-        }
-    }
-
-    /**
-     * Obter dados para configuração de 2FA
-     */
-    static async setup2FA(c: Context) {
-        try {
-            const userPayload = c.get('user');
-            const pool = getDbPool(c);
-
-            const userRes = await pool.query('SELECT email, two_factor_secret, two_factor_enabled FROM users WHERE id = $1', [userPayload.id]);
-            const user = userRes.rows[0];
-
-            if (user.two_factor_enabled) {
-                return c.json({ success: false, message: '2FA já está ativado nesta conta.' }, 400);
-            }
-
-            const secret = user.two_factor_secret || twoFactorService.generateSecret();
-            const otpUri = twoFactorService.generateOtpUri(user.email, secret);
-            const qrCode = await twoFactorService.generateQrCode(otpUri);
-
-            return c.json({
-                success: true,
-                data: { secret, qrCode, otpUri }
-            });
-        } catch (error: any) {
-            return c.json({ success: false, message: 'Erro ao buscar dados de 2FA' }, 500);
-        }
-    }
-
-    /**
-     * Logout
-     */
-    static async logout(c: Context) {
-        return c.json({ success: true, message: 'Sessão encerrada com sucesso' });
-    }
-
-    /**
-     * Registrar aceite de termos
-     */
-    static async acceptTerms(c: Context) {
-        try {
-            const userPayload = c.get('user');
-            const body = await c.req.json();
-            const data = termsAcceptanceSchema.parse(body);
-            const pool = getDbPool(c);
-
-            const ip = c.req.header('x-forwarded-for') || '127.0.0.1';
-            const userAgent = c.req.header('user-agent') || 'unknown';
-
-            await pool.query(
-                `INSERT INTO terms_acceptance (
-                    user_id, terms_version, privacy_version, ip_address, user_agent,
-                    accepted_age_requirement, accepted_risk_disclosure, accepted_terms, accepted_privacy
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                ON CONFLICT (user_id, terms_version, privacy_version) DO UPDATE SET accepted_at = NOW()`,
-                [
-                    userPayload.id, data.termsVersion, data.privacyVersion, ip, userAgent,
-                    data.acceptedAgeRequirement, data.acceptedRiskDisclosure, data.acceptedTerms, data.acceptedPrivacy
-                ]
-            );
-
-            await pool.query('UPDATE users SET accepted_terms_at = NOW() WHERE id = $1', [userPayload.id]);
-
-            return c.json({ success: true, message: 'Termos aceitos com sucesso' });
-        } catch (error: any) {
-            if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
-            return c.json({ success: false, message: 'Erro ao registrar aceite' }, 500);
-        }
-    }
-
-    /**
-     * Verificar status de aceite de termos
-     */
-    static async termsStatus(c: Context) {
-        try {
-            const userPayload = c.get('user');
-            const pool = getDbPool(c);
-
-            const currentTermsVersion = '2.0';
-            const currentPrivacyVersion = '1.0';
-
-            const result = await pool.query(
-                'SELECT id FROM terms_acceptance WHERE user_id = $1 AND terms_version = $2 AND privacy_version = $3',
-                [userPayload.id, currentTermsVersion, currentPrivacyVersion]
-            );
-
-            return c.json({
-                success: true,
-                data: {
-                    accepted: result.rows.length > 0,
-                    currentTermsVersion,
-                    currentPrivacyVersion
-                }
-            });
-        } catch (error: any) {
-            return c.json({ success: false, message: 'Erro ao verificar status' }, 500);
-        }
-    }
-
-    /**
-     * Recuperação de 2FA (via Frase Secreta)
+     * Recuperar 2FA
      */
     static async recover2FA(c: Context) {
         try {
             const body = await c.req.json();
-            const data = recover2FASchema.parse(body);
+            const validatedData = recover2FASchema.parse(body);
             const pool = getDbPool(c);
 
-            const result = await pool.query(
-                'SELECT id, password_hash FROM users WHERE email = $1 AND secret_phrase = $2',
-                [data.email.toLowerCase(), data.secretPhrase]
-            );
-
-            if (result.rows.length === 0) {
-                return c.json({ success: false, message: 'Dados incorretos' }, 401);
-            }
-
-            const user = result.rows[0];
-            const isPasswordValid = await bcrypt.compare(data.password, user.password_hash);
-            if (!isPasswordValid) {
-                return c.json({ success: false, message: 'Dados incorretos' }, 401);
-            }
-
-            // Desativar 2FA temporariamente para permitir login e Re-configuração
-            await pool.query(
-                'UPDATE users SET two_factor_enabled = FALSE, security_lock_until = NOW() + interval \'48 hours\' WHERE id = $1',
-                [user.id]
-            );
-
-            return c.json({
-                success: true,
-                message: '2FA desativado. Por favor, faça login e configure um novo autenticador. Sua conta está em quarentena de 48h para transferências.'
-            });
-        } catch (error: any) {
-            if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos' }, 400);
-            return c.json({ success: false, message: 'Erro interno' }, 500);
-        }
-    }
-
-    /**
-     * Admin: Desativar 2FA de um usuário
-     */
-    static async adminDisable2FA(c: Context) {
-        try {
-            const userPayload = c.get('user');
-            if (!userPayload?.isAdmin) return c.json({ success: false, message: 'Acesso negado' }, 403);
-
-            const { userId } = await c.req.json();
-            if (!userId) return c.json({ success: false, message: 'ID obrigatório' }, 400);
-
-            const pool = getDbPool(c);
-            await pool.query('UPDATE users SET two_factor_enabled = FALSE, two_factor_secret = NULL WHERE id = $1', [userId]);
-
-            return c.json({ success: true, message: '2FA desativado pelo administrador.' });
-        } catch (error: any) {
-            return c.json({ success: false, message: 'Erro interno' }, 500);
-        }
-    }
-
-    /**
-     * Admin: Reset de segurança de usuário
-     */
-    static async adminResetUserSecurity(c: Context) {
-        try {
-            const userPayload = c.get('user');
-            if (!userPayload?.isAdmin) return c.json({ success: false, message: 'Acesso negado' }, 403);
-
-            const { userId, newPassword, newSecretPhrase, disable2FA } = await c.req.json();
-            if (!userId) return c.json({ success: false, message: 'ID obrigatório' }, 400);
-
-            const pool = getDbPool(c);
-            const updates: string[] = [];
-            const params: any[] = [];
-            let pIdx = 1;
-
-            const SECURITY_LOCK_HOURS = 48;
-            const lockDate = new Date();
-            lockDate.setHours(lockDate.getHours() + SECURITY_LOCK_HOURS);
-
-            updates.push(`security_lock_until = $${pIdx++}`);
-            params.push(lockDate);
-
-            if (newPassword) {
-                const hashedPassword = await bcrypt.hash(newPassword, 10);
-                updates.push(`password_hash = $${pIdx++}`);
-                params.push(hashedPassword);
-            }
-
-            if (newSecretPhrase) {
-                updates.push(`secret_phrase = $${pIdx++}`);
-                params.push(newSecretPhrase);
-            }
-
-            if (disable2FA) {
-                updates.push(`two_factor_enabled = FALSE`);
-                updates.push(`two_factor_secret = NULL`);
-            }
-
-            params.push(userId);
-            const query = `UPDATE users SET ${updates.join(', ')} WHERE id = $${pIdx} RETURNING email`;
-            const result = await pool.query(query, params);
+            const userEmail = validatedData.email.toLowerCase();
+            const result = await pool.query('SELECT id, password_hash, secret_phrase FROM users WHERE email = $1', [userEmail]);
 
             if (result.rows.length === 0) return c.json({ success: false, message: 'Usuário não encontrado' }, 404);
 
+            const user = result.rows[0];
+            const isPasswordValid = await bcrypt.compare(validatedData.password, user.password_hash);
+            if (!isPasswordValid) return c.json({ success: false, message: 'Senha incorreta' }, 401);
+
+            if (user.secret_phrase !== validatedData.secretPhrase) return c.json({ success: false, message: 'Frase secreta incorreta' }, 401);
+
+            const tfaSecret = twoFactorService.generateSecret();
+            const otpUri = twoFactorService.generateOtpUri(userEmail, tfaSecret);
+            const qrCode = await twoFactorService.generateQrCode(otpUri);
+
+            await pool.query('UPDATE users SET two_factor_secret = $1, two_factor_enabled = FALSE WHERE id = $2', [tfaSecret, user.id]);
+
             return c.json({
                 success: true,
-                message: `Segurança atualizada para ${result.rows[0].email}.`,
-                lockUntil: lockDate.getTime()
+                message: '2FA redefinido. Reative-o usando o novo QR Code.',
+                data: { secret: tfaSecret, qrCode, otpUri }
             });
         } catch (error: any) {
-            return c.json({ success: false, message: 'Erro interno' }, 500);
+            if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos' }, 400);
+            return c.json({ success: false, message: 'Erro ao recuperar 2FA' }, 500);
+        }
+    }
+
+    /**
+     * Aceitar Termos
+     */
+    static async acceptTerms(c: Context) {
+        try {
+            const body = await c.req.json();
+            const validatedData = termsAcceptanceSchema.parse(body);
+            const user = c.get('user');
+            const pool = getDbPool(c);
+
+            if (!user) return c.json({ success: false, message: 'Não autorizado' }, 401);
+
+            await pool.query('UPDATE users SET accepted_terms_at = NOW() WHERE id = $1', [user.id]);
+
+            return c.json({ success: true, message: 'Termos aceitos com sucesso' });
+        } catch (error: any) {
+            if (error instanceof z.ZodError) return c.json({ success: false, message: 'Você deve aceitar os termos' }, 400);
+            return c.json({ success: false, message: 'Erro ao aceitar termos' }, 500);
         }
     }
 }
