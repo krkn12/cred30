@@ -32,6 +32,11 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
         return days > 0 ? days : 0;
     };
 
+    const getNextDueDate = (loan: Loan) => {
+        const next = loan.installmentsList?.find(i => i.status === 'PENDING');
+        return next ? next.dueDate : loan.dueDate;
+    };
+
     const [viewDetailsId, setViewDetailsId] = useState<string | null>(null);
     const [installmentModalData, setInstallmentModalData] = useState<{ loanId: string, installmentAmount: number } | null>(null);
 
@@ -81,6 +86,9 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
 
     // Helper: Calculate installment value
     const getInstallmentValue = (loan: Loan) => {
+        const nextPending = loan.installmentsList?.find(i => i.status === 'PENDING');
+        if (nextPending) return nextPending.expectedAmount;
+
         const fixedValue = loan.totalRepayment / loan.installments;
         const remaining = loan.remainingAmount ?? loan.totalRepayment;
         return Math.min(fixedValue, remaining);
@@ -142,9 +150,12 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                             <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1 block">Saldo Devedor Atual</span>
                             <h3 className="text-2xl sm:text-3xl font-black text-white">R$ {activeLoans.length > 0 ? formatNumber(Math.max(0, (activeLoans[0].remainingAmount ?? activeLoans[0].totalRepayment) < 0.05 ? 0 : (activeLoans[0].remainingAmount ?? activeLoans[0].totalRepayment))) : '0,00'}</h3>
                         </div>
-                        <div className="bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 rounded-lg flex items-center gap-2 self-start sm:self-auto">
+                        <div className="bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 rounded-lg flex items-center gap-2 self-start sm:self-auto uppercase">
                             <Clock size={14} className="text-yellow-500" />
-                            <span className="text-yellow-500 text-xs font-bold uppercase">Vence em {activeLoans.length > 0 ? getDaysRemaining(activeLoans[0].dueDate) : 'N/A'} dias</span>
+                            <span className="text-yellow-500 text-[10px] font-black">
+                                Próx. Vencimento: {activeLoans.length > 0 ? new Date(getNextDueDate(activeLoans[0])!).toLocaleDateString('pt-BR') : 'N/A'}
+                                <span className="ml-1 opacity-60">({getDaysRemaining(getNextDueDate(activeLoans[0]))} dias)</span>
+                            </span>
                         </div>
                     </div>
 
@@ -450,6 +461,32 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                             style={{ width: `${Math.min(progressPercentage, 100)}%` }}
                                         ></div>
                                     </div>
+
+                                    {/* CRONOGRAMA DE PARCELAS */}
+                                    {loan.installmentsList && loan.installmentsList.length > 0 && (
+                                        <div className="mt-6 space-y-2">
+                                            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3">Cronograma de Reposição</p>
+                                            <div className="grid grid-cols-1 gap-2">
+                                                {loan.installmentsList.map((inst: any) => (
+                                                    <div key={inst.id} className={`flex items-center justify-between p-3 rounded-xl border ${inst.status === 'PAID' ? 'bg-emerald-500/5 border-emerald-500/10' : 'bg-black/20 border-white/5'}`}>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-2 h-2 rounded-full ${inst.status === 'PAID' ? 'bg-emerald-500' : 'bg-zinc-700'}`} />
+                                                            <div>
+                                                                <p className="text-[10px] font-black text-white uppercase tracking-tighter">Parcela {inst.installmentNumber || '-'}</p>
+                                                                <p className="text-[9px] text-zinc-500 font-bold">{new Date(inst.dueDate).toLocaleDateString('pt-BR')}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-[11px] font-black text-white">{formatBRL(inst.expectedAmount)}</p>
+                                                            <p className={`text-[8px] font-black uppercase tracking-widest ${inst.status === 'PAID' ? 'text-emerald-500' : 'text-zinc-500'}`}>
+                                                                {inst.status === 'PAID' ? 'REPOSTO' : 'PENDENTE'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

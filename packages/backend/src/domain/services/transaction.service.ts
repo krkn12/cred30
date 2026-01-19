@@ -6,7 +6,8 @@ import {
   PLATFORM_FEE_TAX_SHARE,
   PLATFORM_FEE_OPERATIONAL_SHARE,
   PLATFORM_FEE_OWNER_SHARE,
-  PLATFORM_FEE_INVESTMENT_SHARE
+  PLATFORM_FEE_INVESTMENT_SHARE,
+  ONE_MONTH_MS
 } from '../../shared/constants/business.constants';
 import { calculateGatewayCost } from '../../shared/utils/financial.utils';
 import { updateScore, SCORE_REWARDS } from '../../application/services/score.service';
@@ -487,18 +488,32 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
         const isFullPayment = metadata.paymentType === 'full_payment' || (!isInstallment && loan.status === 'PAYMENT_PENDING');
 
         if (isFullPayment) {
-          // Registrar o pagamento completo como uma entrada de installment para auditoria
-          await client.query(
-            'INSERT INTO loan_installments (loan_id, amount, use_balance, created_at) VALUES ($1, $2, $3, $4)',
-            [metadata.loanId, actualPaymentAmount, metadata.useBalance || false, new Date()]
-          );
+          // Registrar ou Atualizar a parcela no cronograma
+          if (metadata.installmentId) {
+            await client.query(
+              'UPDATE loan_installments SET amount = $1, status = $2, use_balance = $3, paid_at = NOW() WHERE id = $4',
+              [actualPaymentAmount, 'PAID', metadata.useBalance || false, metadata.installmentId]
+            );
+          } else {
+            await client.query(
+              'INSERT INTO loan_installments (loan_id, amount, use_balance, created_at, status, paid_at) VALUES ($1, $2, $3, $4, $5, NOW())',
+              [metadata.loanId, actualPaymentAmount, metadata.useBalance || false, new Date(), 'PAID']
+            );
+          }
           await client.query('UPDATE loans SET status = $1 WHERE id = $2', ['PAID', metadata.loanId]);
           console.log(`[LOAN_PAYMENT] Empréstimo ${metadata.loanId} quitado integralmente. Registro de pagamento criado.`);
         } else if (isInstallment) {
-          await client.query(
-            'INSERT INTO loan_installments (loan_id, amount, use_balance, created_at) VALUES ($1, $2, $3, $4)',
-            [metadata.loanId, actualPaymentAmount, metadata.useBalance || false, new Date()]
-          );
+          if (metadata.installmentId) {
+            await client.query(
+              'UPDATE loan_installments SET amount = $1, status = $2, use_balance = $3, paid_at = NOW() WHERE id = $4',
+              [actualPaymentAmount, 'PAID', metadata.useBalance || false, metadata.installmentId]
+            );
+          } else {
+            await client.query(
+              'INSERT INTO loan_installments (loan_id, amount, use_balance, created_at, status, paid_at) VALUES ($1, $2, $3, $4, $5, NOW())',
+              [metadata.loanId, actualPaymentAmount, metadata.useBalance || false, new Date(), 'PAID']
+            );
+          }
 
           // Amortização Real: Diminuir o saldo devedor total e o principal
           await client.query(
@@ -876,6 +891,23 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
 
   // Audit e Transação
   await client.query('UPDATE loans SET status = $1, approved_at = $2, payout_status = $3 WHERE id = $4', ['APPROVED', new Date(), 'NONE', id]);
+
+  // === GERAÇÃO DO CRONOGRAMA DE PARCELAS ===
+  const loanTotalRepayment = parseFloat(loan.total_repayment);
+  const numInstallments = loan.installments;
+  const installmentAmount = loanTotalRepayment / numInstallments;
+
+  for (let i = 1; i <= numInstallments; i++) {
+    const dueDate = new Date();
+    dueDate.setTime(dueDate.getTime() + (i * ONE_MONTH_MS));
+
+    await client.query(
+      `INSERT INTO loan_installments (loan_id, installment_number, expected_amount, due_date, status, created_at)
+       VALUES ($1, $2, $3, $4, 'PENDING', NOW())`,
+      [id, i, installmentAmount, dueDate]
+    );
+  }
+  console.log(`[LOAN_APPROVED] ${numInstallments} parcelas geradas para o empréstimo ${id}`);
 
   await createTransaction(
     client,

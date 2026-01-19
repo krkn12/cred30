@@ -6,6 +6,7 @@ import { twoFactorService } from '../../../application/services/two-factor.servi
 import { UserContext } from '../../../shared/types/hono.types';
 import { getWelcomeBenefit, getWelcomeBenefitDescription } from '../../../application/services/welcome-benefit.service';
 import { WELCOME_BENEFIT_MAX_USES } from '../../../shared/constants/business.constants';
+import { LiquidationService } from '../../../application/services/liquidation.service';
 
 // Schemas
 const completeProfileSchema = z.object({
@@ -231,6 +232,9 @@ export class UsersController {
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
 
+            // Processar liquidações pendentes (Regra 35 dias)
+            await LiquidationService.processOverdueInstallments(pool);
+
             const result = await pool.query(`
                 WITH user_stats AS (
                     SELECT u.balance, u.score, u.membership_type, u.is_verified, u.is_seller, u.security_lock_until, u.ad_points, u.pending_ad_points, u.phone, u.cpf, u.pix_key, u.address, u.referred_by, COALESCE(u.total_dividends_earned, 0) as total_dividends_earned, u.last_login_at, u.safe_contact_phone,
@@ -247,10 +251,23 @@ export class UsersController {
                 active_loans AS (
                     SELECT json_agg(l) FROM (
                         SELECT ln.id, ln.user_id as "userId", ln.amount::float as amount, ln.total_repayment::float as "totalRepayment", ln.installments, ln.interest_rate::float as "interestRate", ln.status, ln.created_at as "createdAt", ln.due_date as "dueDate",
-                        COALESCE((SELECT SUM(li.amount::float) FROM loan_installments li WHERE li.loan_id = ln.id), 0) as "totalPaid",
-                        ln.total_repayment::float - COALESCE((SELECT SUM(li.amount::float) FROM loan_installments li WHERE li.loan_id = ln.id), 0) as "remainingAmount",
-                        (SELECT COUNT(*) FROM loan_installments li WHERE li.loan_id = ln.id)::int as "paidInstallmentsCount",
-                        CASE WHEN COALESCE((SELECT SUM(li.amount::float) FROM loan_installments li WHERE li.loan_id = ln.id), 0) >= ln.total_repayment::float THEN true ELSE false END as "isFullyPaid"
+                        COALESCE((SELECT SUM(COALESCE(li.amount, li.expected_amount)::float) FROM loan_installments li WHERE li.loan_id = ln.id AND li.status = 'PAID'), 0) as "totalPaid",
+                        ln.total_repayment::float - COALESCE((SELECT SUM(COALESCE(li.amount, li.expected_amount)::float) FROM loan_installments li WHERE li.loan_id = ln.id AND li.status = 'PAID'), 0) as "remainingAmount",
+                        (SELECT COUNT(*) FROM loan_installments li WHERE li.loan_id = ln.id AND li.status = 'PAID')::int as "paidInstallmentsCount",
+                        CASE WHEN COALESCE((SELECT SUM(COALESCE(li.amount, li.expected_amount)::float) FROM loan_installments li WHERE li.loan_id = ln.id AND li.status = 'PAID'), 0) >= ln.total_repayment::float - 0.01 THEN true ELSE false END as "isFullyPaid",
+                        (
+                          SELECT json_agg(json_build_object(
+                            'id', li.id,
+                            'installmentNumber', li.installment_number,
+                            'amount', li.amount::float,
+                            'expectedAmount', li.expected_amount::float,
+                            'dueDate', li.due_date,
+                            'status', li.status,
+                            'paidAt', li.paid_at
+                          ) ORDER BY li.installment_number ASC NULLS LAST, li.created_at ASC)
+                          FROM loan_installments li
+                          WHERE li.loan_id = ln.id
+                        ) as "installmentsList"
                         FROM loans ln WHERE ln.user_id = $1 ORDER BY ln.created_at DESC
                     ) l
                 )
