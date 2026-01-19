@@ -37,6 +37,18 @@ export interface Quota {
   yieldRate?: number;
 }
 
+export interface LoanInstallment {
+  id: string;
+  installmentNumber: number;
+  amount: number;
+  expectedAmount: number;
+  dueDate: string;
+  status: 'PENDING' | 'PAID';
+  useBalance?: boolean;
+  createdAt: string;
+  paidAt?: string;
+}
+
 export interface Loan {
   id: string;
   userId: string;
@@ -61,6 +73,7 @@ export interface Loan {
   user_email?: string;
   created_at?: string;
   requestDate?: number; // timestamp
+  installmentsList?: LoanInstallment[];
 }
 
 export interface Transaction {

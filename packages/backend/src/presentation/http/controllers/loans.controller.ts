@@ -56,10 +56,15 @@ export class LoansController {
                 COALESCE(
                   (SELECT json_agg(json_build_object(
                     'id', li.id,
+                    'installmentNumber', li.installment_number,
                     'amount', li.amount::float,
+                    'expectedAmount', li.expected_amount::float,
+                    'dueDate', li.due_date,
+                    'status', li.status,
                     'useBalance', li.use_balance,
-                    'createdAt', li.created_at
-                  ) ORDER BY li.created_at ASC)
+                    'createdAt', li.created_at,
+                    'paidAt', li.paid_at
+                  ) ORDER BY li.installment_number ASC NULLS LAST, li.created_at ASC)
                    FROM loan_installments li 
                    WHERE li.loan_id = l.id),
                   '[]'
@@ -72,9 +77,10 @@ export class LoansController {
             );
 
             const formattedLoans = result.rows.map(loan => {
-                const paidInstallments = loan.installments_json;
-                const totalPaid = paidInstallments.reduce((sum: number, inst: any) => sum + inst.amount, 0);
-                const remainingAmount = parseFloat(loan.total_repayment) - totalPaid;
+                const allInstallments = loan.installments_json;
+                const paidInstallments = allInstallments.filter((inst: any) => inst.status === 'PAID');
+                const totalPaid = paidInstallments.reduce((sum: number, inst: any) => sum + (inst.amount || inst.expectedAmount || 0), 0);
+                const remainingAmount = Math.max(0, parseFloat(loan.total_repayment) - totalPaid);
 
                 return {
                     id: loan.id,
@@ -87,11 +93,12 @@ export class LoansController {
                     status: loan.status,
                     pixKeyToReceive: loan.pix_key_to_receive || '',
                     dueDate: new Date(loan.due_date).getTime(),
+                    installmentsList: allInstallments,
                     paidInstallments,
                     totalPaid,
                     remainingAmount,
                     paidInstallmentsCount: paidInstallments.length,
-                    isFullyPaid: totalPaid >= parseFloat(loan.total_repayment),
+                    isFullyPaid: totalPaid >= parseFloat(loan.total_repayment) - 0.01,
                     requesterName: loan.requester_name || null,
                     isGuarantor: loan.metadata?.guarantorId === user.id
                 };
@@ -435,13 +442,20 @@ export class LoansController {
                 if (loan.status !== 'APPROVED') throw new Error('Apoio não está ativo para reposição');
 
                 // 2. Verificar saldo devedor
-                const paidInstallmentsResult = await client.query('SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) as paid_amount FROM loan_installments WHERE loan_id = $1', [loanId]);
+                const paidInstallmentsResult = await client.query('SELECT COALESCE(SUM(CAST(COALESCE(amount, expected_amount) AS NUMERIC)), 0) as paid_amount FROM loan_installments WHERE loan_id = $1 AND status = $2', [loanId, 'PAID']);
                 const paidAmount = parseFloat(paidInstallmentsResult.rows[0].paid_amount);
                 const remainingAmountPre = parseFloat(loan.total_repayment) - paidAmount;
 
                 if (installmentAmount > remainingAmountPre + 0.01) {
                     throw new Error(`Valor excede o restante (Restante: R$ ${remainingAmountPre.toFixed(2)})`);
                 }
+
+                // 3. Identificar a próxima parcela pendente no cronograma
+                const pendingInstallmentRes = await client.query(
+                    'SELECT id FROM loan_installments WHERE loan_id = $1 AND status = $2 ORDER BY installment_number ASC NULLS LAST LIMIT 1',
+                    [loanId, 'PENDING']
+                );
+                const pendingInstallment = pendingInstallmentRes.rows[0];
 
                 const method: PaymentMethod = useBalance ? 'balance' : (paymentMethod as PaymentMethod);
                 const { total: finalInstallmentCost } = calculateTotalToPay(installmentAmount, method);
@@ -451,7 +465,13 @@ export class LoansController {
                     await client.query(
                         `INSERT INTO transactions (user_id, type, amount, description, status, metadata)
                          VALUES ($1, 'LOAN_PAYMENT', $2, $3, 'PENDING', $4)`,
-                        [user.id, finalInstallmentCost, `Parcela (PIX Manual)`, JSON.stringify({ loanId, installmentAmount, isInstallment: true, manualPix: true })]
+                        [user.id, finalInstallmentCost, `Parcela (PIX Manual)`, JSON.stringify({
+                            loanId,
+                            installmentAmount,
+                            isInstallment: true,
+                            manualPix: true,
+                            installmentId: pendingInstallment?.id || null
+                        })]
                     );
 
                     return { success: true, manualPix: true, finalCost: finalInstallmentCost };
@@ -468,8 +488,18 @@ export class LoansController {
                 // A. Debitar saldo
                 await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [installmentAmount, user.id]);
 
-                // B. Registrar parcela
-                await client.query('INSERT INTO loan_installments (loan_id, amount, use_balance, created_at) VALUES ($1, $2, $3, $4)', [loanId, installmentAmount, true, new Date()]);
+                // B. Registrar/Atualizar parcela
+                if (pendingInstallment) {
+                    await client.query(
+                        'UPDATE loan_installments SET amount = $1, status = $2, use_balance = $3, paid_at = NOW() WHERE id = $4',
+                        [installmentAmount, 'PAID', true, pendingInstallment.id]
+                    );
+                } else {
+                    await client.query(
+                        'INSERT INTO loan_installments (loan_id, amount, use_balance, created_at, status, paid_at) VALUES ($1, $2, $3, NOW(), $4, NOW())',
+                        [loanId, installmentAmount, true, 'PAID']
+                    );
+                }
 
                 // C. Distribuição Contábil
                 const principalPortion = installmentAmount * (parseFloat(loan.amount) / parseFloat(loan.total_repayment));
