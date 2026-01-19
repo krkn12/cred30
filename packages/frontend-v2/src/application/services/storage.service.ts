@@ -71,6 +71,7 @@ interface ApiLoan {
   remainingAmount?: string | number;
   paidInstallmentsCount?: number;
   isFullyPaid?: boolean;
+  installmentsList?: any[];
 }
 
 interface ApiTransaction {
@@ -203,6 +204,7 @@ const convertApiLoanToLoan = (apiLoan: ApiLoan): Loan => {
     remainingAmount: remainingAmount,
     paidInstallmentsCount: apiLoan.paidInstallmentsCount || 0,
     isFullyPaid: apiLoan.isFullyPaid || false,
+    installmentsList: Array.isArray(apiLoan.installmentsList) ? apiLoan.installmentsList : [],
   };
 };
 

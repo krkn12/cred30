@@ -32,7 +32,8 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
         return days > 0 ? days : 0;
     };
 
-    const getNextDueDate = (loan: Loan) => {
+    const getNextDueDate = (loan: Loan | undefined) => {
+        if (!loan) return null;
         const next = loan.installmentsList?.find(i => i.status === 'PENDING');
         return next ? next.dueDate : loan.dueDate;
     };
@@ -85,12 +86,15 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
     const selectedLoan = activeLoans.find(l => l.id === payModalId);
 
     // Helper: Calculate installment value
-    const getInstallmentValue = (loan: Loan) => {
-        const nextPending = loan.installmentsList?.find(i => i.status === 'PENDING');
+    const getInstallmentValue = (loan: Loan | undefined) => {
+        if (!loan) return 0;
+        const nextPending = (loan.installmentsList || []).find(i => i.status === 'PENDING');
         if (nextPending) return nextPending.expectedAmount;
 
-        const fixedValue = loan.totalRepayment / loan.installments;
-        const remaining = loan.remainingAmount ?? loan.totalRepayment;
+        const totalRepay = loan.totalRepayment || 0;
+        const installments = loan.installments || 1;
+        const fixedValue = totalRepay / installments;
+        const remaining = loan.remainingAmount ?? totalRepay;
         return Math.min(fixedValue, remaining);
     };
 
@@ -153,8 +157,10 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                         <div className="bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 rounded-lg flex items-center gap-2 self-start sm:self-auto uppercase">
                             <Clock size={14} className="text-yellow-500" />
                             <span className="text-yellow-500 text-[10px] font-black">
-                                Próx. Vencimento: {activeLoans.length > 0 ? new Date(getNextDueDate(activeLoans[0])!).toLocaleDateString('pt-BR') : 'N/A'}
-                                <span className="ml-1 opacity-60">({getDaysRemaining(getNextDueDate(activeLoans[0]))} dias)</span>
+                                Próx. Vencimento: {activeLoans.length > 0 ? (getNextDueDate(activeLoans[0]) ? new Date(getNextDueDate(activeLoans[0])!).toLocaleDateString('pt-BR') : 'N/A') : 'N/A'}
+                                {activeLoans.length > 0 && (
+                                    <span className="ml-1 opacity-60">({getDaysRemaining(getNextDueDate(activeLoans[0]))} dias)</span>
+                                )}
                             </span>
                         </div>
                     </div>

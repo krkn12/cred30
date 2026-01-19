@@ -4,12 +4,13 @@ import { Pool } from 'pg';
 // import { initializeRateLimitTable } from '../../../presentation/http/middleware/rate-limit.middleware';
 // import { createIndexes } from '../../../../utils/indexes';
 
-// Configuração do pool de conexões PostgreSQL
-// Configuração do pool de conexões PostgreSQL
+// Configuração do pool de conexões PostgreSQL balanceada para performance e custo
 const poolConfig: any = {
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  max: 15, // Máximo de conexões simultâneas (ideal para instâncias Neon/Supabase free/base)
+  min: 2,  // Manter pelo menos 2 conexões abertas para warm start
+  idleTimeoutMillis: 30000,      // Tempo para fechar conexões ociosas
+  connectionTimeoutMillis: 5000,  // Timeout para tentar conectar
+  maxUses: 7500, // Prevenir memory leaks do driver pg reciclagem periódica
 };
 
 if (process.env.DATABASE_URL) {
@@ -67,13 +68,13 @@ export const getDbPool = (c?: any): Pool => {
     return c.get('dbPool');
   }
 
-  // Se não, use o pool global ou a instância estática
-  if (!dbPool) {
-    // Fallback seguro para a instância estática
-    return pool;
+  // Usar global para garantir singleton em ambiente de teste/vitest
+  const globalAny: any = globalThis;
+  if (!globalAny.__DB_POOL__) {
+    globalAny.__DB_POOL__ = pool;
   }
 
-  return dbPool;
+  return globalAny.__DB_POOL__;
 };
 
 // Monitoramento de performance e log de queries lentas
@@ -633,6 +634,7 @@ export const initializeDatabase = async () => {
       );
     `);
 
+    console.log('--- [DB] Initializing Core Tables ---');
     // Criar tabela de códigos de indicação (Sistema Admin)
     await client.query(`
       CREATE TABLE IF NOT EXISTS referral_codes (
@@ -1117,7 +1119,7 @@ export const initializeDatabase = async () => {
 `);
     console.log('Índices de performance verificados!');
 
-    // Criar tabela de custos fixos do sistema
+    console.log('--- [DB] Initializing Audit and Logs ---');
     await client.query(`
       CREATE TABLE IF NOT EXISTS system_costs(
   id SERIAL PRIMARY KEY,

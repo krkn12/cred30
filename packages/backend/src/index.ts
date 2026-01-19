@@ -7,6 +7,7 @@ import { validateEnv } from './shared/schemas/env.schema';
 import { validateJwtSecret } from './shared/utils/jwt-validation.utils';
 
 // Validar variáveis de ambiente e segurança JWT antes de qualquer outra coisa
+console.log(`--- [INDEX] NODE_ENV: ${process.env.NODE_ENV} ---`);
 validateEnv();
 validateJwtSecret();
 
@@ -18,6 +19,12 @@ import { etag } from 'hono/etag';
 import { logger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
 import { timing } from 'hono/timing';
+
+/**
+ * 🚀 INSTÂNCIA DO APP
+ * Deve ser definida ANTES da importação das rotas para evitar problemas de dependência circular
+ */
+export const app = new Hono();
 
 // Importação das Rotas
 import { authRoutes } from './presentation/http/routes/auth.routes';
@@ -42,20 +49,14 @@ import { tutorRoutes } from './presentation/http/routes/tutors.routes';
 import { logisticsRoutes } from './presentation/http/routes/logistics.routes';
 import { consortiumRoutes } from './presentation/http/routes/consortium.routes';
 
-// ... (existing helper imports)
-
-// ... inside startServer function
-
 // Infraestrutura
 import { initializeScheduler } from './scheduler';
 import { initializeFirebaseAdmin } from './infrastructure/firebase/admin-config';
 import { initializeDatabase, pool } from './infrastructure/database/postgresql/connection/pool';
 
-const app = new Hono();
-
 // Middlewares Globais
 app.use('*', cors({
-  origin: (origin) => {
+  origin: (origin: string | undefined) => {
     const allowed = [
       'https://cred30.site',
       'https://www.cred30.site',
@@ -64,7 +65,7 @@ app.use('*', cors({
       'http://localhost:3000',
       'http://localhost:5173'
     ];
-    if (allowed.includes(origin) || !origin) return origin || allowed[0];
+    if (!origin || allowed.includes(origin)) return origin || allowed[0];
     return allowed[0];
   },
   credentials: true,
@@ -72,6 +73,7 @@ app.use('*', cors({
   allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   exposeHeaders: ['Content-Length', 'X-Kuma-Revision'],
 }));
+
 app.use('*', compress());
 app.use('*', etag());
 app.use('*', logger());
@@ -93,7 +95,7 @@ app.use('*', timing());
 
 // 🛡️ Rate Limiting Simples (Blindagem contra DoS)
 const rateLimitMap = new Map<string, { count: number, resetAt: number }>();
-app.use('*', async (c, next) => {
+app.use('*', async (c: Context, next: any) => {
   const ip = c.req.header('x-forwarded-for') || 'local';
   const now = Date.now();
   const limit = 100; // 100 requisições
@@ -115,10 +117,10 @@ app.use('*', async (c, next) => {
 });
 
 // 🛡️ Global Error Handler
-app.onError((err, c) => {
+app.onError((err: any, c: Context) => {
   console.error(`[SERVER ERROR] ${c.req.method} ${c.req.url}:`, err);
 
-  const status = (err as any).status || 500;
+  const status = err.status || 500;
   const message = err.message || 'Erro interno no servidor';
 
   return c.json({
@@ -126,6 +128,44 @@ app.onError((err, c) => {
     message,
     error: process.env.NODE_ENV === 'development' ? err.stack : undefined
   }, status);
+});
+
+// 🚀 Registro de Rotas (Disponíveis para App e Testes)
+app.route('/api/auth', authRoutes);
+app.route('/api/users', userRoutes);
+app.route('/api/quotas', quotaRoutes);
+app.route('/api/loans', loanRoutes);
+app.route('/api/transactions', transactionRoutes);
+app.route('/api/admin', adminRoutes);
+app.route('/api/withdrawals', withdrawalRoutes);
+app.route('/api/products', productsRoutes);
+app.route('/api/webhooks', webhookRoutes);
+app.route('/api/notifications', notificationRoutes);
+app.route('/api/marketplace', marketplaceRoutes);
+app.route('/api/monetization', monetizationRoutes);
+app.route('/api/education', educationRoutes);
+app.route('/api/voting', votingRoutes);
+app.route('/api/promo-videos', promoVideosRoutes);
+app.route('/api/bugs', bugReportsRoutes);
+app.route('/api/earn', earnRoutes);
+app.route('/api/seller', sellerRoutes);
+app.route('/api/logistics', logisticsRoutes);
+app.route('/api/tutors', tutorRoutes);
+app.route('/api/consortium', consortiumRoutes);
+
+// Rotas Base e Health Check
+app.get('/', (c: Context) => c.json({
+  message: 'Cred30 API Online',
+  version: packageJson.version
+}));
+
+app.get('/api/health', (c: Context) => {
+  return c.json({
+    status: 'ok',
+    version: packageJson.version,
+    db: pool ? 'connected' : 'connecting',
+    timestamp: new Date().toISOString()
+  });
 });
 
 async function startServer() {
@@ -136,77 +176,45 @@ async function startServer() {
     console.log(`--- [BOOT] Node version: ${process.version} ---`);
     console.log(`--- [BOOT] Porta configurada: ${port} ---`);
 
-    // 1. Inicializar o Servidor HTTP IMEDIATAMENTE
-    // Isso evita o Timeout do Render pois ele já consegue dar o "ping" na porta
+    // 1. Inicializar o Servidor HTTP
     const serverInstance = serve({
       fetch: app.fetch,
       port: Number(port),
-    }, (info) => {
+    }, (info: any) => {
       console.log(`🚀 [SERVER] Servidor rodando em http://localhost:${info.port}`);
     });
 
     console.log('--- [BOOT] Servidor HTTP iniciado, procedendo com infraestrutura... ---');
 
-    // 2. Mapeamento de Rotas (precisa ser feito antes ou logo após o boot)
-    app.route('/api/auth', authRoutes);
-    app.route('/api/users', userRoutes);
-    app.route('/api/quotas', quotaRoutes);
-    app.route('/api/loans', loanRoutes);
-    app.route('/api/transactions', transactionRoutes);
-    app.route('/api/admin', adminRoutes);
-    app.route('/api/withdrawals', withdrawalRoutes);
-    app.route('/api/products', productsRoutes);
-    app.route('/api/webhooks', webhookRoutes);
-    app.route('/api/notifications', notificationRoutes);
-    app.route('/api/marketplace', marketplaceRoutes);
-    app.route('/api/monetization', monetizationRoutes);
-    app.route('/api/education', educationRoutes);
-    app.route('/api/voting', votingRoutes);
-    app.route('/api/promo-videos', promoVideosRoutes);
-    app.route('/api/bugs', bugReportsRoutes);
-    app.route('/api/earn', earnRoutes);
-    app.route('/api/seller', sellerRoutes);
-    app.route('/api/logistics', logisticsRoutes);
-    app.route('/api/tutors', tutorRoutes);
-    app.route('/api/consortium', consortiumRoutes);
-
-    // Rota raiz para o Health Check do Render
-    app.get('/', (c: Context) => c.json({
-      message: 'Cred30 API Online',
-      version: packageJson.version,
-      booting: true
-    }));
-
-    app.get('/api/health', (c: Context) => {
-      return c.json({
-        status: 'ok',
-        version: packageJson.version,
-        db: pool ? 'connected' : 'connecting',
-        timestamp: new Date().toISOString()
-      });
-    });
-
     // 3. Inicialização Pesada (async)
     // Se isso der erro, o servidor já está rodando e podemos logar o erro sem sumir
     console.log('--- [DB] Conectando ao Banco de Dados... ---');
-    await initializeDatabase().catch(err => {
-      console.error('❌ [DB ERROR] Falha ao inicializar tabelas:', err);
-    });
+    try {
+      await initializeDatabase();
+    } catch (err: any) {
+      console.error('--- [DB] Falha ao conectar/migrar Banco de Dados:', err.message);
+    }
 
-    console.log('--- [FIREBASE] Inicializando Admin... ---');
+    console.log('--- [INFRA] Inicializando Firebase e Scheduler... ---');
     initializeFirebaseAdmin();
-
-    console.log('--- [SCHEDULER] Iniciando tarefas agendadas... ---');
     initializeScheduler(pool);
 
     console.log('✅ [BOOT] Sistema totalmente operacional!');
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ [FATAL] Erro catastrófico no boot do servidor:', error);
     // No Render, se falhar, queremos que o processo morra para ele tentar de novo
-    // mas com o log acima agora sabemos o porquê.
     setTimeout(() => process.exit(1), 1000);
   }
 }
 
-startServer();
+app.notFound((c: Context) => {
+  // Ignorar favicon no log se for barulhento
+  if (c.req.path.includes('favicon')) return c.json({}, 404);
+  console.log(`⚠️ [404] Not Found: ${c.req.method} ${c.req.url}`);
+  return c.json({ success: false, message: 'Rota não encontrada' }, 404);
+});
+
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
