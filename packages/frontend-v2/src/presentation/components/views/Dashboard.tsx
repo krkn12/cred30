@@ -537,7 +537,7 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-3">
                         <Clock size={24} className="text-zinc-600" />
-                        Fluxo de Caixa
+                        Extrato Recente
                     </h3>
                     <button
                         onClick={() => navigate('/app/history')}
