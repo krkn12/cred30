@@ -89,8 +89,6 @@ export class MonetizationController {
                     [REWARD_POINTS, user.id]
                 );
 
-                await updateScore(client, user.id, REWARD_SCORE, 'Recompensa por vídeo (Farm)');
-
                 const conversion = await autoConvertPoints(client, user.id);
                 const updatedRes = await client.query('SELECT ad_points FROM users WHERE id = $1', [user.id]);
                 const newPoints = updatedRes.rows[0].ad_points || 0;
@@ -318,8 +316,6 @@ export class MonetizationController {
                     'UPDATE users SET ad_points = COALESCE(ad_points, 0) + $1, last_checkin_at = NOW() WHERE id = $2',
                     [CHECKIN_POINTS, user.id]
                 );
-
-                await updateScore(client, user.id, CHECKIN_SCORE, 'Check-in diário (Farm)');
 
                 const conversion = await autoConvertPoints(client, user.id);
                 const updatedRes = await client.query('SELECT ad_points FROM users WHERE id = $1', [user.id]);

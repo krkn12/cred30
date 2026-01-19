@@ -367,8 +367,7 @@ export class AdminUsersController {
 
             const result = await pool.query(
                 `UPDATE users SET 
-                    courier_status = 'approved', 
-                    is_verified = TRUE 
+                    courier_status = 'approved' 
                  WHERE id = $1 AND is_courier = TRUE AND courier_status = 'pending'
                  RETURNING name`,
                 [userId]
@@ -478,8 +477,7 @@ export class AdminUsersController {
 
             const result = await pool.query(
                 `UPDATE users SET 
-                    seller_status = 'approved', 
-                    is_verified = TRUE 
+                    seller_status = 'approved' 
                  WHERE id = $1 AND is_seller = TRUE AND seller_status = 'pending'
                  RETURNING name`,
                 [userId]

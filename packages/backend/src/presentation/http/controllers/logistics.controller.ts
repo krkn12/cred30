@@ -473,9 +473,16 @@ export class LogisticsController {
                 }, 400);
             }
 
-            const existingCheck = await pool.query(`SELECT is_courier FROM users WHERE id = $1`, [user.id]);
+            const existingCheck = await pool.query(`SELECT is_courier, score FROM users WHERE id = $1`, [user.id]);
             if (existingCheck.rows[0]?.is_courier) {
                 return c.json({ success: false, message: 'Você já é um entregador registrado' }, 400);
+            }
+
+            if ((existingCheck.rows[0]?.score || 0) < 300) {
+                return c.json({
+                    success: false,
+                    message: 'Score insuficiente. Você precisa de no mínimo 300 pontos de Score (obtidos via investimentos/compras) para se candidatar como entregador.'
+                }, 403);
             }
 
             await pool.query(
