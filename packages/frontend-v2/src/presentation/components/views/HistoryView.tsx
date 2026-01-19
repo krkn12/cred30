@@ -66,10 +66,12 @@ export const HistoryView = ({ transactions: initialTransactions }: HistoryViewPr
     const translateStatus = (status: string) => {
         const map: Record<string, string> = {
             'APPROVED': 'Aprovado',
-            'PENDING': 'Pendente',
+            'PENDING': 'Em Análise',
+            'PENDING_CONFIRMATION': 'Confirmação Pendente',
             'REJECTED': 'Rejeitado',
             'PAYMENT_PENDING': 'Aguardando Pagamento',
             'COMPLETED': 'Concluído',
+            'CANCELLED': 'Cancelado',
         };
         return map[status] || status;
     };
@@ -257,12 +259,12 @@ export const HistoryView = ({ transactions: initialTransactions }: HistoryViewPr
                                         const incoming = isIncoming(t.type);
                                         const statusColor = t.status === 'APPROVED' || t.status === 'COMPLETED'
                                             ? 'text-emerald-400'
-                                            : t.status === 'PENDING' || t.status === 'PAYMENT_PENDING'
+                                            : t.status === 'PENDING' || t.status === 'PAYMENT_PENDING' || t.status === 'PENDING_CONFIRMATION'
                                                 ? 'text-yellow-400'
                                                 : 'text-red-400';
                                         const StatusIcon = t.status === 'APPROVED' || t.status === 'COMPLETED'
                                             ? CheckCircle2
-                                            : t.status === 'PENDING' || t.status === 'PAYMENT_PENDING'
+                                            : t.status === 'PENDING' || t.status === 'PAYMENT_PENDING' || t.status === 'PENDING_CONFIRMATION'
                                                 ? Clock
                                                 : XCircle;
 

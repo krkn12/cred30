@@ -60,9 +60,14 @@ const TransactionRow = memo(({ t, formatCurrency, isPositive, showValues }: Tran
                     </>
                 ) : '••••••'}
             </p>
-            <div className={`text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-lg inline-block border ${t.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' : 'bg-zinc-900 text-zinc-600 border-white/5'
+            <div className={`text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-lg inline-block border ${t.status === 'PENDING' || t.status === 'PAYMENT_PENDING' || t.status === 'PENDING_CONFIRMATION'
+                ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse'
+                : t.status === 'REJECTED' || t.status === 'CANCELLED'
+                    ? 'bg-red-500/10 text-red-500 border-red-500/20'
+                    : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
                 }`}>
-                {t.status === 'PENDING' ? 'Em Validação' : 'Processado'}
+                {t.status === 'PENDING' || t.status === 'PAYMENT_PENDING' || t.status === 'PENDING_CONFIRMATION' ? 'Em Análise' :
+                    (t.status === 'REJECTED' || t.status === 'CANCELLED' ? 'Rejeitado' : 'Concluído')}
             </div>
         </div>
     </div>
