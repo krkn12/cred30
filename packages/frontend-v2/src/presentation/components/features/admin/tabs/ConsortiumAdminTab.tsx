@@ -15,6 +15,8 @@ interface ConsortiumGroup {
     current_pool: number;
     current_assembly_number: number;
     member_count: number;
+    group_identifier: string;
+    annual_adjustment_percent: number;
 }
 
 interface ConsortiumMember {
@@ -42,7 +44,8 @@ export const ConsortiumAdminView: React.FC = () => {
         fixedBidPercent: 30,
         maxEmbeddedBidPercent: 30,
         minMembersToStart: 10,
-        startDate: new Date().toISOString().split('T')[0]
+        startDate: new Date().toISOString().split('T')[0],
+        annualAdjustmentPercent: 0
     });
     const [selectedGroup, setSelectedGroup] = useState<ConsortiumGroup | null>(null);
     const [members, setMembers] = useState<ConsortiumMember[]>([]);
@@ -176,6 +179,28 @@ export const ConsortiumAdminView: React.FC = () => {
         }
     };
 
+    const handleAdjustValue = async (group: ConsortiumGroup) => {
+        const percent = prompt(`Deseja aplicar o reajuste anual de ${group.annual_adjustment_percent}%? Digite a porcentagem ou deixe em branco para usar o padrão do grupo.`, group.annual_adjustment_percent.toString());
+        if (percent === null) return;
+
+        if (!confirm(`Confirmar reajuste do grupo ${group.group_identifier}? Isso alterará o valor da carta e das parcelas para TODOS os membros.`)) return;
+
+        try {
+            const res = await apiService.post('/consortium/adjust-value', {
+                groupId: group.id,
+                adjustmentPercent: parseFloat(percent)
+            });
+            if (res.success) {
+                alert(res.message);
+                loadGroups();
+            } else {
+                alert('Erro ao reajustar: ' + res.message);
+            }
+        } catch (e) {
+            alert('Erro ao processar reajuste');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[50vh]">
@@ -224,9 +249,14 @@ export const ConsortiumAdminView: React.FC = () => {
                     <div key={group.id} className="bg-zinc-900 border border-white/5 rounded-2xl p-5 space-y-4 hover:border-primary-500/30 transition-all">
                         <div className="flex justify-between items-start">
                             <div>
-                                <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest mb-2 inline-block ${group.status === 'OPEN' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-zinc-800 text-zinc-400'}`}>
-                                    {group.status}
-                                </span>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest inline-block ${group.status === 'OPEN' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-zinc-800 text-zinc-400'}`}>
+                                        {group.status}
+                                    </span>
+                                    <span className="bg-primary-500/10 text-primary-400 px-2 py-1 rounded text-[10px] font-black uppercase border border-primary-500/20">
+                                        {group.group_identifier}
+                                    </span>
+                                </div>
                                 <h3 className="text-lg font-bold text-white">{group.name}</h3>
                             </div>
                             <div className="w-10 h-10 bg-zinc-800 rounded-lg flex flex-col items-center justify-center">
@@ -276,6 +306,13 @@ export const ConsortiumAdminView: React.FC = () => {
                                 className="flex-1 bg-zinc-800 text-white py-2 rounded-xl text-xs font-bold hover:bg-zinc-700 transition"
                             >
                                 Gerir Assembleia
+                            </button>
+                            <button
+                                onClick={() => handleAdjustValue(group)}
+                                className="bg-primary-500/10 text-primary-400 p-2 rounded-xl hover:bg-primary-500 hover:text-black transition border border-primary-500/20"
+                                title="Aplicar Reajuste Anual"
+                            >
+                                <DollarSign size={18} />
                             </button>
                         </div>
                     </div>
@@ -515,6 +552,16 @@ export const ConsortiumAdminView: React.FC = () => {
                                             value={newGroup.startDate}
                                             onChange={e => setNewGroup({ ...newGroup, startDate: e.target.value })}
                                             className="w-full bg-black rounded-xl border border-white/10 p-3 text-white outline-none focus:border-primary-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-zinc-500 block mb-1 uppercase font-black">Reajuste Anual (%)</label>
+                                        <input
+                                            type="number"
+                                            value={newGroup.annualAdjustmentPercent}
+                                            onChange={e => setNewGroup({ ...newGroup, annualAdjustmentPercent: Number(e.target.value) })}
+                                            className="w-full bg-black rounded-xl border border-white/10 p-3 text-white outline-none focus:border-primary-500"
+                                            placeholder="Ex: 5"
                                         />
                                     </div>
                                 </div>

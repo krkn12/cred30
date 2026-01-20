@@ -14,6 +14,7 @@ consortiumRoutes.get('/groups', ConsortiumController.listGroups);
 consortiumRoutes.get('/my-groups', ConsortiumController.myConsortiums);
 consortiumRoutes.get('/stats', ConsortiumController.getPerformanceStats);
 consortiumRoutes.get('/groups/:groupId/members', ConsortiumController.listMembers);
+consortiumRoutes.post('/adjust-value', ConsortiumController.adjustAnnualValue);
 
 // --- Ações ---
 consortiumRoutes.post('/join', ConsortiumController.joinGroup);

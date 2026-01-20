@@ -219,6 +219,7 @@ export class AdminFinanceController {
             config.total_owner_profit = parseFloat(String(config.total_owner_profit || 0));
             config.investment_reserve = parseFloat(String(config.investment_reserve || 0));
             config.mutual_reserve = parseFloat(String(config.mutual_reserve || 0));
+            config.mutual_protection_fund = parseFloat(String(config.mutual_protection_fund || 0));
             config.courier_price_per_km = parseFloat(String(config.courier_price_per_km || '2.50'));
 
             const statsResult = await pool.query(`
@@ -229,7 +230,8 @@ export class AdminFinanceController {
           (SELECT COUNT(*) FROM loans WHERE status IN ('PENDING', 'APPROVED', 'PAYMENT_PENDING')) as active_loans_count,
           (SELECT COALESCE(SUM(CAST(total_repayment AS NUMERIC)), 0) FROM loans WHERE status IN ('APPROVED', 'PAYMENT_PENDING')) as total_to_receive,
           (SELECT COALESCE(SUM(amount), 0) FROM system_costs) as total_monthly_costs,
-          (SELECT COUNT(*) FROM governance_proposals WHERE status = 'active') as active_proposals_count
+          (SELECT COUNT(*) FROM governance_proposals WHERE status = 'active') as active_proposals_count,
+          (SELECT COUNT(*) FROM users WHERE is_protected = TRUE) as protected_users_count
       `);
 
             const stats = statsResult.rows[0];
@@ -279,6 +281,7 @@ export class AdminFinanceController {
                     totalLoaned,
                     totalToReceive,
                     activeProposalsCount,
+                    protectedUsersCount: parseInt(stats.protected_users_count || 0)
                 },
             };
 
@@ -669,7 +672,7 @@ export class AdminFinanceController {
                     volume_transitory: totalInflow - grossRevenue
                 },
 
-                legal_notice: "Relatório gerencial de fluxo de caixa e resultado econômico."
+                legal_notice: "Relatório de intermediação de negócios e gestão de custódia de terceiros (Não tributável sobre o capital social)."
             };
 
             return c.json({

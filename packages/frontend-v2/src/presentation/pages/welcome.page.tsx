@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight, Shield, Download, Smartphone, ChevronDown } from 'lucide-react';
+import { ArrowRight, Shield, Download, Smartphone, ChevronDown, ShoppingBag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // Interface para o evento de instalação do PWA
@@ -136,6 +136,14 @@ const WelcomePage = () => {
                 </div>
               </button>
             )}
+
+            <button
+              onClick={() => navigate('/marketplace')}
+              className="bg-zinc-900 hover:bg-zinc-800 text-white font-black py-5 px-10 rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 text-lg border border-zinc-700 shadow-xl shadow-black/20"
+            >
+              <ShoppingBag className="w-6 h-6 text-emerald-400" />
+              Explorar Ofertas
+            </button>
 
             {/* Pedir Convite Button */}
             <a

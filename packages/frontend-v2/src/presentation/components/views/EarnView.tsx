@@ -116,6 +116,7 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
     const [loadingLocal, setLoadingLocal] = useState(false);
     const [buyingBadge, setBuyingBadge] = useState(false);
     const [buyingBoost, setBuyingBoost] = useState(false);
+    const [buyingProtection, setBuyingProtection] = useState(false);
 
     const handleUpgradePro = async (method: 'pix' | 'balance') => {
         setLoadingLocal(true);
@@ -166,6 +167,32 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
         }
     };
 
+    const handleBuyProtection = async () => {
+        if (user.is_protected) {
+            onError('Aviso', 'Você já possui proteção ativa!');
+            return;
+        }
+
+        if (!window.confirm(`Deseja contratar o Fundo de Proteção Mútua por R$ 5,00 mensais? O valor será debitado do seu saldo.`)) {
+            return;
+        }
+
+        setBuyingProtection(true);
+        try {
+            const response = await apiService.buyMutualProtection();
+            if (response.success) {
+                onSuccess('Proteção Ativada!', response.message || 'Agora você faz parte do fundo de ajuda mútua!');
+                await onRefresh();
+            } else {
+                onError('Erro', response.message);
+            }
+        } catch (e: any) {
+            onError('Erro', e.message || 'Não foi possível ativar a proteção.');
+        } finally {
+            setBuyingProtection(false);
+        }
+    };
+
     if (!state?.currentUser) {
         return (
             <div className="flex items-center justify-center min-h-[50vh]">
@@ -192,6 +219,55 @@ export const EarnView = ({ state, onBack, onSuccess, onError, onRefresh, onUpgra
 
             {/* Ranking Global */}
             <RankingWidget />
+
+            {/* Mutual Protection Fund Card (SOCIAL PROTECTION) */}
+            <div className="bg-gradient-to-br from-emerald-900/20 to-teal-900/40 border border-emerald-500/30 rounded-3xl overflow-hidden relative group">
+                <div className="absolute top-0 right-0 p-4">
+                    <ShieldCheck size={40} className="text-emerald-400/20 group-hover:text-emerald-400/40 transition-all" />
+                </div>
+                <div className="p-6 relative z-10">
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="bg-emerald-500 text-black p-1 rounded font-black text-[9px] uppercase tracking-tighter">
+                            AJUDA SOCIAL
+                        </div>
+                        {user.is_protected && (
+                            <span className="text-[9px] text-emerald-400 font-bold flex items-center gap-1 uppercase">
+                                <ShieldCheck size={10} /> Protegido até {user.protection_expires_at ? new Date(user.protection_expires_at).toLocaleDateString() : '...'}
+                            </span>
+                        )}
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                        Fundo de <span className="text-emerald-400">Proteção Mútua</span>
+                    </h3>
+                    <p className="text-sm text-zinc-400 mb-6 leading-relaxed">
+                        Sistema social de ajuda entre associados para garantir os direitos básicos da nossa rede.
+                        Sua contribuição alimenta o fundo regenerativo da comunidade.
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-3 mb-8">
+                        <div className="bg-black/40 rounded-2xl p-4 border border-emerald-500/10 text-center">
+                            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Fundo Garantidor</p>
+                            <p className="text-xl font-black text-emerald-400">R$ {(state.system?.mutualProtectionFund || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                        <div className="bg-black/40 rounded-2xl p-4 border border-emerald-500/10 text-center">
+                            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Membros Ativos</p>
+                            <p className="text-xl font-black text-white">{state.system?.protectedUsersCount || 0}</p>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={handleBuyProtection}
+                        disabled={buyingProtection || user.is_protected}
+                        className={`w-full py-4 rounded-2xl font-black transition active:scale-95 flex items-center justify-center gap-2 ${user.is_protected ? 'bg-zinc-800 text-zinc-500' : 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-xl shadow-emerald-500/20'}`}
+                    >
+                        {buyingProtection ? <RefreshCw className="animate-spin" size={20} /> : (user.is_protected ? 'PROTEÇÃO ATIVA' : `ATIVAR PROTEÇÃO POR R$ 5,00`)}
+                    </button>
+
+                    <p className="text-[8px] text-zinc-600 text-center mt-3 uppercase font-bold tracking-widest leading-normal">
+                        * A proteção é condicionada ao saldo disponível no fundo mútuo. Ajuda social direta entre associados.
+                    </p>
+                </div>
+            </div>
 
 
             {/* Rewarded Video Card */}

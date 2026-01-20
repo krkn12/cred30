@@ -97,6 +97,7 @@ export const PRIORITY_WITHDRAWAL_FEE = 5.00; // Taxa para saque expresso
 export const SCORE_BOOST_PRICE = 15.00; // Preço do pacote de +100 Score
 export const SCORE_BOOST_POINTS = 100; // Pontos ganhos no pacote
 export const REPUTATION_CHECK_PRICE = 35.00; // Preço da consulta de reputação (Serasa Standard)
+export const MUTUAL_PROTECTION_PRICE = 5.00; // Preço mensal da Proteção Mútua (Social Protection)
 
 // Sistema atual: PIX Manual
 // Não há taxas de gateway externo

@@ -182,6 +182,10 @@ class ApiService extends ApiBase {
     return await this.post<any>('/monetization/buy-score-boost', {});
   };
 
+  buyMutualProtection = async () => {
+    return await this.post<any>('/monetization/buy-protection', {});
+  };
+
   // Notificações em Tempo Real via SSE (Server-Sent Events)
   listenToNotifications(callback: (notification: any) => void): () => void {
     // Verifica se está autenticado

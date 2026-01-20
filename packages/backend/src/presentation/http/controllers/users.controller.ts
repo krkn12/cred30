@@ -256,10 +256,16 @@ export class UsersController {
 
             const result = await pool.query(`
                 WITH user_stats AS (
-                    SELECT u.balance, u.score, u.membership_type, u.is_verified, u.is_seller, u.security_lock_until, u.ad_points, u.pending_ad_points, u.phone, u.cpf, u.pix_key, u.address, u.referred_by, COALESCE(u.total_dividends_earned, 0) as total_dividends_earned, u.last_login_at, u.safe_contact_phone,
+                    SELECT u.balance, u.score, u.membership_type, u.is_verified, u.is_seller, u.security_lock_until, u.ad_points, u.pending_ad_points, u.phone, u.cpf, u.pix_key, u.address, u.referred_by, COALESCE(u.total_dividends_earned, 0) as total_dividends_earned, u.last_login_at, u.safe_contact_phone, u.is_protected, u.protection_expires_at,
                     (SELECT COUNT(*) FROM quotas WHERE user_id = u.id AND status = 'ACTIVE') as quota_count,
                     (SELECT COALESCE(SUM(total_repayment), 0) FROM loans WHERE user_id = u.id AND status IN ('APPROVED', 'PAYMENT_PENDING')) as debt_total
                     FROM users u WHERE u.id = $1
+                ),
+                system_stats AS (
+                    SELECT mutual_protection_fund FROM system_config LIMIT 1
+                ),
+                global_protected_count AS (
+                    SELECT COUNT(*) as count FROM users WHERE is_protected = TRUE
                 ),
                 recent_tx AS (
                     SELECT COALESCE(json_agg(t), '[]'::json) FROM (SELECT id, user_id as "userId", type, amount, created_at as date, description, status, metadata FROM transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20) t
@@ -290,7 +296,13 @@ export class UsersController {
                         FROM loans ln WHERE ln.user_id = $1 ORDER BY ln.created_at DESC
                     ) l
                 )
-                SELECT (SELECT row_to_json(us) FROM user_stats us) as user_stats, (SELECT * FROM recent_tx) as transactions, (SELECT * FROM active_quotas) as quotas, (SELECT * FROM active_loans) as loans
+                SELECT 
+                    (SELECT row_to_json(us) FROM user_stats us) as user_stats, 
+                    (SELECT row_to_json(ss) FROM system_stats ss) as system_stats,
+                    (SELECT count FROM global_protected_count) as protected_users_count,
+                    (SELECT * FROM recent_tx) as transactions, 
+                    (SELECT * FROM active_quotas) as quotas, 
+                    (SELECT * FROM active_loans) as loans
             `, [user.id]);
 
             const data = result.rows[0];
@@ -320,7 +332,13 @@ export class UsersController {
                         referred_by: stats.referred_by || null,
                         safeContactPhone: stats.safe_contact_phone || null,
                         total_dividends_earned: parseFloat(stats.total_dividends_earned || '0'),
-                        last_login_at: stats.last_login_at
+                        last_login_at: stats.last_login_at,
+                        is_protected: stats.is_protected || false,
+                        protection_expires_at: stats.protection_expires_at || null
+                    },
+                    system: {
+                        mutualProtectionFund: parseFloat(data.system_stats?.mutual_protection_fund || '0'),
+                        protectedUsersCount: parseInt(data.protected_users_count || '0')
                     },
                     stats: {
                         activeQuotas: parseInt(stats.quota_count || '0'),
