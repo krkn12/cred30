@@ -14,6 +14,7 @@ interface User {
     pix_key: string;
     quotas_count: number;
     quotas_value: number;
+    referrer_name?: string;
 }
 
 export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title: string, message: string) => void, onError: (title: string, message: string) => void }) => {
@@ -193,6 +194,11 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title:
                                                 <div>
                                                     <p className="text-sm font-black text-white group-hover:text-primary-400 transition-colors uppercase tracking-tight">{user.name}</p>
                                                     <p className="text-[11px] text-zinc-500 font-medium flex items-center gap-1"><Mail size={10} /> {user.email}</p>
+                                                    {user.referrer_name && (
+                                                        <p className="text-[10px] text-primary-500/70 font-black flex items-center gap-1 uppercase tracking-tighter mt-0.5">
+                                                            <Award size={10} /> Indicado por: {user.referrer_name}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>

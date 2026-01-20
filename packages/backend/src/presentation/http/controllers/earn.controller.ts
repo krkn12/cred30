@@ -3,10 +3,12 @@ import { getDbPool } from '../../../infrastructure/database/postgresql/connectio
 import { executeInTransaction, createTransaction } from '../../../domain/services/transaction.service';
 import { PoolClient } from 'pg';
 import { UserContext } from '../../../shared/types/hono.types';
+import { PointsService, POINTS_CONVERSION_RATE, MIN_POINTS_FOR_CONVERSION } from '../../../application/services/points.service';
 
 // Constantes do sistema de pontos
-const POINTS_RATE = 1000;
-const MONEY_VALUE = 0.03;
+// Constantes sincronizadas com PointsService
+const POINTS_RATE = POINTS_CONVERSION_RATE;
+const MONEY_VALUE = POINTS_RATE / POINTS_CONVERSION_RATE; // Sempre R$ 1.00 por lote de conversão (que agora é 1000)
 
 interface RewardConfig {
     id: string;
@@ -217,11 +219,29 @@ export class EarnController {
     /**
      * Converter pontos - DESATIVADO
      */
+    /**
+     * Converter pontos - REATIVADO E CENTRALIZADO
+     */
     static async convertPoints(c: Context) {
-        return c.json({
-            success: false,
-            message: 'Conversão direta desativada. Use seus pontos para resgatar Gift Cards ou PRO na Loja.'
-        }, 400);
+        try {
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+
+            const result = await PointsService.convertPointsToBalance(pool, user.id);
+
+            if (!result.success) {
+                return c.json({ success: false, message: result.message }, 400);
+            }
+
+            return c.json({
+                success: true,
+                message: `Sucesso! R$ ${result.data?.convertedAmount.toFixed(2)} adicionados ao seu saldo.`,
+                data: result.data
+            });
+        } catch (error: any) {
+            console.error('[EARN] Erro ao converter pontos:', error);
+            return c.json({ success: false, message: error.message || 'Erro ao converter pontos' }, 500);
+        }
     }
 
     /**

@@ -142,7 +142,7 @@ export default defineConfig({
         host: true,
         proxy: {
             '/api': {
-                target: 'https://cred30-backend.onrender.com',
+                target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:3001',
                 changeOrigin: true,
                 secure: false,
             }

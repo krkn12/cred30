@@ -5,6 +5,7 @@ import { sign } from 'jsonwebtoken';
 import { getDbPool, generateReferralCode } from '../../../infrastructure/database/postgresql/connection/pool';
 import { twoFactorService } from '../../../application/services/two-factor.service';
 import { notificationService } from '../../../application/services/notification.service';
+import { firebaseAdmin } from '../../../infrastructure/firebase/admin-config';
 
 // Schemas
 const loginSchema = z.object({
@@ -163,6 +164,7 @@ export class AuthController {
 
             let status = 'ACTIVE';
             let message = 'Cadastro realizado!';
+            let referrerId = null;
 
             if (WAITLIST_ENABLED && !isAdminEmail) {
                 const countRes = await pool.query("SELECT COUNT(*) FROM users WHERE status = 'ACTIVE'");
@@ -179,7 +181,6 @@ export class AuthController {
                     return c.json({ success: false, message: 'Código de indicação é obrigatório.' }, 403);
                 }
                 const inputCode = validatedData.referralCode.trim().toUpperCase();
-                let referrerId = null;
 
                 const userReferrerResult = await pool.query('SELECT id FROM users WHERE referral_code = $1', [inputCode]);
                 if (userReferrerResult.rows.length > 0) {
@@ -204,10 +205,10 @@ export class AuthController {
             const qrCode = await twoFactorService.generateQrCode(otpUri);
 
             const newUserResult = await pool.query(
-                `INSERT INTO users (name, email, password_hash, secret_phrase, pix_key, balance, referral_code, is_admin, score, two_factor_secret, two_factor_enabled, is_email_verified, accepted_terms_at, cpf, phone, status)
-                 VALUES ($1, $2, $3, $4, $5, 0, $6, $7, 0, $8, FALSE, TRUE, CURRENT_TIMESTAMP, $9, $10, $11)
+                `INSERT INTO users (name, email, password_hash, secret_phrase, pix_key, balance, referral_code, is_admin, score, two_factor_secret, two_factor_enabled, is_email_verified, accepted_terms_at, cpf, phone, status, referred_by)
+                 VALUES ($1, $2, $3, $4, $5, 0, $6, $7, 0, $8, FALSE, TRUE, CURRENT_TIMESTAMP, $9, $10, $11, $12)
                  RETURNING id, name, email, pix_key, balance, score, created_at, referral_code, is_admin, status`,
-                [validatedData.name, userEmail, hashedPassword, validatedData.secretPhrase, validatedData.pixKey || null, referralCode, isAdminEmail, tfaSecret, validatedData.cpf || null, validatedData.phone || null, status]
+                [validatedData.name, userEmail, hashedPassword, validatedData.secretPhrase, validatedData.pixKey || null, referralCode, isAdminEmail, tfaSecret, validatedData.cpf || null, validatedData.phone || null, status, referrerId]
             );
 
             const newUser = newUserResult.rows[0];
@@ -321,6 +322,206 @@ export class AuthController {
         } catch (error: any) {
             if (error instanceof z.ZodError) return c.json({ success: false, message: 'Você deve aceitar os termos' }, 400);
             return c.json({ success: false, message: 'Erro ao aceitar termos' }, 500);
+        }
+    }
+
+    /**
+     * Login via Google (Firebase)
+     */
+    static async loginGoogle(c: Context) {
+        try {
+            const { idToken } = await c.req.json();
+            const pool = getDbPool(c);
+
+            if (!idToken) return c.json({ success: false, message: 'ID Token não fornecido' }, 400);
+
+            // Verificar Token no Firebase
+            const decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
+            const { email, name, picture } = decodedToken;
+
+            if (!email) return c.json({ success: false, message: 'Email não retornado pelo Google' }, 400);
+
+            // Buscar ou criar usuário
+            const userRes = await pool.query('SELECT * FROM users WHERE email = $1', [email.toLowerCase()]);
+            let user = userRes.rows[0];
+            let isNewUser = false;
+
+            if (!user) {
+                // Criar usuário se não existir
+                const referralCode = generateReferralCode();
+                const newUserRes = await pool.query(
+                    `INSERT INTO users (name, email, password_hash, referral_code, balance, score, is_email_verified, status)
+                     VALUES ($1, $2, $3, $4, 0, 0, TRUE, 'ACTIVE')
+                     RETURNING *`,
+                    [name || 'Usuário Google', email.toLowerCase(), 'GOOGLE_AUTH', referralCode]
+                );
+                user = newUserRes.rows[0];
+                isNewUser = true;
+            }
+
+            const isAdmin = user.is_admin || false;
+            const token = sign({ userId: user.id, isAdmin }, process.env.JWT_SECRET as string, { expiresIn: '7d' });
+
+            return c.json({
+                success: true,
+                message: 'Login realizado com sucesso',
+                data: {
+                    user: {
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        pixKey: user.pix_key,
+                        balance: parseFloat(user.balance || 0),
+                        joinedAt: user.created_at,
+                        referralCode: user.referral_code,
+                        isAdmin: isAdmin,
+                        score: user.score,
+                        role: user.role || 'MEMBER',
+                        status: user.status || 'ACTIVE'
+                    },
+                    token,
+                    isNewUser
+                },
+            });
+        } catch (error: any) {
+            console.error('[GOOGLE LOGIN ERROR]:', error);
+            return c.json({ success: false, message: 'Erro na autenticação Google' }, 401);
+        }
+    }
+
+    /**
+     * Logout
+     */
+    static async logout(c: Context) {
+        // No JWT, o logout é do lado do cliente, mas podemos invalidar no servidor se usarmos blacklist
+        return c.json({ success: true, message: 'Logout realizado com sucesso' });
+    }
+
+    /**
+     * Configuração Inicial do 2FA
+     */
+    static async setup2FA(c: Context) {
+        try {
+            const user = c.get('user');
+            const pool = getDbPool(c);
+
+            if (!user) return c.json({ success: false, message: 'Não autorizado' }, 401);
+
+            // Buscar usuário para pegar o segredo atual ou gerar um novo
+            const result = await pool.query('SELECT email, two_factor_secret FROM users WHERE id = $1', [user.userId]);
+            const dbUser = result.rows[0];
+
+            let secret = dbUser.two_factor_secret;
+            if (!secret) {
+                secret = twoFactorService.generateSecret();
+                await pool.query('UPDATE users SET two_factor_secret = $1 WHERE id = $2', [secret, user.userId]);
+            }
+
+            const otpUri = twoFactorService.generateOtpUri(dbUser.email, secret);
+            const qrCode = await twoFactorService.generateQrCode(otpUri);
+
+            return c.json({
+                success: true,
+                data: { secret, qrCode, otpUri }
+            });
+        } catch (error: any) {
+            console.error('[2FA SETUP ERROR]:', error);
+            return c.json({ success: false, message: 'Erro ao configurar 2FA' }, 500);
+        }
+    }
+
+    /**
+     * Verificar e Ativar 2FA
+     */
+    static async verify2FA(c: Context) {
+        try {
+            const { token, secret } = await c.req.json();
+            const user = c.get('user');
+            const pool = getDbPool(c);
+
+            if (!user) return c.json({ success: false, message: 'Não autorizado' }, 401);
+
+            if (!token || !secret) {
+                return c.json({ success: false, message: 'Token e Segredo são obrigatórios' }, 400);
+            }
+
+            const isValid = twoFactorService.verifyToken(token, secret);
+            if (!isValid) {
+                return c.json({ success: false, message: 'Código inválido' }, 400);
+            }
+
+            // Ativar definitivamente para o usuário
+            await pool.query('UPDATE users SET two_factor_enabled = TRUE, two_factor_secret = $1 WHERE id = $2', [secret, user.userId]);
+
+            return c.json({ success: true, message: '2FA ativado com sucesso' });
+        } catch (error: any) {
+            console.error('[2FA VERIFY ERROR]:', error);
+            return c.json({ success: false, message: 'Erro ao verificar 2FA' }, 500);
+        }
+    }
+
+    /**
+     * Verificar status de aceite dos termos
+     */
+    static async termsStatus(c: Context) {
+        try {
+            const user = c.get('user');
+            const pool = getDbPool(c);
+
+            if (!user) return c.json({ success: false, message: 'Não autorizado' }, 401);
+
+            const result = await pool.query('SELECT accepted_terms_at FROM users WHERE id = $1', [user.userId]);
+            const accepted = !!result.rows[0]?.accepted_terms_at;
+
+            return c.json({ success: true, data: { accepted } });
+        } catch (error: any) {
+            return c.json({ success: false, message: 'Erro ao verificar status dos termos' }, 500);
+        }
+    }
+
+    /**
+     * Admin: Desabilitar 2FA de um usuário
+     */
+    static async adminDisable2FA(c: Context) {
+        try {
+            const adminUser = c.get('user');
+            const { userId } = await c.req.json();
+            const pool = getDbPool(c);
+
+            if (!adminUser?.isAdmin) return c.json({ success: false, message: 'Acesso negado' }, 403);
+
+            await pool.query('UPDATE users SET two_factor_enabled = FALSE WHERE id = $1', [userId]);
+
+            return c.json({ success: true, message: '2FA desabilitado com sucesso pelo administrador' });
+        } catch (error: any) {
+            return c.json({ success: false, message: 'Erro ao desabilitar 2FA' }, 500);
+        }
+    }
+
+    /**
+     * Admin: Resetar Segurança do Usuário
+     */
+    static async adminResetUserSecurity(c: Context) {
+        try {
+            const adminUser = c.get('user');
+            const { userId, newPassword, newSecretPhrase } = await c.req.json();
+            const pool = getDbPool(c);
+
+            if (!adminUser?.isAdmin) return c.json({ success: false, message: 'Acesso negado' }, 403);
+
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+            await pool.query(
+                `UPDATE users SET 
+                 password_hash = $1, 
+                 secret_phrase = $2, 
+                 two_factor_enabled = FALSE 
+                 WHERE id = $3`,
+                [hashedPassword, newSecretPhrase, userId]
+            );
+
+            return c.json({ success: true, message: 'Segurança do usuário resetada com sucesso' });
+        } catch (error: any) {
+            return c.json({ success: false, message: 'Erro ao resetar segurança' }, 500);
         }
     }
 }

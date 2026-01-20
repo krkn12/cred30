@@ -13,10 +13,12 @@ import {
     PLATFORM_FEE_INVESTMENT_SHARE,
     ADMIN_PIX_KEY
 } from '../../../shared/constants/business.constants';
+import { PointsService, POINTS_CONVERSION_RATE, MIN_POINTS_FOR_CONVERSION } from '../../../application/services/points.service';
 
 // Constantes
-const POINTS_PER_REAL = 100;
-const MIN_CONVERSION_POINTS = 100;
+// Constantes - Sincronizadas com PointsService
+const POINTS_PER_REAL = POINTS_CONVERSION_RATE;
+const MIN_CONVERSION_POINTS = MIN_POINTS_FOR_CONVERSION;
 const VIDEO_TAGS = ['ENTRETENIMENTO', 'MUSICA', 'EDUCACAO', 'GAMES', 'LIFESTYLE', 'TECNOLOGIA', 'NEGOCIOS', 'SAUDE', 'HUMOR', 'OUTROS'] as const;
 
 // Schema de validação
@@ -287,44 +289,23 @@ export class PromoVideosController {
     }
 
     /**
-     * Converter pontos em dinheiro
+     * Converter pontos em dinheiro - Agora centralizado no PointsService
      */
     static async convertPoints(c: Context) {
         try {
             const userPayload = c.get('user');
             const pool = getDbPool(c);
 
-            const userRes = await pool.query('SELECT ad_points, balance FROM users WHERE id = $1', [userPayload.id]);
-            const user = userRes.rows[0];
+            const result = await PointsService.convertPointsToBalance(pool, userPayload.id);
 
-            if (user.ad_points < MIN_CONVERSION_POINTS) {
-                return c.json({ success: false, message: `Mínimo de ${MIN_CONVERSION_POINTS} pontos para conversão.` }, 400);
+            if (!result.success) {
+                return c.json({ success: false, message: result.message }, 400);
             }
-
-            const pointsToConvert = Math.floor(user.ad_points);
-            const amountToAdd = pointsToConvert / POINTS_PER_REAL;
-
-            await executeInTransaction(pool, async (client) => {
-                const systemRes = await client.query('SELECT profit_pool FROM system_config LIMIT 1 FOR UPDATE');
-                const profitPool = parseFloat(systemRes.rows[0]?.profit_pool || '0');
-
-                if (profitPool < amountToAdd) {
-                    throw new Error('Fundo de pagamentos insuficiente. Tente mais tarde.');
-                }
-
-                await client.query('UPDATE system_config SET profit_pool = profit_pool - $1', [amountToAdd]);
-                await client.query('UPDATE users SET ad_points = ad_points - $1 WHERE id = $2', [pointsToConvert, userPayload.id]);
-                await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [amountToAdd, userPayload.id]);
-                await client.query(`
-          INSERT INTO transactions (user_id, type, amount, description, status)
-          VALUES ($1, 'POINTS_CONVERSION', $2, $3, 'COMPLETED')
-        `, [userPayload.id, amountToAdd, `Conversão de ${pointsToConvert} pontos de vídeo`]);
-            });
 
             return c.json({
                 success: true,
-                message: `Sucesso! R$ ${amountToAdd.toFixed(2)} adicionados ao seu saldo.`,
-                data: { convertedAmount: amountToAdd, remainingPoints: 0 }
+                message: `Sucesso! R$ ${result.data?.convertedAmount.toFixed(2)} adicionados ao seu saldo.`,
+                data: result.data
             });
         } catch (error: any) {
             console.error('[PROMO-VIDEOS] Erro ao converter pontos:', error);

@@ -4,7 +4,8 @@ import {
     Users, TrendingUp, ArrowUpFromLine, BookOpen,
     Crown, Clock, ArrowDownLeft, ArrowUpRight,
     PieChart, Star, Zap,
-    ShieldCheck, ChevronRight, Wallet, Settings, BarChart3, Gift, Sparkles, Eye, EyeOff
+    ShieldCheck, ChevronRight, Wallet, Settings, BarChart3, Gift, Sparkles, Eye, EyeOff,
+    RefreshCw
 } from 'lucide-react';
 import { AppState, Transaction, Quota, Loan } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
@@ -23,6 +24,7 @@ interface DashboardProps {
     onError: (title: string, message: string) => void;
     onEducation: () => void;
     onVoting: () => void;
+    onRefresh: () => Promise<void>;
 }
 
 interface TransactionRowProps {
@@ -77,7 +79,7 @@ const TransactionRow = memo(({ t, formatCurrency, isPositive, showValues }: Tran
     </div>
 ));
 TransactionRow.displayName = 'TransactionRow';
-export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, onRefer, onSuccess, onError, onEducation, onVoting }: DashboardProps) => {
+export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, onRefer, onSuccess, onError, onEducation, onVoting, onRefresh }: DashboardProps) => {
     const user = state?.currentUser;
     const navigate = useNavigate();
 
@@ -114,6 +116,9 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
     const [viewFarmVideo, setViewFarmVideo] = useState<any>(null);
     const [adTimer, setAdTimer] = useState(0);
 
+    const [referralInput, setReferralInput] = useState('');
+    const [linkingReferrer, setLinkingReferrer] = useState(false);
+
     useEffect(() => {
         localStorage.setItem('dashboard_show_values', showValues.toString());
     }, [showValues]);
@@ -145,6 +150,25 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
             )
             .slice(0, 5);
     }, [state?.transactions, user?.id]);
+
+    const handleLinkReferrer = async () => {
+        if (!referralInput.trim() || linkingReferrer) return;
+        setLinkingReferrer(true);
+        try {
+            const response = await apiService.linkReferrer(referralInput);
+            if (response.success) {
+                onSuccess('Sucesso!', 'Seu padrinho foi vinculado com sucesso.');
+                setReferralInput('');
+                await onRefresh();
+            } else {
+                onError('Erro', response.message || 'Código de indicação inválido.');
+            }
+        } catch (error: any) {
+            onError('Erro', error.message || 'Falha ao vincular padrinho.');
+        } finally {
+            setLinkingReferrer(false);
+        }
+    };
 
     const handleOpenChest = useCallback(async () => {
         if (chestsRemaining <= 0 || chestCountdown > 0 || isOpeningChest) return;
@@ -396,6 +420,40 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                         <p className="text-zinc-400 text-xs">
                             Operações bloqueadas. Liberação em <strong className="text-white">{lockTimeRemaining}h</strong>.
                         </p>
+                    </div>
+                </div>
+            )}
+
+            {/* Vincular Padrinho (Apenas se não tiver) */}
+            {!user.referred_by && (
+                <div className="bg-primary-500/5 border border-primary-500/20 rounded-2xl p-5 mb-4 group transition-all hover:bg-primary-500/10">
+                    <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-primary-500/20 flex items-center justify-center text-primary-400 shrink-0">
+                            <Users size={24} />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="text-white font-bold text-sm mb-1">Quem te indicou?</h3>
+                            <p className="text-zinc-400 text-xs mb-4">
+                                Você ainda não tem um padrinho vinculado. Insira o código de quem te convidou para liberar benefícios.
+                            </p>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Código de Indicação"
+                                    value={referralInput}
+                                    onChange={(e) => setReferralInput(e.target.value.toUpperCase())}
+                                    className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-primary-500/50"
+                                />
+                                <button
+                                    onClick={handleLinkReferrer}
+                                    disabled={linkingReferrer || !referralInput.trim()}
+                                    className="bg-primary-500 hover:bg-primary-400 disabled:bg-zinc-800 disabled:text-zinc-500 text-black px-4 py-2 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-2"
+                                >
+                                    {linkingReferrer ? <RefreshCw className="animate-spin" size={14} /> : <Zap size={14} />}
+                                    VINCULAR
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

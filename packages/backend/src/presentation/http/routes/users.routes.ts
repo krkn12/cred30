@@ -51,3 +51,6 @@ userRoutes.get('/welcome-benefit', authMiddleware, UsersController.getWelcomeBen
 
 // Ranking de Farm (Top 3)
 userRoutes.get('/ranking/farm', authMiddleware, UsersController.getFarmRanking);
+
+// Vincular Padrinho (Pós-Cadastro)
+userRoutes.post('/link-referrer', authMiddleware, UsersController.linkReferrer);
