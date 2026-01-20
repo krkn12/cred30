@@ -16,9 +16,41 @@ describe('Auth Integration Tests', () => {
     beforeAll(async () => {
         try {
             console.log('--- [AUTH TEST] Cleanup starting ---');
-            // Limpar usuário de teste
-            await pool.query("DELETE FROM users WHERE email = $1", [testUser.email.toLowerCase()]);
-            await pool.query("INSERT INTO referral_codes (code, is_active, max_uses, current_uses) VALUES ($1, TRUE, 100, 0) ON CONFLICT (code) DO NOTHING", ['TESTCODE']);
+            console.log('--- [AUTH TEST] Cleanup starting ---');
+            // Limpeza profunda usando TRUNCATE CASCADE
+            await pool.query(`
+                TRUNCATE TABLE 
+                    users, 
+                    transactions, 
+                    quotas, 
+                    loans, 
+                    loan_installments, 
+                    referral_codes, 
+                    admin_logs, 
+                    audit_logs 
+                CASCADE
+            `);
+
+            // Garantir usuário padrinho
+            const referrerRes = await pool.query(`
+                INSERT INTO users (name, email, password_hash, secret_phrase, referral_code, is_admin, balance, score, status)
+                VALUES ('Test Referrer', 'referrer@test.com', 'hash', 'frase', 'REF123', TRUE, 0, 0, 'ACTIVE')
+                RETURNING id
+            `);
+            const creatorId = referrerRes.rows[0].id;
+
+            await pool.query(`
+                INSERT INTO referral_codes (code, is_active, max_uses, current_uses, created_by) 
+                VALUES ($1, TRUE, 100, 0, $2) 
+                ON CONFLICT (code) DO UPDATE SET created_by = $2, is_active = TRUE
+            `, ['TESTCODE', creatorId]);
+            console.log('--- [AUTH TEST] Cleanup finished ---');
+
+            await pool.query(`
+                INSERT INTO referral_codes (code, is_active, max_uses, current_uses, created_by) 
+                VALUES ($1, TRUE, 100, 0, $2) 
+                ON CONFLICT (code) DO UPDATE SET created_by = $2, is_active = TRUE
+            `, ['TESTCODE', creatorId]);
             console.log('--- [AUTH TEST] Cleanup finished ---');
         } catch (error: any) {
             console.error('--- [AUTH TEST] beforeAll Error:', error.message);

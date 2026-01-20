@@ -40,6 +40,7 @@ interface ApiUser {
   last_login_at?: string;
   safeContactPhone?: string;
   safe_contact_phone?: string;
+  referred_by?: string | null;
 }
 
 interface ApiQuota {
@@ -143,6 +144,7 @@ const convertApiUserToUser = (apiUser: ApiUser): User => {
     total_dividends_earned: apiUser.total_dividends_earned || 0,
     last_login_at: apiUser.last_login_at,
     safeContactPhone: apiUser.safeContactPhone || apiUser.safe_contact_phone || null,
+    referred_by: apiUser.referred_by || null,
   };
 };
 
@@ -407,6 +409,10 @@ export const clearAllCache = (): void => {
 export const distributeMonthlyDividends = async () => {
   const result = await apiService.distributeDividends();
   return result;
+};
+
+export const linkReferrer = async (referralCode: string): Promise<any> => {
+  return await apiService.linkReferrer(referralCode);
 };
 
 // --- User Logic ---

@@ -74,4 +74,8 @@ export class UsersApi extends ApiBase {
     async claimAdReward(): Promise<ApiResponse<unknown>> {
         return await this.post<unknown>('/users/reward-ad', {});
     }
+
+    async linkReferrer(referralCode: string): Promise<ApiResponse<unknown>> {
+        return await this.post<unknown>('/users/link-referrer', { referralCode });
+    }
 }

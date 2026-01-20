@@ -7,6 +7,7 @@ import { UserContext } from '../../../shared/types/hono.types';
 import { getWelcomeBenefit, getWelcomeBenefitDescription } from '../../../application/services/welcome-benefit.service';
 import { WELCOME_BENEFIT_MAX_USES } from '../../../shared/constants/business.constants';
 import { LiquidationService } from '../../../application/services/liquidation.service';
+import { AuditService, AuditActionType } from '../../../application/services/audit.service';
 
 // Schemas
 const completeProfileSchema = z.object({
@@ -23,6 +24,10 @@ const updateUserSchema = z.object({
     safeContactPhone: z.string().min(8).optional(),
     confirmationCode: z.string().optional(),
     password: z.string().optional(),
+});
+
+const linkReferrerSchema = z.object({
+    referralCode: z.string().min(1, 'Código de indicação é obrigatório'),
 });
 
 export class UsersController {
@@ -95,6 +100,11 @@ export class UsersController {
                 'UPDATE users SET cpf = $1, pix_key = $2, phone = $3 WHERE id = $4',
                 [data.cpf, data.pixKey, data.phone, user.id]
             );
+
+            // AUDITORIA
+            const ip = c.req.header('x-forwarded-for') || '127.0.0.1';
+            await AuditService.logSensitiveAction(pool, user.id, AuditActionType.CPF_UPDATE, { cpf: data.cpf, phone: data.phone }, ip);
+            await AuditService.logSensitiveAction(pool, user.id, AuditActionType.PIX_KEY_UPDATE, { pixKey: data.pixKey }, ip);
 
             console.log(`[PROFILE] Usuário ${user.id} completou perfil (CPF, PIX, Tel)`);
 
@@ -173,6 +183,7 @@ export class UsersController {
             const pool = getDbPool(c);
 
             const isSensitiveChange = validatedData.pixKey || validatedData.secretPhrase || validatedData.panicPhrase || validatedData.safeContactPhone;
+            const ip = c.req.header('x-forwarded-for') || '127.0.0.1';
 
             if (isSensitiveChange) {
                 const securityRes = await pool.query('SELECT password_hash, two_factor_enabled, two_factor_secret FROM users WHERE id = $1', [user.id]);
@@ -217,6 +228,14 @@ export class UsersController {
             const query = `UPDATE users SET ${updateFields.join(', ')} WHERE id = $${pIdx} RETURNING id, name, email, pix_key, balance, score, created_at, referral_code, is_admin, ad_points`;
             const result = await pool.query(query, updateValues);
 
+            // AUDITORIA PARA ALTERAÇÕES SENSÍVEIS
+            if (validatedData.pixKey) {
+                await AuditService.logSensitiveAction(pool, user.id, AuditActionType.PIX_KEY_UPDATE, { pixKey: validatedData.pixKey }, ip);
+            }
+            if (validatedData.secretPhrase || validatedData.panicPhrase) {
+                await AuditService.logSensitiveAction(pool, user.id, AuditActionType.SECURITY_PHRASE_UPDATE, { hasSecret: !!validatedData.secretPhrase, hasPanic: !!validatedData.panicPhrase }, ip);
+            }
+
             return c.json({ success: true, message: 'Perfil atualizado com sucesso', data: { user: result.rows[0] } });
         } catch (error: any) {
             if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
@@ -232,8 +251,8 @@ export class UsersController {
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
 
-            // Processar liquidações pendentes (Regra 35 dias)
-            await LiquidationService.processOverdueInstallments(pool);
+            // A liquidação agora é processada em background ou pelo agendador para evitar timeout no frontend
+            LiquidationService.processOverdueInstallments(pool).catch(err => console.error('[SYNC_LIQ_BG_ERROR]:', err));
 
             const result = await pool.query(`
                 WITH user_stats AS (
@@ -624,6 +643,67 @@ export class UsersController {
             });
         } catch (error: any) {
             console.error('Erro ao buscar ranking:', error);
+        }
+    }
+
+    /**
+     * Vincular um padrinho (indicação) após o cadastro
+     */
+    static async linkReferrer(c: Context) {
+        try {
+            const body = await c.req.json();
+            const { referralCode } = linkReferrerSchema.parse(body);
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+
+            // 1. Verificar se o usuário já possui um indicador
+            const currentUserRes = await pool.query('SELECT referred_by, referral_code FROM users WHERE id = $1', [user.id]);
+            const currentUser = currentUserRes.rows[0];
+
+            if (currentUser.referred_by) {
+                return c.json({ success: false, message: 'Você já possui um padrinho vinculado.' }, 400);
+            }
+
+            const inputCode = referralCode.trim().toUpperCase();
+
+            // 2. Impedir auto-indicação
+            if (inputCode === currentUser.referral_code) {
+                return c.json({ success: false, message: 'Você não pode indicar a si mesmo.' }, 400);
+            }
+
+            let referrerId = null;
+
+            // 3. Buscar indicador (usuário ou código administrativo)
+            const userReferrerResult = await pool.query('SELECT id FROM users WHERE referral_code = $1', [inputCode]);
+            if (userReferrerResult.rows.length > 0) {
+                referrerId = userReferrerResult.rows[0].id;
+            } else {
+                const adminCodeResult = await pool.query('SELECT * FROM referral_codes WHERE code = $1 AND is_active = TRUE', [inputCode]);
+                if (adminCodeResult.rows.length > 0) {
+                    const adminCode = adminCodeResult.rows[0];
+                    if (adminCode.max_uses !== null && adminCode.current_uses >= adminCode.max_uses) {
+                        return c.json({ success: false, message: 'Este código expirou.' }, 403);
+                    }
+                    referrerId = adminCode.created_by;
+                    // Incrementar uso do código administrativo
+                    await pool.query('UPDATE referral_codes SET current_uses = current_uses + 1 WHERE id = $1', [adminCode.id]);
+                }
+            }
+
+            if (!referrerId) {
+                return c.json({ success: false, message: 'Código de indicação inválido.' }, 404);
+            }
+
+            // 4. Vincular
+            await pool.query('UPDATE users SET referred_by = $1 WHERE id = $2', [referrerId, user.id]);
+
+            console.log(`[REFERRAL] Usuário ${user.id} vinculou padrinho ${referrerId} via linkReferrer`);
+
+            return c.json({ success: true, message: 'Padrinho vinculado com sucesso!' });
+        } catch (error) {
+            if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
+            console.error('[LINK REFERRER ERROR]:', error);
+            return c.json({ success: false, message: 'Erro interno no servidor' }, 500);
         }
     }
 }

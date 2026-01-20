@@ -191,7 +191,31 @@ export class QuotasController {
                     const referredByCode = currentUserRes.rows[0]?.referred_by;
 
                     if (referredByCode) {
-                        console.log(`[REFERRAL] Usuário ${user.id} foi indicado pelo código ${referredByCode}. Sistema de Benefício de Boas-Vindas ativo.`);
+                        console.log(`[REFERRAL] Usuário ${user.id} foi indicado pelo padrinho ${referredByCode}.`);
+
+                        // Verificar se o padrinho já recebeu o bônus de indicação ativa para este usuário
+                        const bonusCheck = await client.query(
+                            "SELECT id FROM transactions WHERE user_id = $1 AND type = 'REFERRAL_BONUS' AND metadata->>'referredUserId' = $2",
+                            [referredByCode, user.id]
+                        );
+
+                        if (bonusCheck.rows.length === 0) {
+                            // Conceder bônus de Score ao padrinho
+                            await updateScore(client, referredByCode, SCORE_REWARDS.REFERRAL_ACTIVE_USER, `Bônus: Indicação Ativa (Usuário ${user.id} adquiriu cotas)`);
+
+                            // Registrar transação de bônus (histórico)
+                            await createTransaction(
+                                client,
+                                referredByCode,
+                                'REFERRAL_BONUS',
+                                0,
+                                `Bônus de Indicação Ativa: Associado ${user.name.split(' ')[0]} adquiriu participações`,
+                                'APPROVED',
+                                { referredUserId: user.id, points: SCORE_REWARDS.REFERRAL_ACTIVE_USER }
+                            );
+
+                            console.log(`[REFERRAL] Padrinho ${referredByCode} recompensado com ${SCORE_REWARDS.REFERRAL_ACTIVE_USER} pontos de Score.`);
+                        }
                     }
 
                     await updateScore(client, user.id, SCORE_REWARDS.QUOTA_PURCHASE * quantity, `Aquisição de ${quantity} participações`);

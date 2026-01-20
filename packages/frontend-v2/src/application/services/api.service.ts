@@ -46,6 +46,7 @@ class ApiService extends ApiBase {
   updateCpf = this.users.updateCpf.bind(this.users);
   updatePhone = this.users.updatePhone.bind(this.users);
   updatePixKey = this.users.updatePixKey.bind(this.users);
+  linkReferrer = this.users.linkReferrer.bind(this.users);
 
   // Finance
   getUserQuotas = this.finance.getQuotas.bind(this.finance);

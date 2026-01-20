@@ -25,6 +25,7 @@ export interface User {
   passwordHash?: string | null; // Indica se usuário tem senha (usuários Google não têm)
   safeContactPhone?: string | null;
   panicPhrase?: string | null;
+  referred_by?: string | null;
 }
 
 export interface Quota {

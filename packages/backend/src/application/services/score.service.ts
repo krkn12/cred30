@@ -62,6 +62,7 @@ export const SCORE_REWARDS = {
     GAME_PARTICIPATION: 2,    // Por lote de giros/participação
     RELIABLE_MEMBER: 50,      // Bônus mensal para membros sem pendências (pode ser usado em scheduler)
     VOTING_PARTICIPATION: 10, // Por voto em proposta de governança
+    REFERRAL_ACTIVE_USER: 30, // Padrinho ganha quando indicado compra cota (indicação ativa)
 };
 
 export const SCORE_PENALTIES = {

@@ -470,6 +470,7 @@ export default function App() {
                       onError={(title, message) => setShowError({ isOpen: true, title, message })}
                       onEducation={() => navigate('/app/education')}
                       onVoting={() => navigate('/app/voting')}
+                      onRefresh={refreshState}
                     />
                   </Suspense>
                 } />

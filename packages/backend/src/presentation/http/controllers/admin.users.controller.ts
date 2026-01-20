@@ -78,9 +78,12 @@ export class AdminUsersController {
             const dataQuery = `
         SELECT 
             u.id, u.name, u.email, u.role, u.status, u.balance, u.score, u.created_at, u.pix_key, u.membership_type,
+            u.referred_by, r.name as referrer_name,
             (SELECT COUNT(*) FROM quotas q WHERE q.user_id = u.id AND (q.status = 'ACTIVE' OR q.status IS NULL)) as quotas_count,
             (SELECT COALESCE(SUM(q.current_value), 0) FROM quotas q WHERE q.user_id = u.id AND (q.status = 'ACTIVE' OR q.status IS NULL)) as quotas_value
-        ${baseQuery.replace('FROM users', 'FROM users u')}
+        FROM users u
+        LEFT JOIN users r ON u.referred_by = r.id
+        ${baseQuery.substring(baseQuery.indexOf('WHERE'))}
         ORDER BY u.created_at DESC 
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;

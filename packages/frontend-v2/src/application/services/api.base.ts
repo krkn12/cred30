@@ -1,14 +1,34 @@
-// URL base da API - detecta se está acessando via ngrok
+// URL base da API - detecta se está acessando via ngrok ou local
 const getApiBaseUrl = () => {
     const currentUrl = window.location.origin;
+
+    // Se for ngrok, assume o mesmo domínio com /api
     if (currentUrl.includes('ngrok-free.app')) {
         return currentUrl + '/api';
     }
-    // Usa a variável de ambiente ou o backend oficial do Render como fallback
-    return (import.meta as any).env.VITE_API_URL || 'https://cred30-backend.onrender.com';
+
+    // Prioridade 1: Variável de ambiente (se definida e começar com http ou /)
+    const envUrl = (import.meta as any).env.VITE_API_URL;
+    if (envUrl) {
+        // Se a envUrl for apenas "/api", ela é relativa ao domínio atual
+        // Em desenvolvimento, isso pode falhar se o backend estiver em outra porta (3001)
+        if (envUrl === '/api' && (currentUrl.includes('localhost') || currentUrl.includes('127.0.0.1'))) {
+            const devUrl = 'http://localhost:3001/api';
+            console.log(`[ApiService] Dev Mode detectado. Usando: ${devUrl}`);
+            return devUrl;
+        }
+        console.log(`[ApiService] Usando VITE_API_URL: ${envUrl}`);
+        return envUrl;
+    }
+
+    // Fallback: Backend oficial no Render
+    const fallback = 'https://cred30-backend.onrender.com/api';
+    console.warn(`[ApiService] Nenhuma variável definida. Fallback para: ${fallback}`);
+    return fallback;
 };
 
 export const API_BASE_URL = getApiBaseUrl();
+console.log(`[ApiService] Inicializado com BASE_URL: ${API_BASE_URL}`);
 
 export interface ApiResponse<T> {
     success: boolean;
