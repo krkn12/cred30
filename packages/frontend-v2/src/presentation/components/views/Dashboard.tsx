@@ -312,6 +312,13 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                                 <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider">Verificado</span>
                             </div>
                         )}
+                        {/* Selo de Proteção Mútua */}
+                        {user.is_protected && (
+                            <div className="flex items-center gap-2 bg-blue-500/10 px-3 py-1.5 rounded-full border border-blue-500/20">
+                                <ShieldCheck size={12} className="text-blue-400" />
+                                <span className="text-[10px] font-black text-blue-400 uppercase tracking-wider">Protegido</span>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">

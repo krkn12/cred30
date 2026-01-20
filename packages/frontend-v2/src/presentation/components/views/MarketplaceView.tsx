@@ -52,8 +52,7 @@ const formatCurrency = (value: number) => {
 
 export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: MarketplaceViewProps) => {
     const navigate = useNavigate();
-
-    // Defensive check
+    const isGuest = !state.currentUser;
 
 
     const [view, setView] = useState<'browse' | 'create' | 'my-orders' | 'details' | 'missions' | 'offline' | 'cart'>('browse');
@@ -98,6 +97,11 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     const { getLocation, isLoading: isGpsLoading } = useGps(onSuccess, onError);
 
     const addToCart = (item: any) => {
+        if (isGuest) {
+            navigate('/auth');
+            return;
+        }
+
         if (cart.sellerId && cart.sellerId !== item.seller_id) {
             onError('Loja Diferente', `Você já tem itens da loja "${cart.sellerName}". Finalize a compra ou limpe o carrinho antes de comprar de "${item.seller_name}".`);
             return;
@@ -420,6 +424,10 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 {view !== 'details' && (
                     <button
                         onClick={() => {
+                            if (isGuest) {
+                                navigate('/auth');
+                                return;
+                            }
                             const userQuotas = state.quotas.filter(q => q.userId === state.currentUser?.id).length;
                             const userScore = state.currentUser?.score || 0;
                             const isSeller = state.currentUser?.is_seller;
@@ -437,6 +445,24 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 )}
             </div>
 
+            {isGuest && view === 'browse' && (
+                <div className="bg-gradient-to-br from-primary-600 to-blue-700 p-6 rounded-[2rem] shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-x-10 -translate-y-10 blur-3xl group-hover:scale-150 transition-transform duration-1000"></div>
+                    <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
+                        <div className="text-center sm:text-left">
+                            <h3 className="text-xl font-black text-white tracking-tighter">BEM-VINDO AO CLUBE! 🚀</h3>
+                            <p className="text-white/80 text-xs font-medium mt-1">Você está no modo visitante. Cadastre-se para comprar parcelado, ganhar pontos farm e taxas de 3,5%!</p>
+                        </div>
+                        <button
+                            onClick={() => navigate('/auth')}
+                            className="bg-white text-primary-600 px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-black/20"
+                        >
+                            CRIAR CONTA GRÁTIS
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Abas de Navegação Secundária */}
             <div className="flex bg-zinc-900/50 p-1 rounded-xl border border-white/5">
                 <button
@@ -446,19 +472,28 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                     Explorar
                 </button>
                 <button
-                    onClick={() => setView('my-orders')}
+                    onClick={() => {
+                        if (isGuest) navigate('/auth');
+                        else setView('my-orders');
+                    }}
                     className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition ${view === 'my-orders' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
                 >
                     Meus Pedidos
                 </button>
                 <button
-                    onClick={() => navigate('/app/logistics')}
+                    onClick={() => {
+                        if (isGuest) navigate('/auth');
+                        else navigate('/app/logistics');
+                    }}
                     className="flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition text-zinc-500 hover:bg-zinc-800 hover:text-white"
                 >
                     Entregas
                 </button>
                 <button
-                    onClick={() => setView('offline')}
+                    onClick={() => {
+                        if (isGuest) navigate('/auth');
+                        else setView('offline');
+                    }}
                     className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition ${view === 'offline' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
                 >
                     Offline
@@ -1100,6 +1135,10 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                     formatCurrency={formatCurrency}
                     onClose={() => setView('browse')}
                     onContact={(item: any) => {
+                        if (isGuest) {
+                            navigate('/auth');
+                            return;
+                        }
                         setConfirmData({
                             isOpen: true,
                             title: 'Liberar WhatsApp?',

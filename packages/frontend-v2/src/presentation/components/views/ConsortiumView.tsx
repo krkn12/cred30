@@ -13,6 +13,7 @@ interface ConsortiumGroup {
     monthly_installment_value: number;
     status: string;
     member_count: number;
+    group_identifier: string;
 }
 
 interface MyMembership {
@@ -30,6 +31,7 @@ interface MyMembership {
     total_paid: number;
     current_pool: number;
     last_winner_name?: string;
+    group_identifier: string;
 }
 
 interface ConsortiumViewProps {
@@ -185,9 +187,14 @@ export const ConsortiumView: React.FC<ConsortiumViewProps> = ({ onSuccess, onErr
                                 <div key={group.id} className="bg-zinc-900 border border-white/5 rounded-2xl p-5 hover:border-primary-500/30 transition-all">
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
-                                            <span className="px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-400 inline-block mb-2">
-                                                {group.status}
-                                            </span>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-400 inline-block">
+                                                    {group.status}
+                                                </span>
+                                                <span className="bg-primary-500/10 text-primary-400 px-2 py-1 rounded text-[10px] font-black uppercase border border-primary-500/20">
+                                                    {group.group_identifier}
+                                                </span>
+                                            </div>
                                             <h3 className="text-lg font-bold text-white">{group.name}</h3>
                                         </div>
                                         <div className="text-right">
@@ -251,10 +258,14 @@ export const ConsortiumView: React.FC<ConsortiumViewProps> = ({ onSuccess, onErr
                             <div key={m.id} className="bg-zinc-900 border border-white/5 rounded-2xl p-5">
                                 <div className="flex justify-between items-start mb-3">
                                     <div>
-                                        <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest inline-block mb-2 ${m.status === 'CONTEMPLATED' ? 'bg-amber-500/10 text-amber-400' : 'bg-primary-500/10 text-primary-400'
-                                            }`}>
-                                            {m.status === 'CONTEMPLATED' ? '🏆 Contemplado!' : `Cota #${m.quota_number}`}
-                                        </span>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest inline-block ${m.status === 'CONTEMPLATED' ? 'bg-amber-500/10 text-amber-400' : 'bg-primary-500/10 text-primary-400'}`}>
+                                                {m.status === 'CONTEMPLATED' ? '🏆 Contemplado!' : `Cota #${m.quota_number}`}
+                                            </span>
+                                            <span className="bg-zinc-800 text-zinc-400 px-2 py-1 rounded text-[10px] font-black uppercase border border-white/5">
+                                                {m.group_identifier}
+                                            </span>
+                                        </div>
                                         <h3 className="text-lg font-bold text-white">{m.group_name}</h3>
                                     </div>
                                     <div className="text-right">

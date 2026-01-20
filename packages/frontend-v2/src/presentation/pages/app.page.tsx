@@ -434,6 +434,18 @@ export default function App() {
         <Routes>
           <Route path="/" element={<WelcomePage />} />
           <Route path="/auth" element={<AuthScreen onLogin={refreshState} />} />
+          <Route path="/marketplace" element={
+            <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><RefreshCw className="animate-spin text-primary-500" /></div>}>
+              <Layout user={null} currentView="marketplace" onChangeView={() => { }} onLogout={() => { }}>
+                <MarketplaceView
+                  state={state}
+                  onRefresh={refreshState}
+                  onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                  onError={(title, message) => setShowError({ isOpen: true, title, message })}
+                />
+              </Layout>
+            </Suspense>
+          } />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/security" element={<SecurityPage />} />

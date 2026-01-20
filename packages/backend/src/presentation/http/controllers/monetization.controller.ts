@@ -8,7 +8,8 @@ import {
     VERIFIED_BADGE_PRICE,
     SCORE_BOOST_PRICE,
     SCORE_BOOST_POINTS,
-    REPUTATION_CHECK_PRICE
+    REPUTATION_CHECK_PRICE,
+    MUTUAL_PROTECTION_PRICE
 } from '../../../shared/constants/business.constants';
 import { UserContext } from '../../../shared/types/hono.types';
 
@@ -414,6 +415,73 @@ export class MonetizationController {
                 success: true,
                 message: 'Consulta realizada com sucesso!',
                 data: result.data
+            });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
+     * Comprar Proteção Mútua (Seguro Social)
+     */
+    static async buyProtection(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+
+            const result = await executeInTransaction(pool, async (client: PoolClient) => {
+                const userRes = await client.query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [user.id]);
+                if (parseFloat(userRes.rows[0].balance) < MUTUAL_PROTECTION_PRICE) {
+                    throw new Error(`Saldo insuficiente. A proteção mensal custa R$ ${MUTUAL_PROTECTION_PRICE.toFixed(2)}.`);
+                }
+
+                // Debita o saldo
+                await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [MUTUAL_PROTECTION_PRICE, user.id]);
+
+                // Ativa proteção (+30 dias)
+                const protectionExpiry = new Date();
+                protectionExpiry.setDate(protectionExpiry.getDate() + 30);
+
+                await client.query(
+                    'UPDATE users SET is_protected = TRUE, protection_expires_at = $1 WHERE id = $2',
+                    [protectionExpiry, user.id]
+                );
+
+                // Incrementa o fundo de proteção (Regra 80/20)
+                const fundShare = MUTUAL_PROTECTION_PRICE * 0.80;
+                const systemShare = MUTUAL_PROTECTION_PRICE * 0.20;
+
+                await client.query(
+                    `UPDATE system_config SET 
+                        mutual_protection_fund = mutual_protection_fund + $1,
+                        total_tax_reserve = total_tax_reserve + $2,
+                        total_operational_reserve = total_operational_reserve + $2,
+                        total_owner_profit = total_owner_profit + $2,
+                        investment_reserve = investment_reserve + $2`,
+                    [fundShare, systemShare * 0.25]
+                );
+
+                // Ganho de Score por segurança
+                await updateScore(client, user.id, 50, 'Ativação de Proteção Mútua (Prevenção)');
+
+                await createTransaction(
+                    client,
+                    user.id,
+                    'PROTECTION_PURCHASE',
+                    -MUTUAL_PROTECTION_PRICE,
+                    'Ativação de Proteção Mútua (Mensal)',
+                    'APPROVED'
+                );
+
+                return { success: true, expiry: protectionExpiry };
+            });
+
+            if (!result.success) return c.json({ success: false, message: result.error }, 400);
+
+            return c.json({
+                success: true,
+                message: 'Você agora é um Membro Protegido!',
+                expiry: result.data?.expiry
             });
         } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);

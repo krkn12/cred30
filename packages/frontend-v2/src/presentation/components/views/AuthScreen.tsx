@@ -220,7 +220,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                     <p className="text-xl text-zinc-400 font-medium leading-relaxed">
                         A revolução do microcrédito associativo.
                         <br />
-                        <span className="text-primary-400">Sem taxas abusivas. Sem intermediários.</span>
+                        <span className="text-primary-400">Gestão Associativa Direta. Sem Burocracia Bancária.</span>
                     </p>
                 </div>
             </div>

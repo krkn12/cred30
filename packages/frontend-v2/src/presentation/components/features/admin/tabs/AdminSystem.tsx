@@ -233,6 +233,14 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
                             <p className="text-[10px] text-primary-500/80 font-bold uppercase mb-1">Reserva Social (Social)</p>
                             <p className="text-lg font-black text-primary-400">{formatCurrency(state.stats?.systemConfig?.investment_reserve || 0)}</p>
                         </div>
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl col-span-2 lg:col-span-1">
+                            <p className="text-[10px] text-emerald-400 font-bold uppercase mb-1">Fundo Proteção Mútua</p>
+                            <p className="text-lg font-black text-white">{formatCurrency(state.stats?.systemConfig?.mutual_protection_fund || 0)}</p>
+                        </div>
+                        <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl col-span-2 lg:col-span-1">
+                            <p className="text-[10px] text-blue-400 font-bold uppercase mb-1">Usuários Protegidos</p>
+                            <p className="text-lg font-black text-white">{state.stats?.protectedUsersCount || 0}</p>
+                        </div>
                     </div>
                     <div className="mt-6 pt-6 border-t border-zinc-800">
                         <div className="flex justify-between items-center mb-2">

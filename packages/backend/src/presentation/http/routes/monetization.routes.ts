@@ -22,4 +22,7 @@ monetizationRoutes.post('/daily-checkin', authMiddleware, MonetizationController
 // Consulta de Reputação de Terceiros
 monetizationRoutes.get('/reputation-check/:email', authMiddleware, MonetizationController.reputationCheck);
 
+// Compra de Proteção Mútua (Seguro)
+monetizationRoutes.post('/buy-protection', authMiddleware, MonetizationController.buyProtection);
+
 export { monetizationRoutes };

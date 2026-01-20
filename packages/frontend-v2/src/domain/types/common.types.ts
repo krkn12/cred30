@@ -26,6 +26,8 @@ export interface User {
   safeContactPhone?: string | null;
   panicPhrase?: string | null;
   referred_by?: string | null;
+  is_protected?: boolean;
+  protection_expires_at?: string | null;
 }
 
 export interface Quota {
@@ -99,6 +101,10 @@ export interface AppState {
   transactions: Transaction[];
   systemBalance: number;
   profitPool: number;
+  system?: {
+    mutualProtectionFund: number;
+    protectedUsersCount: number;
+  };
   isLoading?: boolean;
 
   serverTime?: number;

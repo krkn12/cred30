@@ -17,9 +17,15 @@ export class ConsortiumController {
             const {
                 name, totalValue, durationMonths, adminFeePercent,
                 startDate, reserveFeePercent, fixedBidPercent,
-                maxEmbeddedBidPercent, minMembersToStart
+                maxEmbeddedBidPercent, minMembersToStart,
+                annualAdjustmentPercent
             } = await c.req.json();
             const pool = getDbPool(c);
+
+            // Geração Automática do Identificador (Ex: GRP-001)
+            const countRes = await pool.query('SELECT COUNT(*) as total FROM consortium_groups');
+            const nextNum = (parseInt(countRes.rows[0].total) + 1).toString().padStart(3, '0');
+            const groupIdentifier = `GRP-${nextNum}`;
 
             // Calcula parcela: (Valor + Taxa + Reserva) / Prazo
             // Nota: O fundo de reserva é calculado sobre o valor da carta
@@ -31,13 +37,14 @@ export class ConsortiumController {
                 `INSERT INTO consortium_groups 
                 (name, total_value, duration_months, admin_fee_percent, monthly_installment_value, 
                  start_date, status, reserve_fee_percent, fixed_bid_percent, 
-                 max_embedded_bid_percent, min_members_to_start)
-                VALUES ($1, $2, $3, $4, $5, $6, 'OPEN', $7, $8, $9, $10)
+                 max_embedded_bid_percent, min_members_to_start, group_identifier, annual_adjustment_percent)
+                VALUES ($1, $2, $3, $4, $5, $6, 'OPEN', $7, $8, $9, $10, $11, $12)
                 RETURNING *`,
                 [
                     name, totalValue, durationMonths, adminFeePercent, installmentValue,
                     startDate, reserveFeePercent || 1, fixedBidPercent || 30,
-                    maxEmbeddedBidPercent || 30, minMembersToStart || 10
+                    maxEmbeddedBidPercent || 30, minMembersToStart || 10,
+                    groupIdentifier, annualAdjustmentPercent || 0
                 ]
             );
 
@@ -58,7 +65,7 @@ export class ConsortiumController {
                 SELECT cg.*, 
                        (SELECT COUNT(*)::int FROM consortium_members cm WHERE cm.group_id = cg.id) as member_count
                 FROM consortium_groups cg
-                WHERE cg.status IN ('OPEN', 'ACTIVE') 
+                WHERE cg.status IN ('OPEN', 'ACTIVE', 'COMPLETED') 
                 ORDER BY cg.created_at DESC
             `);
             return c.json({ success: true, data: result.rows });
@@ -714,6 +721,71 @@ export class ConsortiumController {
             `, [assemblyId, user.id, bidId, vote]);
 
             return c.json({ success: true, message: 'Voto registrado!' });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    // --- REAJUSTE ANUAL ---
+
+    static async adjustAnnualValue(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            if (!user.isAdmin) return c.json({ success: false, message: 'Acesso negado.' }, 403);
+
+            const { groupId, adjustmentPercent, customNewValue } = await c.req.json();
+            const pool = getDbPool(c);
+
+            const result = await executeInTransaction(pool, async (client: PoolClient) => {
+                // 1. Buscar grupo
+                const groupRes = await client.query('SELECT * FROM consortium_groups WHERE id = $1 FOR UPDATE', [groupId]);
+                if (groupRes.rows.length === 0) throw new Error('Grupo não encontrado.');
+                const group = groupRes.rows[0];
+
+                const oldTotalValue = Number(group.total_value);
+                let newTotalValue = oldTotalValue;
+
+                if (customNewValue) {
+                    newTotalValue = Number(customNewValue);
+                } else if (adjustmentPercent) {
+                    newTotalValue = oldTotalValue * (1 + (Number(adjustmentPercent) / 100));
+                } else {
+                    const groupAdjPercent = Number(group.annual_adjustment_percent || 0);
+                    if (groupAdjPercent === 0) throw new Error('Nenhuma porcentagem de reajuste definida para este grupo.');
+                    newTotalValue = oldTotalValue * (1 + (groupAdjPercent / 100));
+                }
+
+                const finalPercent = ((newTotalValue / oldTotalValue) - 1) * 100;
+
+                // 2. Recalcular Parcela: (Novo Valor + Taxas) / Prazo Total
+                // Mantemos as taxas originais do grupo
+                const adminFee = newTotalValue * (Number(group.admin_fee_percent) / 100);
+                const reserveFee = newTotalValue * (Number(group.reserve_fee_percent || 1) / 100);
+                const newInstallmentValue = (newTotalValue + adminFee + reserveFee) / Number(group.duration_months);
+
+                // 3. Atualizar Grupo
+                await client.query(`
+                    UPDATE consortium_groups 
+                    SET total_value = $1, 
+                        monthly_installment_value = $2,
+                        updated_at = NOW()
+                    WHERE id = $3
+                `, [newTotalValue, newInstallmentValue, groupId]);
+
+                // 4. Registrar Histórico
+                await client.query(`
+                    INSERT INTO consortium_adjustment_history (group_id, old_value, new_value, adjustment_percent)
+                    VALUES ($1, $2, $3, $4)
+                `, [groupId, oldTotalValue, newTotalValue, finalPercent]);
+
+                return {
+                    success: true,
+                    message: `Reajuste aplicado! Valor: R$${newTotalValue.toFixed(2)} | Parcela: R$${newInstallmentValue.toFixed(2)}`
+                };
+            });
+
+            return c.json(result.data || { success: false, message: result.error });
+
         } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
