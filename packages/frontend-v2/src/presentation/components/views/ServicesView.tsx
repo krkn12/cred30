@@ -7,12 +7,14 @@ interface ServicesViewProps {
     userBalance: number;
     isVerified: boolean;
     isPro: boolean;
+    isProtected: boolean;
+    protectedUntil: string | null;
     onSuccess: (title: string, message: string) => void;
     onError: (title: string, message: string) => void;
     onRefresh: () => void;
 }
 
-export const ServicesView: React.FC<ServicesViewProps> = ({ userBalance, isVerified, isPro, onSuccess, onError, onRefresh }) => {
+export const ServicesView: React.FC<ServicesViewProps> = ({ userBalance, isVerified, isPro, isProtected, protectedUntil, onSuccess, onError, onRefresh }) => {
     const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
     const [confirmAction, setConfirmAction] = useState<{ type: string, title: string, cost: number, action: () => Promise<void> } | null>(null);
     const [searchEmail, setSearchEmail] = useState('');
@@ -76,6 +78,24 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ userBalance, isVerif
         }
     };
 
+    const handleBuyProtection = async () => {
+        if (userBalance < 5.00) return onError('Saldo Insuficiente', 'A proteção mútua custa R$ 5,00 mensais.');
+
+        toggleLoading('protection', true);
+        try {
+            const res = await apiService.buyMutualProtection();
+            if (res.success) {
+                onSuccess('Proteção Ativada!', res.message);
+                onRefresh();
+            }
+        } catch (e: any) {
+            onError('Erro', e.message);
+        } finally {
+            toggleLoading('protection', false);
+            setConfirmAction(null);
+        }
+    };
+
     const handleReputationCheck = async () => {
         if (!searchEmail) return onError('E-mail necessário', 'Digite o e-mail do usuário que deseja consultar.');
         if (userBalance < 35.00) return onError('Saldo Insuficiente', 'A consulta custa R$ 35,00.');
@@ -106,7 +126,40 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ userBalance, isVerif
                 <p className="text-zinc-500 text-xs max-w-xs">Invista na sua reputação e desbloqueie benefícios exclusivos dentro do ecossistema.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                {/* 0. Proteção Mútua (Destaque Social) */}
+                <div className={`relative overflow-hidden rounded-3xl p-6 border transition-all group ${isProtected ? 'bg-blue-500/5 border-blue-500/20' : 'bg-gradient-to-br from-blue-900/10 to-indigo-900/10 border-blue-500/20 hover:border-blue-400'}`}>
+                    <div className="flex items-start justify-between mb-4">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isProtected ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                            <ShieldCheck size={24} />
+                        </div>
+                        {isProtected && <span className="text-[10px] font-black bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full uppercase tracking-wider">Protegido</span>}
+                    </div>
+
+                    <h3 className="text-lg font-bold text-white mb-1">Proteção Mútua</h3>
+                    <p className="text-xs text-zinc-500 h-10 mb-4">Garante seus direitos básicos e auxílio social direto entre associados.</p>
+
+                    <div className="flex items-center justify-between mt-auto">
+                        <p className="text-xl font-black text-white">R$ 5,00 <span className="text-[10px] text-zinc-500 font-normal ml-1">/mês</span></p>
+                        <button
+                            disabled={isProtected}
+                            onClick={() => !isProtected && setConfirmAction({
+                                type: 'BUY',
+                                title: 'Ativar Proteção',
+                                cost: 5.00,
+                                action: handleBuyProtection
+                            })}
+                            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${isProtected ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-blue-500 text-white hover:scale-105 active:scale-95'
+                                }`}
+                        >
+                            {loadingMap['protection'] ? <Loader2 size={16} className="animate-spin" /> : (isProtected ? 'Ativo' : 'Ativar')}
+                        </button>
+                    </div>
+                    {isProtected && protectedUntil && (
+                        <p className="text-[8px] text-zinc-600 mt-2 uppercase font-black">Expira em: {new Date(protectedUntil).toLocaleDateString()}</p>
+                    )}
+                </div>
 
                 {/* 1. Selo Verificado */}
                 <div className={`relative overflow-hidden rounded-3xl p-6 border transition-all group ${isVerified ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-zinc-900/50 border-white/5 hover:border-primary-500/30'}`}>
