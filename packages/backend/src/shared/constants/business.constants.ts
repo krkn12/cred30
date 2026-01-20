@@ -65,9 +65,9 @@ export const DELIVERY_MIN_FEES: Record<string, number> = {
 export const DEFAULT_VEHICLE = 'MOTO';
 
 // --- Taxas de Movimentação de Vídeos (Watch to Earn) ---
-export const VIDEO_VIEWER_SHARE = 0.60;       // 60% para quem assiste
+export const VIDEO_VIEWER_SHARE = 0.10;       // 10% para quem assiste (Garante R$ 0,01 por vídeo de R$ 0,10)
 export const VIDEO_QUOTA_HOLDERS_SHARE = 0.25; // 25% para quem tem cotas (profit_pool)
-export const VIDEO_SERVICE_FEE_SHARE = 0.15;  // 15% taxa de serviço (system_balance)
+export const VIDEO_SERVICE_FEE_SHARE = 0.65;  // 65% taxa de serviço (system_balance - para pagar as recompensas)
 
 // --- SISTEMA DE BENEFÍCIO DE BOAS-VINDAS (INDICAÇÃO) ---
 // Ao invés de pagar R$ 5,00 de bônus, o indicado ganha desconto nas taxas
