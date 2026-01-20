@@ -160,14 +160,13 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                 setAdTimer(5); // 5 segundos para o baú
                 await apiService.misc.startPromoView(randomVideo.id);
             } else {
-                // Se não tiver vídeo, abre direto
-                const response = await apiService.post('/earn/chest-reward', {}) as any;
-                if (response.success) {
-                    onSuccess("Baú Aberto!", response.message || `+${response.points || 100} pontos farm!`);
-                    setChestsRemaining(response.chestsRemaining ?? chestsRemaining - 1);
-                    setChestCountdown(3600);
-                }
-                setIsOpeningChest(false);
+                // FALLBACK: Se não tiver vídeo da View Farm, mostra anúncio Adsterra/Link
+                setViewFarmVideo({
+                    isFallback: true,
+                    video_url: null,
+                    external_link: "https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa"
+                });
+                setAdTimer(5);
             }
         } catch (error: any) {
             onError("Erro", error.message || "Erro ao abrir o baú");
@@ -571,12 +570,36 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                             <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-20 rounded-2xl overflow-hidden animate-in fade-in duration-300">
                                 {viewFarmVideo ? (
                                     <div className="w-full h-full relative cursor-default" onClick={(e) => e.stopPropagation()}>
-                                        <video
-                                            src={viewFarmVideo.video_url}
-                                            autoPlay
-                                            muted
-                                            className="w-full h-full object-cover"
-                                        />
+                                        {viewFarmVideo.isFallback ? (
+                                            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-zinc-900 to-black">
+                                                <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 mb-4 animate-bounce">
+                                                    <TrendingUp size={32} />
+                                                </div>
+                                                <h4 className="text-white font-black text-lg mb-2 uppercase tracking-tighter">Oferta Especial</h4>
+                                                <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-6 leading-relaxed">
+                                                    Confira esta oferta dos nossos parceiros para liberar seu baú!
+                                                </p>
+                                                <a
+                                                    href={viewFarmVideo.external_link}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-4 rounded-xl transition-all text-[11px] uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(245,158,11,0.3)] text-center"
+                                                    onClick={() => {
+                                                        if (adTimer > 2) setAdTimer(0);
+                                                    }}
+                                                >
+                                                    🚀 VER AGORA
+                                                </a>
+                                            </div>
+                                        ) : (
+                                            <video
+                                                src={viewFarmVideo.video_url}
+                                                autoPlay
+                                                muted
+                                                className="w-full h-full object-cover"
+                                            />
+                                        )}
+
                                         <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
                                             <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
                                                 <p className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2">
@@ -599,16 +622,19 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                                                 </button>
                                             )}
                                         </div>
-                                        <div className="absolute bottom-4 left-4 right-4">
-                                            <a
-                                                href={viewFarmVideo.external_link}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="block w-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white text-[9px] font-bold py-2 rounded-lg text-center uppercase tracking-widest border border-white/10 transition-colors"
-                                            >
-                                                Ver Detalhes do Anunciante
-                                            </a>
-                                        </div>
+
+                                        {!viewFarmVideo.isFallback && (
+                                            <div className="absolute bottom-4 left-4 right-4">
+                                                <a
+                                                    href={viewFarmVideo.external_link}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="block w-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white text-[9px] font-bold py-2 rounded-lg text-center uppercase tracking-widest border border-white/10 transition-colors"
+                                                >
+                                                    Ver Detalhes do Anunciante
+                                                </a>
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     <>
