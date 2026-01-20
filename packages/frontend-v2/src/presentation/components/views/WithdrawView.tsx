@@ -83,14 +83,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
         }
     };
 
-    const handleRequestWithdrawal = async () => {
-        if (!currentUser?.is_verified) {
-            onError('Conta não Verificada', 'Você precisa ter o selo de verificado para realizar resgates. Verifique seu perfil nas configurações.');
-            return;
-        }
-        setShowAd(true);
-        setAdTimer(5);
-    };
+    const [viewFarmVideo, setViewFarmVideo] = useState<any>(null);
 
     const processWithdrawal = async () => {
         setShowAd(false);
@@ -110,6 +103,40 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
         } catch (e: any) {
             onError('Erro no Resgate', e.message);
         }
+    };
+
+    const handleRequestWithdrawal = async () => {
+        if (!currentUser?.is_verified) {
+            onError('Conta não Verificada', 'Você precisa ter o selo de verificado para realizar resgates. Verifique seu perfil nas configurações.');
+            return;
+        }
+
+        try {
+            // Buscar vídeos da View Farm
+            const feed = await apiService.misc.getPromoFeed();
+            if (feed && feed.length > 0) {
+                // Selecionar um vídeo aleatório
+                const randomVideo = feed[Math.floor(Math.random() * feed.length)];
+                setViewFarmVideo(randomVideo);
+                await apiService.misc.startPromoView(randomVideo.id);
+            }
+        } catch (e) {
+            console.error('Erro ao buscar vídeos View Farm:', e);
+        }
+
+        setShowAd(true);
+        setAdTimer(10); // 10 segundos para saques
+    };
+
+    const handleAdComplete = async () => {
+        if (viewFarmVideo) {
+            try {
+                await apiService.misc.completePromoView(viewFarmVideo.id, 10);
+            } catch (e) {
+                console.error('Erro ao completar view:', e);
+            }
+        }
+        processWithdrawal();
     };
 
     return (
@@ -324,7 +351,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                                 </div>
                             ) : (
                                 <button
-                                    onClick={processWithdrawal}
+                                    onClick={handleAdComplete}
                                     className="bg-primary-500 text-black px-6 py-2.5 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all shadow-[0_0_30px_rgba(6,182,212,0.5)] active:scale-95"
                                 >
                                     CONTINUAR <ArrowUpFromLine size={14} />
@@ -334,39 +361,53 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
 
                         {/* Card de Patrocinador */}
                         <div className="bg-[#0A0A0A] border border-white/5 rounded-[2rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-500">
-                            <div className="p-8 text-center">
-                                <div className="w-20 h-20 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-3xl flex items-center justify-center mx-auto mb-6 ring-2 ring-amber-500/30">
-                                    <TrendingUp size={40} className="text-amber-500" />
+                            {viewFarmVideo ? (
+                                <div className="aspect-video bg-black relative">
+                                    <video
+                                        src={viewFarmVideo.video_url}
+                                        autoPlay
+                                        muted
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
+                                        <p className="text-[9px] font-black text-white uppercase tracking-widest flex items-center gap-2">
+                                            <TrendingUp size={12} className="text-primary-400" /> Anúncio Pago
+                                        </p>
+                                    </div>
                                 </div>
+                            ) : (
+                                <div className="p-8 text-center">
+                                    <div className="w-20 h-20 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-3xl flex items-center justify-center mx-auto mb-6 ring-2 ring-amber-500/30">
+                                        <TrendingUp size={40} className="text-amber-500" />
+                                    </div>
 
-                                <span className="bg-amber-500 text-black text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest mb-4 inline-block">
-                                    Patrocinador Oficial
-                                </span>
+                                    <span className="bg-amber-500 text-black text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest mb-4 inline-block">
+                                        Patrocinador Oficial
+                                    </span>
 
-                                <h4 className="text-2xl font-black text-white leading-tight tracking-tighter mt-4">
-                                    Seu resgate está sendo preparado
-                                </h4>
-                                <p className="text-zinc-400 text-sm mt-3 font-medium leading-relaxed">
-                                    Enquanto processamos, confira uma oferta especial dos nossos parceiros.
-                                </p>
+                                    <h4 className="text-2xl font-black text-white leading-tight tracking-tighter mt-4">
+                                        Seu resgate está sendo preparado
+                                    </h4>
+                                    <p className="text-zinc-400 text-sm mt-3 font-medium leading-relaxed">
+                                        Enquanto processamos, confira uma oferta especial dos nossos parceiros.
+                                    </p>
+                                </div>
+                            )}
 
-                                {/* Iframe do AdsTerra ou botão */}
-                                <div className="mt-6 p-4 bg-zinc-900/50 rounded-2xl border border-zinc-800">
+                            <div className="p-8">
+                                {/* Link Patrocinado ou Info do Vídeo */}
+                                <div className="p-4 bg-zinc-900/50 rounded-2xl border border-zinc-800">
                                     <a
-                                        href="https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa"
+                                        href={viewFarmVideo?.external_link || "https://www.effectivegatecpm.com/ec4mxdzvs?key=a9eefff1a8aa7769523373a66ff484aa"}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="block w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black py-4 rounded-xl transition-all text-sm uppercase tracking-widest"
+                                        className="block w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black py-4 rounded-xl transition-all text-sm uppercase tracking-widest text-center"
                                         onClick={() => {
-                                            // Garante que o anúncio foi clicado
-                                            setTimeout(() => setAdTimer(0), 500);
+                                            if (adTimer > 2) setTimeout(() => setAdTimer(0), 1000);
                                         }}
                                     >
-                                        🎁 Ver Oferta Especial
+                                        {viewFarmVideo ? '🔗 Visitar Site do Anunciante' : '🎁 Ver Oferta Especial'}
                                     </a>
-                                    <p className="text-[9px] text-zinc-600 mt-3 italic">
-                                        Clique para ver ofertas exclusivas dos nossos parceiros
-                                    </p>
                                 </div>
                             </div>
 

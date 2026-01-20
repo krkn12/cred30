@@ -111,6 +111,9 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
         return stored === null ? true : stored === 'true';
     });
 
+    const [viewFarmVideo, setViewFarmVideo] = useState<any>(null);
+    const [adTimer, setAdTimer] = useState(0);
+
     useEffect(() => {
         localStorage.setItem('dashboard_show_values', showValues.toString());
     }, [showValues]);
@@ -149,21 +152,60 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
         setIsOpeningChest(true);
 
         try {
-            const response = await apiService.post('/earn/chest-reward', {}) as any;
+            // Primeiro busca um vídeo da View Farm
+            const feed = await apiService.misc.getPromoFeed();
+            if (feed && feed.length > 0) {
+                const randomVideo = feed[Math.floor(Math.random() * feed.length)];
+                setViewFarmVideo(randomVideo);
+                setAdTimer(5); // 5 segundos para o baú
+                await apiService.misc.startPromoView(randomVideo.id);
+            } else {
+                // Se não tiver vídeo, abre direto
+                const response = await apiService.post('/earn/chest-reward', {}) as any;
+                if (response.success) {
+                    onSuccess("Baú Aberto!", response.message || `+${response.points || 100} pontos farm!`);
+                    setChestsRemaining(response.chestsRemaining ?? chestsRemaining - 1);
+                    setChestCountdown(3600);
+                }
+                setIsOpeningChest(false);
+            }
+        } catch (error: any) {
+            onError("Erro", error.message || "Erro ao abrir o baú");
+            setIsOpeningChest(false);
+        }
+    }, [chestsRemaining, chestCountdown, isOpeningChest, onSuccess, onError]);
 
+    const handleCompleteChestReward = useCallback(async () => {
+        setIsOpeningChest(true);
+        try {
+            if (viewFarmVideo) {
+                await apiService.misc.completePromoView(viewFarmVideo.id, 5);
+            }
+            const response = await apiService.post('/earn/chest-reward', {}) as any;
             if (response.success) {
                 onSuccess("Baú Aberto!", response.message || `+${response.points || 100} pontos farm!`);
                 setChestsRemaining(response.chestsRemaining ?? chestsRemaining - 1);
                 setChestCountdown(3600);
             } else {
-                onError("Erro", response.message || "Não foi possível abrir o baú");
+                onError("Erro", response.message || "Não foi possível resgatar prêmio");
             }
         } catch (error: any) {
-            onError("Erro", error.message || "Erro ao abrir o baú");
+            onError("Erro", error.message || "Erro ao resgatar prêmio");
         } finally {
             setIsOpeningChest(false);
+            setViewFarmVideo(null);
+            setAdTimer(0);
         }
-    }, [chestsRemaining, chestCountdown, isOpeningChest, onSuccess, onError]);
+    }, [viewFarmVideo, chestsRemaining, onSuccess, onError]);
+
+    // Timer para Ad do Baú
+    useEffect(() => {
+        let timer: any;
+        if (adTimer > 0) {
+            timer = setInterval(() => setAdTimer(prev => prev - 1), 1000);
+        }
+        return () => clearInterval(timer);
+    }, [adTimer]);
 
     // Timer para countdown
     useEffect(() => {
@@ -524,11 +566,56 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                             </div>
                         </div>
 
-                        {/* Loading Overlay */}
-                        {isOpeningChest && (
-                            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center z-20 rounded-2xl">
-                                <div className="w-10 h-10 border-3 border-amber-500 border-t-transparent rounded-full animate-spin mb-3" />
-                                <p className="text-xs font-bold text-amber-500 uppercase tracking-wider">Carregando...</p>
+                        {/* Loading or Video Overlay */}
+                        {(isOpeningChest || viewFarmVideo) && (
+                            <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-20 rounded-2xl overflow-hidden animate-in fade-in duration-300">
+                                {viewFarmVideo ? (
+                                    <div className="w-full h-full relative cursor-default" onClick={(e) => e.stopPropagation()}>
+                                        <video
+                                            src={viewFarmVideo.video_url}
+                                            autoPlay
+                                            muted
+                                            className="w-full h-full object-cover"
+                                        />
+                                        <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
+                                            <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
+                                                <p className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2">
+                                                    <TrendingUp size={12} className="text-primary-400" /> Patrocinado
+                                                </p>
+                                            </div>
+                                            {adTimer > 0 ? (
+                                                <div className="bg-primary-500 text-black px-3 py-1.5 rounded-lg font-black text-[10px] uppercase shadow-lg">
+                                                    {adTimer}s
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleCompleteChestReward();
+                                                    }}
+                                                    className="bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.4)] animate-bounce"
+                                                >
+                                                    RESGATAR AGORA
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="absolute bottom-4 left-4 right-4">
+                                            <a
+                                                href={viewFarmVideo.external_link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block w-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white text-[9px] font-bold py-2 rounded-lg text-center uppercase tracking-widest border border-white/10 transition-colors"
+                                            >
+                                                Ver Detalhes do Anunciante
+                                            </a>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="w-10 h-10 border-3 border-amber-500 border-t-transparent rounded-full animate-spin mb-3" />
+                                        <p className="text-xs font-bold text-amber-500 uppercase tracking-wider">Preparando recompensa...</p>
+                                    </>
+                                )}
                             </div>
                         )}
                     </div>
