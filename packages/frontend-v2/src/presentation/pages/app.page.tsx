@@ -678,6 +678,8 @@ export default function App() {
                       userBalance={state.currentUser?.balance || 0}
                       isVerified={state.currentUser?.is_verified || false}
                       isPro={state.currentUser?.membership_type === 'PRO'}
+                      isProtected={state.currentUser?.is_protected || false}
+                      protectedUntil={state.currentUser?.protection_expires_at || null}
                       onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
                       onError={(title, message) => setShowError({ isOpen: true, title, message })}
                       onRefresh={refreshState}
