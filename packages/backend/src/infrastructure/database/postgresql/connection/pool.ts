@@ -1039,6 +1039,9 @@ export const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_protected BOOLEAN DEFAULT FALSE;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS protection_expires_at TIMESTAMP;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_chests_opened INTEGER DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_chest_date VARCHAR(10);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS cpf VARCHAR(14);
 `);
 
     // Criar tabelas de auditoria e webhooks
