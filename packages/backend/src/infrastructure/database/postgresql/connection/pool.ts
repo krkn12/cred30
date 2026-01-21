@@ -511,28 +511,30 @@ export const initializeDatabase = async () => {
         CREATE TABLE loan_installments (
           id SERIAL PRIMARY KEY,
           loan_id INTEGER REFERENCES loans(id) ON DELETE CASCADE,
-          amount DECIMAL(10,2) NOT NULL,
+          installment_number INTEGER,
+          amount DECIMAL(10,2),
+          expected_amount DECIMAL(10,2),
+          due_date TIMESTAMP,
+          status VARCHAR(20) DEFAULT 'PENDING',
+          paid_at TIMESTAMP,
           use_balance BOOLEAN DEFAULT FALSE,
+          metadata JSONB,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
       console.log('Tabela loan_installments criada com sucesso!');
     } else {
-      // Verificar se a coluna use_balance existe na tabela loan_installments (migração para tabelas antigas)
-      const useBalanceColumnExists = await client.query(`
-        SELECT EXISTS (
-          SELECT 1
-          FROM information_schema.columns
-          WHERE table_schema = 'public'
-          AND table_name = 'loan_installments'
-          AND column_name = 'use_balance'
-        );
+      // Garantir que todas as colunas existam em bancos já criados
+      await client.query(`
+        ALTER TABLE loan_installments ADD COLUMN IF NOT EXISTS installment_number INTEGER;
+        ALTER TABLE loan_installments ADD COLUMN IF NOT EXISTS expected_amount DECIMAL(10,2);
+        ALTER TABLE loan_installments ADD COLUMN IF NOT EXISTS due_date TIMESTAMP;
+        ALTER TABLE loan_installments ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';
+        ALTER TABLE loan_installments ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP;
+        ALTER TABLE loan_installments ADD COLUMN IF NOT EXISTS use_balance BOOLEAN DEFAULT FALSE;
+        ALTER TABLE loan_installments ADD COLUMN IF NOT EXISTS metadata JSONB;
       `);
-
-      if (!useBalanceColumnExists.rows[0].exists) {
-        await client.query('ALTER TABLE loan_installments ADD COLUMN use_balance BOOLEAN DEFAULT FALSE');
-        console.log('Coluna use_balance adicionada à tabela loan_installments');
-      }
+      console.log('Colunas da tabela loan_installments verificadas/atualizadas');
     }
 
     // Verificar se a tabela transactions existe
@@ -626,6 +628,7 @@ export const initializeDatabase = async () => {
       ALTER TABLE system_config ADD COLUMN IF NOT EXISTS total_owner_profit DECIMAL(20,2) DEFAULT 0;
       ALTER TABLE system_config ADD COLUMN IF NOT EXISTS investment_reserve DECIMAL(20,2) DEFAULT 0;
       ALTER TABLE system_config ADD COLUMN IF NOT EXISTS courier_price_per_km DECIMAL(10,2) DEFAULT 2.50;
+      ALTER TABLE system_config ADD COLUMN IF NOT EXISTS mutual_protection_fund DECIMAL(20,2) DEFAULT 0;
     `);
 
     // Verificar se a coluna total_gateway_costs existe na tabela system_config
@@ -1031,6 +1034,11 @@ export const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS welcome_benefit_uses INTEGER DEFAULT 0; --Contador de usos do benefício de boas - vindas
       ALTER TABLE users ADD COLUMN IF NOT EXISTS video_points INTEGER DEFAULT 0;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS ad_points INTEGER DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_ad_points INTEGER DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS total_ad_points INTEGER DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_protected BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS protection_expires_at TIMESTAMP;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;
 `);
 
     // Criar tabelas de auditoria e webhooks
