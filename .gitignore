@@ -134,10 +134,13 @@ scripts/development/
 
 # Arquivos de teste locais
 test-*.js
-*.cache
-
 # Ngrok
 .last_ngrok_url
+
+# Vite & Build Tools
+*.timestamp-*
+.vite/
+.turbo/
 
 # Repositórios Externos (Separate projects)
 landing_github/
@@ -165,6 +168,14 @@ prod_summary_report.txt
 fiscal_*.txt
 user_limits.txt
 quota_fees_debug.txt
+user_search.txt
+MarketplaceEndPart.txt
+seed_output_final*.txt
+tables.txt
+admin_dump.json
+users_dump.json
+backups/*.json
+*log.txt
 
 # Scripts de Auditoria (Ignorar execuções, manter fontes essenciais)
 scripts/*.js
