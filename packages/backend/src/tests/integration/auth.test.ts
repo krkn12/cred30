@@ -16,7 +16,6 @@ describe('Auth Integration Tests', () => {
     beforeAll(async () => {
         try {
             console.log('--- [AUTH TEST] Cleanup starting ---');
-            console.log('--- [AUTH TEST] Cleanup starting ---');
             // Limpeza profunda usando TRUNCATE CASCADE
             await pool.query(`
                 TRUNCATE TABLE 
@@ -31,7 +30,7 @@ describe('Auth Integration Tests', () => {
                 CASCADE
             `);
 
-            // Garantir usuário padrinho
+            // Garantir usuário padrinho para validar códigos de indicação
             const referrerRes = await pool.query(`
                 INSERT INTO users (name, email, password_hash, secret_phrase, referral_code, is_admin, balance, score, status)
                 VALUES ('Test Referrer', 'referrer@test.com', 'hash', 'frase', 'REF123', TRUE, 0, 0, 'ACTIVE')
@@ -39,18 +38,12 @@ describe('Auth Integration Tests', () => {
             `);
             const creatorId = referrerRes.rows[0].id;
 
+            // Inserir o código de teste
             await pool.query(`
                 INSERT INTO referral_codes (code, is_active, max_uses, current_uses, created_by) 
-                VALUES ($1, TRUE, 100, 0, $2) 
-                ON CONFLICT (code) DO UPDATE SET created_by = $2, is_active = TRUE
+                VALUES ($1, TRUE, 100, 0, $2)
             `, ['TESTCODE', creatorId]);
-            console.log('--- [AUTH TEST] Cleanup finished ---');
 
-            await pool.query(`
-                INSERT INTO referral_codes (code, is_active, max_uses, current_uses, created_by) 
-                VALUES ($1, TRUE, 100, 0, $2) 
-                ON CONFLICT (code) DO UPDATE SET created_by = $2, is_active = TRUE
-            `, ['TESTCODE', creatorId]);
             console.log('--- [AUTH TEST] Cleanup finished ---');
         } catch (error: any) {
             console.error('--- [AUTH TEST] beforeAll Error:', error.message);
