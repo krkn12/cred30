@@ -621,7 +621,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                         )}
                     </div>
 
-                    <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-2 px-1">
+                    <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-4 px-1 -mx-1 snap-x snap-mandatory">
                         {['TODOS', ...categories].map((cat) => {
                             const Icon = CATEGORY_ICONS[cat] || Package;
                             const isSelected = selectedCategory === cat;
@@ -630,7 +630,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     key={cat}
                                     onClick={() => setSelectedCategory(cat)}
                                     className={`
-                                        flex flex-col items-center gap-2 min-w-[70px] p-2 rounded-xl transition-all
+                                        flex flex-col items-center gap-2 min-w-[70px] p-2 rounded-xl transition-all snap-start
                                         ${isSelected
                                             ? 'scale-105'
                                             : 'opacity-60 hover:opacity-100 hover:bg-zinc-800/50'}
@@ -644,7 +644,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                     `}>
                                         <Icon size={20} className={isSelected ? 'animate-bounce-short' : ''} />
                                     </div>
-                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'text-white' : 'text-zinc-500'}`}>
+                                    <span className={`text-[10px] font-black uppercase tracking-widest ${isSelected ? 'text-white' : 'text-zinc-500'}`}>
                                         {cat === 'PARTICIPAÇÕES' ? 'Cotas' :
                                             cat === 'TODOS' ? 'Início' :
                                                 cat.charAt(0) + cat.slice(1).toLowerCase()}

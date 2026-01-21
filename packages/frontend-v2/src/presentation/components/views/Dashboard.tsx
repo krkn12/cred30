@@ -361,55 +361,57 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                         </div>
                     </div>
                     {/* Stats Grid - Score e Nível */}
-                    <div className="mt-6 pt-6 border-t border-white/5 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-400 border border-primary-500/20">
+                    <div className="mt-6 pt-6 border-t border-white/5 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+                        <div className="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/5">
+                            <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-400 border border-primary-500/20 shrink-0">
                                 <Star size={18} fill="currentColor" />
                             </div>
-                            <div>
-                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Score</p>
-                                <p className="text-sm font-black text-white">{user.score || 0} pts</p>
+                            <div className="min-w-0">
+                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider truncate">Score</p>
+                                <p className="text-sm font-black text-white truncate">{user.score || 0} pts</p>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${vipLevel.color}`}>
+                        <div className="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/5">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shrink-0 ${vipLevel.color}`}>
                                 <ShieldCheck size={18} />
                             </div>
-                            <div>
-                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Nível</p>
-                                <p className="text-sm font-black text-white">{vipLevel.name}</p>
+                            <div className="min-w-0">
+                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider truncate">Nível</p>
+                                <p className="text-sm font-black text-white truncate">{vipLevel.name}</p>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
+                        <div className="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/5">
+                            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20 shrink-0">
                                 <PieChart size={18} />
                             </div>
-                            <div>
-                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Licenças</p>
-                                <p className="text-sm font-black text-white">{userQuotas.length} ativas</p>
+                            <div className="min-w-0">
+                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider truncate">Licenças</p>
+                                <p className="text-sm font-black text-white truncate">{userQuotas.length} ativas</p>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 border border-emerald-500/20">
+                        <div className="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/5">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 border border-emerald-500/20 shrink-0">
                                 <TrendingUp size={18} />
                             </div>
-                            <div>
-                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Sobras</p>
-                                <p className="text-sm font-black text-emerald-400">+{earningsPercentage.toFixed(1)}%</p>
+                            <div className="min-w-0">
+                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider truncate">Sobras</p>
+                                <p className="text-sm font-black text-emerald-400 truncate">+{earningsPercentage.toFixed(1)}%</p>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 border border-yellow-500/20">
+                        <div className="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/5 col-span-2 md:col-span-1">
+                            <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 border border-yellow-500/20 shrink-0">
                                 <Zap size={18} fill="currentColor" />
                             </div>
-                            <div>
-                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Pontos Farm</p>
-                                <p className="text-sm font-black text-white">{user.ad_points || 0} pts</p>
-                                <p className="text-[8px] text-zinc-600">1000 pts = R$ 0,03</p>
+                            <div className="min-w-0">
+                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider truncate">Pontos Farm</p>
+                                <div className="flex items-center gap-2">
+                                    <p className="text-sm font-black text-white truncate">{user.ad_points || 0}</p>
+                                    <span className="text-[8px] text-zinc-600 font-bold truncate">R$ {(user.ad_points * 0.00003).toFixed(2)}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -472,48 +474,48 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                 <div className="lg:col-span-2 bg-gradient-to-br from-primary-600 via-primary-700 to-[#10b981] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-2xl shadow-primary-900/40">
                     <div className="absolute top-0 right-0 p-8 opacity-20 rotate-12 group-hover:scale-110 transition-transform duration-700 pointer-events-none select-none">
-                        <Wallet size={180} />
+                        <Wallet size={120} className="sm:size-[180px]" />
                     </div>
 
                     <div className="relative z-10">
-                        <div className="flex items-center gap-3 mb-3">
+                        <div className="flex items-center gap-3 mb-2 sm:mb-3">
                             <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
                             <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80">Saldo Corrente Líquido</span>
-                            <button onClick={() => setShowValues(!showValues)} className="ml-auto text-white/50 hover:text-white transition-colors">
+                            <button onClick={() => setShowValues(!showValues)} className="ml-auto text-white/50 hover:text-white transition-colors p-2 -m-2">
                                 {showValues ? <Eye size={16} /> : <EyeOff size={16} />}
                             </button>
                         </div>
-                        <h2 className="text-4xl sm:text-5xl font-black tracking-tighter mb-6 tabular-nums">
+                        <h2 className="text-3xl sm:text-5xl font-black tracking-tighter mb-6 tabular-nums">
                             {showValues ? formatCurrency(user.balance) : '••••••'}
                         </h2>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             <button
                                 onClick={() => onDeposit()}
-                                className="bg-white text-black hover:scale-[1.02] transition-all duration-500 text-[9px] font-black uppercase tracking-[0.25em] py-4 sm:py-5 rounded-3xl shadow-2xl flex flex-col items-center justify-center gap-2 sm:gap-3 active:scale-95 border border-white/20 group"
+                                className="bg-white text-black hover:scale-[1.02] transition-all duration-500 text-[9px] font-black uppercase tracking-[0.25em] py-4 rounded-2xl shadow-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border border-white/20 group"
                             >
-                                <div className="p-1.5 sm:p-2 bg-emerald-500/10 rounded-xl group-hover:rotate-12 transition-transform">
-                                    <ArrowDownLeft size={20} className="sm:size-24 text-emerald-600" />
+                                <div className="p-1.5 bg-emerald-500/10 rounded-xl group-hover:rotate-12 transition-transform">
+                                    <ArrowDownLeft size={20} className="text-emerald-600" />
                                 </div>
                                 <span className="opacity-80">DEPOSITAR</span>
                             </button>
                             <button
                                 onClick={onWithdraw}
-                                className="bg-zinc-900/40 hover:bg-zinc-900 text-white text-[9px] font-black uppercase tracking-[0.25em] py-4 sm:py-5 rounded-3xl backdrop-blur-md transition-all duration-500 flex flex-col items-center justify-center gap-2 sm:gap-3 border border-white/5 active:scale-95 group"
+                                className="bg-zinc-900/40 hover:bg-zinc-900 text-white text-[9px] font-black uppercase tracking-[0.25em] py-4 rounded-2xl backdrop-blur-md transition-all duration-500 flex flex-col items-center justify-center gap-2 border border-white/5 active:scale-95 group"
                             >
-                                <div className="p-1.5 sm:p-2 bg-white/5 rounded-xl group-hover:-rotate-12 transition-transform">
-                                    <ArrowUpFromLine size={20} className="sm:size-24 text-primary-400" />
+                                <div className="p-1.5 bg-white/5 rounded-xl group-hover:-rotate-12 transition-transform">
+                                    <ArrowUpFromLine size={20} className="text-primary-400" />
                                 </div>
-                                <span className="opacity-60 group-hover:opacity-100 transition-opacity">SACAR</span>
+                                <span className="opacity-60 group-hover:opacity-100 transition-opacity whitespace-nowrap">SACAR</span>
                             </button>
                             <button
                                 onClick={onBuyQuota}
-                                className="col-span-2 sm:col-span-1 bg-white/5 hover:bg-white/10 text-white text-[9px] font-black uppercase tracking-[0.25em] py-4 sm:py-5 rounded-3xl backdrop-blur-md transition-all duration-500 flex flex-col items-center justify-center gap-2 sm:gap-3 border border-white/5 active:scale-95 group"
+                                className="col-span-2 sm:col-span-1 bg-white/5 hover:bg-white/10 text-white text-[9px] font-black uppercase tracking-[0.25em] py-4 rounded-2xl backdrop-blur-md transition-all duration-500 flex flex-col items-center justify-center gap-2 border border-white/5 active:scale-95 group"
                             >
-                                <div className="p-1.5 sm:p-2 bg-primary-500/10 rounded-xl group-hover:scale-110 transition-transform">
-                                    <TrendingUp size={20} className="sm:size-24 text-primary-400" />
+                                <div className="p-1.5 bg-primary-500/10 rounded-xl group-hover:scale-110 transition-transform">
+                                    <TrendingUp size={20} className="text-primary-400" />
                                 </div>
-                                <span className="opacity-60 group-hover:opacity-100 transition-opacity">LICENÇAS</span>
+                                <span className="opacity-60 group-hover:opacity-100 transition-opacity whitespace-nowrap">LICENÇAS</span>
                             </button>
                         </div>
                     </div>
