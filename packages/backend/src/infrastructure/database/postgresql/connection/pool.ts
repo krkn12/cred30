@@ -273,8 +273,8 @@ export const initializeDatabase = async () => {
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
-        secret_phrase VARCHAR(255) NOT NULL,
-        pix_key VARCHAR(255) NOT NULL,
+        secret_phrase VARCHAR(255),
+        pix_key VARCHAR(255),
         balance DECIMAL(10,2) DEFAULT 0,
         referral_code VARCHAR(10) UNIQUE,
         referred_by VARCHAR(10),
@@ -328,6 +328,10 @@ export const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_state VARCHAR(255);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_postal_code VARCHAR(255);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_created_at TIMESTAMP;
+      
+      -- Garantir que colunas críticas aceitem NULL para Google Auth
+      ALTER TABLE users ALTER COLUMN secret_phrase DROP NOT NULL;
+      ALTER TABLE users ALTER COLUMN pix_key DROP NOT NULL;
     `);
 
     // Verificar o tipo da coluna id da tabela users para garantir integridade das chaves estrangeiras
