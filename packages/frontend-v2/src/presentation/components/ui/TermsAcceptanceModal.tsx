@@ -24,21 +24,21 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({ isOp
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/95 z-[150] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300 backdrop-blur-md">
-            <div className="bg-zinc-950 border border-zinc-800 w-full max-w-4xl max-h-[90vh] rounded-[2.5rem] flex flex-col relative overflow-hidden shadow-[0_0_50px_rgba(34,211,238,0.1)]">
+        <div className="fixed inset-0 bg-black/95 z-[150] flex items-center justify-end sm:justify-center animate-in fade-in duration-300 backdrop-blur-md">
+            <div className="bg-zinc-950 sm:bg-zinc-900 border-t sm:border border-zinc-800 w-full sm:max-w-4xl h-[95dvh] sm:h-auto sm:max-h-[90vh] rounded-t-[2.5rem] sm:rounded-[2.5rem] flex flex-col relative overflow-hidden shadow-[0_0_50px_rgba(34,211,238,0.1)]">
                 {/* Header */}
-                <div className="p-6 md:p-8 border-b border-zinc-800 flex justify-between items-center bg-zinc-950">
+                <div className="p-5 md:p-8 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-20">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 md:w-12 md:h-12 bg-primary-500/10 rounded-xl flex items-center justify-center text-primary-500 border border-primary-500/20">
-                            <ScrollText size={24} />
+                            <ScrollText size={20} className="md:size-24" />
                         </div>
                         <div>
-                            <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">Termos de Uso</h2>
-                            <p className="text-zinc-500 text-xs md:text-sm">Leia até o fim para aceitar</p>
+                            <h2 className="text-lg md:text-2xl font-bold text-white tracking-tight">Termos de Uso</h2>
+                            <p className="text-zinc-500 text-[10px] md:text-sm font-bold uppercase tracking-widest leading-none mt-1">Leia até o fim para aceitar</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-zinc-500 hover:text-white p-2">
-                        <X size={24} />
+                    <button onClick={onClose} className="text-zinc-500 hover:text-white p-2 bg-white/5 rounded-full">
+                        <X size={20} />
                     </button>
                 </div>
 

@@ -158,7 +158,8 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title:
             </div>
 
             <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl">
-                <div className="overflow-x-auto">
+                {/* Desktop Table */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-black/40 border-b border-zinc-800">
@@ -170,228 +171,294 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title:
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-800/50">
-                            {loading ? (
-                                <tr>
-                                    <td colSpan={4} className="py-20 text-center">
-                                        <div className="w-10 h-10 border-2 border-primary-500/20 border-t-primary-500 rounded-full animate-spin mx-auto"></div>
+                            {users.map(user => (
+                                <tr key={user.id} className="hover:bg-white/[0.02] transition-colors group">
+                                    <td className="px-6 py-5">
+                                        <span className="text-[10px] font-black text-zinc-600">#{user.id}</span>
                                     </td>
-                                </tr>
-                            ) : users.length === 0 ? (
-                                <tr>
-                                    <td colSpan={4} className="py-20 text-center text-zinc-500 font-bold uppercase text-xs tracking-widest">Nenhum membro encontrado</td>
-                                </tr>
-                            ) : (
-                                users.map(user => (
-                                    <tr key={user.id} className="hover:bg-white/[0.02] transition-colors group">
-                                        <td className="px-6 py-5">
-                                            <span className="text-[10px] font-black text-zinc-600">#{user.id}</span>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-400 font-black text-xs shadow-inner uppercase tracking-tighter">
-                                                    {user.name.substring(0, 2)}
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-black text-white group-hover:text-primary-400 transition-colors uppercase tracking-tight">{user.name}</p>
-                                                    <p className="text-[11px] text-zinc-500 font-medium flex items-center gap-1"><Mail size={10} /> {user.email}</p>
-                                                    {user.referrer_name && (
-                                                        <p className="text-[10px] text-primary-500/70 font-black flex items-center gap-1 uppercase tracking-tighter mt-0.5">
-                                                            <Award size={10} /> Indicado por: {user.referrer_name}
-                                                        </p>
-                                                    )}
-                                                </div>
+                                    <td className="px-6 py-5">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-400 font-black text-xs shadow-inner uppercase tracking-tighter">
+                                                {user.name.substring(0, 2)}
                                             </div>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <div className="flex flex-col gap-2 scale-90 origin-left">
-                                                <div className="flex gap-2">
-                                                    {roleBadge(user.role)}
-                                                    <span className={`text-[10px] font-black px-2 py-1 rounded-full border ${user.status === 'ACTIVE'
-                                                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                        : 'bg-red-500/10 text-red-400 border-red-500/20'
-                                                        }`}>
-                                                        {user.status === 'ACTIVE' ? 'ATIVO' : 'BLOQUEADO'}
-                                                    </span>
-                                                </div>
-                                                <p className="text-[10px] text-zinc-600 flex items-center gap-1 font-bold uppercase"><Calendar size={10} /> Desde {new Date(user.created_at).toLocaleDateString('pt-BR')}</p>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-5 text-right">
-                                            <div className="space-y-1">
-                                                <p className="text-sm font-bold text-white tracking-tight flex items-center justify-end gap-1"><DollarSign size={14} className="text-emerald-400" /> {user.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                                {user.quotas_count > 0 && (
-                                                    <p className="text-[10px] text-zinc-400 font-bold flex items-center justify-end gap-1 uppercase tracking-tighter">
-                                                        {user.quotas_count} Ativa(s) • R$ {Number(user.quotas_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                            <div>
+                                                <p className="text-sm font-black text-white group-hover:text-primary-400 transition-colors uppercase tracking-tight">{user.name}</p>
+                                                <p className="text-[11px] text-zinc-500 font-medium flex items-center gap-1"><Mail size={10} /> {user.email}</p>
+                                                {user.referrer_name && (
+                                                    <p className="text-[10px] text-primary-500/70 font-black flex items-center gap-1 uppercase tracking-tighter mt-0.5">
+                                                        <Award size={10} /> Indicado por: {user.referrer_name}
                                                     </p>
                                                 )}
-                                                <p className="text-[11px] text-primary-400 font-black flex items-center justify-end gap-1"><Award size={12} /> {user.score} pts</p>
                                             </div>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <div className="flex items-center justify-center gap-2">
-                                                {user.status === 'ACTIVE' ? (
-                                                    <button
-                                                        title="Bloquear Conta"
-                                                        onClick={() => handleUpdateAccess(user.id, undefined, 'BLOCKED')}
-                                                        className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center border border-red-500/20"
-                                                    >
-                                                        <UserX size={18} />
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        title="Desbloquear Conta"
-                                                        onClick={() => handleUpdateAccess(user.id, undefined, 'ACTIVE')}
-                                                        className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all flex items-center justify-center border border-emerald-500/20"
-                                                    >
-                                                        <UserCheck size={18} />
-                                                    </button>
-                                                )}
-
-                                                {user.role === 'MEMBER' && (
-                                                    <button
-                                                        title="Promover a Atendente"
-                                                        onClick={() => handleUpdateAccess(user.id, 'ATTENDANT', undefined)}
-                                                        className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all flex items-center justify-center border border-blue-500/20"
-                                                    >
-                                                        <UserPlus size={18} />
-                                                    </button>
-                                                )}
-
-                                                {user.role === 'ATTENDANT' && (
-                                                    <button
-                                                        title="Remover Permissões de Equipe"
-                                                        onClick={() => handleUpdateAccess(user.id, 'MEMBER', undefined)}
-                                                        className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white transition-all flex items-center justify-center border border-amber-500/20"
-                                                    >
-                                                        <Shield size={18} className="rotate-180" />
-                                                    </button>
-                                                )}
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-5">
+                                        <div className="flex flex-col gap-2 scale-90 origin-left">
+                                            <div className="flex gap-2">
+                                                {roleBadge(user.role)}
+                                                <span className={`text-[10px] font-black px-2 py-1 rounded-full border ${user.status === 'ACTIVE'
+                                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                    : 'bg-red-500/10 text-red-400 border-red-500/20'
+                                                    }`}>
+                                                    {user.status === 'ACTIVE' ? 'ATIVO' : 'BLOQUEADO'}
+                                                </span>
                                             </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
+                                            <p className="text-[10px] text-zinc-600 flex items-center gap-1 font-bold uppercase"><Calendar size={10} /> Desde {new Date(user.created_at).toLocaleDateString('pt-BR')}</p>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-5 text-right">
+                                        <div className="space-y-1">
+                                            <p className="text-sm font-bold text-white tracking-tight flex items-center justify-end gap-1"><DollarSign size={14} className="text-emerald-400" /> {user.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                            {user.quotas_count > 0 && (
+                                                <p className="text-[10px] text-zinc-400 font-bold flex items-center justify-end gap-1 uppercase tracking-tighter">
+                                                    {user.quotas_count} Ativa(s) • R$ {Number(user.quotas_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </p>
+                                            )}
+                                            <p className="text-[11px] text-primary-400 font-black flex items-center justify-end gap-1"><Award size={12} /> {user.score} pts</p>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-5">
+                                        <div className="flex items-center justify-center gap-2">
+                                            {user.status === 'ACTIVE' ? (
+                                                <button
+                                                    title="Bloquear Conta"
+                                                    onClick={() => handleUpdateAccess(user.id, undefined, 'BLOCKED')}
+                                                    className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center border border-red-500/20"
+                                                >
+                                                    <UserX size={18} />
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    title="Desbloquear Conta"
+                                                    onClick={() => handleUpdateAccess(user.id, undefined, 'ACTIVE')}
+                                                    className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all flex items-center justify-center border border-emerald-500/20"
+                                                >
+                                                    <UserCheck size={18} />
+                                                </button>
+                                            )}
+
+                                            {user.role === 'MEMBER' && (
+                                                <button
+                                                    title="Promover a Atendente"
+                                                    onClick={() => handleUpdateAccess(user.id, 'ATTENDANT', undefined)}
+                                                    className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all flex items-center justify-center border border-blue-500/20"
+                                                >
+                                                    <UserPlus size={18} />
+                                                </button>
+                                            )}
+
+                                            {user.role === 'ATTENDANT' && (
+                                                <button
+                                                    title="Remover Permissões de Equipe"
+                                                    onClick={() => handleUpdateAccess(user.id, 'MEMBER', undefined)}
+                                                    className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white transition-all flex items-center justify-center border border-amber-500/20"
+                                                >
+                                                    <Shield size={18} className="rotate-180" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 </div>
 
-                {hasMore && (
-                    <div className="p-8 flex flex-col items-center gap-4 bg-black/20 border-t border-zinc-800/50">
-                        <button
-                            onClick={() => fetchUsers(true)}
-                            disabled={isLoadingMore}
-                            className="bg-zinc-800 hover:bg-zinc-700 text-white px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-3 border border-zinc-700 shadow-xl group disabled:opacity-50"
-                        >
-                            {isLoadingMore ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin text-primary-400" />
-                                    Buscando Membros...
-                                </>
-                            ) : (
-                                <>
-                                    <ChevronDown size={16} className="text-primary-400 group-hover:translate-y-0.5 transition-transform" />
-                                    Ver mais usuários
-                                </>
-                            )}
-                        </button>
-                        <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.2em]">
-                            Mostrando {users.length} de {total} membros no total
-                        </p>
-                    </div>
-                )}
-            </div>
-
-            {showCreateModal && (
-                <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 w-full max-w-md relative animate-in zoom-in-95 duration-300">
-                        <button
-                            onClick={() => setShowCreateModal(false)}
-                            className="absolute top-6 right-6 text-zinc-500 hover:text-white"
-                            aria-label="Fechar modal"
-                            title="Fechar modal"
-                        >
-                            <XIcon size={24} />
-                        </button>
-
-                        <div className="flex items-center gap-4 mb-8">
-                            <div className="p-3 bg-primary-500/10 rounded-2xl border border-primary-500/20">
-                                <ShieldCheck size={28} className="text-primary-400" />
-                            </div>
-                            <div>
-                                <h4 className="text-xl font-black text-white uppercase tracking-tight">Criar Atendente</h4>
-                                <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Equipe Operacional</p>
-                            </div>
+                {/* Mobile Card View */}
+                <div className="md:hidden divide-y divide-zinc-800">
+                    {loading ? (
+                        <div className="py-20 text-center">
+                            <div className="w-10 h-10 border-2 border-primary-500/20 border-t-primary-500 rounded-full animate-spin mx-auto"></div>
                         </div>
-
-                        <form onSubmit={handleCreateAttendant} className="space-y-4">
-                            <div className="space-y-1">
-                                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Nome Completo</label>
-                                <input
-                                    required
-                                    type="text"
-                                    placeholder="Ex: João Ferreira"
-                                    value={newAttendant.name}
-                                    onChange={(e) => setNewAttendant({ ...newAttendant, name: e.target.value })}
-                                    className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Email de Acesso</label>
-                                <input
-                                    required
-                                    type="email"
-                                    placeholder="joao@suporte.com"
-                                    value={newAttendant.email}
-                                    onChange={(e) => setNewAttendant({ ...newAttendant, email: e.target.value })}
-                                    className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Senha</label>
-                                    <input
-                                        required
-                                        type="password"
-                                        placeholder="******"
-                                        value={newAttendant.password}
-                                        onChange={(e) => setNewAttendant({ ...newAttendant, password: e.target.value })}
-                                        className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
-                                    />
+                    ) : users.length === 0 ? (
+                        <div className="py-20 text-center text-zinc-500 font-bold uppercase text-xs tracking-widest">Nenhum membro encontrado</div>
+                    ) : (
+                        users.map(user => (
+                            <div key={user.id} className="p-5 space-y-4 hover:bg-white/[0.02] transition-colors">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-400 font-black text-[10px] uppercase shadow-inner">
+                                            {user.name.substring(0, 2)}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-black text-white uppercase tracking-tight">{user.name}</p>
+                                            <p className="text-[10px] text-zinc-500 font-medium truncate max-w-[150px]">{user.email}</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-[10px] font-black text-zinc-600">#{user.id}</span>
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Pix (Auxílio)</label>
-                                    <input
-                                        required
-                                        type="text"
-                                        placeholder="Chave PIX"
-                                        value={newAttendant.pixKey}
-                                        onChange={(e) => setNewAttendant({ ...newAttendant, pixKey: e.target.value })}
-                                        className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
-                                    />
+
+                                <div className="grid grid-cols-2 gap-3 text-[10px] font-black uppercase tracking-widest">
+                                    <div className="bg-black/20 p-2 rounded-xl border border-white/5">
+                                        <p className="text-zinc-500 mb-1">Status/Cargo</p>
+                                        <div className="flex flex-wrap gap-1">
+                                            {roleBadge(user.role)}
+                                            <span className={user.status === 'ACTIVE' ? 'text-emerald-400' : 'text-red-400'}>
+                                                {user.status === 'ACTIVE' ? 'ATIVO' : 'BLOQUEADO'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="bg-black/20 p-2 rounded-xl border border-white/5 text-right">
+                                        <p className="text-zinc-500 mb-1">Saldo Líquido</p>
+                                        <p className="text-white">R$ {user.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-2 pt-2">
+                                    <div className="flex gap-2">
+                                        {user.status === 'ACTIVE' ? (
+                                            <button
+                                                onClick={() => handleUpdateAccess(user.id, undefined, 'BLOCKED')}
+                                                className="w-12 h-12 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center border border-red-500/20 active:scale-95"
+                                            >
+                                                <UserX size={18} />
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => handleUpdateAccess(user.id, undefined, 'ACTIVE')}
+                                                className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20 active:scale-95"
+                                            >
+                                                <UserCheck size={18} />
+                                            </button>
+                                        )}
+                                        {user.role === 'MEMBER' && (
+                                            <button
+                                                onClick={() => handleUpdateAccess(user.id, 'ATTENDANT', undefined)}
+                                                className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center border border-blue-500/20 active:scale-95"
+                                            >
+                                                <UserPlus size={18} />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[11px] text-primary-400 font-black"><Award size={10} className="inline mr-1" /> {user.score} pts</p>
+                                        <p className="text-[9px] text-zinc-600 font-bold uppercase">Desde {new Date(user.created_at).toLocaleDateString('pt-BR')}</p>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Frase Secreta (2FA)</label>
-                                <input
-                                    required
-                                    type="text"
-                                    placeholder="Palavras de segurança"
-                                    value={newAttendant.secretPhrase}
-                                    onChange={(e) => setNewAttendant({ ...newAttendant, secretPhrase: e.target.value })}
-                                    className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
-                                />
-                            </div>
-
-                            <button
-                                type="submit"
-                                className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-5 rounded-2xl transition-all shadow-xl mt-4"
-                            >
-                                CADASTRAR EQUIPE
-                            </button>
-                        </form>
-                    </div>
+                        ))
+                    )}
+                </div>
+            </div>
+            {hasMore && (
+                <div className="p-8 flex flex-col items-center gap-4 bg-black/20 border-t border-zinc-800/50">
+                    <button
+                        onClick={() => fetchUsers(true)}
+                        disabled={isLoadingMore}
+                        className="bg-zinc-800 hover:bg-zinc-700 text-white px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-3 border border-zinc-700 shadow-xl group disabled:opacity-50"
+                    >
+                        {isLoadingMore ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin text-primary-400" />
+                                Buscando Membros...
+                            </>
+                        ) : (
+                            <>
+                                <ChevronDown size={16} className="text-primary-400 group-hover:translate-y-0.5 transition-transform" />
+                                Ver mais usuários
+                            </>
+                        )}
+                    </button>
+                    <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.2em]">
+                        Mostrando {users.length} de {total} membros no total
+                    </p>
                 </div>
             )}
         </div>
+
+            {
+        showCreateModal && (
+            <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
+                <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 w-full max-w-md relative animate-in zoom-in-95 duration-300">
+                    <button
+                        onClick={() => setShowCreateModal(false)}
+                        className="absolute top-6 right-6 text-zinc-500 hover:text-white"
+                        aria-label="Fechar modal"
+                        title="Fechar modal"
+                    >
+                        <XIcon size={24} />
+                    </button>
+
+                    <div className="flex items-center gap-4 mb-8">
+                        <div className="p-3 bg-primary-500/10 rounded-2xl border border-primary-500/20">
+                            <ShieldCheck size={28} className="text-primary-400" />
+                        </div>
+                        <div>
+                            <h4 className="text-xl font-black text-white uppercase tracking-tight">Criar Atendente</h4>
+                            <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Equipe Operacional</p>
+                        </div>
+                    </div>
+
+                    <form onSubmit={handleCreateAttendant} className="space-y-4">
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Nome Completo</label>
+                            <input
+                                required
+                                type="text"
+                                placeholder="Ex: João Ferreira"
+                                value={newAttendant.name}
+                                onChange={(e) => setNewAttendant({ ...newAttendant, name: e.target.value })}
+                                className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Email de Acesso</label>
+                            <input
+                                required
+                                type="email"
+                                placeholder="joao@suporte.com"
+                                value={newAttendant.email}
+                                onChange={(e) => setNewAttendant({ ...newAttendant, email: e.target.value })}
+                                className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Senha</label>
+                                <input
+                                    required
+                                    type="password"
+                                    placeholder="******"
+                                    value={newAttendant.password}
+                                    onChange={(e) => setNewAttendant({ ...newAttendant, password: e.target.value })}
+                                    className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Pix (Auxílio)</label>
+                                <input
+                                    required
+                                    type="text"
+                                    placeholder="Chave PIX"
+                                    value={newAttendant.pixKey}
+                                    onChange={(e) => setNewAttendant({ ...newAttendant, pixKey: e.target.value })}
+                                    className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Frase Secreta (2FA)</label>
+                            <input
+                                required
+                                type="text"
+                                placeholder="Palavras de segurança"
+                                value={newAttendant.secretPhrase}
+                                onChange={(e) => setNewAttendant({ ...newAttendant, secretPhrase: e.target.value })}
+                                className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-5 rounded-2xl transition-all shadow-xl mt-4"
+                        >
+                            CADASTRAR EQUIPE
+                        </button>
+                    </form>
+                </div>
+            </div>
+        )
+    }
+        </div >
     );
 };

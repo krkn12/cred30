@@ -560,13 +560,13 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
 
             {/* Email Verification Modal - Mantido Global */}
             {showVerifyModal && (
-                <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300 backdrop-blur-md">
-                    <div className="glass-strong p-6 md:p-10 w-full max-w-md relative animate-fade-in shadow-[0_0_80px_rgba(6,182,212,0.15)] max-h-[90vh] overflow-y-auto custom-scrollbar rounded-[2.5rem]">
-                        <button onClick={() => setShowVerifyModal(false)} className="absolute top-4 right-4 md:top-6 md:right-6 text-zinc-500 hover:text-white transition-colors z-10" aria-label="Fechar modal">
+                <div className="fixed inset-0 bg-black/95 flex items-center justify-end sm:justify-center z-[200] animate-in fade-in duration-300 backdrop-blur-md">
+                    <div className="bg-zinc-950 sm:bg-zinc-900 border-t sm:border border-zinc-800 p-6 md:p-10 w-full sm:max-w-md relative animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-4 duration-500 shadow-[0_0_80px_rgba(6,182,212,0.15)] max-h-[95dvh] overflow-y-auto custom-scrollbar rounded-t-[2.5rem] sm:rounded-[2.5rem]">
+                        <button onClick={() => setShowVerifyModal(false)} className="absolute top-4 right-4 md:top-6 md:right-6 text-zinc-500 hover:text-white transition-colors z-10 p-2" aria-label="Fechar modal">
                             <XCircle size={24} />
                         </button>
 
-                        <div className="text-center mb-8">
+                        <div className="text-center mb-8 pt-4 sm:pt-0">
                             <div className="w-20 h-20 bg-primary-500/20 rounded-3xl flex items-center justify-center mx-auto mb-6 transform rotate-3 shadow-inner">
                                 <ShieldCheck size={40} className="text-primary-500" />
                             </div>
@@ -585,7 +585,7 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                                 {twoFactorData?.otpUri && (
                                     <a
                                         href={twoFactorData.otpUri}
-                                        className="w-full bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 border border-primary-500/30 py-4 rounded-2xl flex items-center justify-center gap-2 text-sm font-bold transition-all group"
+                                        className="w-full bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 border border-primary-500/30 py-4 rounded-2xl flex items-center justify-center gap-2 text-sm font-bold transition-all group active:scale-95"
                                     >
                                         <ShieldCheck size={20} className="group-hover:scale-110 transition-transform" />
                                         Configurar no Navegador (Extensão)

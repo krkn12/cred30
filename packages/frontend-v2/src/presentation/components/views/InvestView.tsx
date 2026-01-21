@@ -31,20 +31,20 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12">
 
                 {/* Hero Section */}
-                <div className="text-center mb-16 animate-in fade-in slide-in-from-top-4 duration-700">
-                    <div className="inline-flex items-center gap-2 bg-primary-500/10 border border-primary-500/20 px-4 py-2 rounded-full text-primary-400 font-bold text-[10px] uppercase tracking-widest mb-6">
-                        <ShieldCheck size={14} /> Cooperativa Digital Cred30
+                <div className="text-center mb-10 sm:mb-16 animate-in fade-in slide-in-from-top-4 duration-700">
+                    <div className="inline-flex items-center gap-2 bg-primary-500/10 border border-primary-500/20 px-4 py-2 rounded-full text-primary-400 font-black text-[9px] uppercase tracking-widest mb-6">
+                        <ShieldCheck size={12} /> Cooperativa Digital Cred30
                     </div>
-                    <h1 className="text-4xl sm:text-6xl font-black text-white leading-tight mb-6 tracking-tight">
+                    <h1 className="text-3xl sm:text-6xl font-black text-white leading-tight mb-6 tracking-tight">
                         Faça parte da <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-primary-600">Revolução Financeira</span> Colaborativa.
                     </h1>
-                    <p className="text-base sm:text-lg text-zinc-500 max-w-2xl mx-auto leading-relaxed">
+                    <p className="text-sm sm:text-lg text-zinc-500 max-w-2xl mx-auto leading-relaxed px-4">
                         Ao integralizar suas cotas-parte, você se torna dono do negócio, participa das decisões e recebe sobras operacionais proporcionais ao capital aportado.
                     </p>
                 </div>
 
                 {/* Benefits Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
                     <BenefitCard
                         icon={<TrendingUp size={20} />}
                         title="Distribuição de Sobras"
@@ -61,7 +61,7 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
                         icon={<Gavel size={20} />}
                         title="Segurança Jurídica"
                         color="purple"
-                        description="Operamos sob o modelo de Sociedade em Conta de Participação (Lei 10.406/02)."
+                        description="Modelo de Sociedade em Conta de Participação (Lei 10.406/02)."
                     />
                 </div>
 
