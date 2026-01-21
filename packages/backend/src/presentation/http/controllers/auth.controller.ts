@@ -385,7 +385,8 @@ export class AuthController {
             });
         } catch (error: any) {
             console.error('[GOOGLE LOGIN ERROR]:', error);
-            return c.json({ success: false, message: 'Erro na autenticação Google' }, 401);
+            const errorMessage = error.message || 'Erro na autenticação Google';
+            return c.json({ success: false, message: errorMessage }, 401);
         }
     }
 

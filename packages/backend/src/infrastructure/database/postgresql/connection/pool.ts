@@ -305,7 +305,6 @@ export const initializeDatabase = async () => {
         seller_address_city VARCHAR(255),
         seller_address_state VARCHAR(255),
         seller_address_postal_code VARCHAR(255),
-        seller_address_postal_code VARCHAR(255),
         seller_created_at TIMESTAMP,
         last_ip VARCHAR(45),
         last_login_at TIMESTAMP,
