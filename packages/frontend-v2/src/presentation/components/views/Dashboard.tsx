@@ -202,9 +202,15 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
     const handleCompleteChestReward = useCallback(async () => {
         setIsOpeningChest(true);
         try {
-            if (viewFarmVideo) {
-                await apiService.misc.completePromoView(viewFarmVideo.id, 5);
+            // Só tenta completar na API se for um vídeo real (não fallback)
+            if (viewFarmVideo && !viewFarmVideo.isFallback && viewFarmVideo.id) {
+                try {
+                    await apiService.misc.completePromoView(viewFarmVideo.id, 5);
+                } catch (e) {
+                    console.warn('Erro ao registrar visualização (Pode ser AdBlock):', e);
+                }
             }
+
             const response = await apiService.post('/earn/chest-reward', {}) as any;
             if (response.success) {
                 onSuccess("Baú Aberto!", response.message || `+${response.points || 100} pontos farm!`);
@@ -214,6 +220,7 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                 onError("Erro", response.message || "Não foi possível resgatar prêmio");
             }
         } catch (error: any) {
+            console.error('Erro ao resgatar recompensa do baú:', error);
             onError("Erro", error.message || "Erro ao resgatar prêmio");
         } finally {
             setIsOpeningChest(false);

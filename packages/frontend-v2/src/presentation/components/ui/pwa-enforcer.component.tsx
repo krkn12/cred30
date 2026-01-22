@@ -109,41 +109,29 @@ interface PWAEnforcerProps {
  */
 export const PWAEnforcer: React.FC<PWAEnforcerProps> = ({ isAdmin, children }) => {
     const { isInstallable, isInstalled, promptInstall } = usePWAInstall();
-    const isDesktop = isDesktopDevice();
+    const [skipPWA, setSkipPWA] = useState(() => localStorage.getItem('skip-pwa-enforcement') === 'true');
 
     // ========================================
-    // CLIENTE DESKTOP: BLOQUEIA acesso web (força PWA)
+    // CLIENTE DESKTOP: SUGESTÃO de instalação (não bloqueia totalmente)
     // ========================================
-    if (!isAdmin && isDesktop && !isInstalled) {
+    if (!isAdmin && isDesktop && !isInstalled && !skipPWA) {
         return (
             <div className="min-h-screen bg-black flex items-center justify-center p-4">
                 <div className="max-w-lg w-full">
-                    {/* Card principal de bloqueio */}
-                    <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-red-500/30 rounded-3xl p-8 shadow-2xl shadow-red-900/20 text-center">
-                        <div className="w-20 h-20 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-red-500/20">
-                            <Lock className="text-red-400" size={40} />
+                    {/* Card principal de sugestão */}
+                    <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-primary-500/30 rounded-3xl p-8 shadow-2xl shadow-primary-900/20 text-center">
+                        <div className="w-20 h-20 bg-primary-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-primary-500/20">
+                            <Download className="text-primary-400" size={40} />
                         </div>
 
                         <h1 className="text-2xl font-black text-white mb-3 tracking-tight">
-                            Acesso Bloqueado
+                            Melhore sua Experiência
                         </h1>
 
                         <p className="text-zinc-400 text-sm leading-relaxed mb-6">
-                            Para sua segurança, o acesso ao Cred30 via navegador web em desktop não é permitido.
-                            <br /><br />
-                            <strong className="text-white">Instale o aplicativo oficial</strong> para continuar.
+                            O acesso via **Aplicativo Instalado (PWA)** é mais seguro e rápido.
+                            Recomendamos a instalação para uma melhor performance.
                         </p>
-
-                        {/* Alerta de segurança */}
-                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-6 text-left">
-                            <div className="flex items-start gap-3">
-                                <AlertTriangle className="text-amber-400 shrink-0 mt-0.5" size={18} />
-                                <p className="text-amber-200/80 text-xs leading-relaxed">
-                                    O aplicativo instalado oferece proteção adicional contra phishing,
-                                    mantém suas sessões mais seguras e garante que você está acessando o sistema oficial.
-                                </p>
-                            </div>
-                        </div>
 
                         {/* Botão de instalação */}
                         {isInstallable ? (
@@ -154,27 +142,30 @@ export const PWAEnforcer: React.FC<PWAEnforcerProps> = ({ isAdmin, children }) =
                                 <div className="p-2 bg-black/10 rounded-xl group-hover:rotate-12 transition-transform">
                                     <Download size={20} />
                                 </div>
-                                INSTALAR APLICATIVO CRED30
+                                INSTALAR APLICATIVO AGORA
                             </button>
                         ) : (
-                            <div className="space-y-4">
-                                <p className="text-zinc-500 text-xs">
-                                    Se o botão de instalação não aparecer, siga os passos abaixo:
-                                </p>
-                                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-left">
-                                    <p className="text-xs text-zinc-400 mb-2 font-bold uppercase tracking-widest">Como instalar:</p>
-                                    <ol className="text-xs text-zinc-300 space-y-2 list-decimal list-inside">
-                                        <li>Clique nos 3 pontos (⋮) no canto superior direito</li>
-                                        <li>Selecione "Instalar Cred30" ou "Adicionar à área de trabalho"</li>
-                                        <li>Confirme a instalação</li>
-                                        <li>Abra o app instalado no seu desktop</li>
-                                    </ol>
-                                </div>
+                            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-left mb-6">
+                                <p className="text-xs text-zinc-400 mb-2 font-bold uppercase tracking-widest">Como instalar:</p>
+                                <ol className="text-xs text-zinc-300 space-y-2 list-decimal list-inside">
+                                    <li>Clique nos 3 pontos (⋮) no navegador</li>
+                                    <li>Selecione "Instalar Cred30"</li>
+                                </ol>
                             </div>
                         )}
 
+                        <button
+                            onClick={() => {
+                                localStorage.setItem('skip-pwa-enforcement', 'true');
+                                setSkipPWA(true);
+                            }}
+                            className="mt-6 text-zinc-500 hover:text-white text-xs font-black uppercase tracking-widest transition-colors pb-2 border-b border-transparent hover:border-zinc-800"
+                        >
+                            Continuar pelo Navegador
+                        </button>
+
                         <p className="text-[10px] text-zinc-600 mt-6 uppercase tracking-widest">
-                            Proteção contra fraudes • Cred30 Seguro
+                            Segurança Garantida • Cred30 Web
                         </p>
                     </div>
                 </div>
