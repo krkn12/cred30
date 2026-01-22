@@ -182,7 +182,16 @@ temp/
 landing_github/
 
 # Scripts de Auditoria e Debug (Ignorar execuções, manter fontes essenciais)
-scripts/debug/
+**/debug*/
+**/logs/
+**/testing/
+**/tests/
+*debug*
+*simulate*
+*hack*
+!packages/backend/src/tests/
+!packages/backend/src/tests/**/*.test.ts
+!packages/backend/src/tests/**/*.test.js
 !scripts/ops/
 !scripts/migrations/
 !scripts/maintenance/
