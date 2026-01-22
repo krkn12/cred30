@@ -436,28 +436,28 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
 
             {/* Vincular Padrinho (Apenas se não tiver) */}
             {!user.referred_by && (
-                <div className="bg-primary-500/5 border border-primary-500/20 rounded-2xl p-5 mb-4 group transition-all hover:bg-primary-500/10">
-                    <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-primary-500/20 flex items-center justify-center text-primary-400 shrink-0">
+                <div className="bg-primary-500/5 border border-primary-500/20 rounded-2xl p-5 mb-4 group transition-all hover:bg-primary-500/10 overflow-hidden">
+                    <div className="flex flex-col sm:flex-row items-start gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-primary-500/20 flex items-center justify-center text-primary-400 shrink-0 mb-2 sm:mb-0">
                             <Users size={24} />
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 w-full min-w-0">
                             <h3 className="text-white font-bold text-sm mb-1">Quem te indicou?</h3>
-                            <p className="text-zinc-400 text-xs mb-4">
+                            <p className="text-zinc-400 text-xs mb-4 leading-relaxed">
                                 Você ainda não tem um padrinho vinculado. Insira o código de quem te convidou para liberar benefícios.
                             </p>
-                            <div className="flex gap-2">
+                            <div className="flex flex-col xs:flex-row gap-2">
                                 <input
                                     type="text"
                                     placeholder="Código de Indicação"
                                     value={referralInput}
                                     onChange={(e) => setReferralInput(e.target.value.toUpperCase())}
-                                    className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-primary-500/50"
+                                    className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary-500/50 min-w-0"
                                 />
                                 <button
                                     onClick={handleLinkReferrer}
                                     disabled={linkingReferrer || !referralInput.trim()}
-                                    className="bg-primary-500 hover:bg-primary-400 disabled:bg-zinc-800 disabled:text-zinc-500 text-black px-4 py-2 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-2"
+                                    className="bg-primary-500 hover:bg-primary-400 disabled:bg-zinc-800 disabled:text-zinc-500 text-black px-6 py-3 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center justify-center gap-2 whitespace-nowrap"
                                 >
                                     {linkingReferrer ? <RefreshCw className="animate-spin" size={14} /> : <Zap size={14} />}
                                     VINCULAR
