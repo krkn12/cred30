@@ -1,5 +1,7 @@
 import React from 'react';
-import { Zap, Navigation2, Truck, Phone, Download, ExternalLink } from 'lucide-react';
+import { Zap, Navigation2, Truck, Phone, Download, ExternalLink, Scan } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { QRScannerModal } from '../ui/QRScannerModal';
 
 interface OrderCardProps {
     order: any;
@@ -24,8 +26,29 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     setTrackingOrder,
     formatCurrency
 }) => {
+    const [isScannerOpen, setIsScannerOpen] = React.useState(false);
+
+    const handleConfirm = async (code?: string) => {
+        try {
+            const res = await apiService.post(`/marketplace/order/${order.id}/receive`, { verificationCode: code?.toUpperCase() });
+            if (res.success) {
+                onSuccess('Entrega Validada!', 'O saldo foi liberado com sucesso.');
+                fetchData();
+            } else {
+                onError('Erro na Validação', res.message || 'Código incorreto.');
+            }
+        } catch (err: any) {
+            onError('Erro na Validação', err.message || 'Erro ao processar código.');
+        }
+    };
+
     return (
         <div key={order.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex gap-4 mb-4">
+            <QRScannerModal
+                isOpen={isScannerOpen}
+                onClose={() => setIsScannerOpen(false)}
+                onScan={(code) => handleConfirm(code)}
+            />
             <div className="w-20 h-20 bg-zinc-950 rounded-xl overflow-hidden flex-shrink-0">
                 <img src={order.listing_image} alt={order.listing_title} className="w-full h-full object-cover" />
             </div>
@@ -59,21 +82,32 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                         </button>
                     )}
 
-                    {/* Código de Confirmação para o Comprador */}
-                    {order.buyer_id === currentUser?.id && order.delivery_confirmation_code && order.delivery_status !== 'DELIVERED' && order.delivery_status !== 'NONE' && (
-                        <div className="bg-indigo-500/20 border border-indigo-500/30 px-3 py-1.5 rounded-lg flex flex-col">
-                            <span className="text-[8px] text-indigo-400 font-black uppercase tracking-tighter">Código p/ Entregador</span>
-                            <span className="text-sm font-mono font-black text-white">{order.delivery_confirmation_code}</span>
+                    {/* Código de Segurança para o Comprador (Handshake) */}
+                    {order.buyer_id === currentUser?.id && order.delivery_confirmation_code && order.status !== 'COMPLETED' && order.status !== 'CANCELLED' && (
+                        <div className="bg-primary-500/10 border border-primary-500/20 p-4 rounded-3xl flex flex-col items-center gap-3 shadow-2xl shadow-primary-500/5">
+                            <div className="bg-white p-2 rounded-2xl shadow-inner border-4 border-zinc-900">
+                                <QRCodeSVG
+                                    value={order.delivery_confirmation_code}
+                                    size={100}
+                                    level="H"
+                                    includeMargin={false}
+                                />
+                            </div>
+                            <div className="text-center">
+                                <span className="text-[7px] text-primary-400 font-black uppercase tracking-[0.2em] mb-0.5 block">Código de Segurança Handshake</span>
+                                <span className="text-lg font-mono font-black text-white tracking-[0.3em]">{order.delivery_confirmation_code}</span>
+                            </div>
                         </div>
                     )}
 
                     <span className="text-[9px] font-black px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 capitalize">
                         {order.buyer_id === currentUser?.id ? 'Compra' : order.seller_id === currentUser?.id ? 'Venda' : 'Entrega'}
                     </span>
-                    {/* Código de Coleta para o Vendedor */}
-                    {order.seller_id === currentUser?.id && order.pickup_code && order.delivery_status === 'ACCEPTED' && (
+
+                    {/* Código de Coleta para o Vendedor/Entregador */}
+                    {order.seller_id === currentUser?.id && order.pickup_code && order.status !== 'COMPLETED' && order.status !== 'CANCELLED' && (
                         <div className="bg-amber-500/20 border border-amber-500/30 px-3 py-1.5 rounded-lg flex flex-col">
-                            <span className="text-[8px] text-amber-400 font-black uppercase tracking-tighter">Código p/ Entregador coeltar</span>
+                            <span className="text-[7px] text-amber-400 font-black uppercase tracking-tighter">Cód. P/ Coleta</span>
                             <span className="text-sm font-mono font-black text-white">{order.pickup_code}</span>
                         </div>
                     )}
@@ -242,8 +276,30 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                         </button>
                     )}
 
-                    {/* Comprador: Confirmar Recebimento - Aparece quando entregador marcou como entregue */}
-                    {order.buyer_id === currentUser?.id && (order.delivery_status === 'DELIVERED' || order.status === 'IN_TRANSIT') && order.status !== 'COMPLETED' && (
+                    {/* Vendedor/Entregador: Validar Entrega via Código (Handshake) */}
+                    {(order.seller_id === currentUser?.id || order.courier_id === currentUser?.id) && (order.status === 'WAITING_SHIPPING' || order.status === 'IN_TRANSIT') && order.status !== 'COMPLETED' && (
+                        <div className="flex items-center gap-2 ml-auto">
+                            <button
+                                onClick={() => setIsScannerOpen(true)}
+                                className="bg-primary-500 hover:bg-primary-400 text-black p-2.5 rounded-xl transition-all shadow-lg shadow-primary-500/20 flex items-center justify-center group"
+                                title="Escanear QR Code"
+                            >
+                                <Scan size={18} className="group-active:scale-90 transition-transform" />
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const code = prompt('Solicite ao comprador o código de segurança de 6 dígitos:');
+                                    if (code) handleConfirm(code);
+                                }}
+                                className="bg-zinc-800 hover:bg-zinc-700 text-white text-[9px] font-black px-4 py-2.5 rounded-xl transition-all uppercase tracking-widest border border-white/5"
+                            >
+                                Validar via Código
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Comprador: Confirmar Recebimento Manual */}
+                    {order.buyer_id === currentUser?.id && (order.delivery_status === 'DELIVERED' || order.status === 'IN_TRANSIT') && order.status !== 'COMPLETED' && order.status !== 'RETURN_REQUESTED' && (
                         <button
                             onClick={() => {
                                 setConfirmData({
@@ -266,9 +322,26 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                                     }
                                 });
                             }}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black px-4 py-2 rounded-lg transition-all uppercase tracking-widest shadow-lg shadow-emerald-600/20 flex items-center gap-1"
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black px-4 py-2 rounded-lg transition-all uppercase tracking-widest shadow-lg shadow-emerald-600/20 flex items-center gap-1 ml-auto"
                         >
                             ✅ Confirmar Recebimento
+                        </button>
+                    )}
+
+                    {/* Comprador: Solicitar Devolução (Arrependimento) */}
+                    {order.buyer_id === currentUser?.id && (order.delivery_status === 'DELIVERED' || order.status === 'IN_TRANSIT') && order.status !== 'COMPLETED' && order.status !== 'RETURN_REQUESTED' && (
+                        <button
+                            onClick={() => {
+                                const reason = prompt('Por que você deseja devolver este produto?');
+                                if (reason) {
+                                    apiService.post(`/marketplace/order/${order.id}/return`, { reason })
+                                        .then(() => { onSuccess('Sucesso', 'Solicitação de devolução enviada. O saldo está bloqueado.'); fetchData(); })
+                                        .catch((err: any) => onError('Erro', err.message));
+                                }
+                            }}
+                            className="bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-[9px] font-black px-4 py-2 rounded-lg transition-all uppercase tracking-widest border border-white/5 ml-2"
+                        >
+                            🚨 Solicitar Devolução
                         </button>
                     )}
                 </div>

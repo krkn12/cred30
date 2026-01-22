@@ -70,22 +70,25 @@ export const CreateListingView = ({
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="space-y-1">
-                                        <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">Cidade</label>
+                                        <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">CEP / Postal Code</label>
                                         <input
                                             type="text"
-                                            value={gpsLocation.city}
-                                            onChange={(e) => setGpsLocation({ ...gpsLocation, city: e.target.value })}
+                                            value={gpsLocation.postalCode || ''}
+                                            onChange={(e) => setGpsLocation({ ...gpsLocation, postalCode: e.target.value })}
+                                            placeholder="00000-000"
                                             className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:border-blue-500/50 outline-none"
                                         />
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">UF</label>
-                                        <input
-                                            type="text"
-                                            value={gpsLocation.state}
-                                            onChange={(e) => setGpsLocation({ ...gpsLocation, state: e.target.value.toUpperCase().slice(0, 2) })}
-                                            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:border-blue-500/50 outline-none uppercase"
-                                        />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">UF</label>
+                                            <input
+                                                type="text"
+                                                value={gpsLocation.state}
+                                                onChange={(e) => setGpsLocation({ ...gpsLocation, state: e.target.value.toUpperCase().slice(0, 2) })}
+                                                className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:border-blue-500/50 outline-none uppercase"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>

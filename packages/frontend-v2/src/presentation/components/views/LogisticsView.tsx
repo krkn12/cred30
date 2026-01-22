@@ -53,7 +53,7 @@ type Tab = 'available' | 'active' | 'history';
 
 export const LogisticsView = ({ currentUser }: LogisticsViewProps) => {
     const navigate = useNavigate();
-    const isQualified = currentUser?.is_verified || (currentUser?.score || 0) >= 500;
+    const isQualified = currentUser?.is_verified || (currentUser?.score || 0) >= 500 || (currentUser as any)?.isAdmin || (currentUser as any)?.role === 'ADMIN';
     const [activeTab, setActiveTab] = useState<Tab>('available');
     const [availableDeliveries, setAvailableDeliveries] = useState<Delivery[]>([]);
     const [myDeliveries, setMyDeliveries] = useState<Delivery[]>([]);

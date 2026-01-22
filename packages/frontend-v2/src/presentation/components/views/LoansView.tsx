@@ -208,8 +208,8 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                             <DollarSign className="text-primary-400" size={24} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-white">Solicitar Ajuda Mútua</h2>
-                            <p className="text-zinc-400 text-sm">Apoio financeiro imediato para membros</p>
+                            <h2 className="text-xl font-bold text-white">Solicitar Reciprocidade</h2>
+                            <p className="text-zinc-400 text-sm">Apoio social imediato para membros</p>
                         </div>
                     </div>
 
@@ -393,7 +393,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                     </div>
                                 </div>
                                 <label htmlFor="loanTerms" className="text-[10px] text-zinc-500 leading-tight pt-0.5 cursor-pointer select-none">
-                                    Li e concordo com os Termos da Cédula de Crédito Bancário (CCB) e declaro estar ciente dos juros e multas por atraso.
+                                    Li e concordo com o Termo de Adesão ao Mútuo Civil e declaro estar ciente das taxas de manutenção e reposição.
                                 </label>
                             </div>
 
@@ -663,7 +663,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
 
             {/* Legal Disclaimer */}
             <div className="mt-8 px-4 text-[10px] text-zinc-600 text-center leading-relaxed">
-                <p>As ajudas mútuas estão sujeitas à análise de Score e disponibilidade de caixa do Clube. Os apoios são lastreados por execução de garantia sobre licenças ativas no sistema. Em caso de atraso superior a 5 dias, o lastro será executado automaticamente conforme Termos de Uso (SCP/Mútuo Civil).</p>
+                <p>As ajudas mútuas estão sujeitas à análise de Score e disponibilidade de caixa do Clube. Os apoios são lastreados por execução de garantia sobre licenças ativas no sistema. Em caso de atraso superior a 5 dias, o lastro será executado automaticamente conforme Termos de Uso (SCP/Mútuo Civil) e Termo de Adesão.</p>
             </div>
         </div>
     );

@@ -12,6 +12,7 @@ import {
     QUOTA_FEE_OPERATIONAL_SHARE,
     QUOTA_FEE_OWNER_SHARE,
     QUOTA_FEE_INVESTMENT_SHARE,
+    QUOTA_FEE_CORPORATE_SHARE,
     ADMIN_PIX_KEY,
     MAX_QUOTAS_PER_USER
 } from '../../../shared/constants/business.constants';
@@ -246,17 +247,19 @@ export class QuotasController {
                     const taxAmount = totalAdmFee * QUOTA_FEE_TAX_SHARE;
                     const operationalAmount = totalAdmFee * QUOTA_FEE_OPERATIONAL_SHARE;
                     const ownerAmount = totalAdmFee * QUOTA_FEE_OWNER_SHARE;
-                    const growthAmount = totalAdmFee * QUOTA_FEE_INVESTMENT_SHARE; // 25% da taxa vai para crescimento (mutual/investment)
+                    const stabilityAmount = totalAdmFee * QUOTA_FEE_INVESTMENT_SHARE;
+                    const corporateAmount = totalAdmFee * QUOTA_FEE_CORPORATE_SHARE;
                     const principalAmount = quantity * QUOTA_SHARE_VALUE; // R$ 42 por cota
 
                     await client.query(`
-            UPDATE system_config SET 
-              total_tax_reserve = total_tax_reserve + $1,
-              total_operational_reserve = total_operational_reserve + $2,
-              total_owner_profit = total_owner_profit + $3,
-              mutual_reserve = COALESCE(mutual_reserve, 0) + $4,
-              investment_reserve = COALESCE(investment_reserve, 0) + $5
-          `, [taxAmount, operationalAmount, ownerAmount, growthAmount, principalAmount]);
+                        UPDATE system_config SET 
+                            total_tax_reserve = total_tax_reserve + $1,
+                            total_operational_reserve = total_operational_reserve + $2,
+                            total_owner_profit = total_owner_profit + $3,
+                            mutual_reserve = COALESCE(mutual_reserve, 0) + $4,
+                            total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $5,
+                            investment_reserve = COALESCE(investment_reserve, 0) + $6
+                    `, [taxAmount, operationalAmount, ownerAmount, stabilityAmount, corporateAmount, principalAmount]);
 
                     // AUDITORIA FINTECH
                     try {

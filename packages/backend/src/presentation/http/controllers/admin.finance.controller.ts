@@ -220,6 +220,8 @@ export class AdminFinanceController {
             config.investment_reserve = parseFloat(String(config.investment_reserve || 0));
             config.mutual_reserve = parseFloat(String(config.mutual_reserve || 0));
             config.mutual_protection_fund = parseFloat(String(config.mutual_protection_fund || 0));
+            config.total_corporate_investment_reserve = parseFloat(String(config.total_corporate_investment_reserve || 0));
+            config.credit_guarantee_fund = parseFloat(String(config.credit_guarantee_fund || 0));
             config.courier_price_per_km = parseFloat(String(config.courier_price_per_km || '2.50'));
 
             const statsResult = await pool.query(`
@@ -265,9 +267,11 @@ export class AdminFinanceController {
             const calcProfit = Number(config.total_owner_profit || 0);
             const calcMutual = Number(config.mutual_reserve || 0);
             const calcInvest = Number(config.investment_reserve || 0);
+            const calcCorp = Number(config.total_corporate_investment_reserve || 0);
+            const calcGfc = Number(config.credit_guarantee_fund || 0);
             const calcCosts = Number(totalMonthlyCosts || 0);
             const calcUsers = Number(totalUserBalances || 0);
-            config.total_reserves = calcTax + calcOper + calcProfit + calcMutual + calcInvest + calcCosts + calcUsers;
+            config.total_reserves = calcTax + calcOper + calcProfit + calcMutual + calcInvest + calcCorp + calcGfc + calcCosts + calcUsers;
             config.total_user_balances = totalUserBalances;
             config.theoretical_cash = operationalCash;
             config.monthly_fixed_costs = totalMonthlyCosts;

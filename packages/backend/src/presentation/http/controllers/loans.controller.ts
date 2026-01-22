@@ -8,7 +8,9 @@ import {
     PLATFORM_FEE_OPERATIONAL_SHARE,
     PLATFORM_FEE_OWNER_SHARE,
     PLATFORM_FEE_INVESTMENT_SHARE,
-    ADMIN_PIX_KEY
+    PLATFORM_FEE_CORPORATE_SHARE,
+    ADMIN_PIX_KEY,
+    LOAN_GFC_FEE_RATE
 } from '../../../shared/constants/business.constants';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
 import { AuditService, AuditActionType } from '../../../application/services/audit.service';
@@ -166,6 +168,8 @@ export class LoansController {
                 }, 400);
             }
 
+
+
             const offer = loanOffer.offer!;
             const welcomeBenefit = await getWelcomeBenefit(pool, user.id);
             let finalInterestRate = offer.interestRate;
@@ -174,11 +178,17 @@ export class LoansController {
             }
             const originationRate = welcomeBenefit.loanOriginationFeeRate;
 
+            // FGC: Taxa de Proteção de Crédito (capitalizada no momento do empréstimo)
+            const gfcFee = amount * LOAN_GFC_FEE_RATE;
+            const amountWithFee = amount + gfcFee;
+
             const originationFee = 0;
             const amountToDisburse = amount;
-            const totalRepayment = amount * (1 + finalInterestRate);
+            // O Total a Pagar inclui o Principal + Taxa FGC + Juros sobre ambos
+            const totalRepayment = amountWithFee * (1 + finalInterestRate);
 
             const initialStatus = guarantorId ? 'WAITING_GUARANTOR' : 'PENDING';
+
 
             const result = await executeInTransaction(pool, async (client: PoolClient) => {
                 // 1. LOCK DE SEGURANÇA: Bloquear usuário para evitar múltiplos empréstimos simultâneos excedendo limite
@@ -231,6 +241,7 @@ export class LoansController {
                         installments * 30,
                         JSON.stringify({
                             originationFee,
+                            gfcFee,
                             disbursedAmount: amountToDisburse,
                             guaranteePercentage: offer.guaranteePercentage,
                             guaranteeValue: offer.guaranteeValue,
@@ -244,7 +255,7 @@ export class LoansController {
                                 accepted_terms: true,
                                 ip_address: c.req.header('x-forwarded-for') || '127.0.0.1',
                                 user_agent: c.req.header('user-agent') || 'Unknown',
-                                contract_version: 'CCB_V1'
+                                contract_version: 'TERMO_ADESAO_MUTUO_V1'
                             }
                         })
                     ]
@@ -414,10 +425,11 @@ export class LoansController {
                     // 5. Distribuição Contábil
                     const profitShare = remainingInterest * 0.80;
                     const systemShare = remainingInterest * 0.20;
-                    const taxPart = systemShare * 0.25;
-                    const operPart = systemShare * 0.25;
-                    const ownerPart = systemShare * 0.25;
-                    const investPart = systemShare * 0.25;
+                    const taxPart = systemShare * 0.20;
+                    const operPart = systemShare * 0.20;
+                    const ownerPart = systemShare * 0.20;
+                    const investPart = systemShare * 0.20;
+                    const corporatePart = systemShare * 0.20;
 
                     await client.query(`
                         UPDATE system_config SET 
@@ -426,8 +438,9 @@ export class LoansController {
                             profit_pool = profit_pool + $3,
                             total_tax_reserve = total_tax_reserve + $4,
                             total_operational_reserve = total_operational_reserve + $5,
-                            total_owner_profit = total_owner_profit + $6
-                        `, [remainingToPay, remainingPrincipal + investPart, profitShare, taxPart, operPart, ownerPart]
+                            total_owner_profit = total_owner_profit + $6,
+                            total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $7
+                        `, [remainingToPay, remainingPrincipal + investPart, profitShare, taxPart, operPart, ownerPart, corporatePart]
                     );
 
                     // 6. Atualizar Score
@@ -577,20 +590,21 @@ export class LoansController {
                 const profitShare = interestPortion * 0.80; // 80% dos juros para cotistas
                 const systemShare = interestPortion * 0.20; // 20% dos juros para o sistema
 
-                const taxPart = systemShare * 0.25;
-                const operPart = systemShare * 0.25;
-                const ownerPart = systemShare * 0.25;
-                const investPart = systemShare * 0.25;
+                const taxPart = systemShare * 0.20;
+                const operPart = systemShare * 0.20;
+                const ownerPart = systemShare * 0.20;
+                const investPart = systemShare * 0.20;
+                const corporatePart = systemShare * 0.20;
 
                 await client.query(`
                     UPDATE system_config SET 
                         investment_reserve = COALESCE(investment_reserve, 0) + $1 + $6,
                         profit_pool = profit_pool + $2,
-                        -- O system_balance NÃO aumenta aqui pois o dinheiro já está no sistema
                         total_tax_reserve = total_tax_reserve + $3,
                         total_operational_reserve = total_operational_reserve + $4,
-                        total_owner_profit = total_owner_profit + $5
-                    `, [principalPortion, profitShare, taxPart, operPart, ownerPart, investPart]
+                        total_owner_profit = total_owner_profit + $5,
+                        total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $7
+                    `, [principalPortion, profitShare, taxPart, operPart, ownerPart, investPart, corporatePart]
                 );
 
                 // D. Registrar Transação no Histórico (CORREÇÃO DE BUG: Faltava este registro)

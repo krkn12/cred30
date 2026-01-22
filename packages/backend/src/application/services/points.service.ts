@@ -6,6 +6,7 @@ import { executeInTransaction, createTransaction } from '../../domain/services/t
  */
 export const VALUE_PER_1000_POINTS = 0.07;
 export const MIN_POINTS_FOR_CONVERSION = 1000;
+export const POINTS_CONVERSION_RATE = 1000 / VALUE_PER_1000_POINTS; // ~14285.71
 
 export class PointsService {
     /**

@@ -63,6 +63,29 @@ export const ItemDetailsView = ({
     const [additionalImages, setAdditionalImages] = React.useState<string[]>([]);
     const [isLoadingDetails, setIsLoadingDetails] = React.useState(true);
 
+    // Shipping State
+    const [shippingCep, setShippingCep] = React.useState('');
+    const [isCalculatingShipping, setIsCalculatingShipping] = React.useState(false);
+    const [shippingQuote, setShippingQuote] = React.useState<any>(null);
+
+    const handleCalculateShipping = async () => {
+        if (shippingCep.length < 8) return;
+        setIsCalculatingShipping(true);
+        try {
+            const res = await apiMarketplace.getShippingQuote(item.id, shippingCep);
+            if (res.success) {
+                setShippingQuote(res.data);
+                if (deliveryOption === 'EXTERNAL_SHIPPING') {
+                    setOfferedFee(res.data.fee.toString());
+                }
+            }
+        } catch (err) {
+            console.error("Error calculating shipping", err);
+        } finally {
+            setIsCalculatingShipping(false);
+        }
+    };
+
     // Fetch Details on Mount
     React.useEffect(() => {
         const fetchDetails = async () => {
@@ -102,7 +125,12 @@ export const ItemDetailsView = ({
     const currentStock = selectedVariant ? selectedVariant.stock : (item.stock ? parseInt(item.stock) : 1);
     const isOutOfStock = currentStock <= 0;
 
-    const deliveryFee = deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee || '0') : deliveryOption === 'EXTERNAL_SHIPPING' ? 35.00 : 0;
+    const deliveryFee = deliveryOption === 'COURIER_REQUEST'
+        ? parseFloat(offeredFee || '0')
+        : deliveryOption === 'EXTERNAL_SHIPPING'
+            ? (shippingQuote?.fee || (item.free_shipping ? 0 : parseFloat(item.shipping_cost || '35')))
+            : 0;
+
     const totalAmount = (currentPrice * quantity) + deliveryFee;
 
     return (
@@ -362,10 +390,39 @@ export const ItemDetailsView = ({
                         </div>
 
                         {deliveryOption === 'EXTERNAL_SHIPPING' && (
-                            <div className="bg-amber-900/10 border border-amber-500/20 rounded-2xl p-4 space-y-2 animate-in slide-in-from-top-2">
-                                <p className="text-[10px] text-amber-400 font-black uppercase tracking-widest">Aviso de Envio Nacional</p>
+                            <div className="bg-amber-900/10 border border-amber-500/20 rounded-2xl p-4 space-y-4 animate-in slide-in-from-top-2">
+                                <p className="text-[10px] text-amber-400 font-black uppercase tracking-widest">Calculadora de Frete Nacional</p>
+                                <div className="flex gap-2">
+                                    <input
+                                        placeholder="Seu CEP (00000-000)"
+                                        value={shippingCep}
+                                        onChange={e => setShippingCep(e.target.value)}
+                                        className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs text-white"
+                                    />
+                                    <button
+                                        onClick={handleCalculateShipping}
+                                        disabled={isCalculatingShipping || shippingCep.length < 8}
+                                        className="bg-amber-500 hover:bg-amber-400 text-black px-4 py-2 rounded-xl text-[10px] font-black uppercase disabled:opacity-50"
+                                    >
+                                        {isCalculatingShipping ? '...' : 'Calcular'}
+                                    </button>
+                                </div>
+
+                                {shippingQuote && (
+                                    <div className="flex justify-between items-center bg-black/40 p-3 rounded-xl border border-white/5">
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] text-zinc-500 font-bold uppercase">Estimativa de Entrega</span>
+                                            <span className="text-xs text-white font-black">{shippingQuote.deliveryEstimateDays} dias úteis</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-[8px] text-zinc-500 font-bold uppercase">Valor</span>
+                                            <span className="text-sm text-amber-400 font-black block">{formatCurrency(shippingQuote.fee)}</span>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <p className="text-[9px] text-zinc-400 leading-relaxed">
-                                    A taxa de <span className="text-white">R$ 35,00</span> cobre o custo médio de postagem via Correios/Transportadora. O vendedor será responsável por postar o produto e informar o rastreio.
+                                    O cálculo é baseado na distância entre você e o vendedor via Motor de Logística Cred30.
                                 </p>
                             </div>
                         )}
@@ -416,7 +473,7 @@ export const ItemDetailsView = ({
                                 onClick={() => onBuy({
                                     listingId: item.id,
                                     deliveryType: deliveryOption,
-                                    deliveryFee: deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee) : deliveryOption === 'EXTERNAL_SHIPPING' ? 35.00 : 0,
+                                    deliveryFee: deliveryFee,
                                     deliveryAddress: deliveryAddress || 'Principal',
                                     invitedCourierId: invitedCourierId || undefined,
                                     quantity: quantity,
@@ -446,7 +503,7 @@ export const ItemDetailsView = ({
                                     onBuy({
                                         listingId: item.id,
                                         deliveryType: deliveryOption,
-                                        deliveryFee: deliveryOption === 'COURIER_REQUEST' ? parseFloat(offeredFee) : deliveryOption === 'EXTERNAL_SHIPPING' ? 35.00 : 0,
+                                        deliveryFee: deliveryFee,
                                         deliveryAddress: deliveryAddress || 'Principal',
                                         invitedCourierId: invitedCourierId || undefined,
                                         quantity: quantity,
