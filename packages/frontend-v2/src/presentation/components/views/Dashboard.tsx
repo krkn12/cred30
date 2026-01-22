@@ -183,7 +183,13 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                 const randomVideo = feed[Math.floor(Math.random() * feed.length)];
                 setViewFarmVideo(randomVideo);
                 setAdTimer(5); // 5 segundos para o baú
-                await apiService.misc.startPromoView(randomVideo.id);
+                if (randomVideo.id) {
+                    try {
+                        await apiService.misc.startPromoView(randomVideo.id);
+                    } catch (e) {
+                        console.warn('Erro ao iniciar view (AdBlock?):', e);
+                    }
+                }
             } else {
                 // FALLBACK: Se não tiver vídeo da View Farm, mostra anúncio Adsterra/Link
                 setViewFarmVideo({

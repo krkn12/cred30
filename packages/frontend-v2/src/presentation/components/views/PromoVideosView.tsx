@@ -354,6 +354,11 @@ export const PromoVideosView: React.FC<PromoVideosViewProps> = ({
     };
 
     const startWatching = async (video: PromoVideo) => {
+        if (!video.id) {
+            onError('Erro', 'Vídeo inválido ou sem identificação.');
+            return;
+        }
+
         try {
             const res = await apiService.post<any>(`/promo-videos/${video.id}/start-view`, {
                 deviceFingerprint: getDeviceFingerprint()
