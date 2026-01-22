@@ -48,6 +48,7 @@ import { sellerRoutes } from './presentation/http/routes/seller.routes';
 import { tutorRoutes } from './presentation/http/routes/tutors.routes';
 import { logisticsRoutes } from './presentation/http/routes/logistics.routes';
 import { consortiumRoutes } from './presentation/http/routes/consortium.routes';
+import { pdvRoutes } from './presentation/http/routes/pdv.routes';
 
 // Infraestrutura
 import { initializeScheduler } from './scheduler';
@@ -152,6 +153,7 @@ app.route('/api/seller', sellerRoutes);
 app.route('/api/logistics', logisticsRoutes);
 app.route('/api/tutors', tutorRoutes);
 app.route('/api/consortium', consortiumRoutes);
+app.route('/api/pdv', pdvRoutes);
 
 // Rotas Base e Health Check
 app.get('/', (c: Context) => c.json({

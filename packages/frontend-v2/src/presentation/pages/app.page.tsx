@@ -65,6 +65,7 @@ const DepositView = lazyWithRetry(() => import('../components/views/DepositView'
 const ServicesView = lazyWithRetry(() => import('../components/views/ServicesView').then(m => ({ default: m.ServicesView })));
 const RewardsShopView = lazyWithRetry(() => import('../components/views/RewardsShopView').then(m => ({ default: m.RewardsShopView })));
 const ConsortiumView = lazyWithRetry(() => import('../components/views/ConsortiumView').then(m => ({ default: m.ConsortiumView })));
+const PdvView = lazyWithRetry(() => import('../components/views/PdvView').then(m => ({ default: m.PdvView })));
 
 export default function App() {
   const [state, setState] = useState<AppState>({
@@ -689,6 +690,16 @@ export default function App() {
                 <Route path="consortium" element={
                   <Suspense fallback={null}>
                     <ConsortiumView
+                      onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                      onError={(title, message) => setShowError({ isOpen: true, title, message })}
+                    />
+                  </Suspense>
+                } />
+                <Route path="pdv" element={
+                  <Suspense fallback={null}>
+                    <PdvView
+                      state={state}
+                      onRefresh={refreshState}
                       onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
                       onError={(title, message) => setShowError({ isOpen: true, title, message })}
                     />
