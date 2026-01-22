@@ -2,9 +2,9 @@ import { Pool, PoolClient } from 'pg';
 import { executeInTransaction, createTransaction } from '../../domain/services/transaction.service';
 
 /**
- * Taxa de Conversão Oficial: 1000 pontos = R$ 1,00
+ * Taxa de Conversão Oficial: 1000 pontos = R$ 0,07
  */
-export const POINTS_CONVERSION_RATE = 1000;
+export const VALUE_PER_1000_POINTS = 0.07;
 export const MIN_POINTS_FOR_CONVERSION = 1000;
 
 export class PointsService {
@@ -56,7 +56,8 @@ export class PointsService {
 
                 // 2. Calcular valores
                 const pointsToConvert = Math.floor(currentPoints / MIN_POINTS_FOR_CONVERSION) * MIN_POINTS_FOR_CONVERSION;
-                const amountToAdd = pointsToConvert / POINTS_CONVERSION_RATE;
+                // Ex: 1000 pts -> 1 unidade * R$ 0.07 = R$ 0.07
+                const amountToAdd = (pointsToConvert / 1000) * VALUE_PER_1000_POINTS;
 
                 if (systemBalance < amountToAdd) {
                     throw new Error('Fundo de pagamentos insuficiente no momento. Tente novamente mais tarde.');
@@ -74,7 +75,7 @@ export class PointsService {
                     amountToAdd,
                     `Conversão de ${pointsToConvert} pontos em saldo`,
                     'APPROVED',
-                    { points: pointsToConvert, rate: POINTS_CONVERSION_RATE }
+                    { points: pointsToConvert, rate: VALUE_PER_1000_POINTS }
                 );
 
                 console.log(`[PointsService] Conversão: ${pointsToConvert} pts -> R$ ${amountToAdd.toFixed(2)} para usuário ${userId}`);
