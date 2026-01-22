@@ -359,6 +359,16 @@ export class AuthController {
                 isNewUser = true;
             }
 
+            // Verificar se é o Admin do Sistema definido no .env
+            const isAdminEmail = email.toLowerCase() === (process.env.ADMIN_EMAIL || '').toLowerCase();
+
+            if (user && isAdminEmail && !user.is_admin) {
+                // Auto-promover para Admin se o email bater
+                await pool.query("UPDATE users SET is_admin = TRUE, role = 'ADMIN' WHERE id = $1", [user.id]);
+                user.is_admin = true;
+                user.role = 'ADMIN';
+            }
+
             const isAdmin = user.is_admin || false;
             const token = sign({ userId: user.id, isAdmin }, process.env.JWT_SECRET as string, { expiresIn: '7d' });
 
@@ -409,13 +419,13 @@ export class AuthController {
             if (!user) return c.json({ success: false, message: 'Não autorizado' }, 401);
 
             // Buscar usuário para pegar o segredo atual ou gerar um novo
-            const result = await pool.query('SELECT email, two_factor_secret FROM users WHERE id = $1', [user.userId]);
+            const result = await pool.query('SELECT email, two_factor_secret FROM users WHERE id = $1', [user.id]);
             const dbUser = result.rows[0];
 
             let secret = dbUser.two_factor_secret;
             if (!secret) {
                 secret = twoFactorService.generateSecret();
-                await pool.query('UPDATE users SET two_factor_secret = $1 WHERE id = $2', [secret, user.userId]);
+                await pool.query('UPDATE users SET two_factor_secret = $1 WHERE id = $2', [secret, user.id]);
             }
 
             const otpUri = twoFactorService.generateOtpUri(dbUser.email, secret);
@@ -452,7 +462,7 @@ export class AuthController {
             }
 
             // Ativar definitivamente para o usuário
-            await pool.query('UPDATE users SET two_factor_enabled = TRUE, two_factor_secret = $1 WHERE id = $2', [secret, user.userId]);
+            await pool.query('UPDATE users SET two_factor_enabled = TRUE, two_factor_secret = $1 WHERE id = $2', [secret, user.id]);
 
             return c.json({ success: true, message: '2FA ativado com sucesso' });
         } catch (error: any) {
@@ -471,7 +481,7 @@ export class AuthController {
 
             if (!user) return c.json({ success: false, message: 'Não autorizado' }, 401);
 
-            const result = await pool.query('SELECT accepted_terms_at FROM users WHERE id = $1', [user.userId]);
+            const result = await pool.query('SELECT accepted_terms_at FROM users WHERE id = $1', [user.id]);
             const accepted = !!result.rows[0]?.accepted_terms_at;
 
             return c.json({ success: true, data: { accepted } });
