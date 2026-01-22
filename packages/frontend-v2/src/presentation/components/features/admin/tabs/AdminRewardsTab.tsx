@@ -382,8 +382,9 @@ export const AdminRewardsTab: React.FC<{ onSuccess: (t: string, m: string) => vo
                                         value={formData.points_cost || ''}
                                         onChange={e => setFormData({ ...formData, points_cost: Number(e.target.value) })}
                                         required
-                                        className="w-full bg-black/50 border border-zinc-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-primary-500 transition-colors"
-                                        placeholder="2500"
+                                        placeholder="Automático"
+                                        readOnly
+                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-zinc-400 font-bold outline-none cursor-not-allowed"
                                     />
                                 </div>
                                 <div>
@@ -393,13 +394,24 @@ export const AdminRewardsTab: React.FC<{ onSuccess: (t: string, m: string) => vo
                                         type="number"
                                         step="0.01"
                                         value={formData.value || ''}
-                                        onChange={e => setFormData({ ...formData, value: Number(e.target.value) })}
+                                        onChange={e => {
+                                            const val = Number(e.target.value);
+                                            setFormData({
+                                                ...formData,
+                                                value: val,
+                                                points_cost: Math.round(val * 1000) // 1000 pts = R$ 1,00
+                                            });
+                                        }}
                                         required
                                         className="w-full bg-black/50 border border-zinc-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-primary-500 transition-colors"
                                         placeholder="25.00"
                                     />
                                 </div>
                             </div>
+                            <p className="text-[10px] text-zinc-500 -mt-2 px-1 text-right">
+                                Conversão: R$ 1,00 = 1.000 pts
+                            </p>
+
 
                             <div className="flex items-center gap-4 bg-black/30 p-4 rounded-2xl border border-zinc-800">
                                 <label className="flex items-center gap-3 cursor-pointer select-none flex-1">
@@ -419,47 +431,49 @@ export const AdminRewardsTab: React.FC<{ onSuccess: (t: string, m: string) => vo
                             </button>
                         </form>
                     </div>
-                </div>
+                </div >
             )}
 
             {/* Modal de Estoque */}
-            {showInventoryModal && (
-                <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4 backdrop-blur-xl animate-in fade-in duration-300">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] w-full max-w-lg p-8 shadow-2xl ring-1 ring-white/10">
-                        <div className="flex justify-between items-center mb-8">
-                            <h3 className="text-2xl font-black text-white tracking-tight">Abastecer Estoque</h3>
-                            <button onClick={() => setShowInventoryModal(false)} className="text-zinc-600 hover:text-white bg-white/5 p-2 rounded-full transition-colors"><X size={24} /></button>
-                        </div>
-
-                        <div className="space-y-6">
-                            <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex gap-4 items-start">
-                                <AlertCircle size={24} className="text-amber-500 shrink-0" />
-                                <p className="text-xs text-zinc-400 leading-relaxed font-medium">
-                                    Insira os códigos um abaixo do outro (um por linha). Códigos duplicados serão ignorados.
-                                </p>
+            {
+                showInventoryModal && (
+                    <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4 backdrop-blur-xl animate-in fade-in duration-300">
+                        <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] w-full max-w-lg p-8 shadow-2xl ring-1 ring-white/10">
+                            <div className="flex justify-between items-center mb-8">
+                                <h3 className="text-2xl font-black text-white tracking-tight">Abastecer Estoque</h3>
+                                <button onClick={() => setShowInventoryModal(false)} className="text-zinc-600 hover:text-white bg-white/5 p-2 rounded-full transition-colors"><X size={24} /></button>
                             </div>
 
-                            <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2 px-1">Códigos dos Gift Cards</label>
-                                <textarea
-                                    className="w-full bg-black/50 border border-zinc-800 rounded-2xl p-4 text-white font-mono text-sm outline-none focus:border-primary-500 transition-colors h-48 resize-none"
-                                    placeholder="ABCD-1234-EFGH-5678&#10;WXYZ-9876-UVTS-5432"
-                                    value={inventoryCodes}
-                                    onChange={e => setInventoryCodes(e.target.value)}
-                                />
-                            </div>
+                            <div className="space-y-6">
+                                <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex gap-4 items-start">
+                                    <AlertCircle size={24} className="text-amber-500 shrink-0" />
+                                    <p className="text-xs text-zinc-400 leading-relaxed font-medium">
+                                        Insira os códigos um abaixo do outro (um por linha). Códigos duplicados serão ignorados.
+                                    </p>
+                                </div>
 
-                            <button
-                                onClick={handleAddInventory}
-                                disabled={!inventoryCodes.trim()}
-                                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-                            >
-                                <CheckCircle2 size={20} /> Confirmar Adição ao Estoque
-                            </button>
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2 px-1">Códigos dos Gift Cards</label>
+                                    <textarea
+                                        className="w-full bg-black/50 border border-zinc-800 rounded-2xl p-4 text-white font-mono text-sm outline-none focus:border-primary-500 transition-colors h-48 resize-none"
+                                        placeholder="ABCD-1234-EFGH-5678&#10;WXYZ-9876-UVTS-5432"
+                                        value={inventoryCodes}
+                                        onChange={e => setInventoryCodes(e.target.value)}
+                                    />
+                                </div>
+
+                                <button
+                                    onClick={handleAddInventory}
+                                    disabled={!inventoryCodes.trim()}
+                                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                                >
+                                    <CheckCircle2 size={20} /> Confirmar Adição ao Estoque
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
