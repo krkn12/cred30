@@ -410,7 +410,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
     }
 
     return (
-        <div className="space-y-6 pb-12">
+        <div className="space-y-6 pb-12 px-4 sm:px-6">
             {/* Header de Ação Superior (Estilo App Marketplace) */}
             <div className="flex items-center justify-between gap-4">
                 <div className="flex-1">
@@ -666,7 +666,7 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
             {/* Content Rendering */}
             {view === 'browse' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-in fade-in duration-300">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 animate-in fade-in duration-300">
                     {(() => {
                         // Usar debouncedSearchQuery para evitar filtros excessivos durante digitação
                         if (listings.length === 0 && (debouncedSearchQuery || selectedCategory !== 'TODOS')) {
