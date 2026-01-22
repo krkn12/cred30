@@ -51,8 +51,8 @@ export class PointsService {
                     throw new Error(`Mínimo de ${MIN_POINTS_FOR_CONVERSION} pontos para conversão.`);
                 }
 
-                const systemRes = await client.query('SELECT system_balance FROM system_config LIMIT 1 FOR UPDATE');
-                const systemBalance = parseFloat(systemRes.rows[0]?.system_balance || '0');
+                const systemRes = await client.query('SELECT total_operational_reserve FROM system_config LIMIT 1 FOR UPDATE');
+                const systemBalance = parseFloat(systemRes.rows[0]?.total_operational_reserve || '0');
 
                 // 2. Calcular valores
                 const pointsToConvert = Math.floor(currentPoints / MIN_POINTS_FOR_CONVERSION) * MIN_POINTS_FOR_CONVERSION;
@@ -60,11 +60,12 @@ export class PointsService {
                 const amountToAdd = (pointsToConvert / 1000) * VALUE_PER_1000_POINTS;
 
                 if (systemBalance < amountToAdd) {
-                    throw new Error('Fundo de pagamentos insuficiente no momento. Tente novamente mais tarde.');
+                    throw new Error('Fundo de Reserva Operacional insuficiente no momento. Tente novamente mais tarde.');
                 }
 
                 // 3. Executar atualizações
-                await client.query('UPDATE system_config SET system_balance = system_balance - $1', [amountToAdd]);
+                // Debita da Reserva Operacional (que recebe 25% das taxas)
+                await client.query('UPDATE system_config SET total_operational_reserve = total_operational_reserve - $1', [amountToAdd]);
                 await client.query('UPDATE users SET ad_points = ad_points - $1, balance = balance + $2 WHERE id = $3', [pointsToConvert, amountToAdd, userId]);
 
                 // 4. Registrar transação
