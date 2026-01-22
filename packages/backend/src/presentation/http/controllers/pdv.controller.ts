@@ -3,7 +3,7 @@ import { getDbPool } from '../../../infrastructure/database/postgresql/connectio
 import { executeInTransaction, createTransaction } from '../../../domain/services/transaction.service';
 import { UserContext } from '../../../shared/types/hono.types';
 import { PoolClient } from 'pg';
-import { getCreditAnalysis, calculateInterestRate, calculateLoanOffer } from '../../../application/services/credit-analysis.service';
+import { getCreditAnalysis, calculateInterestRate, calculateUserLoanLimit } from '../../../application/services/credit-analysis.service';
 import { ONE_MONTH_MS, PENALTY_RATE } from '../../../shared/constants/business.constants';
 
 // Taxa fixa do PDV (3.5%)
@@ -306,7 +306,7 @@ export class PdvController {
                         [customerId]
                     );
                     const activeDebt = parseFloat(activeLoansRes.rows[0].total);
-                    const limit = calculateUserLoanLimit(parseFloat(customer.balance), 0); // Simplificação ou precisa importar lógica completa.
+                    const limit = await calculateUserLoanLimit(pool, customerId);
                     // Para simplificar e evitar importar muita coisa, vamos confiar no LOCK do usuário.
                     // Se lockamos o usuário, ele não consegue mudar o saldo (garantia), logo o limite base não muda.
                     // O activeDebt poderia mudar se outro processo inserir loan sem lockar user? Sim.

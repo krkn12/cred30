@@ -1,5 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { LoadingScreen } from '../components/ui/LoadingScreen';
 import { Layout } from '../components/layout/main-layout.component';
 import { UpdateNotification } from '../components/ui/update-notification.component';
 import { loadState, logoutUser, buyQuota, sellQuota, sellAllQuotas, requestLoan, repayLoan, repayInstallment, changePassword, apiService, requestDeposit, upgradePro, clearPendingItemsCache, deleteUserAccount } from '../../application/services/storage.service';
