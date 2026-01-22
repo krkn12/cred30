@@ -30,6 +30,7 @@ import { AdminCompliance } from '../features/admin/tabs/AdminCompliance';
 
 // Existing Shared Components
 import { AdminStoreManager } from '../features/store/admin-store.component';
+import { NotificationBell } from '../ui/NotificationBell';
 
 interface AdminViewProps {
     state: AppState;
@@ -179,6 +180,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                     </div>
 
                     <div className="flex flex-wrap items-center justify-center gap-4">
+                        <NotificationBell />
                         <button
                             onClick={handleRefresh}
                             className="group bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700/50 hover:border-primary-500/50 px-6 py-3.5 rounded-2xl flex items-center gap-3 transition-all duration-300 text-sm font-bold text-zinc-300 shadow-lg"
