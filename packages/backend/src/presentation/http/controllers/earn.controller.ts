@@ -85,13 +85,14 @@ export class EarnController {
 
                 await client.query(
                     `UPDATE users SET 
-                        ad_points = COALESCE(ad_points, 0) + $1, 
                         last_reward_at = CURRENT_TIMESTAMP,
-                        daily_chests_opened = $2,
-                        last_chest_date = $3
-                    WHERE id = $4`,
-                    [REWARD_POINTS, dailyChestsOpened + 1, today, user.id]
+                        daily_chests_opened = $1,
+                        last_chest_date = $2
+                    WHERE id = $3`,
+                    [dailyChestsOpened + 1, today, user.id]
                 );
+
+                await PointsService.addPoints(client, user.id, REWARD_POINTS, `Abertura de Baú Diário (${dailyChestsOpened + 1}/3)`);
 
                 const updatedRes = await client.query('SELECT ad_points FROM users WHERE id = $1', [user.id]);
                 const newPoints = updatedRes.rows[0].ad_points || 0;
@@ -187,11 +188,12 @@ export class EarnController {
 
                 await client.query(
                     `UPDATE users SET 
-                        ad_points = COALESCE(ad_points, 0) + $1,
                         last_video_reward_at = CURRENT_TIMESTAMP
-                     WHERE id = $2`,
-                    [REWARD_POINTS, user.id]
+                     WHERE id = $1`,
+                    [user.id]
                 );
+
+                await PointsService.addPoints(client, user.id, REWARD_POINTS, 'Recompensa de Vídeo Rápido');
 
                 const updatedRes = await client.query('SELECT ad_points FROM users WHERE id = $1', [user.id]);
                 const newPoints = updatedRes.rows[0].ad_points || 0;

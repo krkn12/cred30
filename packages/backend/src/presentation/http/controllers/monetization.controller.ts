@@ -12,6 +12,7 @@ import {
     MUTUAL_PROTECTION_PRICE
 } from '../../../shared/constants/business.constants';
 import { UserContext } from '../../../shared/types/hono.types';
+import { PointsService } from '../../../application/services/points.service';
 
 const PRO_UPGRADE_FEE = 29.90;
 const POINTS_RATE = 100; // 100 pontos = R$ 1,00
@@ -86,9 +87,11 @@ export class MonetizationController {
                 }
 
                 await client.query(
-                    'UPDATE users SET ad_points = COALESCE(ad_points, 0) + $1, total_ad_points = COALESCE(total_ad_points, 0) + $1, last_reward_at = NOW() WHERE id = $2',
-                    [REWARD_POINTS, user.id]
+                    'UPDATE users SET last_reward_at = NOW() WHERE id = $1',
+                    [user.id]
                 );
+
+                await PointsService.addPoints(client, user.id, REWARD_POINTS, 'Recompensa de Vídeo (Extra)');
 
                 const conversion = await autoConvertPoints(client, user.id);
                 const updatedRes = await client.query('SELECT ad_points FROM users WHERE id = $1', [user.id]);
@@ -314,9 +317,11 @@ export class MonetizationController {
                 }
 
                 await client.query(
-                    'UPDATE users SET ad_points = COALESCE(ad_points, 0) + $1, last_checkin_at = NOW() WHERE id = $2',
-                    [CHECKIN_POINTS, user.id]
+                    'UPDATE users SET last_checkin_at = NOW() WHERE id = $1',
+                    [user.id]
                 );
+
+                await PointsService.addPoints(client, user.id, CHECKIN_POINTS, 'Check-in Diário');
 
                 const conversion = await autoConvertPoints(client, user.id);
                 const updatedRes = await client.query('SELECT ad_points FROM users WHERE id = $1', [user.id]);

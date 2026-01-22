@@ -8,6 +8,7 @@ import { getWelcomeBenefit, getWelcomeBenefitDescription } from '../../../applic
 import { WELCOME_BENEFIT_MAX_USES } from '../../../shared/constants/business.constants';
 import { LiquidationService } from '../../../application/services/liquidation.service';
 import { AuditService, AuditActionType } from '../../../application/services/audit.service';
+import { PointsService } from '../../../application/services/points.service';
 
 // Schemas
 const completeProfileSchema = z.object({
@@ -490,11 +491,12 @@ export class UsersController {
 
             if (adsToday < 3) {
                 scoreReward = 5;
-                await pool.query('UPDATE users SET score = score + $1, ad_points = COALESCE(ad_points, 0) + 1 WHERE id = $2', [scoreReward, user.id]);
+                await pool.query('UPDATE users SET score = score + $1 WHERE id = $2', [scoreReward, user.id]);
+                await PointsService.addPoints(pool, user.id, 1, 'Recompensa de Anúncio (Score + Farm)');
                 message = `Parabéns! Você ganhou +${scoreReward} pontos de Score e +1 ponto de Farm!`;
             } else {
                 // Mesmo após o limite de score, continua ganhando pontos de farm (Top Farm)
-                await pool.query('UPDATE users SET ad_points = COALESCE(ad_points, 0) + 1 WHERE id = $1', [user.id]);
+                await PointsService.addPoints(pool, user.id, 1, 'Recompensa de Anúncio (Farm Extra)');
                 message = 'Obrigado por apoiar o projeto! +1 ponto de Farm creditado.';
             }
 

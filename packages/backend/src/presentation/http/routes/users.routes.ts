@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth.middleware';
+import { PointsService } from '../../../application/services/points.service';
 import { UsersController } from '../controllers/users.controller';
 
 export const userRoutes = new Hono();
