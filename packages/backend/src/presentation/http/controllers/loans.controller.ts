@@ -355,9 +355,9 @@ export class LoansController {
 
                     // 3. Verificar saldo do usuário COM LOCK
                     const userBalanceResult = await client.query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [user.id]);
-                    const currentBalance = parseFloat(userBalanceResult.rows[0].balance);
+                    const refreshedBalance = parseFloat(userBalanceResult.rows[0].balance);
 
-                    if (currentBalance < remainingToPay) throw new Error('Saldo insuficiente');
+                    if (refreshedBalance < remainingToPay) throw new Error('Saldo insuficiente');
 
                     // Cálculos de distribuição
                     const principalAmount = parseFloat(loan.amount);
