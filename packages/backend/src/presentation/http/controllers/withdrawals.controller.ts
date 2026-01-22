@@ -15,6 +15,7 @@ import {
 } from '../../../shared/constants/business.constants';
 import { twoFactorService } from '../../../application/services/two-factor.service';
 import { notificationService } from '../../../application/services/notification.service';
+import { AuditService, AuditActionType } from '../../../application/services/audit.service';
 
 import { UserContext } from '../../../shared/types/hono.types';
 
