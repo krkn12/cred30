@@ -7,4 +7,7 @@ const notificationRoutes = new Hono();
 // Endpoint para inscrição em notificações em tempo real (SSE)
 notificationRoutes.get('/stream', authMiddleware, NotificationsController.streamNotifications);
 
+// Endpoint para teste de notificação (verifica se o sino está funcionando)
+notificationRoutes.post('/test', authMiddleware, NotificationsController.sendTestNotification);
+
 export { notificationRoutes };

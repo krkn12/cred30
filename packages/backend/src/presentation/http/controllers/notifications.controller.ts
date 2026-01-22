@@ -50,4 +50,23 @@ export class NotificationsController {
             }
         });
     }
+
+    /**
+     * Endpoint para testar se as notificações estão funcionando
+     * Envia uma notificação de teste para o próprio usuário
+     */
+    static async sendTestNotification(c: Context) {
+        const user = c.get('user') as UserContext;
+
+        await notificationService.notifyUser(
+            user.id,
+            '🔔 Teste de Notificação',
+            'Se você está vendo isso, o sistema de notificações está funcionando perfeitamente!'
+        );
+
+        return c.json({
+            success: true,
+            message: 'Notificação de teste enviada! Verifique o sino.'
+        });
+    }
 }
