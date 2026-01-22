@@ -82,10 +82,10 @@ export class MarketplaceListingsController {
             query += ` ORDER BY l.is_boosted DESC, l.created_at DESC LIMIT 100`;
 
             const result = await pool.query(query, params);
-            return c.json({ success: true, data: result.rows });
-        } catch (error) {
-            console.error('Get Listings Error:', error);
-            return c.json({ success: false, message: 'Erro ao buscar anúncios' }, 500);
+            return c.json({ success: true, data: { listings: result.rows } });
+        } catch (error: any) {
+            console.error('Get Listings Error:', error.message, error.stack);
+            return c.json({ success: false, message: error.message || 'Erro ao buscar anúncios' }, 500);
         }
     }
 
