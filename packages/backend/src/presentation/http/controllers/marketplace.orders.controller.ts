@@ -4,6 +4,7 @@ import { calculateShippingQuote } from '../../../shared/utils/logistics.utils';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction, lockSystemConfig } from '../../../domain/services/transaction.service';
 import { updateScore } from '../../../application/services/score.service';
+import { notificationService } from '../../../application/services/notification.service';
 import { UserContext } from '../../../shared/types/hono.types';
 import {
     MARKETPLACE_ESCROW_FEE_RATE,
@@ -285,7 +286,7 @@ export class MarketplaceOrdersController {
 
                     await createTransaction(client, user.id, 'MARKET_PURCHASE', totalPrice, `Compra${isDigitalLote ? ' Digital' : ''}: ${listings.length > 1 ? `Lote (${listings.length} itens)` : listings[0].title}${welcomeBenefit.hasDiscount ? ' (🎁 Taxa reduzida)' : ''}`, 'APPROVED', { orderId, listingId: listings[0].id, welcomeBenefitApplied: welcomeBenefit.hasDiscount, isDigital: isDigitalLote });
 
-                    return { orderId, welcomeBenefitApplied: welcomeBenefit.hasDiscount, usesRemaining: welcomeBenefit.hasDiscount ? welcomeBenefit.usesRemaining - 1 : 0, isDigitalItem: isDigitalLote, digitalContent: isDigitalLote ? listings[0].digital_content : null };
+                    return { orderId, sellerId, welcomeBenefitApplied: welcomeBenefit.hasDiscount, usesRemaining: welcomeBenefit.hasDiscount ? welcomeBenefit.usesRemaining - 1 : 0, isDigitalItem: isDigitalLote, digitalContent: isDigitalLote ? listings[0].digital_content : null };
                 }
 
                 // Pagamento Externo (PIX ou CARTÃO)
@@ -304,6 +305,15 @@ export class MarketplaceOrdersController {
             let successMessage = data.isDigitalItem ? 'Compra realizada! O conteúdo digital está disponível em Seus Pedidos.' : 'Compra realizada! Aguarde o envio/retirada.';
             if (data.welcomeBenefitApplied) {
                 successMessage += ` 🎁 Taxa de base aplicada (Benefício de Boas-Vindas). Usos restantes: ${data.usesRemaining}/3`;
+            }
+
+            // Notificar VENDEDOR sobre a nova venda (antes de retornar)
+            if (data.orderId && data.sellerId) {
+                notificationService.notifyUser(
+                    data.sellerId,
+                    '🛒 Nova Venda!',
+                    `Você tem uma nova venda aguardando envio/retirada.`
+                ).catch(() => { });
             }
 
             return c.json({
@@ -853,6 +863,13 @@ export class MarketplaceOrdersController {
                         [sellerAmount, order.seller_id]
                     );
                     await createTransaction(client, order.seller_id, 'MARKET_SALE_PENDING', sellerAmount, `Venda Concluída (Em Liquidação): ${order.title}`, 'APPROVED', { orderId, settlementDays: 14 });
+
+                    // Notificar VENDEDOR sobre a venda confirmada
+                    notificationService.notifyUser(
+                        order.seller_id,
+                        '🎉 Venda Confirmada!',
+                        `O comprador confirmou o recebimento. R$ ${sellerAmount.toFixed(2)} será liberado em 14 dias.`
+                    ).catch(() => { });
                 }
 
                 // 3. Pagar entregador se houver
@@ -869,6 +886,13 @@ export class MarketplaceOrdersController {
 
                         // Bonificar Entregador com Score pela eficiência
                         await updateScore(client, order.courier_id, 10, `Entrega bem-sucedida #${orderId}`);
+
+                        // Notificar ENTREGADOR
+                        notificationService.notifyUser(
+                            order.courier_id,
+                            '🚚 Entrega Concluída!',
+                            `Você ganhou R$ ${courierPart.toFixed(2)} pela entrega. Parabéns!`
+                        ).catch(() => { });
                     }
 
                     // DIVISÃO DA TAXA DE LOGÍSTICA (15% sobre o frete)
