@@ -432,7 +432,9 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                             const userScore = state.currentUser?.score || 0;
                             const isSeller = state.currentUser?.is_seller;
 
-                            if (!isSeller && userQuotas < 1 && userScore < 300) {
+                            const isAdmin = (state.currentUser as any)?.isAdmin || (state.currentUser as any)?.role === 'ADMIN';
+
+                            if (!isSeller && userQuotas < 1 && userScore < 300 && !isAdmin) {
                                 onError('Requisito de Confiança', 'Para proteger a comunidade, apenas Membros Investidores (1+ Cotas) ou com Alto Score (>300) podem criar anúncios.');
                                 return;
                             }
@@ -696,7 +698,8 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                         onClick={() => {
                                             const userQuotas = state.quotas.filter(q => q.userId === state.currentUser?.id).length;
                                             const userScore = state.currentUser?.score || 0;
-                                            if (userQuotas < 1 && userScore < 300) {
+                                            const isAdmin = (state.currentUser as any)?.isAdmin || (state.currentUser as any)?.role === 'ADMIN';
+                                            if (userQuotas < 1 && userScore < 300 && !isAdmin) {
                                                 onError('Requisito de Confiança', 'Para proteger a comunidade, apenas Membros Investidores (1+ Cotas) ou com Alto Score (>300) podem criar anúncios.');
                                                 return;
                                             }
@@ -1015,6 +1018,43 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
 
             {view === 'my-orders' && (
                 <div className="space-y-4">
+                    {/* Painel de Saldo em Liquidação (Escrow Retardado) */}
+                    {state.currentUser && (parseFloat((state.currentUser as any).pending_balance || '0') > 0) && (
+                        <div className="bg-gradient-to-br from-zinc-900 to-black border border-white/5 rounded-3xl p-6 shadow-2xl relative overflow-hidden group mb-6">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/5 rounded-full -translate-x-10 -translate-y-10 blur-3xl group-hover:scale-150 transition-transform duration-1000"></div>
+                            <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
+                                <div>
+                                    <h4 className="text-[10px] font-black text-primary-400 uppercase tracking-[0.2em] mb-1">Saldo em Liquidação</h4>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-3xl font-black text-white tracking-tighter">
+                                            {formatCurrency(parseFloat((state.currentUser as any).pending_balance || '0'))}
+                                        </span>
+                                        <ShieldCheck size={16} className="text-primary-500/50" />
+                                    </div>
+                                    <p className="text-[10px] text-zinc-500 font-bold uppercase mt-2 max-w-[250px] leading-relaxed">
+                                        Dinheiro protegido em Escrow. Liberação automática em D+14 para segurança da cooperativa.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            const res = await apiService.post<any>('/marketplace/logistic/settlement', {});
+                                            if (res.success) {
+                                                onSuccess('Processado!', res.message);
+                                                onRefresh();
+                                            }
+                                        } catch (err: any) {
+                                            onError('Liquidação', err.message);
+                                        }
+                                    }}
+                                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
+                                >
+                                    Solicitar Liberação
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     <h3 className="text-lg font-bold text-white mb-4">Minhas Compras</h3>
                     {myOrders.length === 0 ? (
                         <div className="py-20 text-center bg-zinc-900 border border-zinc-800 rounded-3xl">

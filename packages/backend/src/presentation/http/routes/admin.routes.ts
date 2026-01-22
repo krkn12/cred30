@@ -76,6 +76,7 @@ adminRoutes.post('/referral-codes/:id/toggle', adminMiddleware, auditMiddleware(
 adminRoutes.delete('/referral-codes/:id', adminMiddleware, auditMiddleware('DELETE_REFERRAL_CODE', 'REFERRAL_CODE'), AdminReferralController.deleteReferralCode);
 
 // --- MARKETPLACE E AVALIAÇÕES ---
+adminRoutes.get('/marketplace/disputes', adminMiddleware, AdminMarketplaceController.listDisputes);
 adminRoutes.post('/marketplace/resolve-dispute', adminMiddleware, AdminMarketplaceController.resolveDispute);
 adminRoutes.get('/reviews', adminMiddleware, AdminMarketplaceController.listReviews);
 adminRoutes.post('/reviews/:id/approve', adminMiddleware, AdminMarketplaceController.approveReview);

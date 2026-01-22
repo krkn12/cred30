@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import packageJson from '../../../../package.json';
 import {
-    ShieldCheck, RefreshCw, LogOut, Send, MessageSquare, PieChart, Activity, Settings as SettingsIcon, UserPlus, ShoppingBag as ShoppingBagIcon, Vote, Bug, TrendingUp, Truck, Gift, FileText, Users
+    ShieldCheck, RefreshCw, LogOut, Send, MessageSquare, PieChart, Activity, Settings as SettingsIcon, UserPlus, ShoppingBag as ShoppingBagIcon, Vote, Bug, TrendingUp, Truck, Gift, FileText, Users, Scale
 } from 'lucide-react';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { AppState } from '../../../domain/types/common.types';
@@ -24,6 +24,7 @@ import { AdminPartners } from '../features/admin/tabs/AdminPartners';
 import { AdminApprovals } from '../features/admin/tabs/AdminApprovals';
 import { AdminRewardsTab } from '../features/admin/tabs/AdminRewardsTab';
 import { AdminFiscal } from '../features/admin/tabs/AdminFiscal';
+import { AdminDisputes } from '../features/admin/tabs/AdminDisputes';
 import { ConsortiumAdminView } from '../features/admin/tabs/ConsortiumAdminTab';
 import { AdminCompliance } from '../features/admin/tabs/AdminCompliance';
 
@@ -38,7 +39,7 @@ interface AdminViewProps {
     onError: (title: string, message: string) => void;
 }
 
-type TabType = 'overview' | 'approvals' | 'payouts' | 'system' | 'investments' | 'store' | 'rewards' | 'referrals' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics' | 'partners' | 'fiscal' | 'consortium' | 'compliance';
+type TabType = 'overview' | 'approvals' | 'payouts' | 'disputes' | 'system' | 'investments' | 'store' | 'rewards' | 'referrals' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics' | 'partners' | 'fiscal' | 'consortium' | 'compliance';
 
 export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: AdminViewProps) => {
     const [isLoading, setIsLoading] = useState(false);
@@ -62,21 +63,24 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
     const [pendingPayoutsCount, setPendingPayoutsCount] = useState(0);
     const [pendingReviewsCount, setPendingReviewsCount] = useState(0);
     const [pendingBugsCount, setPendingBugsCount] = useState(0);
+    const [pendingDisputesCount, setPendingDisputesCount] = useState(0);
 
     const fetchCounts = useCallback(async () => {
         if (!state?.currentUser) return;
         try {
-            const [approvalsRes, payoutRes, reviewsRes, bugsRes] = await Promise.all([
+            const [approvalsRes, payoutRes, reviewsRes, bugsRes, disputesRes] = await Promise.all([
                 apiService.getPendingTransactions(),
                 apiService.getPayoutQueue(),
                 apiService.getAdminReviews(),
-                apiService.get<any>('/bugs/admin?status=open')
+                apiService.get<any>('/bugs/admin?status=open'),
+                apiService.admin.getMarketplaceDisputes()
             ]);
 
             setPendingApprovalsCount(Array.isArray(approvalsRes?.data) ? approvalsRes.data.length : 0);
             setPendingPayoutsCount(Array.isArray(payoutRes?.data?.transactions) ? payoutRes.data.transactions.length : 0);
             setPendingReviewsCount(Array.isArray(reviewsRes?.data) ? reviewsRes.data.filter((r: any) => r.is_public && !r.is_approved).length : 0);
             setPendingBugsCount(Array.isArray(bugsRes?.data) ? bugsRes.data.length : 0);
+            setPendingDisputesCount(Array.isArray(disputesRes?.data) ? disputesRes.data.length : 0);
         } catch (e) {
             console.error('Error fetching admin counts:', e);
         }
@@ -124,6 +128,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         { id: 'overview', name: 'Resumo', icon: PieChart, roles: ['ADMIN'] },
         { id: 'approvals', name: 'Pendentes', icon: ShieldCheck, count: pendingApprovalsCount, roles: ['ADMIN', 'ATTENDANT'] },
         { id: 'payouts', name: 'Resgates', icon: Send, count: pendingPayoutsCount, roles: ['ADMIN'] },
+        { id: 'disputes', name: 'Mediação', icon: Scale, count: pendingDisputesCount, roles: ['ADMIN'] },
         { id: 'metrics', name: 'Monitoramento', icon: Activity, roles: ['ADMIN', 'ATTENDANT'] },
         { id: 'system', name: 'Financeiro', icon: SettingsIcon, roles: ['ADMIN'] },
         { id: 'referrals', name: 'Indicações', icon: UserPlus, roles: ['ADMIN'] },
@@ -139,7 +144,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         { id: 'fiscal', name: 'Fiscal', icon: FileText, roles: ['ADMIN'] },
         { id: 'consortium', name: 'Consórcios', icon: Users, roles: ['ADMIN'] },
         { id: 'compliance', name: 'Blindagem', icon: ShieldCheck, roles: ['ADMIN'] },
-    ].filter(tab => tab.roles.includes(userRole)), [userRole, pendingApprovalsCount, pendingPayoutsCount, pendingReviewsCount, pendingBugsCount]);
+    ].filter(tab => tab.roles.includes(userRole)), [userRole, pendingApprovalsCount, pendingPayoutsCount, pendingReviewsCount, pendingBugsCount, pendingDisputesCount]);
 
 
     if (!state?.currentUser) {
@@ -227,6 +232,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                 {activeTab === 'overview' && <AdminOverview state={state} />}
                 {activeTab === 'approvals' && <AdminApprovals onSuccess={onSuccess} onError={onError} onRefresh={fetchCounts} />}
                 {activeTab === 'payouts' && <AdminPayouts onSuccess={onSuccess} onError={onError} />}
+                {activeTab === 'disputes' && <AdminDisputes onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'metrics' && <AdminMetrics />}
                 {activeTab === 'system' && <AdminSystem state={state} onRefresh={onRefresh} onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'referrals' && <AdminReferrals onSuccess={onSuccess} onError={onError} />}

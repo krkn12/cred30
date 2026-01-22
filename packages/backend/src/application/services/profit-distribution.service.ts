@@ -3,7 +3,9 @@ import {
     DIVIDEND_USER_SHARE,
     MAINTENANCE_TAX_SHARE,
     MAINTENANCE_OPERATIONAL_SHARE,
-    MAINTENANCE_OWNER_SHARE
+    MAINTENANCE_OWNER_SHARE,
+    MAINTENANCE_INVESTMENT_SHARE,
+    MAINTENANCE_CORPORATE_SHARE
 } from '../../shared/constants/business.constants';
 import { notificationService } from './notification.service';
 
@@ -168,7 +170,9 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
         const taxAmount = profit * MAINTENANCE_TAX_SHARE;
         const operationalAmount = profit * MAINTENANCE_OPERATIONAL_SHARE;
         const ownerAmount = profit * MAINTENANCE_OWNER_SHARE;
-        const totalForMaintenance = taxAmount + operationalAmount + ownerAmount;
+        const investmentAmount = profit * MAINTENANCE_INVESTMENT_SHARE;
+        const corporateAmount = profit * MAINTENANCE_CORPORATE_SHARE;
+        const totalForMaintenance = taxAmount + operationalAmount + ownerAmount + investmentAmount + corporateAmount;
 
         // O valor agora é por "Cota Ponderada"
         const dividendPerWeightedQuota = totalForUsers / totalWeightedQuotas;
@@ -216,8 +220,10 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
                  total_tax_reserve = total_tax_reserve + $2,
                  total_operational_reserve = total_operational_reserve + $3,
                  total_owner_profit = total_owner_profit + $4,
+                 investment_reserve = investment_reserve + $5,
+                 total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $6,
                  profit_pool = 0`,
-            [finalMaintenance, taxAmount, operationalAmount, ownerAmount]
+            [finalMaintenance, taxAmount, operationalAmount, ownerAmount, investmentAmount, corporateAmount]
         );
 
         // Notificar Admin

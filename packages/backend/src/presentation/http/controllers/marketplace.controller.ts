@@ -98,6 +98,41 @@ export class MarketplaceController {
 
         } catch (error) {
             console.error('Anticipation Error:', error);
+            return c.json({ success: false, message: 'Erro ao processar antecipação' }, 500);
+        }
+    }
+
+    /**
+     * Processar Liquidação de Saldo (Settlement)
+     */
+    static async processSettlement(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+
+            const result = await executeInTransaction(pool, async (client: any) => {
+                const userRes = await client.query('SELECT pending_balance FROM users WHERE id = $1 FOR UPDATE', [user.id]);
+                const pending = parseFloat(userRes.rows[0].pending_balance || '0');
+
+                if (pending <= 0) return { success: false, message: 'Nenhum saldo pendente para liquidar.' };
+
+                await client.query('UPDATE users SET balance = balance + pending_balance, pending_balance = 0 WHERE id = $1', [user.id]);
+                await createTransaction(client, user.id, 'SETTLEMENT_RELEASE', pending, 'Liquidação de Vendas (Liberação de Saldo Pendente)', 'APPROVED');
+
+                return { success: true, amount: pending };
+            });
+
+            if (!result.success || !result.data?.success) {
+                return c.json({ success: false, message: result.error || (result.data as any)?.message || 'Erro no processamento' }, 400);
+            }
+
+            // Type narrowing para o TS parar de reclamar
+            const settlementData = result.data as { success: true, amount: number };
+            return c.json({ success: true, message: `R$ ${settlementData.amount.toFixed(2)} liberados para saque.` });
+
+        } catch (error) {
+            console.error('Settlement Error:', error);
+            return c.json({ success: false, message: 'Erro ao processar liquidação' }, 500);
         }
     }
 

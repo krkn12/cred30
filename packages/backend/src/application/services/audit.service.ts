@@ -51,3 +51,15 @@ export class AuditService {
         }
     }
 }
+
+/**
+ * Atalho para registrar logs de auditoria técnica (legado/compatibilidade)
+ */
+export async function logAudit(pool: Pool | PoolClient, data: any) {
+    const userId = data.userId || 'system';
+    const action = (data.action || 'UNKNOWN_ACTION') as AuditActionType;
+    delete data.userId;
+    delete data.action;
+
+    return AuditService.logSensitiveAction(pool, userId, action, data);
+}

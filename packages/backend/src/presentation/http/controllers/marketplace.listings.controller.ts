@@ -25,6 +25,7 @@ const createListingSchema = z.object({
     requiredVehicle: z.enum(['BIKE', 'MOTO', 'CAR', 'TRUCK']).optional().default('MOTO'),
     stock: z.coerce.number().int().min(1).optional().default(1), // Estoque total/fallback
     pickupAddress: z.string().optional(),
+    postalCode: z.string().optional(),
 });
 
 export class MarketplaceListingsController {
@@ -170,7 +171,7 @@ export class MarketplaceListingsController {
 
             const {
                 title, description, price, category, imageUrl, images, variants,
-                itemType, digitalContent, requiredVehicle, stock, pickupAddress
+                itemType, digitalContent, requiredVehicle, stock, pickupAddress, postalCode
             } = parseResult.data;
 
             // ... (digital check kept)
@@ -182,11 +183,11 @@ export class MarketplaceListingsController {
             }
 
             // Atualizar GPS do vendedor
-            const { city, state, neighborhood } = body;
+            const { city, state, neighborhood, postalCode: bodyPostalCode } = body;
             if (city && state) {
                 await pool.query(
-                    'UPDATE users SET seller_address_city = $1, seller_address_state = $2, seller_address_neighborhood = $3 WHERE id = $4',
-                    [city, state, neighborhood || null, user.id]
+                    'UPDATE users SET seller_address_city = $1, seller_address_state = $2, seller_address_neighborhood = $3, seller_address_postal_code = $4 WHERE id = $5',
+                    [city, state, neighborhood || null, bodyPostalCode || postalCode || null, user.id]
                 );
             }
 
@@ -203,11 +204,11 @@ export class MarketplaceListingsController {
                 const result = await client.query(
                     `INSERT INTO marketplace_listings (
                         seller_id, title, description, price, category, image_url, 
-                        item_type, digital_content, required_vehicle, stock, pickup_address
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, *`,
+                        item_type, digital_content, required_vehicle, stock, pickup_address, pickup_postal_code
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, *`,
                     [
                         user.id, title, description, price, category, mainImage,
-                        itemType, digitalContent || null, requiredVehicle, stock || 1, pickupAddress || null
+                        itemType, digitalContent || null, requiredVehicle, stock || 1, pickupAddress || null, postalCode || bodyPostalCode || null
                     ]
                 );
                 const listing = result.rows[0];

@@ -133,6 +133,10 @@ export class MarketplaceApi extends ApiBase {
     async getSellerProfile(sellerId: string): Promise<ApiResponse<any>> {
         return await this.request<any>(`/marketplace/seller/${sellerId}/profile`);
     }
+
+    async getShippingQuote(listingId: number, destCep: string): Promise<ApiResponse<any>> {
+        return await this.request<any>(`/marketplace/logistic/quote?listingId=${listingId}&destCep=${destCep}`);
+    }
 }
 
 export const apiMarketplace = new MarketplaceApi();

@@ -617,6 +617,8 @@ export const initializeDatabase = async () => {
         vesting_period_ms BIGINT DEFAULT 31536000000,
         total_manual_costs DECIMAL(20,2) DEFAULT 0,
         courier_price_per_km DECIMAL(10,2) DEFAULT 2.50,
+        total_corporate_investment_reserve DECIMAL(20,2) DEFAULT 0,
+        credit_guarantee_fund DECIMAL(20,2) DEFAULT 0,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -629,6 +631,8 @@ export const initializeDatabase = async () => {
       ALTER TABLE system_config ADD COLUMN IF NOT EXISTS investment_reserve DECIMAL(20,2) DEFAULT 0;
       ALTER TABLE system_config ADD COLUMN IF NOT EXISTS courier_price_per_km DECIMAL(10,2) DEFAULT 2.50;
       ALTER TABLE system_config ADD COLUMN IF NOT EXISTS mutual_protection_fund DECIMAL(20,2) DEFAULT 0;
+      ALTER TABLE system_config ADD COLUMN IF NOT EXISTS total_corporate_investment_reserve DECIMAL(20,2) DEFAULT 0;
+      ALTER TABLE system_config ADD COLUMN IF NOT EXISTS credit_guarantee_fund DECIMAL(20,2) DEFAULT 0;
     `);
 
     // Verificar se a coluna total_gateway_costs existe na tabela system_config

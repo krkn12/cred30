@@ -14,6 +14,37 @@ const resolveDisputeSchema = z.object({
 export class AdminMarketplaceController {
 
     /**
+     * Listar pedidos em disputa
+     */
+    static async listDisputes(c: Context) {
+        try {
+            const pool = getDbPool(c);
+
+            const result = await pool.query(`
+                SELECT 
+                    o.*, 
+                    l.title as listing_title, 
+                    l.image_url as listing_image, 
+                    ub.name as buyer_name, 
+                    us.name as seller_name
+                FROM marketplace_orders o
+                JOIN marketplace_listings l ON o.listing_id = l.id
+                JOIN users ub ON o.buyer_id = ub.id
+                JOIN users us ON o.seller_id = us.id
+                WHERE o.status = 'DISPUTE'
+                ORDER BY o.disputed_at ASC
+            `);
+
+            return c.json({
+                success: true,
+                data: result.rows
+            });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
      * Resolver disputa de marketplace
      */
     static async resolveDispute(c: Context) {

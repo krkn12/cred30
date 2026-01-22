@@ -54,6 +54,14 @@ export class AdminApi extends ApiBase {
         return await this.post<any>('/admin/marketplace/cleanup-old-listings', { daysOld });
     }
 
+    async getMarketplaceDisputes(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/admin/marketplace/disputes');
+    }
+
+    async resolveMarketplaceDispute(orderId: number, resolution: 'REFUND_BUYER' | 'RELEASE_TO_SELLER', penaltyUserId?: number): Promise<ApiResponse<any>> {
+        return await this.post<any>('/admin/marketplace/resolve-dispute', { orderId, resolution, penaltyUserId });
+    }
+
     async getAdminReviews(): Promise<any> {
         return await this.request<any>('/admin/reviews');
     }

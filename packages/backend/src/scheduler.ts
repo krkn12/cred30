@@ -4,6 +4,7 @@ import { Pool } from 'pg';
 import { distributeProfits } from './application/services/profit-distribution.service';
 import { backupDatabase } from './application/services/backup.service';
 import { runAutoLiquidation } from './application/services/auto-liquidation.service';
+import { runFGCCoverage } from './application/services/credit-protection.service';
 import { decreaseDailyScore } from './application/services/score.service';
 import { processDisbursementQueue } from './application/services/disbursement-queue.service';
 
@@ -54,7 +55,20 @@ export const initializeScheduler = (pool: Pool) => {
         }
     });
 
-    // 4. Decaimento Diário de Score às 03:00 (Madrugada)
+    // 4. Cobertura de Inadimplência via FGC às 02:30 (Madrugada)
+    cron.schedule('30 2 * * *', async () => {
+        console.log('🕒 [CRON] Iniciando cobertura de inadimplência via FGC...');
+        try {
+            const result = await runFGCCoverage(pool);
+            if (result.coveredCount > 0) {
+                console.log(`✅ [CRON] Resgate FGC finalizado: ${result.coveredCount} apoios cobertos (Total: R$ ${result.totalValue.toFixed(2)}).`);
+            }
+        } catch (error) {
+            console.error('❌ [CRON] Erro fatal no resgate via FGC:', error);
+        }
+    });
+
+    // 5. Decaimento Diário de Score às 03:00 (Madrugada)
     // Reduz 10 pontos de todos para forçar engajamento
     cron.schedule('0 3 * * *', async () => {
         console.log('🕒 [CRON] Iniciando decaimento diário de score...');

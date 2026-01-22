@@ -1,5 +1,6 @@
 import { Context } from 'hono';
 import { z } from 'zod';
+import { calculateShippingQuote } from '../../../shared/utils/logistics.utils';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction, lockSystemConfig } from '../../../domain/services/transaction.service';
 import { updateScore } from '../../../application/services/score.service';
@@ -15,7 +16,13 @@ import {
     QUOTA_FEE_OPERATIONAL_SHARE,
     QUOTA_FEE_OWNER_SHARE,
     QUOTA_FEE_INVESTMENT_SHARE,
-    DELIVERY_MIN_FEES
+    PLATFORM_FEE_TAX_SHARE,
+    PLATFORM_FEE_OPERATIONAL_SHARE,
+    PLATFORM_FEE_OWNER_SHARE,
+    PLATFORM_FEE_INVESTMENT_SHARE,
+    PLATFORM_FEE_CORPORATE_SHARE,
+    DELIVERY_MIN_FEES,
+    LOAN_GFC_FEE_RATE
 } from '../../../shared/constants/business.constants';
 import { calculateUserLoanLimit } from '../../../application/services/credit-analysis.service';
 import { getWelcomeBenefit, consumeWelcomeBenefitUse } from '../../../application/services/welcome-benefit.service';
@@ -235,18 +242,18 @@ export class MarketplaceOrdersController {
                         `INSERT INTO marketplace_orders (
                             listing_id, listing_ids, is_lote, buyer_id, seller_id, amount, fee_amount, seller_amount, 
                             status, payment_method, delivery_address, pickup_address, contact_phone, 
-                            offline_token, delivery_status, delivery_fee, pickup_code, invited_courier_id,
+                            offline_token, delivery_status, delivery_fee, pickup_code, delivery_confirmation_code, invited_courier_id,
                             pickup_lat, pickup_lng, delivery_lat, delivery_lng, quantity, variant_id
                         ) VALUES (
                             $1::INTEGER, $2::INTEGER[], $3::BOOLEAN, $4::INTEGER, $5::INTEGER, $6::NUMERIC, $7::NUMERIC, $8::NUMERIC,
                             $9, $10, $11, $12, $13,
-                            $14, $15, $16::NUMERIC, $17, $18::UUID,
-                            $19::NUMERIC, $20::NUMERIC, $21::NUMERIC, $22::NUMERIC, $23::INTEGER, $24::INTEGER
+                            $14, $15, $16::NUMERIC, $17, $18, $19::UUID,
+                            $20::NUMERIC, $21::NUMERIC, $22::NUMERIC, $23::NUMERIC, $24::INTEGER, $25::INTEGER
                         ) RETURNING id`,
                         [
                             listings[0].id, idsToProcess, listings.length > 1, user.id, sellerId, totalPrice, fee, sellerAmount,
                             orderStatus, 'BALANCE', deliveryAddress, isDigitalLote ? null : finalPickupAddress, contactPhone,
-                            offlineToken, deliveryStatus, isDigitalLote ? 0 : calculatedDeliveryFee, pickupCode,
+                            offlineToken, deliveryStatus, isDigitalLote ? 0 : calculatedDeliveryFee, pickupCode, pickupCode,
                             (invitedCourierId && invitedCourierId.length > 30) ? invitedCourierId : null,
                             pickupLat || null, pickupLng || null, deliveryLat || null, deliveryLng || null,
                             quantity, selectedVariantId || null
@@ -459,14 +466,10 @@ export class MarketplaceOrdersController {
                 // Lógica anterior: amount no INSERT era totalWithFee.
                 // No loans table: amount = totalPrice + fee. total_payable = totalWithFee.
 
-                const totalWithFee = totalPrice + interestAmount + fee; // Principal + Juros + Entrega
-                // Ajuste: O contrato de emprestimo deve cobrir Principal + Entrega. Juros são adicionais.
-                // Amount financiado = totalPrice + fee.
-                // Total a pagar pelo usuario = (totalPrice + fee) * (1 + rate * installments)?
-                // Não, a lógica anterior era linear simples: `totalPrice * rate * installments` como juros. A entrega era somada limpa?
-                // Linha 465 anterior: `totalToPay = totalPrice + interestAmount;`
-                // Linha 466: `totalWithFee = totalToPay + fee;`
-                // Então Juros incide APENAS sobre o produto. A entrega é somada seca.
+                // FGC: Taxa de Proteção de Crédito (2% sobre o valor financiado)
+                const principalFinanciado = totalPrice + fee;
+                const gfcFee = principalFinanciado * LOAN_GFC_FEE_RATE;
+                const totalWithFee = totalPrice + interestAmount + fee + gfcFee; // Principal + Juros + Entrega + FGC
 
                 const installmentAmount = totalWithFee / installments;
 
@@ -483,18 +486,18 @@ export class MarketplaceOrdersController {
                     `INSERT INTO marketplace_orders (
                         listing_id, listing_ids, is_lote, buyer_id, seller_id, amount, fee_amount, seller_amount, 
                         status, payment_method, delivery_address, pickup_address, contact_phone, 
-                        delivery_status, delivery_fee, pickup_code, invited_courier_id,
+                        delivery_status, delivery_fee, pickup_code, delivery_confirmation_code, invited_courier_id,
                         pickup_lat, pickup_lng, delivery_lat, delivery_lng, quantity, variant_id
                     ) VALUES (
                         $1::INTEGER, $2::INTEGER[], $3::BOOLEAN, $4::INTEGER, $5::INTEGER, $6::NUMERIC, $7::NUMERIC, $8::NUMERIC,
                         $9, $10, $11, $12, $13,
-                        $14, $15, $16, $17::UUID,
-                        $18::NUMERIC, $19::NUMERIC, $20::NUMERIC, $21::NUMERIC, $22::INTEGER, $23::INTEGER
+                        $14, $15, $16, $17, $18::UUID,
+                        $19::NUMERIC, $20::NUMERIC, $21::NUMERIC, $22::NUMERIC, $23::INTEGER, $24::INTEGER
                     ) RETURNING id`,
                     [
                         listings[0].id, idsToProcess, listings.length > 1, user.id, sellerId, totalWithFee, escrowFee, sellerAmount,
                         'WAITING_SHIPPING', 'CRED30_CREDIT', deliveryAddress, finalPickupAddress, contactPhone,
-                        deliveryStatus, fee, pickupCode, (invitedCourierId && invitedCourierId.length > 30) ? invitedCourierId : null,
+                        deliveryStatus, fee, pickupCode, pickupCode, (invitedCourierId && invitedCourierId.length > 30) ? invitedCourierId : null,
                         body.pickupLat || null, body.pickupLng || null, body.deliveryLat || null, body.deliveryLng || null,
                         quantity, selectedVariantId || null
                     ]
@@ -505,9 +508,18 @@ export class MarketplaceOrdersController {
                 const loanResult = await client.query(
                     `INSERT INTO loans (user_id, amount, total_payable, total_paid, term_months, interest_rate, status, purpose, metadata)
                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-                    [user.id, totalPrice + fee, totalWithFee, 0, installments, MARKET_CREDIT_INTEREST_RATE, 'ACTIVE', 'MARKETPLACE_PURCHASE', JSON.stringify({ orderId, sellerId })]
+                    [user.id, principalFinanciado, totalWithFee, 0, installments, MARKET_CREDIT_INTEREST_RATE, 'ACTIVE', 'MARKETPLACE_PURCHASE', JSON.stringify({ orderId, sellerId, gfcFee })]
                 );
                 const loanId = loanResult.rows[0].id;
+
+                // === CAPITALIZAÇÃO DO FGC (Fundo de Garantia de Crédito) ===
+                if (gfcFee > 0) {
+                    await client.query(
+                        'UPDATE system_config SET credit_guarantee_fund = COALESCE(credit_guarantee_fund, 0) + $1',
+                        [gfcFee]
+                    );
+                    console.log(`[FGC-MARKETPLACE] Fundo capitalizado com R$ ${gfcFee.toFixed(2)} para crediário do pedido ${orderId}`);
+                }
 
                 // Gerar Parcelas
                 for (let i = 1; i <= installments; i++) {
@@ -763,7 +775,11 @@ export class MarketplaceOrdersController {
            WHERE o.id = $1 
            AND (o.status IN ('WAITING_SHIPPING', 'IN_TRANSIT') OR o.delivery_status = 'DELIVERED')
            AND o.status != 'COMPLETED'
-           AND (o.buyer_id = $2 OR (o.offline_token IS NOT NULL AND $3::text IS NOT NULL AND o.offline_token = $3))`,
+           AND (
+             o.buyer_id = $2 
+             OR o.pickup_code = $3 
+             OR (o.offline_token IS NOT NULL AND o.offline_token = $3)
+           )`,
                 [orderId, user.id, verificationCode]
             );
 
@@ -811,10 +827,11 @@ export class MarketplaceOrdersController {
 
                     // 50% para a Empresa (Sistema) dividida em 4 reservas
                     const systemShare = totalFee * 0.5;
-                    const taxPart = systemShare * QUOTA_FEE_TAX_SHARE; // 25% do systemShare
-                    const operPart = systemShare * QUOTA_FEE_OPERATIONAL_SHARE;
-                    const ownerPart = systemShare * QUOTA_FEE_OWNER_SHARE;
-                    const investPart = systemShare * QUOTA_FEE_INVESTMENT_SHARE;
+                    const taxPart = systemShare * PLATFORM_FEE_TAX_SHARE;
+                    const operPart = systemShare * PLATFORM_FEE_OPERATIONAL_SHARE;
+                    const ownerPart = systemShare * PLATFORM_FEE_OWNER_SHARE;
+                    const investPart = systemShare * PLATFORM_FEE_INVESTMENT_SHARE;
+                    const corpPart = systemShare * PLATFORM_FEE_CORPORATE_SHARE;
 
                     await client.query(`
                         UPDATE system_config SET 
@@ -822,15 +839,20 @@ export class MarketplaceOrdersController {
                             total_tax_reserve = total_tax_reserve + $2,
                             total_operational_reserve = total_operational_reserve + $3,
                             total_owner_profit = total_owner_profit + $4,
-                            investment_reserve = COALESCE(investment_reserve, 0) + $5
-                        `, [profitShare, taxPart, operPart, ownerPart, investPart]
+                            investment_reserve = COALESCE(investment_reserve, 0) + $5,
+                            total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $6
+                        `, [profitShare, taxPart, operPart, ownerPart, investPart, corpPart]
                     );
                 }
 
                 if (!isAnticipated) {
-                    // Fluxo Normal: Vendedor recebe agora
-                    await updateUserBalance(client, order.seller_id, sellerAmount, 'credit');
-                    await createTransaction(client, order.seller_id, 'MARKET_SALE', sellerAmount, `Venda Concluída: ${order.title}`, 'APPROVED', { orderId });
+                    // Fluxo Normal: Vendedor recebe no SALDO PENDENTE (Settlement)
+                    // Isso evita que o vendedor saque e suma imediatamente (Risco apontado pelo Josias)
+                    await client.query(
+                        'UPDATE users SET pending_balance = pending_balance + $1 WHERE id = $2',
+                        [sellerAmount, order.seller_id]
+                    );
+                    await createTransaction(client, order.seller_id, 'MARKET_SALE_PENDING', sellerAmount, `Venda Concluída (Em Liquidação): ${order.title}`, 'APPROVED', { orderId, settlementDays: 14 });
                 }
 
                 // 3. Pagar entregador se houver
@@ -849,12 +871,28 @@ export class MarketplaceOrdersController {
                         await updateScore(client, order.courier_id, 10, `Entrega bem-sucedida #${orderId}`);
                     }
 
-                    // DIVISÃO DA TAXA DE LOGÍSTICA (15%)
-                    // Metade para Cotistas (Profit Pool) e Metade para a Empresa (System Balance)
+                    // DIVISÃO DA TAXA DE LOGÍSTICA (15% sobre o frete)
+                    // Metade para Cotistas (Profit Pool) e Metade para a Empresa (Reservas)
                     const profitShare = systemPart / 2;
                     const companyShare = systemPart / 2;
 
-                    await client.query('UPDATE system_config SET profit_pool = profit_pool + $1, system_balance = system_balance + $2', [profitShare, companyShare]);
+                    const taxPart = companyShare * PLATFORM_FEE_TAX_SHARE;
+                    const operPart = companyShare * PLATFORM_FEE_OPERATIONAL_SHARE;
+                    const ownerPart = companyShare * PLATFORM_FEE_OWNER_SHARE;
+                    const investPart = companyShare * PLATFORM_FEE_INVESTMENT_SHARE;
+                    const corpPart = companyShare * PLATFORM_FEE_CORPORATE_SHARE;
+
+                    await client.query(`
+                        UPDATE system_config SET 
+                            profit_pool = profit_pool + $1,
+                            total_tax_reserve = total_tax_reserve + $2,
+                            total_operational_reserve = total_operational_reserve + $3,
+                            total_owner_profit = total_owner_profit + $4,
+                            investment_reserve = investment_reserve + $5,
+                            total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $6,
+                            system_balance = system_balance + $7
+                        `, [profitShare, taxPart, operPart, ownerPart, investPart, corpPart, companyShare]
+                    );
                 }
 
                 // 4. Se foi no crediário, o dinheiro sai do caixa do sistema para o vendedor + courier
@@ -901,6 +939,73 @@ export class MarketplaceOrdersController {
             return c.json({ success: true, data: result.rows[0] });
         } catch (error) {
             return c.json({ success: false, message: 'Erro ao buscar rastreio' }, 500);
+        }
+    }
+    /**
+     * Cotação de Frete (Zonas de CEP)
+     */
+    static async getShippingQuote(c: Context) {
+        try {
+            const listingId = c.req.query('listingId');
+            const destCep = c.req.query('destCep');
+            const pool = getDbPool(c);
+
+            if (!listingId || !destCep) {
+                return c.json({ success: false, message: 'ID do anúncio e CEP de destino são obrigatórios.' }, 400);
+            }
+
+            const listingRes = await pool.query('SELECT seller_id, free_shipping, shipping_cost, pickup_postal_code FROM marketplace_listings WHERE id = $1', [listingId]);
+            if (listingRes.rows.length === 0) return c.json({ success: false, message: 'Anúncio não encontrado.' }, 404);
+
+            const listing = listingRes.rows[0];
+            let originCep = listing.pickup_postal_code;
+
+            if (!originCep) {
+                const sellerRes = await pool.query('SELECT seller_address_postal_code FROM users WHERE id = $1', [listing.seller_id]);
+                originCep = sellerRes.rows[0]?.seller_address_postal_code || '00000000';
+            }
+
+            const quote = calculateShippingQuote(originCep, destCep, 1000, listing.free_shipping);
+
+            // Se o vendedor definiu um frete fixo no anúncio e não for grátis
+            if (listing.shipping_cost > 0 && !listing.free_shipping) {
+                quote.fee = parseFloat(listing.shipping_cost);
+            }
+
+            return c.json({ success: true, data: quote });
+        } catch (error) {
+            return c.json({ success: false, message: 'Erro ao calcular frete' }, 500);
+        }
+    }
+
+    /**
+     * Solicitar Devolução / Arrependimento
+     */
+    static async requestReturn(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const orderId = c.req.param('id');
+            const { reason } = await c.req.json();
+            const pool = getDbPool(c);
+
+            const orderRes = await pool.query('SELECT * FROM marketplace_orders WHERE id = $1 AND buyer_id = $2', [orderId, user.id]);
+            if (orderRes.rows.length === 0) return c.json({ success: false, message: 'Pedido não encontrado.' }, 404);
+
+            const order = orderRes.rows[0];
+            if (['COMPLETED', 'CANCELLED'].includes(order.status)) {
+                return c.json({ success: false, message: 'Não é possível devolver um pedido já finalizado ou cancelado.' }, 400);
+            }
+
+            await pool.query(
+                `UPDATE marketplace_orders 
+                 SET status = 'RETURN_REQUESTED', dispute_reason = $1, updated_at = NOW() 
+                 WHERE id = $2`,
+                [reason, orderId]
+            );
+
+            return c.json({ success: true, message: 'Solicitação de devolução enviada. O saldo está bloqueado para sua segurança.' });
+        } catch (error) {
+            return c.json({ success: false, message: 'Erro ao solicitar devolução' }, 500);
         }
     }
 }

@@ -4,7 +4,15 @@ import { executeInTransaction, createTransaction } from '../../../domain/service
 import { UserContext } from '../../../shared/types/hono.types';
 import { PoolClient } from 'pg';
 import { getCreditAnalysis, calculateInterestRate, calculateUserLoanLimit } from '../../../application/services/credit-analysis.service';
-import { ONE_MONTH_MS, PENALTY_RATE } from '../../../shared/constants/business.constants';
+import {
+    ONE_MONTH_MS,
+    PENALTY_RATE,
+    PLATFORM_FEE_TAX_SHARE,
+    PLATFORM_FEE_OPERATIONAL_SHARE,
+    PLATFORM_FEE_OWNER_SHARE,
+    PLATFORM_FEE_INVESTMENT_SHARE,
+    PLATFORM_FEE_CORPORATE_SHARE
+} from '../../../shared/constants/business.constants';
 
 // Taxa fixa do PDV (3.5%)
 const PDV_FEE_RATE = 0.035;
@@ -401,8 +409,15 @@ export class PdvController {
                             total_tax_reserve = total_tax_reserve + $1,
                             total_operational_reserve = total_operational_reserve + $2,
                             total_owner_profit = total_owner_profit + $3,
-                            investment_reserve = investment_reserve + $4
-                    `, [feeAmount * 0.25, feeAmount * 0.25, feeAmount * 0.25, feeAmount * 0.25]);
+                            investment_reserve = investment_reserve + $4,
+                            total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $5
+                    `, [
+                        feeAmount * PLATFORM_FEE_TAX_SHARE,
+                        feeAmount * PLATFORM_FEE_OPERATIONAL_SHARE,
+                        feeAmount * PLATFORM_FEE_OWNER_SHARE,
+                        feeAmount * PLATFORM_FEE_INVESTMENT_SHARE,
+                        feeAmount * PLATFORM_FEE_CORPORATE_SHARE
+                    ]);
 
                 } else {
                     // ===== PAGAMENTO À VISTA (SALDO) =====
@@ -455,14 +470,21 @@ export class PdvController {
                     );
 
                     // Taxa para o sistema
-                    const feeAmount = parseFloat(charge.fee_amount);
+                    const feeAmountPdV = parseFloat(charge.fee_amount);
                     await client.query(`
                         UPDATE system_config SET 
                             total_tax_reserve = total_tax_reserve + $1,
                             total_operational_reserve = total_operational_reserve + $2,
                             total_owner_profit = total_owner_profit + $3,
-                            investment_reserve = investment_reserve + $4
-                    `, [feeAmount * 0.25, feeAmount * 0.25, feeAmount * 0.25, feeAmount * 0.25]);
+                            investment_reserve = investment_reserve + $4,
+                            total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $5
+                    `, [
+                        feeAmountPdV * PLATFORM_FEE_TAX_SHARE,
+                        feeAmountPdV * PLATFORM_FEE_OPERATIONAL_SHARE,
+                        feeAmountPdV * PLATFORM_FEE_OWNER_SHARE,
+                        feeAmountPdV * PLATFORM_FEE_INVESTMENT_SHARE,
+                        feeAmountPdV * PLATFORM_FEE_CORPORATE_SHARE
+                    ]);
                 }
 
                 return { success: true, loanId };

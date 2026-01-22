@@ -9,6 +9,7 @@ interface FinancialDashboardProps {
   quotasCount: number;
   totalLoaned: number;
   totalToReceive: number;
+  creditGuaranteeFund: number;
   onUpdateBalance: (newBalance: number) => void;
   onAddProfit: (amount: number) => void;
   onDistributeProfits: () => void;
@@ -20,6 +21,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
   quotasCount,
   totalLoaned,
   totalToReceive,
+  creditGuaranteeFund,
   onUpdateBalance,
   onAddProfit,
   onDistributeProfits
@@ -52,7 +54,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
   return (
     <div className="space-y-6">
       {/* Métricas Principais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <MetricCard
           title="Caixa Operacional"
           value={formatCurrency(systemBalance)}
@@ -76,6 +78,12 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
           value={formatCurrency(totalToReceive)}
           subtitle="Principal + taxas a receber"
           color="purple"
+        />
+        <MetricCard
+          title="Fundo Garantidor (FGC)"
+          value={formatCurrency(creditGuaranteeFund)}
+          subtitle="Proteção contra inadimplência"
+          color="red"
         />
       </div>
 

@@ -9,7 +9,12 @@ import {
     SCORE_BOOST_PRICE,
     SCORE_BOOST_POINTS,
     REPUTATION_CHECK_PRICE,
-    MUTUAL_PROTECTION_PRICE
+    MUTUAL_PROTECTION_PRICE,
+    PLATFORM_FEE_TAX_SHARE,
+    PLATFORM_FEE_OPERATIONAL_SHARE,
+    PLATFORM_FEE_OWNER_SHARE,
+    PLATFORM_FEE_INVESTMENT_SHARE,
+    PLATFORM_FEE_CORPORATE_SHARE
 } from '../../../shared/constants/business.constants';
 import { UserContext } from '../../../shared/types/hono.types';
 import {
@@ -177,8 +182,16 @@ export class MonetizationController {
                         total_tax_reserve = total_tax_reserve + $2,
                         total_operational_reserve = total_operational_reserve + $3,
                         total_owner_profit = total_owner_profit + $4,
-                        investment_reserve = investment_reserve + $5`,
-                    [feeForProfit, reserveShare, reserveShare, reserveShare, reserveShare]
+                        investment_reserve = investment_reserve + $5,
+                        total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $6`,
+                    [
+                        feeForProfit,
+                        feeForReserves * PLATFORM_FEE_TAX_SHARE,
+                        feeForReserves * PLATFORM_FEE_OPERATIONAL_SHARE,
+                        feeForReserves * PLATFORM_FEE_OWNER_SHARE,
+                        feeForReserves * PLATFORM_FEE_INVESTMENT_SHARE,
+                        feeForReserves * PLATFORM_FEE_CORPORATE_SHARE
+                    ]
                 );
 
                 await createTransaction(
@@ -231,8 +244,16 @@ export class MonetizationController {
                         total_tax_reserve = total_tax_reserve + $2,
                         total_operational_reserve = total_operational_reserve + $3,
                         total_owner_profit = total_owner_profit + $4,
-                        investment_reserve = investment_reserve + $5`,
-                    [feeForProfit, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25]
+                        investment_reserve = investment_reserve + $5,
+                        total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $6`,
+                    [
+                        feeForProfit,
+                        feeForReserves * PLATFORM_FEE_TAX_SHARE,
+                        feeForReserves * PLATFORM_FEE_OPERATIONAL_SHARE,
+                        feeForReserves * PLATFORM_FEE_OWNER_SHARE,
+                        feeForReserves * PLATFORM_FEE_INVESTMENT_SHARE,
+                        feeForReserves * PLATFORM_FEE_CORPORATE_SHARE
+                    ]
                 );
 
                 await createTransaction(
@@ -281,8 +302,16 @@ export class MonetizationController {
                         total_tax_reserve = total_tax_reserve + $2,
                         total_operational_reserve = total_operational_reserve + $3,
                         total_owner_profit = total_owner_profit + $4,
-                        investment_reserve = investment_reserve + $5`,
-                    [feeForProfit, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25]
+                        investment_reserve = investment_reserve + $5,
+                        total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $6`,
+                    [
+                        feeForProfit,
+                        feeForReserves * PLATFORM_FEE_TAX_SHARE,
+                        feeForReserves * PLATFORM_FEE_OPERATIONAL_SHARE,
+                        feeForReserves * PLATFORM_FEE_OWNER_SHARE,
+                        feeForReserves * PLATFORM_FEE_INVESTMENT_SHARE,
+                        feeForReserves * PLATFORM_FEE_CORPORATE_SHARE
+                    ]
                 );
 
                 await createTransaction(
@@ -403,8 +432,16 @@ export class MonetizationController {
                         total_tax_reserve = total_tax_reserve + $2,
                         total_operational_reserve = total_operational_reserve + $3,
                         total_owner_profit = total_owner_profit + $4,
-                        investment_reserve = investment_reserve + $5`,
-                    [feeForProfit, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25, feeForReserves * 0.25]
+                        investment_reserve = investment_reserve + $5,
+                        total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $6`,
+                    [
+                        feeForProfit,
+                        feeForReserves * PLATFORM_FEE_TAX_SHARE,
+                        feeForReserves * PLATFORM_FEE_OPERATIONAL_SHARE,
+                        feeForReserves * PLATFORM_FEE_OWNER_SHARE,
+                        feeForReserves * PLATFORM_FEE_INVESTMENT_SHARE,
+                        feeForReserves * PLATFORM_FEE_CORPORATE_SHARE
+                    ]
                 );
 
                 await createTransaction(
@@ -472,10 +509,18 @@ export class MonetizationController {
                     `UPDATE system_config SET 
                         mutual_protection_fund = mutual_protection_fund + $1,
                         total_tax_reserve = total_tax_reserve + $2,
-                        total_operational_reserve = total_operational_reserve + $2,
-                        total_owner_profit = total_owner_profit + $2,
-                        investment_reserve = investment_reserve + $2`,
-                    [fundShare, systemShare * 0.25]
+                        total_operational_reserve = total_operational_reserve + $3,
+                        total_owner_profit = total_owner_profit + $4,
+                        investment_reserve = investment_reserve + $5,
+                        total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $6`,
+                    [
+                        fundShare,
+                        systemShare * PLATFORM_FEE_TAX_SHARE,
+                        systemShare * PLATFORM_FEE_OPERATIONAL_SHARE,
+                        systemShare * PLATFORM_FEE_OWNER_SHARE,
+                        systemShare * PLATFORM_FEE_INVESTMENT_SHARE,
+                        systemShare * PLATFORM_FEE_CORPORATE_SHARE
+                    ]
                 );
 
                 // Ganho de Score por segurança

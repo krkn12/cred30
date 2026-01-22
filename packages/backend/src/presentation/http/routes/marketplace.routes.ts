@@ -35,14 +35,17 @@ marketplaceRoutes.post('/order/:id/dispute', authMiddleware, MarketplaceOrdersCo
 marketplaceRoutes.post('/order/:id/rate', authMiddleware, MarketplaceOrdersController.rateOrder);
 marketplaceRoutes.post('/order/:id/receive', authMiddleware, MarketplaceOrdersController.confirmReceipt);
 marketplaceRoutes.get('/order/:id/tracking', authMiddleware, MarketplaceOrdersController.getOrderTracking);
+marketplaceRoutes.post('/order/:id/return', authMiddleware, MarketplaceOrdersController.requestReturn);
 
 /**
  * LOGISTICS & FINANCE (Logística e Financeiro)
  */
+marketplaceRoutes.get('/logistic/quote', authMiddleware, MarketplaceOrdersController.getShippingQuote);
 marketplaceRoutes.get('/logistic/missions', authMiddleware, MarketplaceController.getLogisticMissions);
 marketplaceRoutes.post('/logistic/mission/:id/accept', authMiddleware, MarketplaceController.acceptMission);
 marketplaceRoutes.post('/logistic/mission/:id/pickup', authMiddleware, MarketplaceController.pickupMission);
 marketplaceRoutes.post('/logistic/mission/:id/location', authMiddleware, MarketplaceController.updateMissionLocation);
+marketplaceRoutes.post('/logistic/settlement', authMiddleware, MarketplaceController.processSettlement);
 marketplaceRoutes.post('/order/:id/anticipate', authMiddleware, MarketplaceController.anticipate);
 marketplaceRoutes.post('/offline/sync', authMiddleware, MarketplaceController.syncOffline);
 

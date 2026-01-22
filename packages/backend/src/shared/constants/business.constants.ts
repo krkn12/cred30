@@ -3,21 +3,27 @@ export const QUOTA_PRICE = 50.00; // Preço de aquisição total (R$ 50)
 export const QUOTA_SHARE_VALUE = 42.00; // Valor que vai para o Capital Social (Resgatável)
 export const QUOTA_ADM_FEE = 8.00;   // Taxa de Manutenção Administrativa (Não resgatável)
 
-// Distribuição da Taxa Administrativa (Soma = 100%)
-export const QUOTA_FEE_TAX_SHARE = 0.25;         // 25% = R$ 2,00 → Impostos
-export const QUOTA_FEE_OPERATIONAL_SHARE = 0.25; // 25% = R$ 2,00 → Servidores/APIs
-export const QUOTA_FEE_OWNER_SHARE = 0.25;       // 25% = R$ 2,00 → Pró-labore
-export const QUOTA_FEE_INVESTMENT_SHARE = 0.25;  // 25% = R$ 2,00 → Fundo de Investimento
+// Distribuição da Taxa Administrativa (Soma = 100%) - Aplicado em Cotas e Taxas Fixas
+export const QUOTA_FEE_TAX_SHARE = 0.20;         // 20% = R$ 1,60 → Impostos
+export const QUOTA_FEE_OPERATIONAL_SHARE = 0.20; // 20% = R$ 1,60 → Servidores/APIs
+export const QUOTA_FEE_OWNER_SHARE = 0.20;       // 20% = R$ 1,60 → Pró-labore
+export const QUOTA_FEE_INVESTMENT_SHARE = 0.20;  // 20% = R$ 1,60 → Fundo de Estabilidade
+export const QUOTA_FEE_CORPORATE_SHARE = 0.20;   // 20% = R$ 1,60 → Investimento em Empresas/Equity
 
 // Constantes globais para distribuição de taxas da plataforma (Regra 25/25/25/25)
-// Usado em: Empréstimos, Marketplace, Upgrades, Boosts, etc.
-export const PLATFORM_FEE_TAX_SHARE = 0.25;
-export const PLATFORM_FEE_OPERATIONAL_SHARE = 0.25;
-export const PLATFORM_FEE_OWNER_SHARE = 0.25;
-export const PLATFORM_FEE_INVESTMENT_SHARE = 0.25;
+// Usado em: Apoio Mútuo, Marketplace, Upgrades, Boosts, etc.
+export const PLATFORM_FEE_TAX_SHARE = 0.20;         // 20% do faturamento da empresa (1.2% do total)
+export const PLATFORM_FEE_OPERATIONAL_SHARE = 0.20; // 20%
+export const PLATFORM_FEE_OWNER_SHARE = 0.20;       // 20%
+export const PLATFORM_FEE_INVESTMENT_SHARE = 0.20;  // 20% (Fundo de Estabilidade)
+export const PLATFORM_FEE_CORPORATE_SHARE = 0.20;   // 20% (Investimento em Empresas/Equity)
 
 // Taxa de sustentabilidade do apoio mútuo (20%)
 export const LOAN_INTEREST_RATE = Number(process.env.LOAN_INTEREST_RATE) || 0.2;
+
+// Taxa de Proteção de Crédito (FGC) - 2.0% sobre o valor do empréstimo
+// Esta taxa é paga pelo tomador e integralizada no Fundo de Garantia de Crédito
+export const LOAN_GFC_FEE_RATE = 0.02;
 
 // Taxa de multa por resgate antecipado (40%)
 export const PENALTY_RATE = Number(process.env.PENALTY_RATE) || 0.4;
@@ -40,17 +46,20 @@ export const DIVIDEND_USER_SHARE = 0.85; // 85% para os usuários
 export const DIVIDEND_MAINTENANCE_SHARE = 0.15; // 15% para manutenção total
 
 // Detalhamento do DIVIDEND_MAINTENANCE_SHARE (A soma deve ser 0.15)
-export const MAINTENANCE_TAX_SHARE = 0.06;      // 6% para Impostos (Simples Nacional/MEI)
-export const MAINTENANCE_OPERATIONAL_SHARE = 0.04; // 4% para Servidores/APIs
-export const MAINTENANCE_OWNER_SHARE = 0.05;    // 5% para Seu Pró-labore (Salário)
+export const MAINTENANCE_TAX_SHARE = 0.03;      // 3% para Impostos (Simples Nacional/MEI)
+export const MAINTENANCE_OPERATIONAL_SHARE = 0.03; // 3% para Servidores/APIs
+export const MAINTENANCE_OWNER_SHARE = 0.03;    // 3% para Seu Pró-labore (Salário)
+export const MAINTENANCE_INVESTMENT_SHARE = 0.03; // 3% para Expansão/Investment Reserve
+export const MAINTENANCE_CORPORATE_SHARE = 0.03; // 3% para Pote de Empresas (Venture Capital)
 
 // --- Taxas de Monetização (Caixa da Cooperativa) ---
 export const QUOTA_PURCHASE_FEE_RATE = 0.0; // Desativado (Substituído pela taxa fixa QUOTA_ADM_FEE)
-export const LOAN_ORIGINATION_FEE_RATE = 0.00; // Removido por solicitação do Josias (Valor integral no empréstimo)
+export const LOAN_ORIGINATION_FEE_RATE = 0.00; // Removido por solicitação do Josias (Valor integral no apoio)
 export const WITHDRAWAL_FIXED_FEE = 3.50; // Taxa fixa de R$ 3,50 por saque (se não tiver cotas suficientes)
 export const MIN_WITHDRAWAL_AMOUNT = 1.00; // Valor mínimo para saque = R$ 1,00
 export const MARKETPLACE_ESCROW_FEE_RATE = 0.12; // 12% de taxa de garantia (Escrow) para verificados
 export const MARKETPLACE_NON_VERIFIED_FEE_RATE = 0.12; // 12% de taxa para vendedores não verificados
+export const MARKET_BOOST_PRICE = 5.00; // Taxa de impulsionamento de anúncio (7 dias)
 export const MARKET_CREDIT_INTEREST_RATE = 0.015; // 1.5% ao mês (Mais barato que o apoio mútuo padrão)
 export const MARKET_CREDIT_MAX_INSTALLMENTS = 24; // Até 24x para facilitar compras grandes
 export const MARKET_CREDIT_MIN_SCORE = 450; // Score mínimo para comprar parcelado
@@ -76,7 +85,7 @@ export const REFERRAL_BONUS = 0; // Desativado - substituído pelo sistema de be
 // Benefício de Boas-Vindas para indicados (3 usos com desconto)
 export const WELCOME_BENEFIT_MAX_USES = 3; // Quantidade de usos com desconto
 
-// Taxa de empréstimo especial para indicados (ao invés de 20%)
+// Taxa de apoio especial para indicados (ao invés de 20%)
 export const WELCOME_LOAN_INTEREST_RATE = 0.035; // 3.5% para indicados
 
 // Desconto nas outras taxas para indicados (50% off)

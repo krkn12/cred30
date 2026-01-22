@@ -7,7 +7,9 @@ import {
   PLATFORM_FEE_OPERATIONAL_SHARE,
   PLATFORM_FEE_OWNER_SHARE,
   PLATFORM_FEE_INVESTMENT_SHARE,
-  ONE_MONTH_MS
+  PLATFORM_FEE_CORPORATE_SHARE,
+  ONE_MONTH_MS,
+  LOAN_GFC_FEE_RATE
 } from '../../shared/constants/business.constants';
 import { calculateGatewayCost } from '../../shared/utils/financial.utils';
 import { updateScore, SCORE_REWARDS } from '../../application/services/score.service';
@@ -383,6 +385,7 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
       const operationalAmount = totalAdmFee * PLATFORM_FEE_OPERATIONAL_SHARE;
       const ownerAmount = totalAdmFee * PLATFORM_FEE_OWNER_SHARE;
       const growthAmount = totalAdmFee * PLATFORM_FEE_INVESTMENT_SHARE;
+      const corporateAmount = totalAdmFee * PLATFORM_FEE_CORPORATE_SHARE;
 
       await client.query(
         `UPDATE system_config SET 
@@ -390,9 +393,10 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
           total_operational_reserve = total_operational_reserve + $2,
           total_owner_profit = total_owner_profit + $3,
           mutual_reserve = COALESCE(mutual_reserve, 0) + $4,
-          investment_reserve = COALESCE(investment_reserve, 0) + $5,
-          system_balance = system_balance + $6`,
-        [taxAmount, operationalAmount, ownerAmount, growthAmount, principalAmount, parseFloat(transaction.amount)]
+          total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $5,
+          investment_reserve = COALESCE(investment_reserve, 0) + $6,
+          system_balance = system_balance + $7`,
+        [taxAmount, operationalAmount, ownerAmount, growthAmount, corporateAmount, principalAmount, parseFloat(transaction.amount)]
       );
     }
   }
@@ -466,12 +470,14 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
               total_tax_reserve = total_tax_reserve + $1,
               total_operational_reserve = total_operational_reserve + $2,
               total_owner_profit = total_owner_profit + $3,
-              investment_reserve = investment_reserve + $4`,
+              investment_reserve = investment_reserve + $4,
+              total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $5`,
             [
               interestSystemFee * PLATFORM_FEE_TAX_SHARE,
               interestSystemFee * PLATFORM_FEE_OPERATIONAL_SHARE,
               interestSystemFee * PLATFORM_FEE_OWNER_SHARE,
-              interestSystemFee * PLATFORM_FEE_INVESTMENT_SHARE
+              interestSystemFee * PLATFORM_FEE_INVESTMENT_SHARE,
+              interestSystemFee * PLATFORM_FEE_CORPORATE_SHARE
             ]
           );
         }
@@ -556,12 +562,14 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
         total_tax_reserve = total_tax_reserve + $1,
         total_operational_reserve = total_operational_reserve + $2,
         total_owner_profit = total_owner_profit + $3,
-        investment_reserve = investment_reserve + $4`,
+        investment_reserve = investment_reserve + $4,
+        total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $5`,
       [
         upgradeFee * PLATFORM_FEE_TAX_SHARE,
         upgradeFee * PLATFORM_FEE_OPERATIONAL_SHARE,
         upgradeFee * PLATFORM_FEE_OWNER_SHARE,
-        upgradeFee * PLATFORM_FEE_INVESTMENT_SHARE
+        upgradeFee * PLATFORM_FEE_INVESTMENT_SHARE,
+        upgradeFee * PLATFORM_FEE_CORPORATE_SHARE
       ]
     );
 
@@ -657,12 +665,14 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
           total_tax_reserve = total_tax_reserve + $1,
           total_operational_reserve = total_operational_reserve + $2,
           total_owner_profit = total_owner_profit + $3,
-          investment_reserve = investment_reserve + $4`,
+          investment_reserve = investment_reserve + $4,
+          total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $5`,
         [
           netBoostFee * PLATFORM_FEE_TAX_SHARE,
           netBoostFee * PLATFORM_FEE_OPERATIONAL_SHARE,
           netBoostFee * PLATFORM_FEE_OWNER_SHARE,
-          netBoostFee * PLATFORM_FEE_INVESTMENT_SHARE
+          netBoostFee * PLATFORM_FEE_INVESTMENT_SHARE,
+          netBoostFee * PLATFORM_FEE_CORPORATE_SHARE
         ]
       );
 
@@ -720,12 +730,14 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
           total_tax_reserve = total_tax_reserve + $1,
           total_operational_reserve = total_operational_reserve + $2,
           total_owner_profit = total_owner_profit + $3,
-          investment_reserve = investment_reserve + $4`,
+          investment_reserve = investment_reserve + $4,
+          total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $5`,
         [
           feeAmount * PLATFORM_FEE_TAX_SHARE,
           feeAmount * PLATFORM_FEE_OPERATIONAL_SHARE,
           feeAmount * PLATFORM_FEE_OWNER_SHARE,
-          feeAmount * PLATFORM_FEE_INVESTMENT_SHARE
+          feeAmount * PLATFORM_FEE_INVESTMENT_SHARE,
+          feeAmount * PLATFORM_FEE_CORPORATE_SHARE
         ]
       );
     }
@@ -885,6 +897,17 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
     'UPDATE system_config SET system_balance = system_balance - $1',
     [netAmount]
   );
+
+  // === CAPITALIZAÇÃO DO FGC (Fundo de Garantia de Crédito) ===
+  // Creditamos o fundo com a taxa calculada no momento da solicitação (salva no metadata)
+  const gfcFee = parseFloat(metadata.gfcFee || '0');
+  if (gfcFee > 0) {
+    await client.query(
+      'UPDATE system_config SET credit_guarantee_fund = COALESCE(credit_guarantee_fund, 0) + $1',
+      [gfcFee]
+    );
+    console.log(`[FGC] Fundo de Garantia de Crédito capitalizado com R$ ${gfcFee.toFixed(2)} para o empréstimo ${id}`);
+  }
 
   // Creditar no saldo do usuário
   await updateUserBalance(client, loan.user_id, netAmount, 'credit');

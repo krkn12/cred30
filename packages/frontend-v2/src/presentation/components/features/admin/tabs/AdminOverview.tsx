@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { PieChart, TrendingUp, DollarSign, Vote, Users } from 'lucide-react';
+import { PieChart, TrendingUp, DollarSign, Vote, Users, ShieldCheck, Activity } from 'lucide-react';
 import { AppState } from '../../../../../domain/types/common.types';
 
 interface AdminOverviewProps {
@@ -11,7 +11,7 @@ interface MetricCardProps {
     value: string | number;
     subtitle: string;
     icon: any;
-    color: 'blue' | 'cyan' | 'emerald' | 'yellow' | 'red' | 'orange' | 'purple';
+    color: 'blue' | 'cyan' | 'emerald' | 'yellow' | 'red' | 'orange' | 'purple' | 'indigo';
 }
 
 const MetricCard = memo(({ title, value, subtitle, icon: Icon, color }: MetricCardProps) => {
@@ -23,6 +23,7 @@ const MetricCard = memo(({ title, value, subtitle, icon: Icon, color }: MetricCa
         red: "from-red-600 to-red-700 border-red-500/30 shadow-red-500/10",
         orange: "from-orange-600 to-orange-700 border-orange-500/30 shadow-orange-500/10",
         purple: "from-purple-600 to-purple-700 border-purple-500/30 shadow-purple-500/10",
+        indigo: "from-indigo-600 to-indigo-700 border-indigo-500/30 shadow-indigo-500/10",
     };
 
     return (
@@ -55,12 +56,70 @@ export const AdminOverview = ({ state }: AdminOverviewProps) => {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* Métricas Principais */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 <MetricCard title="Membros" value={state.stats?.usersCount ?? state.users?.length ?? 0} subtitle="Usuários Totais" icon={Users} color="blue" />
                 <MetricCard title="Participações" value={state.stats?.quotasCount ?? 0} subtitle="Licenças em Operação" icon={PieChart} color="cyan" />
-                <MetricCard title="Capital Social de Reserva" value={formatCurrency(state.stats?.systemConfig?.investment_reserve || 0)} subtitle="Fundo de Estabilidade" icon={TrendingUp} color="orange" />
                 <MetricCard title="Liquidez Real" value={formatCurrency(state.stats?.systemConfig?.real_liquidity ?? state.systemBalance ?? 0)} subtitle="Capital das Cotas - Empréstimos" icon={DollarSign} color="emerald" />
                 <MetricCard title="Votações Ativas" value={state.stats?.activeProposalsCount ?? 0} subtitle="Governança em Aberto" icon={Vote} color="purple" />
+            </div>
+
+            {/* Dashboard de Potes (Divisão dos 12%) */}
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-[2.5rem] p-8">
+                <div className="flex items-center gap-3 mb-8">
+                    <div className="p-3 bg-primary-500/10 rounded-2xl">
+                        <TrendingUp className="text-primary-500" size={24} />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-widest">Dashboard de Potes</h3>
+                        <p className="text-xs text-zinc-500 font-bold">Transparência da Taxa de 12% do Marketplace</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-6 gap-6">
+                    <MetricCard
+                        title="Cotistas (6%)"
+                        value={formatCurrency(state.stats?.systemConfig?.profit_pool || 0)}
+                        subtitle="Distribuição de Sobras"
+                        icon={Users}
+                        color="blue"
+                    />
+                    <MetricCard
+                        title="Impostos (1.2%)"
+                        value={formatCurrency(state.stats?.systemConfig?.total_tax_reserve || 0)}
+                        subtitle="Reserva Fiscal"
+                        icon={ShieldCheck}
+                        color="red"
+                    />
+                    <MetricCard
+                        title="Operacional (1.2%)"
+                        value={formatCurrency(state.stats?.systemConfig?.total_operational_reserve || 0)}
+                        subtitle="Servidores e APIs"
+                        icon={Activity}
+                        color="orange"
+                    />
+                    <MetricCard
+                        title="Pró-Labore (1.2%)"
+                        value={formatCurrency(state.stats?.systemConfig?.total_owner_profit || 0)}
+                        subtitle="Lucro do Fundador"
+                        icon={DollarSign}
+                        color="emerald"
+                    />
+                    <MetricCard
+                        title="Estabilidade (1.2%)"
+                        value={formatCurrency(state.stats?.systemConfig?.investment_reserve || 0)}
+                        subtitle="Fundo de Reserva"
+                        icon={ShieldCheck}
+                        color="cyan"
+                    />
+                    <MetricCard
+                        title="Empresas (1.2%)"
+                        value={formatCurrency(state.stats?.systemConfig?.total_corporate_investment_reserve || 0)}
+                        subtitle="Venture Capital / Equity"
+                        icon={TrendingUp}
+                        color="indigo"
+                    />
+                </div>
             </div>
         </div>
     );
