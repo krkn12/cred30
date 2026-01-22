@@ -147,13 +147,16 @@ export const NotificationBell: React.FC = () => {
             </button>
 
             {isOpen && (
-                <div className="fixed sm:absolute inset-0 sm:inset-auto sm:right-0 sm:top-14 w-full sm:w-96 h-full sm:h-auto bg-black/60 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-none z-[1000] sm:z-50 animate-in fade-in duration-300" onClick={() => setIsOpen(false)}>
+                <div
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998] md:bg-transparent md:backdrop-blur-none"
+                    onClick={() => setIsOpen(false)}
+                >
                     <div
-                        className="absolute bottom-0 sm:bottom-auto sm:top-0 w-full sm:w-96 max-h-[85vh] sm:max-h-[70vh] bg-[#0A0A0A] border-t sm:border border-white/10 rounded-t-[2rem] sm:rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-top-2 duration-500 sm:duration-300 flex flex-col pb-[var(--safe-bottom)] sm:pb-0"
+                        className="absolute bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-4 md:top-20 w-full md:w-[400px] max-h-[85vh] md:max-h-[70vh] bg-[#0A0A0A] border-t md:border border-white/10 rounded-t-[2rem] md:rounded-2xl shadow-2xl overflow-hidden flex flex-col pb-[var(--safe-bottom)] md:pb-0 animate-in slide-in-from-bottom-full md:slide-in-from-top-2 duration-300"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Drag Handle for Mobile */}
-                        <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto my-3 sm:hidden opacity-50" />
+                        <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto my-3 md:hidden opacity-50" />
 
                         <div className="p-4 border-b border-white/5 flex items-center justify-between bg-zinc-900/80 backdrop-blur-xl sticky top-0 z-10">
                             <div className="flex items-center gap-2">
@@ -176,14 +179,14 @@ export const NotificationBell: React.FC = () => {
                                 )}
                                 <button
                                     onClick={() => setIsOpen(false)}
-                                    className="p-2 text-zinc-500 hover:text-white bg-white/5 rounded-lg sm:hidden"
+                                    className="p-2 text-zinc-500 hover:text-white bg-white/5 rounded-lg md:hidden"
                                 >
                                     <X size={20} />
                                 </button>
                                 {hasUnread && (
                                     <button
                                         onClick={markAllRead}
-                                        className="hidden sm:block px-3 py-1.5 text-[11px] bg-primary-500/20 hover:bg-primary-500/30 text-primary-400 rounded-lg transition-colors font-bold"
+                                        className="hidden md:block px-3 py-1.5 text-[11px] bg-primary-500/20 hover:bg-primary-500/30 text-primary-400 rounded-lg transition-colors font-bold"
                                     >
                                         Marcar lidas
                                     </button>
@@ -201,7 +204,7 @@ export const NotificationBell: React.FC = () => {
                                     <p className="text-[11px] text-zinc-600 mt-1 max-w-[200px] mx-auto">Você não tem notificações no momento.</p>
                                 </div>
                             ) : (
-                                <div className="divide-y divide-white/5 pb-20 sm:pb-0">
+                                <div className="divide-y divide-white/5 pb-20 md:pb-0">
                                     {notifications.map(notif => (
                                         <div
                                             key={notif.id}
@@ -242,7 +245,7 @@ export const NotificationBell: React.FC = () => {
                                     ))}
 
                                     {hasUnread && (
-                                        <div className="p-4 sm:hidden">
+                                        <div className="p-4 md:hidden">
                                             <button
                                                 onClick={markAllRead}
                                                 className="w-full py-4 bg-primary-500 text-black font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-primary-500/20 active:scale-95 transition-all"
