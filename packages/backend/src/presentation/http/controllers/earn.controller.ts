@@ -3,12 +3,12 @@ import { getDbPool } from '../../../infrastructure/database/postgresql/connectio
 import { executeInTransaction, createTransaction } from '../../../domain/services/transaction.service';
 import { PoolClient } from 'pg';
 import { UserContext } from '../../../shared/types/hono.types';
-import { PointsService, POINTS_CONVERSION_RATE, MIN_POINTS_FOR_CONVERSION } from '../../../application/services/points.service';
+import { PointsService, VALUE_PER_1000_POINTS, MIN_POINTS_FOR_CONVERSION } from '../../../application/services/points.service';
 
 // Constantes do sistema de pontos
 // Constantes sincronizadas com PointsService
-const POINTS_RATE = POINTS_CONVERSION_RATE;
-const MONEY_VALUE = POINTS_RATE / POINTS_CONVERSION_RATE; // Sempre R$ 1.00 por lote de conversão (que agora é 1000)
+const POINTS_RATE = MIN_POINTS_FOR_CONVERSION;
+const MONEY_VALUE = VALUE_PER_1000_POINTS;
 
 interface RewardConfig {
     id: string;
@@ -258,6 +258,7 @@ export class EarnController {
             const currentPoints = res.rows[0]?.ad_points || 0;
 
             const canConvert = currentPoints >= POINTS_RATE;
+            // Cálculo novo: (Pontos / 1000) * 0.07
             const possibleConversion = Math.floor(currentPoints / POINTS_RATE) * MONEY_VALUE;
             const pointsToNextConversion = canConvert ? 0 : POINTS_RATE - currentPoints;
 
@@ -268,7 +269,7 @@ export class EarnController {
                     canConvert,
                     possibleConversion,
                     pointsToNextConversion,
-                    rate: `${POINTS_RATE} pts = R$ ${MONEY_VALUE.toFixed(2)}`
+                    rate: `${POINTS_RATE.toLocaleString()} pts = R$ ${MONEY_VALUE.toFixed(2)}`
                 }
             });
         } catch (error: any) {
