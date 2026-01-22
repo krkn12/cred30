@@ -340,6 +340,7 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title:
                     )}
                 </div>
             </div>
+
             {hasMore && (
                 <div className="p-8 flex flex-col items-center gap-4 bg-black/20 border-t border-zinc-800/50">
                     <button
@@ -364,101 +365,98 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title:
                     </p>
                 </div>
             )}
-        </div>
 
-            {
-        showCreateModal && (
-            <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
-                <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 w-full max-w-md relative animate-in zoom-in-95 duration-300">
-                    <button
-                        onClick={() => setShowCreateModal(false)}
-                        className="absolute top-6 right-6 text-zinc-500 hover:text-white"
-                        aria-label="Fechar modal"
-                        title="Fechar modal"
-                    >
-                        <XIcon size={24} />
-                    </button>
+            {showCreateModal && (
+                <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 w-full max-w-md relative animate-in zoom-in-95 duration-300">
+                        <button
+                            onClick={() => setShowCreateModal(false)}
+                            className="absolute top-6 right-6 text-zinc-500 hover:text-white"
+                            aria-label="Fechar modal"
+                            title="Fechar modal"
+                        >
+                            <XIcon size={24} />
+                        </button>
 
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className="p-3 bg-primary-500/10 rounded-2xl border border-primary-500/20">
-                            <ShieldCheck size={28} className="text-primary-400" />
-                        </div>
-                        <div>
-                            <h4 className="text-xl font-black text-white uppercase tracking-tight">Criar Atendente</h4>
-                            <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Equipe Operacional</p>
-                        </div>
-                    </div>
-
-                    <form onSubmit={handleCreateAttendant} className="space-y-4">
-                        <div className="space-y-1">
-                            <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Nome Completo</label>
-                            <input
-                                required
-                                type="text"
-                                placeholder="Ex: João Ferreira"
-                                value={newAttendant.name}
-                                onChange={(e) => setNewAttendant({ ...newAttendant, name: e.target.value })}
-                                className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Email de Acesso</label>
-                            <input
-                                required
-                                type="email"
-                                placeholder="joao@suporte.com"
-                                value={newAttendant.email}
-                                onChange={(e) => setNewAttendant({ ...newAttendant, email: e.target.value })}
-                                className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Senha</label>
-                                <input
-                                    required
-                                    type="password"
-                                    placeholder="******"
-                                    value={newAttendant.password}
-                                    onChange={(e) => setNewAttendant({ ...newAttendant, password: e.target.value })}
-                                    className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
-                                />
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="p-3 bg-primary-500/10 rounded-2xl border border-primary-500/20">
+                                <ShieldCheck size={28} className="text-primary-400" />
                             </div>
+                            <div>
+                                <h4 className="text-xl font-black text-white uppercase tracking-tight">Criar Atendente</h4>
+                                <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Equipe Operacional</p>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleCreateAttendant} className="space-y-4">
                             <div className="space-y-1">
-                                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Pix (Auxílio)</label>
+                                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Nome Completo</label>
                                 <input
                                     required
                                     type="text"
-                                    placeholder="Chave PIX"
-                                    value={newAttendant.pixKey}
-                                    onChange={(e) => setNewAttendant({ ...newAttendant, pixKey: e.target.value })}
+                                    placeholder="Ex: João Ferreira"
+                                    value={newAttendant.name}
+                                    onChange={(e) => setNewAttendant({ ...newAttendant, name: e.target.value })}
                                     className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
                                 />
                             </div>
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Frase Secreta (2FA)</label>
-                            <input
-                                required
-                                type="text"
-                                placeholder="Palavras de segurança"
-                                value={newAttendant.secretPhrase}
-                                onChange={(e) => setNewAttendant({ ...newAttendant, secretPhrase: e.target.value })}
-                                className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
-                            />
-                        </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Email de Acesso</label>
+                                <input
+                                    required
+                                    type="email"
+                                    placeholder="joao@suporte.com"
+                                    value={newAttendant.email}
+                                    onChange={(e) => setNewAttendant({ ...newAttendant, email: e.target.value })}
+                                    className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Senha</label>
+                                    <input
+                                        required
+                                        type="password"
+                                        placeholder="******"
+                                        value={newAttendant.password}
+                                        onChange={(e) => setNewAttendant({ ...newAttendant, password: e.target.value })}
+                                        className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Pix (Auxílio)</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        placeholder="Chave PIX"
+                                        value={newAttendant.pixKey}
+                                        onChange={(e) => setNewAttendant({ ...newAttendant, pixKey: e.target.value })}
+                                        className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Frase Secreta (2FA)</label>
+                                <input
+                                    required
+                                    type="text"
+                                    placeholder="Palavras de segurança"
+                                    value={newAttendant.secretPhrase}
+                                    onChange={(e) => setNewAttendant({ ...newAttendant, secretPhrase: e.target.value })}
+                                    className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-white outline-none focus:border-primary-500/50 font-medium"
+                                />
+                            </div>
 
-                        <button
-                            type="submit"
-                            className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-5 rounded-2xl transition-all shadow-xl mt-4"
-                        >
-                            CADASTRAR EQUIPE
-                        </button>
-                    </form>
+                            <button
+                                type="submit"
+                                className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black py-5 rounded-2xl transition-all shadow-xl mt-4"
+                            >
+                                CADASTRAR EQUIPE
+                            </button>
+                        </form>
+                    </div>
                 </div>
-            </div>
-        )
-    }
-        </div >
+            )}
+        </div>
     );
 };

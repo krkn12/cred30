@@ -8,13 +8,13 @@ import {
     Home,
     Wrench,
     Shirt,
-    Package
+    Package,
+    Zap // Usado como fallback para motor de busca de ícones se necessário
 } from 'lucide-react';
-import { Motorcycle } from '@phosphor-icons/react';
 
 export const VEHICLE_ICONS: Record<string, any> = {
     'BIKE': Bike,
-    'MOTO': Motorcycle,
+    'MOTO': Bike, // Mantendo Lucide consistentemente, o 'Zap' ou 'Bike' são mais estáveis no build
     'CAR': Car,
     'TRUCK': Truck
 };

@@ -5,7 +5,8 @@ import {
     Crown, Clock, ArrowDownLeft, ArrowUpRight,
     PieChart, Star, Zap,
     ShieldCheck, ChevronRight, Wallet, Settings, BarChart3, Gift, Sparkles, Eye, EyeOff,
-    RefreshCw
+    RefreshCw,
+    Trophy // Substituto para ícones de ranking se necessário
 } from 'lucide-react';
 import { AppState, Transaction, Quota, Loan } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
