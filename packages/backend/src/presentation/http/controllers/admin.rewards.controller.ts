@@ -1,6 +1,7 @@
 import { Context } from 'hono';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { UserContext } from '../../../shared/types/hono.types';
+import { POINTS_CONVERSION_RATE } from '../../../application/services/points.service';
 
 export class AdminRewardsController {
     /**
@@ -28,12 +29,18 @@ export class AdminRewardsController {
 
     /**
      * Criar ou atualizar recompensa
+     * REGRA: O ADM insere o preço em REAIS (value), o sistema calcula os PONTOS automaticamente.
      */
     static async saveReward(c: Context) {
         try {
             const pool = getDbPool(c);
             const body = await c.req.json();
-            const { id, name, description, points_cost, type, value, is_active, image_url } = body;
+            const { id, name, description, type, value, is_active, image_url } = body;
+
+            // Calcula o custo em pontos automaticamente a partir do valor em reais
+            // Fórmula: points_cost = value * POINTS_CONVERSION_RATE
+            // Ex: R$ 10.00 com taxa de 1000 pts/R$ = 10000 pts
+            const points_cost = Math.round(parseFloat(value) * POINTS_CONVERSION_RATE);
 
             const res = await pool.query(
                 `INSERT INTO reward_catalog (id, name, description, points_cost, type, value, is_active, image_url)
