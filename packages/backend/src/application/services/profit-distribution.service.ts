@@ -229,6 +229,19 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
         // Notificar Admin
         notificationService.notifyProfitDistributed(profit).catch(e => console.error('Erro ao notificar admin:', e));
 
+        // Notificar cada usuário que recebeu lucro via SSE (para o sino)
+        for (let i = 0; i < usersWithQuotas.length; i++) {
+            const user = usersWithQuotas[i];
+            const amount = userAmounts[i];
+            if (amount > 0) {
+                notificationService.notifyUser(
+                    user.user_id,
+                    '💰 Excedente Social Recebido!',
+                    `Você recebeu R$ ${amount.toFixed(2)} de excedentes das suas ${user.raw_quotas} cotas!`
+                ).catch(() => { /* ignore */ });
+            }
+        }
+
         return {
             success: true,
             message: 'Distribuição Ponderada realizada com sucesso!',
