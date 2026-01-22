@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS terms_acceptance (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     terms_version VARCHAR(20) NOT NULL DEFAULT '2.0',
     privacy_version VARCHAR(20) NOT NULL DEFAULT '1.0',
     ip_address VARCHAR(45), -- IPv4 ou IPv6
