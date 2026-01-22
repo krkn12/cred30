@@ -3,6 +3,8 @@ import { getDbPool } from '../../../infrastructure/database/postgresql/connectio
 import { executeInTransaction, createTransaction } from '../../../domain/services/transaction.service';
 import { UserContext } from '../../../shared/types/hono.types';
 import { PoolClient } from 'pg';
+import { getCreditAnalysis, calculateInterestRate, calculateLoanOffer } from '../../../application/services/credit-analysis.service';
+import { ONE_MONTH_MS, PENALTY_RATE } from '../../../shared/constants/business.constants';
 
 // Taxa fixa do PDV (3.5%)
 const PDV_FEE_RATE = 0.035;
@@ -17,26 +19,32 @@ function generateConfirmationCode(): string {
 
 export class PdvController {
     /**
-     * Comerciante inicia uma cobrança
+     * Comerciante inicia uma cobrança (à vista ou parcelada)
      */
     static async createCharge(c: Context) {
         try {
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
             const body = await c.req.json();
-            const { customerId, amount, description } = body;
+            const { customerId, amount, description, installments = 1, guaranteePercentage = 100 } = body;
 
             if (!customerId || !amount) {
                 return c.json({ success: false, message: 'ID do cliente e valor são obrigatórios.' }, 400);
             }
 
             const parsedAmount = parseFloat(amount);
+            const parsedInstallments = parseInt(installments);
+
             if (parsedAmount < 1) {
                 return c.json({ success: false, message: 'Valor mínimo é R$ 1,00.' }, 400);
             }
 
             if (parsedAmount > 5000) {
                 return c.json({ success: false, message: 'Valor máximo por transação é R$ 5.000,00.' }, 400);
+            }
+
+            if (parsedInstallments < 1 || parsedInstallments > 12) {
+                return c.json({ success: false, message: 'Número de parcelas deve ser entre 1 e 12.' }, 400);
             }
 
             // Buscar dados do cliente
@@ -50,13 +58,62 @@ export class PdvController {
             }
 
             const customer = customerRes.rows[0];
+            const customerBalance = parseFloat(customer.balance);
 
-            // Verificar saldo do cliente
-            if (parseFloat(customer.balance) < parsedAmount) {
-                return c.json({
-                    success: false,
-                    message: `Cliente não tem saldo suficiente. Saldo atual: R$ ${parseFloat(customer.balance).toFixed(2)}`
-                }, 400);
+            // Determinar tipo de pagamento
+            const paymentType = parsedInstallments > 1 ? 'CREDIT' : 'BALANCE';
+            let interestRate = 0;
+            let totalWithInterest = parsedAmount;
+            let creditInfo = null;
+
+            // Se parcelado, verificar limite de crédito
+            if (paymentType === 'CREDIT') {
+                const creditAnalysis = await getCreditAnalysis(pool, customerId);
+
+                if (!creditAnalysis.eligible) {
+                    return c.json({
+                        success: false,
+                        message: `Cliente não elegível para parcelamento: ${creditAnalysis.reason}`
+                    }, 400);
+                }
+
+                // Verificar se o valor está dentro do limite
+                const activeLoansRes = await pool.query(
+                    `SELECT COALESCE(SUM(amount), 0) as total FROM loans 
+                     WHERE user_id = $1 AND status IN ('APPROVED', 'PAYMENT_PENDING', 'PENDING')`,
+                    [customerId]
+                );
+                const activeDebt = parseFloat(activeLoansRes.rows[0].total);
+                const remainingLimit = Math.max(0, creditAnalysis.limit - activeDebt);
+
+                if (parsedAmount > remainingLimit) {
+                    return c.json({
+                        success: false,
+                        message: `Limite de crédito insuficiente. Disponível: R$ ${remainingLimit.toFixed(2)}`
+                    }, 400);
+                }
+
+                // Calcular juros baseado na garantia
+                interestRate = calculateInterestRate(guaranteePercentage);
+                totalWithInterest = parsedAmount * (1 + interestRate);
+
+                creditInfo = {
+                    limit: creditAnalysis.limit,
+                    remainingLimit,
+                    interestRate: interestRate * 100, // em %
+                    totalWithInterest,
+                    installmentValue: totalWithInterest / parsedInstallments,
+                    guaranteePercentage
+                };
+            } else {
+                // Pagamento à vista - verificar saldo
+                if (customerBalance < parsedAmount) {
+                    return c.json({
+                        success: false,
+                        message: `Saldo insuficiente. Saldo: R$ ${customerBalance.toFixed(2)}. Sugestão: parcelar em até 12x no crédito.`,
+                        data: { suggestCredit: true, balance: customerBalance }
+                    }, 400);
+                }
             }
 
             // Verificar se já existe cobrança pendente para este cliente
@@ -79,10 +136,10 @@ export class PdvController {
             const expiresAt = new Date(Date.now() + CODE_EXPIRATION_MINUTES * 60 * 1000);
 
             const chargeRes = await pool.query(`
-                INSERT INTO pdv_charges (merchant_id, customer_id, amount, description, confirmation_code, fee_amount, net_amount, expires_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                INSERT INTO pdv_charges (merchant_id, customer_id, amount, description, confirmation_code, fee_amount, net_amount, expires_at, payment_type, installments, interest_rate, total_with_interest, guarantee_percentage)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                 RETURNING id, confirmation_code, expires_at
-            `, [user.id, customerId, parsedAmount, description || 'Pagamento PDV', code, feeAmount, netAmount, expiresAt]);
+            `, [user.id, customerId, parsedAmount, description || 'Pagamento PDV', code, feeAmount, netAmount, expiresAt, paymentType, parsedInstallments, interestRate, totalWithInterest, guaranteePercentage]);
 
             const charge = chargeRes.rows[0];
 
@@ -95,7 +152,9 @@ export class PdvController {
 
             return c.json({
                 success: true,
-                message: 'Cobrança criada! Mostre a tela para o cliente confirmar.',
+                message: paymentType === 'CREDIT'
+                    ? `Cobrança parcelada criada! ${parsedInstallments}x de R$ ${(totalWithInterest / parsedInstallments).toFixed(2)}`
+                    : 'Cobrança criada! Mostre a tela para o cliente confirmar.',
                 data: {
                     chargeId: charge.id,
                     confirmationCode: charge.confirmation_code,
@@ -103,6 +162,11 @@ export class PdvController {
                     amount: parsedAmount,
                     feeAmount,
                     netAmount,
+                    paymentType,
+                    installments: parsedInstallments,
+                    interestRate: interestRate * 100,
+                    totalWithInterest,
+                    installmentValue: totalWithInterest / parsedInstallments,
                     customer: {
                         id: customer.id,
                         name: customer.name
@@ -110,7 +174,8 @@ export class PdvController {
                     merchant: {
                         name: merchant.merchant_name || merchant.name,
                         pixKey: merchant.pix_key ? `****${merchant.pix_key.slice(-4)}` : null
-                    }
+                    },
+                    creditInfo
                 }
             });
         } catch (error: any) {
@@ -186,7 +251,7 @@ export class PdvController {
                 return c.json({ success: false, message: 'Senha incorreta.' }, 401);
             }
 
-            // Buscar cobrança pendente com esse código
+            // Buscar cobrança pendente com esse código (incluindo campos de parcelamento)
             const chargeRes = await pool.query(`
                 SELECT c.*, u.name as merchant_name, u.pix_key as merchant_pix
                 FROM pdv_charges c
@@ -205,78 +270,187 @@ export class PdvController {
             }
 
             const charge = chargeRes.rows[0];
+            const paymentType = charge.payment_type || 'BALANCE';
+            const installments = parseInt(charge.installments) || 1;
+            const interestRate = parseFloat(charge.interest_rate) || 0;
+            const totalWithInterest = parseFloat(charge.total_with_interest) || parseFloat(charge.amount);
+            const guaranteePercentage = parseInt(charge.guarantee_percentage) || 100;
 
-            // Verificar saldo novamente
-            if (parseFloat(customer.balance) < parseFloat(charge.amount)) {
-                return c.json({ success: false, message: 'Saldo insuficiente.' }, 400);
+            // Se for pagamento à vista (BALANCE), verificar saldo
+            if (paymentType === 'BALANCE') {
+                if (parseFloat(customer.balance) < parseFloat(charge.amount)) {
+                    return c.json({ success: false, message: 'Saldo insuficiente.' }, 400);
+                }
             }
 
             // Executar transação
             const result = await executeInTransaction(pool, async (client: PoolClient) => {
-                // Debitar do cliente
-                await client.query(
-                    'UPDATE users SET balance = balance - $1 WHERE id = $2',
-                    [charge.amount, customerId]
-                );
+                let loanId = null;
 
-                // Creditar ao comerciante (valor líquido)
-                await client.query(
-                    'UPDATE users SET balance = balance + $1 WHERE id = $2',
-                    [charge.net_amount, charge.merchant_id]
-                );
+                if (paymentType === 'CREDIT') {
+                    // ===== PAGAMENTO PARCELADO VIA CRÉDITO =====
 
-                // Atualizar status da cobrança
-                await client.query(
-                    `UPDATE pdv_charges SET status = 'COMPLETED', completed_at = NOW() WHERE id = $1`,
-                    [charge.id]
-                );
+                    // 1. Criar empréstimo automático
+                    const dueDate = new Date(Date.now() + (installments * ONE_MONTH_MS));
 
-                // Registrar transação do cliente (débito)
-                await createTransaction(
-                    client,
-                    customerId.toString(),
-                    'PDV_PAYMENT',
-                    -parseFloat(charge.amount),
-                    `Pagamento PDV para ${charge.merchant_name}`,
-                    'APPROVED',
-                    { chargeId: charge.id, merchantId: charge.merchant_id }
-                );
+                    const loanRes = await client.query(`
+                        INSERT INTO loans (user_id, amount, total_repayment, installments, interest_rate, penalty_rate, status, due_date, term_days, metadata)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                        RETURNING id
+                    `, [
+                        customerId,
+                        parseFloat(charge.amount), // Valor original da compra
+                        totalWithInterest, // Valor total a pagar com juros
+                        installments,
+                        interestRate,
+                        PENALTY_RATE,
+                        'APPROVED', // Aprovado automaticamente (já verificamos o limite)
+                        dueDate,
+                        installments * 30,
+                        JSON.stringify({
+                            pdvChargeId: charge.id,
+                            merchantId: charge.merchant_id,
+                            merchantName: charge.merchant_name,
+                            guaranteePercentage,
+                            type: 'PDV_CREDIT',
+                            description: charge.description
+                        })
+                    ]);
 
-                // Registrar transação do comerciante (crédito)
-                await createTransaction(
-                    client,
-                    charge.merchant_id.toString(),
-                    'PDV_RECEIVE',
-                    parseFloat(charge.net_amount),
-                    `Venda PDV - Cliente ${customer.name}`,
-                    'APPROVED',
-                    { chargeId: charge.id, customerId, feeAmount: parseFloat(charge.fee_amount) }
-                );
+                    loanId = loanRes.rows[0].id;
 
-                // Taxa para o sistema
-                const feeAmount = parseFloat(charge.fee_amount);
-                await client.query(`
-                    UPDATE system_config SET 
-                        total_tax_reserve = total_tax_reserve + $1,
-                        total_operational_reserve = total_operational_reserve + $2,
-                        total_owner_profit = total_owner_profit + $3,
-                        investment_reserve = investment_reserve + $4
-                `, [feeAmount * 0.25, feeAmount * 0.25, feeAmount * 0.25, feeAmount * 0.25]);
+                    // 2. Criar parcelas do empréstimo
+                    const installmentValue = totalWithInterest / installments;
+                    for (let i = 1; i <= installments; i++) {
+                        const installmentDueDate = new Date(Date.now() + (i * ONE_MONTH_MS));
+                        await client.query(`
+                            INSERT INTO loan_installments (loan_id, installment_number, expected_amount, due_date, status)
+                            VALUES ($1, $2, $3, $4, 'PENDING')
+                        `, [loanId, i, installmentValue, installmentDueDate]);
+                    }
 
-                return { success: true };
+                    // 3. Creditar comerciante à vista (valor líquido)
+                    await client.query(
+                        'UPDATE users SET balance = balance + $1 WHERE id = $2',
+                        [charge.net_amount, charge.merchant_id]
+                    );
+
+                    // 4. Atualizar cobrança com loan_id
+                    await client.query(
+                        `UPDATE pdv_charges SET status = 'COMPLETED', completed_at = NOW(), loan_id = $1 WHERE id = $2`,
+                        [loanId, charge.id]
+                    );
+
+                    // 5. Registrar transação do comerciante (crédito à vista)
+                    await createTransaction(
+                        client,
+                        charge.merchant_id.toString(),
+                        'PDV_RECEIVE',
+                        parseFloat(charge.net_amount),
+                        `Venda PDV Parcelada (${installments}x) - Cliente ${customer.name}`,
+                        'APPROVED',
+                        { chargeId: charge.id, customerId, loanId, feeAmount: parseFloat(charge.fee_amount), installments }
+                    );
+
+                    // 6. Registrar transação do cliente (empréstimo PDV)
+                    await createTransaction(
+                        client,
+                        customerId.toString(),
+                        'PDV_CREDIT',
+                        -parseFloat(charge.amount),
+                        `Compra PDV Parcelada ${installments}x de R$ ${installmentValue.toFixed(2)} em ${charge.merchant_name}`,
+                        'APPROVED',
+                        { chargeId: charge.id, merchantId: charge.merchant_id, loanId, totalWithInterest }
+                    );
+
+                    // 7. Taxa PDV para o sistema
+                    const feeAmount = parseFloat(charge.fee_amount);
+                    await client.query(`
+                        UPDATE system_config SET 
+                            total_tax_reserve = total_tax_reserve + $1,
+                            total_operational_reserve = total_operational_reserve + $2,
+                            total_owner_profit = total_owner_profit + $3,
+                            investment_reserve = investment_reserve + $4
+                    `, [feeAmount * 0.25, feeAmount * 0.25, feeAmount * 0.25, feeAmount * 0.25]);
+
+                } else {
+                    // ===== PAGAMENTO À VISTA (SALDO) =====
+
+                    // Debitar do cliente
+                    await client.query(
+                        'UPDATE users SET balance = balance - $1 WHERE id = $2',
+                        [charge.amount, customerId]
+                    );
+
+                    // Creditar ao comerciante (valor líquido)
+                    await client.query(
+                        'UPDATE users SET balance = balance + $1 WHERE id = $2',
+                        [charge.net_amount, charge.merchant_id]
+                    );
+
+                    // Atualizar status da cobrança
+                    await client.query(
+                        `UPDATE pdv_charges SET status = 'COMPLETED', completed_at = NOW() WHERE id = $1`,
+                        [charge.id]
+                    );
+
+                    // Registrar transação do cliente (débito)
+                    await createTransaction(
+                        client,
+                        customerId.toString(),
+                        'PDV_PAYMENT',
+                        -parseFloat(charge.amount),
+                        `Pagamento PDV para ${charge.merchant_name}`,
+                        'APPROVED',
+                        { chargeId: charge.id, merchantId: charge.merchant_id }
+                    );
+
+                    // Registrar transação do comerciante (crédito)
+                    await createTransaction(
+                        client,
+                        charge.merchant_id.toString(),
+                        'PDV_RECEIVE',
+                        parseFloat(charge.net_amount),
+                        `Venda PDV - Cliente ${customer.name}`,
+                        'APPROVED',
+                        { chargeId: charge.id, customerId, feeAmount: parseFloat(charge.fee_amount) }
+                    );
+
+                    // Taxa para o sistema
+                    const feeAmount = parseFloat(charge.fee_amount);
+                    await client.query(`
+                        UPDATE system_config SET 
+                            total_tax_reserve = total_tax_reserve + $1,
+                            total_operational_reserve = total_operational_reserve + $2,
+                            total_owner_profit = total_owner_profit + $3,
+                            investment_reserve = investment_reserve + $4
+                    `, [feeAmount * 0.25, feeAmount * 0.25, feeAmount * 0.25, feeAmount * 0.25]);
+                }
+
+                return { success: true, loanId };
             });
 
             if (!result.success) {
                 return c.json({ success: false, message: result.error }, 400);
             }
 
+            // Mensagem de retorno diferenciada
+            const message = paymentType === 'CREDIT'
+                ? `Compra de R$ ${parseFloat(charge.amount).toFixed(2)} parcelada em ${installments}x de R$ ${(totalWithInterest / installments).toFixed(2)} aprovada!`
+                : `Pagamento de R$ ${parseFloat(charge.amount).toFixed(2)} confirmado com sucesso!`;
+
             return c.json({
                 success: true,
-                message: `Pagamento de R$ ${parseFloat(charge.amount).toFixed(2)} confirmado com sucesso!`,
+                message,
                 data: {
                     chargeId: charge.id,
                     amount: parseFloat(charge.amount),
-                    merchantName: charge.merchant_name
+                    merchantName: charge.merchant_name,
+                    paymentType,
+                    installments,
+                    totalWithInterest,
+                    installmentValue: totalWithInterest / installments,
+                    loanId: result.data?.loanId || null
                 }
             });
 
@@ -391,6 +565,104 @@ export class PdvController {
                 message: `Parabéns! Agora você é comerciante Cred30 como "${merchantName}".`
             });
         } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
+     * Simular parcelamento para um cliente
+     */
+    static async simulateCredit(c: Context) {
+        try {
+            const pool = getDbPool(c);
+            const customerId = c.req.query('customerId');
+            const amount = c.req.query('amount');
+
+            if (!customerId || !amount) {
+                return c.json({ success: false, message: 'customerId e amount são obrigatórios.' }, 400);
+            }
+
+            const parsedAmount = parseFloat(amount);
+            if (parsedAmount < 10 || parsedAmount > 5000) {
+                return c.json({ success: false, message: 'Valor deve ser entre R$ 10,00 e R$ 5.000,00.' }, 400);
+            }
+
+            // Buscar análise de crédito do cliente
+            const creditAnalysis = await getCreditAnalysis(pool, customerId);
+
+            if (!creditAnalysis.eligible) {
+                return c.json({
+                    success: false,
+                    message: `Cliente não elegível: ${creditAnalysis.reason}`,
+                    data: { eligible: false, reason: creditAnalysis.reason }
+                }, 400);
+            }
+
+            // Verificar limite disponível
+            const activeLoansRes = await pool.query(
+                `SELECT COALESCE(SUM(amount), 0) as total FROM loans 
+                 WHERE user_id = $1 AND status IN ('APPROVED', 'PAYMENT_PENDING', 'PENDING')`,
+                [customerId]
+            );
+            const activeDebt = parseFloat(activeLoansRes.rows[0].total);
+            const remainingLimit = Math.max(0, creditAnalysis.limit - activeDebt);
+
+            if (parsedAmount > remainingLimit) {
+                return c.json({
+                    success: false,
+                    message: `Limite insuficiente. Disponível: R$ ${remainingLimit.toFixed(2)}`,
+                    data: {
+                        eligible: false,
+                        limit: creditAnalysis.limit,
+                        activeDebt,
+                        remainingLimit,
+                        requestedAmount: parsedAmount
+                    }
+                }, 400);
+            }
+
+            // Simular todas as opções de parcelamento (1x a 12x)
+            const installmentOptions = [];
+            const validGuarantees = [50, 60, 70, 80, 90, 100];
+
+            for (let installments = 1; installments <= 12; installments++) {
+                // Para cada número de parcelas, calcular com garantia de 100% (menor juros)
+                const interestRate = calculateInterestRate(100);
+                const total = parsedAmount * (1 + interestRate);
+                const installmentValue = total / installments;
+
+                installmentOptions.push({
+                    installments,
+                    interestRate: interestRate * 100, // em %
+                    total,
+                    installmentValue,
+                    guaranteePercentage: 100
+                });
+            }
+
+            // Taxa do comerciante
+            const pdvFee = parsedAmount * PDV_FEE_RATE;
+            const merchantReceives = parsedAmount - pdvFee;
+
+            return c.json({
+                success: true,
+                data: {
+                    eligible: true,
+                    limit: creditAnalysis.limit,
+                    activeDebt,
+                    remainingLimit,
+                    requestedAmount: parsedAmount,
+                    pdvFee,
+                    merchantReceives,
+                    installmentOptions,
+                    guaranteeOptions: validGuarantees.map(g => ({
+                        percentage: g,
+                        interestRate: calculateInterestRate(g) * 100
+                    }))
+                }
+            });
+        } catch (error: any) {
+            console.error('[PDV] Erro na simulação:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
     }

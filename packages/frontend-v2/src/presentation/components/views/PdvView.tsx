@@ -14,7 +14,9 @@ import {
     ShieldCheck,
     Copy,
     History,
-    TrendingUp
+    TrendingUp,
+    CreditCard,
+    Percent
 } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 import { AppState } from '../../../domain/types/common.types';
@@ -40,6 +42,9 @@ export const PdvView = ({ state, onRefresh, onSuccess, onError }: PdvViewProps) 
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
     const [amount, setAmount] = useState('');
+    const [installments, setInstallments] = useState(1);
+    const [creditSimulation, setCreditSimulation] = useState<any>(null);
+    const [isSimulating, setIsSimulating] = useState(false);
     const [description, setDescription] = useState('');
 
     // Estados da cobrança criada
@@ -70,6 +75,27 @@ export const PdvView = ({ state, onRefresh, onSuccess, onError }: PdvViewProps) 
         }
     }, []);
 
+    // Simular crédito para cliente
+    const simulateCredit = useCallback(async (custId: string, amt: number) => {
+        if (!custId || amt < 10) {
+            setCreditSimulation(null);
+            return;
+        }
+        setIsSimulating(true);
+        try {
+            const res = await apiService.get<any>(`/pdv/simulate-credit?customerId=${custId}&amount=${amt}`);
+            if (res.success) {
+                setCreditSimulation(res.data);
+            } else {
+                setCreditSimulation({ eligible: false, reason: res.message });
+            }
+        } catch (error: any) {
+            setCreditSimulation({ eligible: false, reason: error.message });
+        } finally {
+            setIsSimulating(false);
+        }
+    }, []);
+
     // Criar cobrança
     const handleCreateCharge = async () => {
         if (!selectedCustomer || !amount) {
@@ -82,14 +108,19 @@ export const PdvView = ({ state, onRefresh, onSuccess, onError }: PdvViewProps) 
             const res = await apiService.post<any>('/pdv/create-charge', {
                 customerId: selectedCustomer.id,
                 amount: parseFloat(amount),
-                description
+                description,
+                installments,
+                guaranteePercentage: 100 // Sempre 100% para menor juros
             });
 
             if (res.success) {
                 setChargeData(res.data);
                 setCountdown(300);
                 setView('confirm');
-                onSuccess('Cobrança Criada', 'Mostre a tela para o cliente confirmar.');
+                const msg = installments > 1
+                    ? `Cobrança parcelada em ${installments}x criada!`
+                    : 'Cobrança criada!';
+                onSuccess('Cobrança Criada', msg);
             } else {
                 onError('Erro', res.message);
             }
@@ -168,7 +199,19 @@ export const PdvView = ({ state, onRefresh, onSuccess, onError }: PdvViewProps) 
         setChargeData(null);
         setConfirmPassword('');
         setConfirmCode('');
+        setInstallments(1);
+        setCreditSimulation(null);
     };
+
+    // Efeito para simular crédito quando cliente e valor mudam
+    useEffect(() => {
+        if (selectedCustomer && amount && parseFloat(amount) >= 10) {
+            const timeout = setTimeout(() => {
+                simulateCredit(selectedCustomer.id, parseFloat(amount));
+            }, 500);
+            return () => clearTimeout(timeout);
+        }
+    }, [selectedCustomer, amount, simulateCredit]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -323,32 +366,118 @@ export const PdvView = ({ state, onRefresh, onSuccess, onError }: PdvViewProps) 
                     />
                 </div>
 
+                {/* Parcelamento - só mostra se tiver simulação */}
+                {creditSimulation?.eligible && (
+                    <div className="space-y-3">
+                        <label className="text-zinc-400 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                            <CreditCard size={14} />
+                            4. Forma de Pagamento
+                        </label>
+
+                        {/* Seletor de parcelas */}
+                        <div className="grid grid-cols-4 gap-2">
+                            {[1, 2, 3, 4, 6, 8, 10, 12].map((i) => {
+                                const option = creditSimulation.installmentOptions?.find((o: any) => o.installments === i);
+                                return (
+                                    <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() => setInstallments(i)}
+                                        className={`p-3 rounded-xl text-center transition-all ${installments === i
+                                                ? 'bg-primary-500 text-black'
+                                                : 'bg-zinc-900 border border-zinc-800 text-white hover:border-zinc-700'
+                                            }`}
+                                    >
+                                        <p className="font-black text-sm">{i}x</p>
+                                        {option && i > 1 && (
+                                            <p className="text-[9px] opacity-70">+{option.interestRate.toFixed(0)}%</p>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Info sobre limite */}
+                        <div className="bg-blue-900/20 border border-blue-500/30 rounded-xl p-3 flex items-start gap-2">
+                            <Percent size={16} className="text-blue-400 flex-shrink-0 mt-0.5" />
+                            <div className="text-xs">
+                                <p className="text-blue-400 font-bold">Limite do cliente: {formatCurrency(creditSimulation.remainingLimit)}</p>
+                                <p className="text-zinc-400">Juros de 10% (100% garantia em cotas)</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Aviso se cliente não tem crédito */}
+                {selectedCustomer && amount && parseFloat(amount) >= 10 && creditSimulation && !creditSimulation.eligible && (
+                    <div className="bg-amber-900/20 border border-amber-500/30 rounded-xl p-3 flex items-start gap-2">
+                        <AlertTriangle size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-xs">
+                            <p className="text-amber-400 font-bold">Parcelamento indisponível</p>
+                            <p className="text-zinc-400">{creditSimulation.reason || 'Cliente precisa ter cotas para parcelar.'}</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Loading simulação */}
+                {isSimulating && (
+                    <div className="flex items-center justify-center gap-2 text-zinc-500 py-2">
+                        <Loader2 className="animate-spin" size={16} />
+                        <span className="text-xs">Verificando crédito...</span>
+                    </div>
+                )}
+
                 {/* Resumo */}
                 {amount && parseFloat(amount) > 0 && (
                     <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4 space-y-2">
                         <div className="flex justify-between text-sm">
-                            <span className="text-zinc-500">Valor bruto:</span>
+                            <span className="text-zinc-500">Valor da compra:</span>
                             <span className="text-white font-bold">{formatCurrency(parseFloat(amount))}</span>
                         </div>
+
+                        {/* Se parcelado, mostrar juros */}
+                        {installments > 1 && creditSimulation?.installmentOptions && (
+                            <>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-zinc-500">Juros ({creditSimulation.installmentOptions.find((o: any) => o.installments === installments)?.interestRate.toFixed(0)}%):</span>
+                                    <span className="text-amber-400 font-bold">
+                                        +{formatCurrency(parseFloat(amount) * 0.10)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-zinc-500">Cliente paga:</span>
+                                    <span className="text-white font-bold">
+                                        {installments}x de {formatCurrency((parseFloat(amount) * 1.10) / installments)}
+                                    </span>
+                                </div>
+                            </>
+                        )}
+
                         <div className="flex justify-between text-sm">
-                            <span className="text-zinc-500">Taxa (3,5%):</span>
+                            <span className="text-zinc-500">Taxa PDV (3,5%):</span>
                             <span className="text-red-400 font-bold">-{formatCurrency(parseFloat(amount) * 0.035)}</span>
                         </div>
                         <div className="border-t border-zinc-800 pt-2 flex justify-between">
                             <span className="text-zinc-400 font-bold">Você recebe:</span>
                             <span className="text-primary-400 font-black text-lg">{formatCurrency(parseFloat(amount) * 0.965)}</span>
                         </div>
+
+                        {installments > 1 && (
+                            <p className="text-zinc-500 text-[10px] text-center pt-1">
+                                ⚡ Você recebe à vista! Cliente paga parcelado ao Cred30.
+                            </p>
+                        )}
                     </div>
                 )}
 
                 {/* Botão Criar Cobrança */}
                 <button
                     onClick={handleCreateCharge}
-                    disabled={!selectedCustomer || !amount || isLoading}
+                    disabled={!selectedCustomer || !amount || isLoading || (installments > 1 && !creditSimulation?.eligible)}
                     className="w-full bg-gradient-to-r from-primary-500 to-primary-400 text-black py-5 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {isLoading ? <Loader2 className="animate-spin" size={20} /> : <DollarSign size={20} />}
-                    {isLoading ? 'CRIANDO...' : 'GERAR CÓDIGO DE COBRANÇA'}
+                    {isLoading ? <Loader2 className="animate-spin" size={20} /> : installments > 1 ? <CreditCard size={20} /> : <DollarSign size={20} />}
+                    {isLoading ? 'CRIANDO...' : installments > 1 ? `COBRAR ${installments}X NO CRÉDITO` : 'GERAR CÓDIGO DE COBRANÇA'}
                 </button>
             </div>
         );
@@ -496,7 +625,7 @@ export const PdvView = ({ state, onRefresh, onSuccess, onError }: PdvViewProps) 
                                             {formatCurrency(sale.netAmount)}
                                         </p>
                                         <p className={`text-[9px] font-bold uppercase ${sale.status === 'COMPLETED' ? 'text-emerald-400' :
-                                                sale.status === 'PENDING' ? 'text-yellow-400' : 'text-red-400'
+                                            sale.status === 'PENDING' ? 'text-yellow-400' : 'text-red-400'
                                             }`}>
                                             {sale.status === 'COMPLETED' ? 'Aprovado' :
                                                 sale.status === 'PENDING' ? 'Pendente' : 'Cancelado'}

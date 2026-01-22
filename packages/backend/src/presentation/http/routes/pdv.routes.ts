@@ -11,6 +11,10 @@ pdvRoutes.get('/my-sales', authMiddleware, PdvController.getMySales);
 pdvRoutes.post('/cancel/:id', authMiddleware, PdvController.cancelCharge);
 pdvRoutes.post('/become-merchant', authMiddleware, PdvController.becomeMerchant);
 
+// Simulação de parcelamento (comerciante simula antes de cobrar)
+pdvRoutes.get('/simulate-credit', authMiddleware, PdvController.simulateCredit);
+
 // Rota de Confirmação (Cliente digita no PDV do comerciante)
 // Não precisa de authMiddleware pois o cliente confirma com ID + Senha
 pdvRoutes.post('/confirm-charge', PdvController.confirmCharge);
+
