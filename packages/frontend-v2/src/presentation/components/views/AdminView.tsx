@@ -180,7 +180,21 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                     </div>
 
                     <div className="flex flex-wrap items-center justify-center gap-4">
-                        <NotificationBell />
+                        <div className="flex items-center gap-2 bg-zinc-800/30 p-1.5 rounded-2xl border border-zinc-700/30">
+                            <NotificationBell />
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        await apiService.post('/notifications/test', {});
+                                    } catch (e) {
+                                        console.error('Erro ao testar:', e);
+                                    }
+                                }}
+                                className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-primary-400 hover:text-white hover:bg-primary-500/10 rounded-xl transition-all"
+                            >
+                                Testar Sino
+                            </button>
+                        </div>
                         <button
                             onClick={handleRefresh}
                             className="group bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700/50 hover:border-primary-500/50 px-6 py-3.5 rounded-2xl flex items-center gap-3 transition-all duration-300 text-sm font-bold text-zinc-300 shadow-lg"
