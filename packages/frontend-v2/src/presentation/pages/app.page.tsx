@@ -66,6 +66,7 @@ const ServicesView = lazyWithRetry(() => import('../components/views/ServicesVie
 const RewardsShopView = lazyWithRetry(() => import('../components/views/RewardsShopView').then(m => ({ default: m.RewardsShopView })));
 const ConsortiumView = lazyWithRetry(() => import('../components/views/ConsortiumView').then(m => ({ default: m.ConsortiumView })));
 const PdvView = lazyWithRetry(() => import('../components/views/PdvView').then(m => ({ default: m.PdvView })));
+const PdvConfirmView = lazyWithRetry(() => import('../components/views/PdvConfirmView').then(m => ({ default: m.PdvConfirmView })));
 
 export default function App() {
   const [state, setState] = useState<AppState>({
@@ -700,6 +701,14 @@ export default function App() {
                     <PdvView
                       state={state}
                       onRefresh={refreshState}
+                      onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
+                      onError={(title, message) => setShowError({ isOpen: true, title, message })}
+                    />
+                  </Suspense>
+                } />
+                <Route path="/app/pdv-confirm/:chargeId" element={
+                  <Suspense fallback={<LoadingScreen />}>
+                    <PdvConfirmView
                       onSuccess={(title, message) => setShowSuccess({ isOpen: true, title, message })}
                       onError={(title, message) => setShowError({ isOpen: true, title, message })}
                     />

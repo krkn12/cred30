@@ -666,4 +666,93 @@ export class PdvController {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
+
+    /**
+     * Buscar detalhes de uma cobrança pendente (para QR Code / confirmação remota)
+     * Rota pública - não requer autenticação
+     */
+    static async getChargeDetails(c: Context) {
+        try {
+            const pool = getDbPool(c);
+            const chargeId = c.req.param('id');
+
+            if (!chargeId) {
+                return c.json({ success: false, message: 'ID da cobrança é obrigatório.' }, 400);
+            }
+
+            // Buscar cobrança com dados do comerciante e cliente
+            const chargeRes = await pool.query(`
+                SELECT 
+                    c.id,
+                    c.amount,
+                    c.description,
+                    c.confirmation_code,
+                    c.status,
+                    c.expires_at,
+                    c.payment_type,
+                    c.installments,
+                    c.interest_rate,
+                    c.total_with_interest,
+                    c.customer_id,
+                    m.name as merchant_name,
+                    m.merchant_name as merchant_business_name,
+                    cu.name as customer_name
+                FROM pdv_charges c
+                JOIN users m ON c.merchant_id = m.id
+                JOIN users cu ON c.customer_id = cu.id
+                WHERE c.id = $1
+            `, [chargeId]);
+
+            if (chargeRes.rows.length === 0) {
+                return c.json({ success: false, message: 'Cobrança não encontrada.' }, 404);
+            }
+
+            const charge = chargeRes.rows[0];
+
+            // Verificar se ainda está pendente e não expirada
+            if (charge.status !== 'PENDING') {
+                return c.json({
+                    success: false,
+                    message: charge.status === 'COMPLETED' ? 'Esta cobrança já foi paga.' : 'Cobrança cancelada ou expirada.',
+                    data: { status: charge.status }
+                }, 400);
+            }
+
+            const expiresAt = new Date(charge.expires_at);
+            if (expiresAt < new Date()) {
+                return c.json({ success: false, message: 'Esta cobrança expirou.' }, 400);
+            }
+
+            // Calcular tempo restante
+            const remainingSeconds = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
+
+            const paymentType = charge.payment_type || 'BALANCE';
+            const installments = parseInt(charge.installments) || 1;
+            const totalWithInterest = parseFloat(charge.total_with_interest) || parseFloat(charge.amount);
+
+            return c.json({
+                success: true,
+                data: {
+                    chargeId: charge.id,
+                    customerId: charge.customer_id,
+                    customerName: charge.customer_name,
+                    merchantName: charge.merchant_business_name || charge.merchant_name,
+                    description: charge.description,
+                    confirmationCode: charge.confirmation_code,
+                    expiresAt: charge.expires_at,
+                    remainingSeconds,
+                    // Dados financeiros
+                    amount: parseFloat(charge.amount),
+                    paymentType,
+                    installments,
+                    interestRate: parseFloat(charge.interest_rate) * 100 || 0,
+                    totalWithInterest,
+                    installmentValue: installments > 1 ? totalWithInterest / installments : parseFloat(charge.amount)
+                }
+            });
+        } catch (error: any) {
+            console.error('[PDV] Erro ao buscar detalhes:', error);
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
 }

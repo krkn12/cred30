@@ -14,8 +14,12 @@ import {
     ShieldCheck,
     History,
     CreditCard,
-    Percent
+    Percent,
+    QrCode,
+    Share2,
+    Copy
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { apiService } from '../../../application/services/api.service';
 import { AppState } from '../../../domain/types/common.types';
 
@@ -517,10 +521,50 @@ export const PdvView = ({ onRefresh, onSuccess, onError }: PdvViewProps) => {
                     </div>
                 </div>
 
-                {/* Código de Confirmação GRANDE */}
-                <div className="bg-gradient-to-br from-primary-500/20 to-primary-600/10 border-2 border-primary-500/50 rounded-2xl p-6 text-center">
-                    <p className="text-primary-400 text-xs font-bold uppercase tracking-widest mb-2">Código da Transação</p>
-                    <p className="text-5xl font-mono font-black text-white tracking-[0.3em]">{chargeData.confirmationCode}</p>
+                {/* QR Code e Código de Confirmação */}
+                <div className="bg-white rounded-2xl p-6 text-center space-y-4">
+                    <div className="flex justify-center">
+                        <QRCodeSVG 
+                            value={`${window.location.origin}/app/pdv-confirm/${chargeData.chargeId}`}
+                            size={180}
+                            level="H"
+                            includeMargin
+                        />
+                    </div>
+                    
+                    <div className="border-t border-zinc-200 pt-4">
+                        <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-2">Código da Transação</p>
+                        <p className="text-4xl font-mono font-black text-black tracking-[0.3em]">{chargeData.confirmationCode}</p>
+                    </div>
+                </div>
+
+                {/* Opções de Compartilhamento */}
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => {
+                            const link = `${window.location.origin}/app/pdv-confirm/${chargeData.chargeId}`;
+                            navigator.clipboard.writeText(link);
+                            onSuccess('Link copiado!', 'Envie para o cliente confirmar.');
+                        }}
+                        className="flex-1 bg-zinc-900 border border-zinc-800 text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-zinc-800 transition"
+                    >
+                        <Copy size={16} /> Link p/ Cliente
+                    </button>
+                    {navigator.share && (
+                        <button
+                            onClick={() => {
+                                const link = `${window.location.origin}/app/pdv-confirm/${chargeData.chargeId}`;
+                                navigator.share({
+                                    title: 'Confirme seu pagamento Cred30',
+                                    text: `Confirme o pagamento de ${formatCurrency(chargeData.amount)} para ${chargeData.merchant.name}`,
+                                    url: link
+                                }).catch(() => {});
+                            }}
+                            className="flex-1 bg-zinc-900 border border-zinc-800 text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-zinc-800 transition"
+                        >
+                            <Share2 size={16} /> Enviar
+                        </button>
+                    )}
                 </div>
 
                 {/* Formulário do Cliente */}
@@ -551,8 +595,12 @@ export const PdvView = ({ onRefresh, onSuccess, onError }: PdvViewProps) => {
                         className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 disabled:opacity-50"
                     >
                         {isLoading ? <Loader2 className="animate-spin" size={20} /> : <CheckCircle size={20} />}
-                        {isLoading ? 'CONFIRMANDO...' : 'CONFIRMAR PAGAMENTO'}
+                        {isLoading ? 'CONFIRMANDO...' : 'CONFIRMAR PAGAMENTO AGORA'}
                     </button>
+                    
+                    <p className="text-center text-zinc-500 text-[10px]">
+                        Ou peça para o cliente escanear o QR Code acima
+                    </p>
 
                     <button
                         onClick={() => { resetForm(); setView('menu'); }}
