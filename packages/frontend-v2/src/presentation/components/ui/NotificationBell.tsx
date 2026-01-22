@@ -20,19 +20,24 @@ export const NotificationBell: React.FC = () => {
 
     // Carregar do localStorage ao iniciar
     useEffect(() => {
+        console.info('[🔔 Sino] Componente montado no DOM.');
         const saved = localStorage.getItem('user_notifications');
         if (saved) {
             try {
-                const parsed = JSON.parse(saved);
+                const parsed = JSON.parse(saved) || [];
                 setNotifications(parsed);
                 const unread = parsed.filter((n: Notification) => !n.read).length;
+                console.info(`[🔔 Sino] ${parsed.length} notificações carregadas (${unread} não lidas).`);
                 setHasUnread(unread > 0);
                 setUnreadCount(unread);
-            } catch (e) { console.error('Error loading notifications', e); }
+            } catch (e) { console.error('[🔔 Sino] Erro ao ler cache:', e); }
         }
 
         // Conectar ao SSE
+        console.info('[🔔 Sino] Iniciando escuta de notificações via SSE...');
         const cleanup = apiService.listenToNotifications((data) => {
+            console.log('🚀 [🔔 Sino] EVENTO RECEBIDO:', data);
+
             const newNotif: Notification = {
                 id: Date.now().toString(),
                 title: data.title || 'Nova Notificação',
@@ -53,6 +58,7 @@ export const NotificationBell: React.FC = () => {
             });
             setHasUnread(true);
             setUnreadCount(prev => prev + 1);
+            console.info('[🔔 Sino] Badge atualizada visualmente!');
 
             // Vibração no mobile
             if (navigator.vibrate) {
