@@ -764,7 +764,8 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
     await updateUserBalance(client, transaction.user_id, depositAmount, 'credit');
 
     // 2. Atualizar data do último depósito para controle de carência anti-fraude (72h)
-    await client.query('UPDATE users SET last_deposit_at = NOW() WHERE id = $1', [transaction.user_id]);
+    // A coluna last_deposit_at não existe no banco, verificação de segurança baseada em transactions aprovadas deve ser implementada no futuro.
+    // await client.query('UPDATE users SET last_deposit_at = NOW() WHERE id = $1', [transaction.user_id]);
 
     // 3. Verificação de Divergência de Nome (Anti-Lavagem Interna)
     const userRes = await client.query('SELECT name FROM users WHERE id = $1', [transaction.user_id]);
