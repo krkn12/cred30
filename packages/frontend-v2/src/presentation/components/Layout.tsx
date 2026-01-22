@@ -31,13 +31,13 @@ export const Layout: React.FC<LayoutProps> = ({
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
   const menuItems = [
-    { id: 'dashboard', label: 'Painel', icon: LayoutDashboard },
-    { id: 'invest', label: 'Participar', icon: Users },
-    { id: 'portfolio', label: 'Carteira', icon: Briefcase },
-    { id: 'loans', label: 'Ajuda', icon: HandCoins },
-    { id: 'withdraw', label: 'Resgates', icon: Wallet },
-    ...(isAdmin ? [{ id: 'admin', label: 'Gestão', icon: ShieldCheck }] : []),
-    { id: 'settings', label: 'Ajustes', icon: Settings },
+    { id: 'dashboard', label: 'Painel', Icon: LayoutDashboard },
+    { id: 'invest', label: 'Participar', Icon: Users },
+    { id: 'portfolio', label: 'Carteira', Icon: Briefcase },
+    { id: 'loans', label: 'Ajuda', Icon: HandCoins },
+    { id: 'withdraw', label: 'Resgates', Icon: Wallet },
+    ...(isAdmin ? [{ id: 'admin', label: 'Gestão', Icon: ShieldCheck }] : []),
+    { id: 'settings', label: 'Ajustes', Icon: Settings },
   ];
 
   // Itens que aparecem no Dock Inferior (Mobile)
@@ -68,11 +68,11 @@ export const Layout: React.FC<LayoutProps> = ({
                 key={item.id}
                 onClick={() => onChangeView(item.id)}
                 className={`relative px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-2 group ${currentView === item.id
-                    ? 'text-primary-400 bg-white/5 border border-white/10'
-                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+                  ? 'text-primary-400 bg-white/5 border border-white/10'
+                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
                   }`}
               >
-                <item.icon size={16} className={currentView === item.id ? "animate-pulse" : "group-hover:scale-110 transition-transform"} />
+                <item.Icon size={16} className={currentView === item.id ? "animate-pulse" : "group-hover:scale-110 transition-transform"} />
                 {item.label}
                 {currentView === item.id && (
                   <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary-400 rounded-full shadow-[0_0_10px_#06b6d4]" />
@@ -121,11 +121,11 @@ export const Layout: React.FC<LayoutProps> = ({
                     setIsMenuOpen(false);
                   }}
                   className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all ${currentView === item.id
-                      ? 'bg-primary-500 text-black shadow-lg shadow-primary-500/20'
-                      : 'text-zinc-400 hover:bg-white/5'
+                    ? 'bg-primary-500 text-black shadow-lg shadow-primary-500/20'
+                    : 'text-zinc-400 hover:bg-white/5'
                     }`}
                 >
-                  <item.icon size={20} />
+                  <item.Icon size={20} />
                   {item.label}
                 </button>
               ))}
@@ -145,7 +145,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 }`}
             >
               <div className={`p-2 rounded-xl transition-all ${currentView === item.id ? 'bg-primary-500/10' : 'bg-transparent'}`}>
-                <item.icon size={22} strokeWidth={currentView === item.id ? 2.5 : 2} />
+                <item.Icon size={22} strokeWidth={currentView === item.id ? 2.5 : 2} />
               </div>
               <span className="text-[9px] font-black uppercase tracking-widest">{item.label}</span>
               {currentView === item.id && (
