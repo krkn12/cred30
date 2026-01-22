@@ -53,7 +53,7 @@ export class WithdrawalsController {
             }
 
             // 1. Verificação de Titularidade (CPF Match)
-            const userFullDataRes = await pool.query('SELECT cpf, name, last_deposit_at, role, security_lock_until FROM users WHERE id = $1', [user.id]);
+            const userFullDataRes = await pool.query('SELECT cpf, name, role, security_lock_until FROM users WHERE id = $1', [user.id]);
             const userFullData = userFullDataRes.rows[0];
 
             // --- ADMIN BYPASS ---
@@ -90,7 +90,8 @@ export class WithdrawalsController {
                 }, 403);
             }
 
-            // 2. Verificação de Carência de 72h (Anti-Lavagem)
+            // 2. Verificação de Carência de 72h (Anti-Lavagem) - DESATIVADA temporariamente (coluna last_deposit_at inexistente)
+            /*
             if (userFullData.last_deposit_at && !isAdmin) {
                 const lastDeposit = new Date(userFullData.last_deposit_at);
                 const hoursSinceDeposit = (new Date().getTime() - lastDeposit.getTime()) / (1000 * 60 * 60);
@@ -104,6 +105,7 @@ export class WithdrawalsController {
                     }, 403);
                 }
             }
+            */
 
             // 3. Verificação de Lock de Segurança Manual (Selo Azul, Coação, etc)
             const lockUntil = userFullData.security_lock_until;

@@ -17,9 +17,19 @@ export class NotificationsController {
         c.header('X-Accel-Buffering', 'no'); // Crítico para Nginx/Render
 
         // Garantia extra de CORS para o Stream SSE
-        const origin = c.req.header('Origin') || 'https://cred30.site';
-        c.header('Access-Control-Allow-Origin', origin);
-        c.header('Access-Control-Allow-Credentials', 'true');
+        const allowedOrigins = [
+            'https://cred30.site',
+            'https://www.cred30.site',
+            'https://cred30-prod-app-2025.web.app'
+        ];
+        const origin = c.req.header('Origin') || allowedOrigins[0];
+
+        if (allowedOrigins.includes(origin) || origin.endsWith('cred30.site')) {
+            c.header('Access-Control-Allow-Origin', origin);
+            c.header('Access-Control-Allow-Credentials', 'true');
+        } else {
+            c.header('Access-Control-Allow-Origin', allowedOrigins[0]);
+        }
 
         return streamSSE(c, async (stream) => {
             const connectionId = Math.random().toString(36).substring(7);
