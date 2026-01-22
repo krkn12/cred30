@@ -190,12 +190,13 @@ class ApiService extends ApiBase {
   listenToNotifications(callback: (notification: any) => void): () => void {
     // Verifica se está autenticado
     if (!this.isAuthenticated()) {
-      console.warn('[Notifications] Usuário não autenticado, ignorando SSE.');
+      console.error('[Notifications] FALHA: Usuário não autenticado no ApiService.');
       return () => { };
     }
 
     const token = localStorage.getItem('authToken');
     if (!token) {
+      console.error('[Notifications] FALHA: Token de autenticação não encontrado no localStorage.');
       return () => { };
     }
 
