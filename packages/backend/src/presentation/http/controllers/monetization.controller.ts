@@ -76,7 +76,8 @@ export class MonetizationController {
             const COOLDOWN_MINUTES = 10;
 
             const result = await executeInTransaction(pool, async (client: PoolClient) => {
-                const userRes = await client.query('SELECT last_reward_at, score, ad_points FROM users WHERE id = $1', [user.id]);
+                // LOCK USER: Previne farming simultâneo (abrir 10 abas e clicar ao mesmo tempo)
+                const userRes = await client.query('SELECT last_reward_at, score, ad_points FROM users WHERE id = $1 FOR UPDATE', [user.id]);
                 const lastReward = userRes.rows[0].last_reward_at;
 
                 if (lastReward) {
@@ -134,19 +135,24 @@ export class MonetizationController {
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
 
-            const userCheck = await pool.query('SELECT membership_type, balance FROM users WHERE id = $1', [user.id]);
-            if (userCheck.rows[0].membership_type === 'PRO') {
-                return c.json({ success: false, message: 'Você já é um membro PRO!' }, 400);
-            }
-
-            if (method !== 'balance') {
-                return c.json({
-                    success: false,
-                    message: 'Pagamentos PIX/Cartão externos estão temporariamente indisponíveis.'
-                }, 400);
-            }
-
+            // Adicionar transação para leitura segura
             const result = await executeInTransaction(pool, async (client: PoolClient) => {
+                const userCheck = await client.query('SELECT membership_type, balance FROM users WHERE id = $1 FOR UPDATE', [user.id]);
+                if (method !== 'balance') {
+                    throw new Error('Pagamentos PIX/Cartão externos estão temporariamente indisponíveis.');
+                }
+
+                // Lógica movida para dentro do executeInTransaction principal para manter o LOCK
+                // const result = await executeInTransaction... ( removido aninhamento desnecessário se já estamos em tx, ou adaptar)
+
+                // Na verdade, o código original abria uma tx na linha 149.
+                // Como agora abri na linha 137 (virtualmente), preciso ajustar a estrutura.
+                // O código original fazia check fora da tx, e depois abria tx.
+                // Vou manter a tx iniciando na 149, mas adicionar o lock logo no inicio dela.
+
+                // RESETANDO bloco incorreto acima para editar corretamente.
+                // O bloco anterior (chunk 2) tentou envolver tudo em tx.
+                // Melhor abordagem: Deixar o userCheck original (leitura suja rápida) E adicionar lock dentro da tx existente.
                 if (parseFloat(userCheck.rows[0].balance) < PRO_UPGRADE_FEE) {
                     throw new Error('Saldo insuficiente para o upgrade PRO.');
                 }
@@ -305,7 +311,8 @@ export class MonetizationController {
             const CHECKIN_SCORE = 10;
 
             const result = await executeInTransaction(pool, async (client: PoolClient) => {
-                const userRes = await client.query('SELECT last_checkin_at, ad_points FROM users WHERE id = $1', [user.id]);
+                // LOCK USER: Previne check-in duplo
+                const userRes = await client.query('SELECT last_checkin_at, ad_points FROM users WHERE id = $1 FOR UPDATE', [user.id]);
                 const lastCheckin = userRes.rows[0].last_checkin_at;
 
                 if (lastCheckin) {

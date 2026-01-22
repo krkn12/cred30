@@ -180,18 +180,18 @@ export class WithdrawalsController {
                 }, 403);
             }
 
-            const userBalanceRes = await pool.query('SELECT balance FROM users WHERE id = $1', [user.id]);
-            const currentBalance = parseFloat(userBalanceRes.rows[0].balance);
-
-            if (amount > currentBalance) {
-                return c.json({
-                    success: false,
-                    message: `Saldo insuficiente. Seu saldo disponível é R$ ${currentBalance.toFixed(2)}`,
-                    errorCode: 'INSUFFICIENT_FUNDS'
-                }, 400);
-            }
-
+            // 4. Iniciar Transação de Saque Segura
             const result = await executeInTransaction(pool, async (client) => {
+                // LOCK DE SEGURANÇA: Verificar e Bloquear saldo do usuário atomicamente
+                const lockRes = await client.query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [user.id]);
+                if (lockRes.rows.length === 0) throw new Error('Usuário não encontrado');
+
+                const currentBalanceLocked = parseFloat(lockRes.rows[0].balance);
+
+                if (currentBalanceLocked < amount) {
+                    throw new Error(`Saldo insuficiente. Disponível: R$ ${currentBalanceLocked.toFixed(2)}`);
+                }
+
                 const balanceDebit = await updateUserBalance(client, user.id, amount, 'debit');
                 if (!balanceDebit.success) {
                     throw new Error(balanceDebit.error || 'Saldo insuficiente para este saque.');
