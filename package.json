@@ -31,7 +31,7 @@
     "reset:db": "cd packages/backend && npm run reset:db",
     "bump": "npm version patch --no-git-tag-version && cd packages/backend && npm version patch --no-git-tag-version && cd ../frontend-v2 && npm version patch --no-git-tag-version",
     "deploy": "git add . && git commit -m \"chore: update version and deploy\" && git push origin master && npm run build:frontend && firebase deploy --only hosting",
-    "release": "node scripts/release.js"
+    "release": "node scripts/ops/release.js"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.0.0",

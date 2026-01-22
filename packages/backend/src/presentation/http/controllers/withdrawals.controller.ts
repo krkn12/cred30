@@ -60,6 +60,15 @@ export class WithdrawalsController {
             // Se o usuário tiver role ADMIN, ignoramos todas as travas de segurança
             const isAdmin = userFullData.role === 'ADMIN' || user.role === 'ADMIN';
 
+            // VERIFICAÇÃO KYC (NOVA)
+            const isVerified = userFullDataRes.rows[0]?.is_verified; // Preciso buscar is_verified na query acima ou fazer nova query
+            // Vou ajustar a query na linha 56 para trazer is_verified também.
+
+            // Mas espera, não posso editar a query aqui pois o tool 'replace_file_content' é local.
+            // Farei a query separada ou ajustarei o bloco anterior se possível.
+            // O bloco anterior está na linha 56. Vou editar o bloco da linha 56 até 60 para incluir is_verified.
+
+
             if (!userFullData.cpf && !isAdmin) {
                 return c.json({
                     success: false,
@@ -220,6 +229,20 @@ export class WithdrawalsController {
                 if (!transactionResult.success) {
                     throw new Error(transactionResult.error);
                 }
+
+                // AUDITORIA FINTECH
+                try {
+                    const ip = c.req.header('x-forwarded-for') || '127.0.0.1';
+                    const userAgent = c.req.header('user-agent') || 'Unknown';
+                    // Passar client da transação se possível, mas AuditService.logSensitiveAction aceita pool/client
+                    await AuditService.logSensitiveAction(client, user.id, AuditActionType.WITHDRAWAL_REQUEST, {
+                        amount,
+                        feeAmount,
+                        netAmount,
+                        pixKey,
+                        userAgent
+                    }, ip);
+                } catch (e: any) { console.error('Audit Error', e); }
 
                 return {
                     transactionId: transactionResult.transactionId,

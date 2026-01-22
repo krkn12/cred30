@@ -146,6 +146,8 @@ test-*.js
 landing_github/
 
 # Auditoria, Logs e Snapshots (Limpeza Josias)
+logs/
+build_logs/
 *.txt
 *.log
 *.json
@@ -154,42 +156,19 @@ landing_github/
 !package-lock.json
 !firebase.json
 !render.yaml
-!tsconfig.json
+!tsconfig*.json
+!README.md
+!walkthrough.md
+!task.md
+!*.md
+logs/*.md
+build_logs/*.md
 
 # Segredos e Chaves (Segurança Crítica)
 .env*
 *-firebase-adminsdk-*.json
 *.key
 *.pem
-
-# Snapshots de Dados e Dumps
-prod_full_snapshot.json
-prod_summary_report.txt
-fiscal_*.txt
-user_limits.txt
-quota_fees_debug.txt
-user_search.txt
-MarketplaceEndPart.txt
-seed_output_final*.txt
-tables.txt
-admin_dump.json
-users_dump.json
-backups/*.json
-*log.txt
-
-# Scripts de Auditoria (Ignorar execuções, manter fontes essenciais)
-scripts/*.js
-!scripts/release.js
-!scripts/analyze_db.js
-!scripts/promote_users.js
-!scripts/set_admin_josias.js
-!scripts/reconcile_finance.js
-!scripts/debug_db.js
-!scripts/financial_repair.js
-!scripts/find_duplicates.js
-!scripts/cancel_duplicates.js
-!scripts/clean_fiscal_junk.js
-!scripts/fix_quota_metadata.js
 
 # Pastas de ferramentas e cache
 .firebase/
@@ -200,5 +179,17 @@ build/
 .next/
 tmp/
 temp/
-docs/
 landing_github/
+
+# Scripts de Auditoria e Debug (Ignorar execuções, manter fontes essenciais)
+scripts/debug/
+!scripts/ops/
+!scripts/migrations/
+!scripts/maintenance/
+!scripts/ops/*.ts
+!scripts/ops/*.js
+!scripts/migrations/*.ts
+!scripts/migrations/*.js
+!scripts/maintenance/*.ts
+!scripts/maintenance/*.js
+!scripts/maintenance/*.sql

@@ -1,6 +1,7 @@
 import { Context } from 'hono';
 import { z } from 'zod';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
+import { AuditService, AuditActionType } from '../../../application/services/audit.service';
 import {
     QUOTA_PRICE,
     VESTING_PERIOD_MS,
@@ -39,6 +40,7 @@ const buyQuotaSchema = z.object({
     quantity: z.number().int().positive(),
     useBalance: z.boolean(),
     paymentMethod: z.enum(['pix']).optional().default('pix'),
+    acceptedTerms: z.boolean().refine(val => val === true, "Você deve ler e aceitar o Termo de Adesão e Ciência de Riscos."),
 });
 
 const sellQuotaSchema = z.object({
@@ -109,6 +111,15 @@ export class QuotasController {
 
             // 2. Bloquear se exceder o limite individual (EXCETO ADMIN)
             if (!user.isAdmin) {
+                // VERIFICAÇÃO KYC (NOVA)
+                const userVerificationRes = await pool.query('SELECT is_verified FROM users WHERE id = $1', [user.id]);
+                if (!userVerificationRes.rows[0]?.is_verified) {
+                    return c.json({
+                        success: false,
+                        message: 'Esta operação exige validação de segurança (KYC). Por favor, complete seu perfil e aguarde a liberação administrativa.'
+                    }, 403);
+                }
+
                 if (currentQuotas + quantity > MAX_QUOTAS_PER_USER) {
                     return c.json({
                         success: false,
@@ -180,7 +191,19 @@ export class QuotasController {
                         totalWithServiceFee,
                         `Aquisição de ${quantity} participação(ões) (+ R$ ${totalAdmFee.toFixed(2)} manutenção) - APROVADA`,
                         'APPROVED',
-                        { quantity, useBalance, paymentMethod: 'balance', serviceFee: totalAdmFee }
+                        {
+                            quantity,
+                            useBalance,
+                            paymentMethod: 'balance',
+                            serviceFee: totalAdmFee,
+                            legal_context: {
+                                accepted_at: new Date().toISOString(),
+                                accepted_terms: true,
+                                ip_address: c.req.header('x-forwarded-for') || '127.0.0.1',
+                                user_agent: c.req.header('user-agent') || 'Unknown',
+                                contract_version: 'QUOTA_AGREEMENT_V1'
+                            }
+                        }
                     );
 
                     if (!transactionResult.success) {
@@ -235,6 +258,22 @@ export class QuotasController {
               investment_reserve = COALESCE(investment_reserve, 0) + $5
           `, [taxAmount, operationalAmount, ownerAmount, growthAmount, principalAmount]);
 
+                    // AUDITORIA FINTECH
+                    try {
+                        const ip = c.req.header('x-forwarded-for') || '127.0.0.1';
+                        const userAgent = c.req.header('user-agent') || 'Unknown';
+                        // Executar fora da transação principal se possível, ou dentro (aqui é dentro do callback)
+                        // Como AuditService usa pool, podemos passar client
+                        await AuditService.logSensitiveAction(client, user.id, AuditActionType.BUY_QUOTA, {
+                            quantity,
+                            totalCost: baseCost,
+                            useBalance: true,
+                            userAgent
+                        }, ip);
+                    } catch (auditError) {
+                        console.error('Falha não-bloqueante de auditoria:', auditError);
+                    }
+
                     return {
                         transactionId: transactionResult.transactionId,
                         cost: baseCost,
@@ -258,7 +297,14 @@ export class QuotasController {
                             external_reference,
                             baseCost,
                             userFee,
-                            manualPix: true
+                            manualPix: true,
+                            legal_context: {
+                                accepted_at: new Date().toISOString(),
+                                accepted_terms: true,
+                                ip_address: c.req.header('x-forwarded-for') || '127.0.0.1',
+                                user_agent: c.req.header('user-agent') || 'Unknown',
+                                contract_version: 'QUOTA_AGREEMENT_V1'
+                            }
                         }
                     );
 
@@ -508,6 +554,17 @@ export class QuotasController {
             };
             logFinancialAudit('VENDA_COTA_APOS', user.id, auditAfter);
 
+            // AUDITORIA FINTECH
+            try {
+                const ip = c.req.header('x-forwarded-for') || '127.0.0.1';
+                const userAgent = c.req.header('user-agent') || 'Unknown';
+                await AuditService.logSensitiveAction(pool, user.id, AuditActionType.SELL_QUOTA, {
+                    quotaId,
+                    finalAmount,
+                    userAgent
+                }, ip);
+            } catch (error) { console.error('Audit Error', error); }
+
             return c.json({
                 success: true,
                 message: 'Participação cedida com sucesso! Valor creditado no saldo.',
@@ -679,6 +736,17 @@ export class QuotasController {
                 newOperationalCash: systemStateAfter.rows[0]?.operational_cash
             };
             logFinancialAudit('VENDA_TODAS_COTAS_APOS', user.id, auditAfter);
+
+            // AUDITORIA FINTECH
+            try {
+                const ip = c.req.header('x-forwarded-for') || '127.0.0.1';
+                const userAgent = c.req.header('user-agent') || 'Unknown';
+                await AuditService.logSensitiveAction(pool, user.id, AuditActionType.SELL_QUOTA, {
+                    action: 'SELL_ALL',
+                    totalReceived,
+                    userAgent
+                }, ip);
+            } catch (error) { console.error('Audit Error', error); }
 
             return c.json({
                 success: true,

@@ -6,8 +6,8 @@ export class FinanceApi extends ApiBase {
         return await this.request<any>('/quotas');
     }
 
-    async buyQuotas(quantity: number, useBalance: boolean, paymentMethod?: string): Promise<ApiResponse<any>> {
-        return await this.post<any>('/quotas/buy', { quantity, useBalance, paymentMethod });
+    async buyQuotas(quantity: number, useBalance: boolean, paymentMethod?: string, acceptedTerms: boolean = false): Promise<ApiResponse<any>> {
+        return await this.post<any>('/quotas/buy', { quantity, useBalance, paymentMethod, acceptedTerms });
     }
 
     async sellQuota(quotaId: string): Promise<ApiResponse<any>> {
@@ -23,8 +23,8 @@ export class FinanceApi extends ApiBase {
         return await this.request<any>('/loans');
     }
 
-    async requestLoan(amount: number, installments: number, guaranteePercentage: number = 100, guarantorId?: string): Promise<ApiResponse<any>> {
-        return await this.post<any>('/loans/request', { amount, installments, guaranteePercentage, guarantorId });
+    async requestLoan(amount: number, installments: number, guaranteePercentage: number = 100, guarantorId?: string, acceptedTerms: boolean = false): Promise<ApiResponse<any>> {
+        return await this.post<any>('/loans/request', { amount, installments, guaranteePercentage, guarantorId, acceptedTerms });
     }
 
     async respondToGuarantorRequest(loanId: string, action: 'APPROVE' | 'REJECT'): Promise<ApiResponse<any>> {

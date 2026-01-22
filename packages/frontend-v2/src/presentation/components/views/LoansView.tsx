@@ -7,7 +7,7 @@ import { formatBRL, formatNumberBR, parseToNumber } from '../../../shared/utils/
 
 interface LoansViewProps {
     loans: Loan[];
-    onRequest: (amount: number, installments: number, guaranteePercentage: number, guarantorId?: string) => void;
+    onRequest: (amount: number, installments: number, guaranteePercentage: number, guarantorId?: string, acceptedTerms?: boolean) => void;
     onGuarantorRespond: (loanId: string, action: 'APPROVE' | 'REJECT') => void;
     onPay: (loanId: string, full: boolean) => void;
     onPayInstallment: (loanId: string, amount: number) => void;
@@ -22,6 +22,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
     const [guaranteePercentage, setGuaranteePercentage] = useState(100);
     const [guarantorId, setGuarantorId] = useState('');
     const [payModalId, setPayModalId] = useState<string | null>(null);
+    const [acceptedTerms, setAcceptedTerms] = useState(false);
 
     // Helpers de formatação segura migrados para utils
     const formatNumber = formatNumberBR;
@@ -378,19 +379,41 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                 </div>
                             </div>
 
+                            <div className="flex items-start gap-3 mt-4 mb-4">
+                                <div className="relative flex items-center shrink-0">
+                                    <input
+                                        type="checkbox"
+                                        id="loanTerms"
+                                        checked={acceptedTerms}
+                                        onChange={(e) => setAcceptedTerms(e.target.checked)}
+                                        className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-zinc-700 checked:border-emerald-500 checked:bg-emerald-500 transition-all"
+                                    />
+                                    <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-black opacity-0 peer-checked:opacity-100 transition-opacity">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    </div>
+                                </div>
+                                <label htmlFor="loanTerms" className="text-[10px] text-zinc-500 leading-tight pt-0.5 cursor-pointer select-none">
+                                    Li e concordo com os Termos da Cédula de Crédito Bancário (CCB) e declaro estar ciente dos juros e multas por atraso.
+                                </label>
+                            </div>
+
                             <button
-                                onClick={() => onRequest(amount, months, guarantorId ? 100 : guaranteePercentage, guarantorId)}
-                                disabled={!amount || amount <= 0 || (creditLimit?.totalLimit === 0 && !guarantorId) || creditLimit?.analysis?.details?.isCurrentlyGuarantor}
-                                className={`w-full font-bold py-4 rounded-xl mt-6 transition shadow-lg ${creditLimit?.analysis?.details?.isCurrentlyGuarantor
+                                onClick={() => onRequest(amount, months, guarantorId ? 100 : guaranteePercentage, guarantorId, acceptedTerms)}
+                                disabled={!amount || amount <= 0 || (creditLimit?.totalLimit === 0 && !guarantorId) || creditLimit?.analysis?.details?.isCurrentlyGuarantor || !acceptedTerms}
+                                className={`w-full font-bold py-4 rounded-xl transition shadow-lg ${creditLimit?.analysis?.details?.isCurrentlyGuarantor
                                     ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-                                    : 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-500/20'
+                                    : (!acceptedTerms && amount > 0)
+                                        ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed opacity-70'
+                                        : 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-500/20'
                                     }`}
                             >
                                 {creditLimit?.analysis?.details?.isCurrentlyGuarantor
                                     ? 'Bloqueado: Você é Fiador Ativo'
                                     : (creditLimit?.totalLimit === 0 && !guarantorId)
                                         ? 'Ajuda Indisponível'
-                                        : 'Solicitar Apoio Mútuo'}
+                                        : !acceptedTerms
+                                            ? 'Aceite os Termos'
+                                            : 'Solicitar Apoio Mútuo'}
                             </button>
                         </div>
                     </div>
