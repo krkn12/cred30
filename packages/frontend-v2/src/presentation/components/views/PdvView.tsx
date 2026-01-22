@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
     Store,
     Search,
@@ -12,9 +12,7 @@ import {
     Clock,
     AlertTriangle,
     ShieldCheck,
-    Copy,
     History,
-    TrendingUp,
     CreditCard,
     Percent
 } from 'lucide-react';
@@ -32,12 +30,11 @@ const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 };
 
-export const PdvView = ({ state, onRefresh, onSuccess, onError }: PdvViewProps) => {
+export const PdvView = ({ onRefresh, onSuccess, onError }: PdvViewProps) => {
     const [view, setView] = useState<'menu' | 'charge' | 'confirm' | 'history'>('menu');
     const [isLoading, setIsLoading] = useState(false);
 
     // Estados do fluxo de cobrança
-    const [customerId, setCustomerId] = useState('');
     const [customerSearch, setCustomerSearch] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
@@ -190,7 +187,6 @@ export const PdvView = ({ state, onRefresh, onSuccess, onError }: PdvViewProps) 
     }, [countdown, view]);
 
     const resetForm = () => {
-        setCustomerId('');
         setCustomerSearch('');
         setSearchResults([]);
         setSelectedCustomer(null);
@@ -384,8 +380,8 @@ export const PdvView = ({ state, onRefresh, onSuccess, onError }: PdvViewProps) 
                                         type="button"
                                         onClick={() => setInstallments(i)}
                                         className={`p-3 rounded-xl text-center transition-all ${installments === i
-                                                ? 'bg-primary-500 text-black'
-                                                : 'bg-zinc-900 border border-zinc-800 text-white hover:border-zinc-700'
+                                            ? 'bg-primary-500 text-black'
+                                            : 'bg-zinc-900 border border-zinc-800 text-white hover:border-zinc-700'
                                             }`}
                                     >
                                         <p className="font-black text-sm">{i}x</p>
