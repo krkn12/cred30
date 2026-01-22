@@ -15,7 +15,6 @@ import {
     History,
     CreditCard,
     Percent,
-    QrCode,
     Share2,
     Copy
 } from 'lucide-react';
@@ -524,14 +523,14 @@ export const PdvView = ({ onRefresh, onSuccess, onError }: PdvViewProps) => {
                 {/* QR Code e Código de Confirmação */}
                 <div className="bg-white rounded-2xl p-6 text-center space-y-4">
                     <div className="flex justify-center">
-                        <QRCodeSVG 
+                        <QRCodeSVG
                             value={`${window.location.origin}/app/pdv-confirm/${chargeData.chargeId}`}
                             size={180}
                             level="H"
                             includeMargin
                         />
                     </div>
-                    
+
                     <div className="border-t border-zinc-200 pt-4">
                         <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-2">Código da Transação</p>
                         <p className="text-4xl font-mono font-black text-black tracking-[0.3em]">{chargeData.confirmationCode}</p>
@@ -558,7 +557,7 @@ export const PdvView = ({ onRefresh, onSuccess, onError }: PdvViewProps) => {
                                     title: 'Confirme seu pagamento Cred30',
                                     text: `Confirme o pagamento de ${formatCurrency(chargeData.amount)} para ${chargeData.merchant.name}`,
                                     url: link
-                                }).catch(() => {});
+                                }).catch(() => { });
                             }}
                             className="flex-1 bg-zinc-900 border border-zinc-800 text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-zinc-800 transition"
                         >
@@ -597,7 +596,7 @@ export const PdvView = ({ onRefresh, onSuccess, onError }: PdvViewProps) => {
                         {isLoading ? <Loader2 className="animate-spin" size={20} /> : <CheckCircle size={20} />}
                         {isLoading ? 'CONFIRMANDO...' : 'CONFIRMAR PAGAMENTO AGORA'}
                     </button>
-                    
+
                     <p className="text-center text-zinc-500 text-[10px]">
                         Ou peça para o cliente escanear o QR Code acima
                     </p>
