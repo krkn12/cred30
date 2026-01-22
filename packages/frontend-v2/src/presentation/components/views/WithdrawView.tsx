@@ -129,11 +129,11 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
     };
 
     const handleAdComplete = async () => {
-        if (viewFarmVideo) {
+        if (viewFarmVideo && !viewFarmVideo.isFallback && viewFarmVideo.id) {
             try {
                 await apiService.misc.completePromoView(viewFarmVideo.id, 10);
             } catch (e) {
-                console.error('Erro ao completar view:', e);
+                console.warn('Erro ao completar view em saque (Pode ser AdBlock):', e);
             }
         }
         processWithdrawal();

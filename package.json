@@ -1,7 +1,7 @@
 {
   "name": "cred30",
   "private": true,
-  "version": "1.0.606",
+  "version": "1.0.607",
   "description": "Plataforma Associativa Cred30 - Monorepo",
   "workspaces": [
     "packages/*"
