@@ -374,7 +374,7 @@ export const PdvView = ({ onRefresh, onSuccess, onError }: PdvViewProps) => {
                         </label>
 
                         {/* Seletor de parcelas */}
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                             {[1, 2, 3, 4, 6, 8, 10, 12].map((i) => {
                                 const option = creditSimulation.installmentOptions?.find((o: any) => o.installments === i);
                                 return (
