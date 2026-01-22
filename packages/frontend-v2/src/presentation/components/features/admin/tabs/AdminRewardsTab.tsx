@@ -396,10 +396,14 @@ export const AdminRewardsTab: React.FC<{ onSuccess: (t: string, m: string) => vo
                                         value={formData.value || ''}
                                         onChange={e => {
                                             const val = Number(e.target.value);
+                                            // 1000 pts = R$ 0.07
+                                            // Pts = (Val / 0.07) * 1000
+                                            const points = Math.round((val / 0.07) * 1000);
+
                                             setFormData({
                                                 ...formData,
                                                 value: val,
-                                                points_cost: Math.round(val * 1000) // 1000 pts = R$ 1,00
+                                                points_cost: points
                                             });
                                         }}
                                         required
@@ -409,7 +413,7 @@ export const AdminRewardsTab: React.FC<{ onSuccess: (t: string, m: string) => vo
                                 </div>
                             </div>
                             <p className="text-[10px] text-zinc-500 -mt-2 px-1 text-right">
-                                Conversão: R$ 1,00 = 1.000 pts
+                                Conversão: 1.000 pts = R$ 0,07
                             </p>
 
 

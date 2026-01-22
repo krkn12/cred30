@@ -12,11 +12,12 @@ import {
     MUTUAL_PROTECTION_PRICE
 } from '../../../shared/constants/business.constants';
 import { UserContext } from '../../../shared/types/hono.types';
-import { PointsService } from '../../../application/services/points.service';
+import {
+    VALUE_PER_1000_POINTS,
+    MIN_POINTS_FOR_CONVERSION
+} from '../../../application/services/points.service';
 
 const PRO_UPGRADE_FEE = 29.90;
-const POINTS_RATE = 100; // 100 pontos = R$ 1,00
-const MONEY_VALUE = 1.00;
 
 const upgradeProSchema = z.object({
     method: z.enum(['balance', 'pix', 'card']).default('balance'),
@@ -28,15 +29,19 @@ const upgradeProSchema = z.object({
  */
 async function autoConvertPoints(client: PoolClient, userId: string | number): Promise<{ converted: boolean; pointsConverted: number; moneyCredited: number; remainingPoints: number }> {
     const userRes = await client.query('SELECT ad_points, balance FROM users WHERE id = $1 FOR UPDATE', [userId]);
-    const currentPoints = userRes.rows[0].ad_points || 0;
+    const currentPoints = Math.floor(userRes.rows[0].ad_points || 0);
 
-    if (currentPoints < POINTS_RATE) {
+    // Usa constante global (atualmente 1000)
+    if (currentPoints < MIN_POINTS_FOR_CONVERSION) {
         return { converted: false, pointsConverted: 0, moneyCredited: 0, remainingPoints: currentPoints };
     }
 
-    const lots = Math.floor(currentPoints / POINTS_RATE);
-    const pointsToConvert = lots * POINTS_RATE;
-    const moneyToCredit = lots * MONEY_VALUE;
+    const lots = Math.floor(currentPoints / MIN_POINTS_FOR_CONVERSION);
+    const pointsToConvert = lots * MIN_POINTS_FOR_CONVERSION; // Ex: 1000, 2000...
+
+    // Nova regra: (Pontos / 1000) * 0.07
+    const moneyToCredit = (pointsToConvert / 1000) * VALUE_PER_1000_POINTS;
+
     const remainingPoints = currentPoints - pointsToConvert;
 
     const systemRes = await client.query('SELECT system_balance FROM system_config LIMIT 1 FOR UPDATE');
@@ -55,7 +60,7 @@ async function autoConvertPoints(client: PoolClient, userId: string | number): P
         String(userId),
         'BONUS',
         moneyToCredit,
-        `🎉 Conversão: ${pointsToConvert} pontos farm`,
+        `🎉 Conversão Automática: ${pointsToConvert} pontos`,
         'APPROVED'
     );
 
