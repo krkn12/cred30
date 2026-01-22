@@ -34,12 +34,20 @@ export class NotificationsController {
 
             notificationService.addClient(user.id, connectionId, send);
 
-            // Ping para manter a conexão ativa em proxies (Render/Heroku/etc)
+            // Evento inicial para abrir o pipe imediatamente e confirmar no frontend
+            stream.writeSSE({
+                data: JSON.stringify({ message: 'SSE_CONNECTED', timestamp: Date.now() }),
+                event: 'status',
+                id: 'init'
+            });
+
+            // Ping para manter a conexão ativa em proxies (Render/Heroku/Nginx)
             const keepAlive = setInterval(() => {
                 stream.writeSSE({ data: 'ping', event: 'ping' });
-            }, 15000);
+            }, 5000); // Reduzido de 15s para 5s
 
             stream.onAbort(() => {
+                console.log(`📡 [SSE] Conexão abortada: ${user.id} (${connectionId})`);
                 notificationService.removeClient(user.id, connectionId);
                 clearInterval(keepAlive);
             });

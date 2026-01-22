@@ -186,8 +186,10 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                                 onClick={async () => {
                                     try {
                                         await apiService.post('/notifications/test', {});
+                                        alert('🚀 Solicitação enviada ao servidor! Aguarde o sino balançar.');
                                     } catch (e) {
                                         console.error('Erro ao testar:', e);
+                                        alert('❌ Erro ao disparar teste.');
                                     }
                                 }}
                                 className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-primary-400 hover:text-white hover:bg-primary-500/10 rounded-xl transition-all"
