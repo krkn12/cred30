@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Download, X, Lock, AlertTriangle } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
     prompt: () => Promise<void>;
@@ -109,6 +109,7 @@ interface PWAEnforcerProps {
  */
 export const PWAEnforcer: React.FC<PWAEnforcerProps> = ({ isAdmin, children }) => {
     const { isInstallable, isInstalled, promptInstall } = usePWAInstall();
+    const isDesktop = isDesktopDevice();
     const [skipPWA, setSkipPWA] = useState(() => localStorage.getItem('skip-pwa-enforcement') === 'true');
 
     // ========================================
