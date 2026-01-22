@@ -261,10 +261,12 @@ class ApiService extends ApiBase {
     };
 
     // Inicia a conexão
+    console.log('[Notifications] Iniciando conexão SSE para:', sseUrl);
     connect();
 
     // Retorna função de cleanup
     return () => {
+      console.log('[Notifications] Encerrando conexão SSE');
       isClosing = true;
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
