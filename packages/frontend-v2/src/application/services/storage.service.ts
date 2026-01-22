@@ -93,14 +93,14 @@ interface SyncResponseData {
   transactions: ApiTransaction[];
   quotas: ApiQuota[];
   loans: ApiLoan[];
-  welcomeBenefit: unknown;
-  stats: unknown;
+  welcomeBenefit: any;
+  stats: any;
 }
 
 interface DashboardCache {
   systemBalance: number;
   profitPool: number;
-  stats: unknown;
+  stats: any;
 }
 
 // Função para converter dados da API para o formato esperado pelo frontend
@@ -198,7 +198,7 @@ const convertApiLoanToLoan = (apiLoan: ApiLoan): Loan => {
     totalRepayment: totalRepayment || 0,
     installments: apiLoan.installments || 1,
     interestRate: interestRate || 0,
-    requestDate: apiLoan.requestDate as number,
+    requestDate: apiLoan.requestDate ? new Date(apiLoan.requestDate).getTime() : Date.now(),
     status: apiLoan.status as "PENDING" | "APPROVED" | "REJECTED" | "PAID" | "PAYMENT_PENDING" | "WAITING_GUARANTOR",
     dueDate: apiLoan.dueDate,
     createdAt: apiLoan.createdAt || apiLoan.created_at || new Date().toISOString(),
@@ -337,7 +337,7 @@ export const loadState = async (): Promise<AppState> => {
       systemBalance,
       profitPool,
       stats,
-      welcomeBenefit,
+      welcomeBenefit: welcomeBenefit as AppState['welcomeBenefit'],
     };
   } catch (error: any) {
     // Suppress logging for auth errors (expected during logout/expiry)
@@ -421,11 +421,11 @@ export const requestDeposit = async (amount: number, senderName?: string): Promi
   return await apiService.requestDeposit(amount, senderName);
 };
 
-export const buyQuota = async (quantity: number, useBalance: boolean = false, paymentMethod?: 'pix'): Promise<any> => {
+export const buyQuota = async (quantity: number, useBalance: boolean = false, paymentMethod?: 'pix', acceptedTerms: boolean = false): Promise<any> => {
   if (!navigator.onLine) {
-    return await syncService.enqueue('BUY_QUOTA', { quantity, useBalance, paymentMethod });
+    return await syncService.enqueue('BUY_QUOTA', { quantity, useBalance, paymentMethod, acceptedTerms });
   }
-  return await apiService.buyQuotas(quantity, useBalance, paymentMethod);
+  return await apiService.buyQuotas(quantity, useBalance, paymentMethod, acceptedTerms);
 };
 
 export const sellQuota = async (quotaId: string): Promise<any> => {
@@ -440,12 +440,13 @@ export const requestLoan = async (
   amount: number,
   installments: number,
   guaranteePercentage: number = 100,
-  guarantorId?: string
+  guarantorId?: string,
+  acceptedTerms: boolean = false
 ): Promise<any> => {
   if (!navigator.onLine) {
-    return await syncService.enqueue('REQUEST_LOAN', { amount, installments, guaranteePercentage, guarantorId });
+    return await syncService.enqueue('REQUEST_LOAN', { amount, installments, guaranteePercentage, guarantorId, acceptedTerms });
   }
-  return await apiService.requestLoan(amount, installments, guaranteePercentage, guarantorId);
+  return await apiService.requestLoan(amount, installments, guaranteePercentage, guarantorId, acceptedTerms);
 };
 
 export const respondToGuarantorRequest = async (loanId: string, action: 'APPROVE' | 'REJECT'): Promise<any> => {

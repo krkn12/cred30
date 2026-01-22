@@ -242,10 +242,10 @@ export default function App() {
     }
   };
 
-  const handleBuyQuota = async (qty: number, method: 'PIX' | 'BALANCE' = 'BALANCE') => {
+  const handleBuyQuota = async (qty: number, method: 'PIX' | 'BALANCE' = 'BALANCE', acceptedTerms: boolean = false) => {
     try {
       const pm = method.toLowerCase() as any;
-      const response = await buyQuota(qty, method === 'BALANCE', pm !== 'balance' ? pm : undefined);
+      const response = await buyQuota(qty, method === 'BALANCE', pm !== 'balance' ? pm : undefined, acceptedTerms);
 
       if (response.success) {
         if (response.data?.manualPix) {
@@ -308,9 +308,9 @@ export default function App() {
     }
   };
 
-  const handleRequestLoan = async (amount: number, installments: number = 12, guaranteePercentage: number = 100, guarantorId?: string) => {
+  const handleRequestLoan = async (amount: number, installments: number = 12, guaranteePercentage: number = 100, guarantorId?: string, acceptedTerms: boolean = false) => {
     try {
-      const result = await requestLoan(amount, installments, guaranteePercentage, guarantorId);
+      const result = await requestLoan(amount, installments, guaranteePercentage, guarantorId, acceptedTerms);
       if (result.success) {
         setShowSuccess({ isOpen: true, title: 'Solicitado', message: result.message });
         refreshState();
@@ -516,7 +516,7 @@ export default function App() {
                     />
                   </Suspense>
                 } />
-                <Route path="invest" element={<Suspense fallback={null}><InvestView onBuy={(qty, method) => requireCompleteProfile(() => handleBuyQuota(qty, method))} isPro={state.currentUser?.membership_type === 'PRO'} userBalance={state.currentUser?.balance} /></Suspense>} />
+                <Route path="invest" element={<Suspense fallback={null}><InvestView onBuy={(qty, acceptedTerms) => requireCompleteProfile(() => handleBuyQuota(qty, 'BALANCE', acceptedTerms))} isPro={state.currentUser?.membership_type === 'PRO'} userBalance={state.currentUser?.balance} /></Suspense>} />
                 <Route path="portfolio" element={
                   <Suspense fallback={null}>
                     <PortfolioView
@@ -531,7 +531,7 @@ export default function App() {
                   <Suspense fallback={null}>
                     <LoansView
                       loans={state.loans}
-                      onRequest={handleRequestLoan}
+                      onRequest={(amount, installments, guarantee, guarantorId, acceptedTerms) => handleRequestLoan(amount, installments, guarantee, guarantorId, acceptedTerms)}
                       onGuarantorRespond={handleGuarantorRespond}
                       onPay={(loanId) => handleRepayLoan(loanId)}
                       onPayInstallment={handlePayInstallment}

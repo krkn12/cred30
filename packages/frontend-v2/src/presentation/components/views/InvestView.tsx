@@ -4,7 +4,7 @@ import { QUOTA_PRICE, QUOTA_SHARE_VALUE, QUOTA_ADM_FEE } from '../../../shared/c
 import { calculateTotalToPay } from '../../../shared/utils/financial.utils';
 
 interface InvestViewProps {
-    onBuy: (qty: number) => void;
+    onBuy: (qty: number, acceptedTerms: boolean) => void;
     isPro?: boolean;
     userBalance?: number;
 }
@@ -22,7 +22,7 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
 
     const handlePurchase = () => {
         if (!acceptedTerms) return;
-        onBuy(qty);
+        onBuy(qty, acceptedTerms);
         setShowConfirm(false);
     };
 

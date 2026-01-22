@@ -11,6 +11,7 @@ import {
     ADMIN_PIX_KEY
 } from '../../../shared/constants/business.constants';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
+import { AuditService, AuditActionType } from '../../../application/services/audit.service';
 import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
 import { executeInTransaction, processLoanApproval } from '../../../domain/services/transaction.service';
 import {
@@ -27,6 +28,7 @@ const createLoanSchema = z.object({
     installments: z.number().int().min(1).max(12),
     guaranteePercentage: z.number().int().min(50).max(100).optional().default(100),
     guarantorId: z.string().optional(),
+    acceptedTerms: z.boolean().refine(val => val === true, "Você deve ler e aceitar os termos do contrato de empréstimo (CCB)."),
 });
 
 const repayLoanSchema = z.object({
@@ -236,7 +238,14 @@ export class LoansController {
                             guarantorName: offer.guarantorName || null,
                             welcomeBenefitApplied: welcomeBenefit.hasDiscount,
                             riskClassInterestRate: offer.interestRate,
-                            finalInterestRate
+                            finalInterestRate,
+                            legal_context: {
+                                accepted_at: new Date().toISOString(),
+                                accepted_terms: true,
+                                ip_address: c.req.header('x-forwarded-for') || '127.0.0.1',
+                                user_agent: c.req.header('user-agent') || 'Unknown',
+                                contract_version: 'CCB_V1'
+                            }
                         })
                     ]
                 );
@@ -285,6 +294,21 @@ export class LoansController {
             if (!result.success) {
                 throw new Error(result.error || 'Erro na transação de empréstimo');
             }
+
+            // AUDITORIA FINTECH
+            try {
+                const ip = c.req.header('x-forwarded-for') || '127.0.0.1';
+                const userAgent = c.req.header('user-agent') || 'Unknown';
+                // Usando AuditService global (pool do connection ou do service)
+                await AuditService.logSensitiveAction(pool, user.id, AuditActionType.LOAN_REQUEST, {
+                    amount,
+                    term: installments,
+                    guarantorId,
+                    resultId: result.data?.loanId,
+                    autoApproved: result.data?.autoApproved,
+                    userAgent
+                }, ip);
+            } catch (auditError) { console.error('Audit Error', auditError); }
 
             const isAutoApproved = result.data?.autoApproved;
             return c.json({

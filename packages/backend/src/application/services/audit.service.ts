@@ -6,7 +6,11 @@ export enum AuditActionType {
     SECURITY_PHRASE_UPDATE = 'SECURITY_PHRASE_UPDATE',
     PASSWORD_CHANGE = 'PASSWORD_CHANGE',
     ADMIN_ACTION = 'ADMIN_ACTION',
-    WITHDRAWAL_REQUEST = 'WITHDRAWAL_REQUEST'
+    WITHDRAWAL_REQUEST = 'WITHDRAWAL_REQUEST',
+    BUY_QUOTA = 'BUY_QUOTA',
+    SELL_QUOTA = 'SELL_QUOTA',
+    LOAN_REQUEST = 'LOAN_REQUEST',
+    LOAN_PAYMENT = 'LOAN_PAYMENT'
 }
 
 export class AuditService {
@@ -33,7 +37,7 @@ export class AuditService {
 
             console.log(`[AUDIT] [${actionType}] User: ${userId} | IP: ${ip} | Data:`, JSON.stringify(metadata));
 
-            // Implementar inserção na tabela de logs para persistência
+            // Implementação Ativa: Persistência Fintech Imutável
             await pool.query(
                 `INSERT INTO audit_logs (user_id, action_type, metadata, ip_address, created_at)
                  VALUES ($1, $2, $3, $4, NOW())`,
@@ -41,7 +45,9 @@ export class AuditService {
             );
 
         } catch (error) {
-            console.error('[AuditService] Erro ao registrar log de auditoria:', error);
+            console.error('[AuditService] Erro crítico ao persistir log de auditoria:', error);
+            // Em sistema financeiro, falha de auditoria é grave, mas não deve derrubar a transação principal se não for bloqueante.
+            // Manteremos log de erro no console por enquanto.
         }
     }
 }
