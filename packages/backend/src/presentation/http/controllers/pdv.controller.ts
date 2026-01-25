@@ -116,10 +116,25 @@ export class PdvController {
             } else {
                 // Pagamento à vista - verificar saldo
                 if (customerBalance < parsedAmount) {
+                    // Verificar se o cliente tem cotas (garantia) para parcelar em vez de pagar à vista
+                    const creditAnalysis = await getCreditAnalysis(pool, customerId);
+                    if (creditAnalysis.eligible && creditAnalysis.limit >= parsedAmount) {
+                        return c.json({
+                            success: false,
+                            message: `Saldo insuficiente (R$ ${customerBalance.toFixed(2)}). Mas você tem R$ ${creditAnalysis.limit.toFixed(2)} de limite garantido por suas cotas! Sugestão: Parcele em até 12x no crédito.`,
+                            data: {
+                                suggestCredit: true,
+                                balance: customerBalance,
+                                creditLimit: creditAnalysis.limit,
+                                reason: 'Incentivar uso de crédito garantido por cotas'
+                            }
+                        }, 400);
+                    }
+
                     return c.json({
                         success: false,
-                        message: `Saldo insuficiente. Saldo: R$ ${customerBalance.toFixed(2)}. Sugestão: parcelar em até 12x no crédito.`,
-                        data: { suggestCredit: true, balance: customerBalance }
+                        message: `Saldo insuficiente (R$ ${customerBalance.toFixed(2)}) e você não possui cotas suficientes para garantia. Deposite para pagar à vista ou adquira mais cotas para liberar crédito.`,
+                        data: { suggestCredit: false, balance: customerBalance }
                     }, 400);
                 }
             }
@@ -153,10 +168,15 @@ export class PdvController {
 
             // Buscar dados do comerciante para mostrar ao cliente
             const merchantRes = await pool.query(
-                'SELECT name, merchant_name, pix_key FROM users WHERE id = $1',
+                'SELECT name, seller_company_name, seller_address_city, seller_address_state, pix_key FROM users WHERE id = $1',
                 [user.id]
             );
             const merchant = merchantRes.rows[0];
+
+            // Localização (Cidade - UF)
+            const location = (merchant.seller_address_city && merchant.seller_address_state)
+                ? `${merchant.seller_address_city} - ${merchant.seller_address_state}`
+                : 'Localização não informada';
 
             return c.json({
                 success: true,
@@ -180,7 +200,8 @@ export class PdvController {
                         name: customer.name
                     },
                     merchant: {
-                        name: merchant.merchant_name || merchant.name,
+                        name: merchant.seller_company_name || merchant.name,
+                        location,
                         pixKey: merchant.pix_key ? `****${merchant.pix_key.slice(-4)}` : null
                     },
                     creditInfo
@@ -227,6 +248,82 @@ export class PdvController {
     }
 
     /**
+     * Preview da cobrança para o modo "Sem Celular" (Cliente digita ID + Código)
+     */
+    static async getChargePreview(c: Context) {
+        try {
+            const pool = getDbPool(c);
+            const { customerId, confirmationCode } = await c.req.json();
+
+            if (!customerId || !confirmationCode) {
+                return c.json({ success: false, message: 'ID do cliente e código são obrigatórios.' }, 400);
+            }
+
+            // Buscar cobrança pendente para este cliente e código
+            const chargeRes = await pool.query(`
+                SELECT 
+                    c.id as charge_id,
+                    c.amount,
+                    c.description,
+                    c.status,
+                    c.expires_at,
+                    c.payment_type,
+                    m.name as merchant_name,
+                    m.seller_company_name,
+                    m.seller_address_city,
+                    m.seller_address_state,
+                    u.balance as customer_balance,
+                    u.name as customer_name
+                FROM pdv_charges c
+                JOIN users m ON c.merchant_id = m.id
+                JOIN users u ON c.customer_id = u.id
+                WHERE c.customer_id = $1 
+                AND c.confirmation_code = $2
+                AND c.status = 'PENDING'
+                AND c.expires_at > NOW()
+            `, [customerId, confirmationCode]);
+
+            if (chargeRes.rows.length === 0) {
+                return c.json({ success: false, message: 'Pilha de dados não encontrada: ID ou Código inválidos/expirados.' }, 404);
+            }
+
+            const charge = chargeRes.rows[0];
+            const customerBalance = parseFloat(charge.customer_balance);
+            const amount = parseFloat(charge.amount);
+
+            // Localização (Cidade - UF)
+            const location = (charge.seller_address_city && charge.seller_address_state)
+                ? `${charge.seller_address_city} - ${charge.seller_address_state}`
+                : 'Localização não informada';
+
+            // Lógica de Fallback (Saldo -> Cotas)
+            const creditAnalysis = await getCreditAnalysis(pool, customerId);
+            const canPayWithBalance = customerBalance >= amount;
+            const canPayWithCredit = creditAnalysis.eligible && creditAnalysis.limit >= amount;
+
+            return c.json({
+                success: true,
+                data: {
+                    chargeId: charge.charge_id,
+                    customerName: charge.customer_name,
+                    merchantName: charge.seller_company_name || charge.merchant_name,
+                    location,
+                    amount,
+                    description: charge.description,
+                    customerBalance,
+                    canPayWithBalance,
+                    canPayWithCredit,
+                    creditLimit: creditAnalysis.limit,
+                    suggestInstallments: !canPayWithBalance && canPayWithCredit,
+                    instruction: 'Confirme os dados acima e digite sua senha. Aperte 0 para Confirma.'
+                }
+            });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
      * Cliente confirma a cobrança com senha + código
      */
     static async confirmCharge(c: Context) {
@@ -261,7 +358,7 @@ export class PdvController {
 
             // Buscar cobrança pendente com esse código (incluindo campos de parcelamento)
             const chargeRes = await pool.query(`
-                SELECT c.*, u.name as merchant_name, u.pix_key as merchant_pix
+                SELECT c.*, u.name as merchant_name, u.seller_company_name, u.pix_key as merchant_pix
                 FROM pdv_charges c
                 JOIN users u ON c.merchant_id = u.id
                 WHERE c.confirmation_code = $1 
@@ -755,7 +852,9 @@ export class PdvController {
                     c.total_with_interest,
                     c.customer_id,
                     m.name as merchant_name,
-                    m.merchant_name as merchant_business_name,
+                    m.seller_company_name,
+                    m.seller_address_city,
+                    m.seller_address_state,
                     cu.name as customer_name
                 FROM pdv_charges c
                 JOIN users m ON c.merchant_id = m.id
@@ -790,13 +889,19 @@ export class PdvController {
             const installments = parseInt(charge.installments) || 1;
             const totalWithInterest = parseFloat(charge.total_with_interest) || parseFloat(charge.amount);
 
+            // Localização (Cidade - UF)
+            const location = (charge.seller_address_city && charge.seller_address_state)
+                ? `${charge.seller_address_city} - ${charge.seller_address_state}`
+                : 'Localização não informada';
+
             return c.json({
                 success: true,
                 data: {
                     chargeId: charge.id,
                     customerId: charge.customer_id,
                     customerName: charge.customer_name,
-                    merchantName: charge.merchant_business_name || charge.merchant_name,
+                    merchantName: charge.seller_company_name || charge.merchant_name,
+                    location,
                     description: charge.description,
                     confirmationCode: charge.confirmation_code,
                     expiresAt: charge.expires_at,

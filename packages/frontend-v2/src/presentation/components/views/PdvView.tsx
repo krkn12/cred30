@@ -401,7 +401,7 @@ export const PdvView = ({ onRefresh, onSuccess, onError }: PdvViewProps) => {
                             <Percent size={16} className="text-blue-400 flex-shrink-0 mt-0.5" />
                             <div className="text-xs">
                                 <p className="text-blue-400 font-bold">Limite do cliente: {formatCurrency(creditSimulation.remainingLimit)}</p>
-                                <p className="text-zinc-400">Juros de 10% (100% garantia em cotas)</p>
+                                <p className="text-zinc-400">Taxa de Manutenção de 10% (100% garantia em cotas)</p>
                             </div>
                         </div>
                     </div>
@@ -438,7 +438,7 @@ export const PdvView = ({ onRefresh, onSuccess, onError }: PdvViewProps) => {
                         {installments > 1 && creditSimulation?.installmentOptions && (
                             <>
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-zinc-500">Juros ({creditSimulation.installmentOptions.find((o: any) => o.installments === installments)?.interestRate.toFixed(0)}%):</span>
+                                    <span className="text-zinc-500">Taxa de Manutenção ({creditSimulation.installmentOptions.find((o: any) => o.installments === installments)?.interestRate.toFixed(0)}%):</span>
                                     <span className="text-amber-400 font-bold">
                                         +{formatCurrency(parseFloat(amount) * 0.10)}
                                     </span>

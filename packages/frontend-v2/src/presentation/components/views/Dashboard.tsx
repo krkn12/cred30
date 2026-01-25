@@ -5,8 +5,7 @@ import {
     Crown, Clock, ArrowDownLeft, ArrowUpRight,
     PieChart, Star, Zap,
     ShieldCheck, ChevronRight, Wallet, Settings, BarChart3, Gift, Sparkles, Eye, EyeOff,
-    RefreshCw,
-    Trophy // Substituto para ícones de ranking se necessário
+    RefreshCw
 } from 'lucide-react';
 import { AppState, Transaction, Quota, Loan } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
@@ -89,12 +88,23 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
         const quotas = state.quotas.filter((q: Quota) =>
             q.userId === user.id && (q.status === 'ACTIVE' || !q.status)
         );
-        const invested = quotas.reduce((acc: number, q: Quota) => acc + q.purchasePrice, 0);
-        const current = quotas.reduce((acc: number, q: Quota) => acc + (q.currentValue || q.purchasePrice), 0);
-        const earnings = current - invested;
-        const percentage = invested > 0 ? (earnings / invested) * 100 : 0;
-        return { userQuotas: quotas, totalInvested: invested, totalCurrentValue: current, totalEarnings: earnings, earningsPercentage: percentage };
-    }, [state?.quotas, user?.id]);
+        // Capital Social = quantidade de cotas * R$ 42 (valor resgatável por cota)
+        const invested = quotas.length * 42;
+
+        // Valorização de Capital = (Valor Atual - 42) * Qtd
+        // Se current_value for null/undefined, assume 42 (sem valorização)
+        const capitalGains = quotas.reduce((acc: number, q: Quota) => acc + ((q.currentValue || 42) - 42), 0);
+
+        // Excedentes reais = Dividendos Pagos + Valorização da Cota (Sobras Retidas na Cota)
+        // O cliente pediu "ambos a valorização", ou seja, soma tudo.
+        const dividendsEarned = user.total_dividends_earned || 0;
+        const totalGains = dividendsEarned + capitalGains;
+
+        const current = invested + capitalGains;
+        const percentage = invested > 0 ? (totalGains / invested) * 100 : 0;
+
+        return { userQuotas: quotas, totalInvested: invested, totalCurrentValue: current, totalEarnings: totalGains, earningsPercentage: percentage };
+    }, [state?.quotas, user?.id, user?.total_dividends_earned]);
 
     const { userLoans, totalDebt } = useMemo(() => {
         if (!state?.loans || !user) return { userLoans: [], totalDebt: 0 };
@@ -484,7 +494,7 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
             {/* RANKING DE FARM - TOP 3 */}
             <RankingWidget />
 
-            {/* 2. Card de Saldo Principal */}
+
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                 <div className="lg:col-span-2 bg-gradient-to-br from-primary-600 via-primary-700 to-[#10b981] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-2xl shadow-primary-900/40">
                     <div className="absolute top-0 right-0 p-8 opacity-20 rotate-12 group-hover:scale-110 transition-transform duration-700 pointer-events-none select-none">
@@ -548,21 +558,64 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                     </div>
                 </div>
 
-                <div className="glass glass-hover p-5 sm:p-8 flex flex-col justify-between">
-                    <div className="flex items-center justify-between mb-2">
-                        <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400">
-                            <ArrowUpRight size={28} />
-                        </div>
-                        <span className="glass px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest text-emerald-400">+{earningsPercentage.toFixed(1)}%</span>
+                <div className="glass glass-hover p-5 sm:p-8 flex flex-col justify-between relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-8 opacity-5">
+                        <TrendingUp size={80} className="text-emerald-500" />
                     </div>
-                    <div>
-                        <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2">Excedentes Acumulados</p>
-                        <h3 className="text-3xl font-black text-emerald-400 tracking-tight">{formatCurrency(totalEarnings)}</h3>
+
+                    <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400">
+                                <ArrowUpRight size={24} />
+                            </div>
+                            <span className="glass px-3 py-1 rounded-full text-[10px] font-black tracking-widest text-emerald-400" title="Retorno sobre Investimento (ROI)">
+                                ROI: +{earningsPercentage.toFixed(1)}%
+                            </span>
+                        </div>
+
+                        <div>
+                            <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Excedentes & Valorização</p>
+                            <h3 className="text-2xl font-black text-emerald-400 tracking-tight mb-3">{formatCurrency(totalEarnings)}</h3>
+
+                            {/* Sobras Pendentes Integradas (Cálculo Ajustado com Multiplicadores) */}
+                            {state.profitPool > 0 && userQuotas.length > 0 && state.stats?.quotasCount && (
+                                <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                    <div>
+                                        <p className="text-[8px] text-zinc-500 font-bold uppercase tracking-wide leading-none mb-0.5" title="Estimativa de pagamento no dia 01 do próximo mês">Previsão (Dia 01)</p>
+                                        <p className="text-xs font-black text-amber-500 tabular-nums">
+                                            {(() => {
+                                                // Lógica de Peso do Backend replicada
+                                                let multiplier = 1.0;
+                                                if (user.two_factor_enabled) multiplier += 0.1;
+                                                if (user.membership_type === 'PRO') multiplier += 0.2;
+                                                // Bônus de Score aproximado (simplificado)
+                                                if ((user.score || 0) > 300) multiplier += 0.1;
+
+                                                // Cálculo: (Pool * 85% / TotalCotas) * MinhasCotas * MeuMultiplicador * FatorSegurança
+                                                // Fator de Segurança (0.6) é para compensar a diluição dos "Super Usuários" que puxam a média pra cima
+                                                const estimatedValue = ((state.profitPool * 0.85) / state.stats.quotasCount) * userQuotas.length * multiplier * 0.6;
+
+                                                return `+${formatCurrency(estimatedValue)}`;
+                                            })()} *
+                                        </p>
+                                    </div>
+                                    <div className="ml-auto group/tooltip relative">
+                                        <div className="w-4 h-4 rounded-full bg-zinc-800 flex items-center justify-center text-[8px] text-zinc-500 font-bold cursor-help">?</div>
+                                        <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-black/90 border border-white/10 rounded-lg text-[9px] text-zinc-400 hidden group-hover/tooltip:block z-50">
+                                            Estimativa conservadora baseada no seu nível de engajamento (Score, PRO, 2FA). O valor real depende do desempenho coletivo.
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* 3. Central de Prêmios */}
+
+
+            {/* 4. Central de Prêmios */}
             <div className="bg-zinc-900 border border-white/5 rounded-3xl p-5 sm:p-8 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-16 opacity-5 pointer-events-none select-none">
                     <Zap size={180} className="text-yellow-500" />
@@ -730,7 +783,7 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
             </div>
 
 
-            {/* 4. Histórico de Transações */}
+            {/* 5. Histórico de Transações */}
             <div className="bg-zinc-900 border border-white/5 rounded-3xl p-5 sm:p-8">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-3">

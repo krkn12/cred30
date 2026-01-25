@@ -19,27 +19,51 @@ export const NotificationBell: React.FC = () => {
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Carregar do localStorage ao iniciar
+    // Carregar do localStorage e API ao iniciar
     useEffect(() => {
         console.info('[🔔 Sino] Componente montado no DOM.');
+
+        // 1. Carregar cache local primeiro (Instantâneo)
         const saved = localStorage.getItem('user_notifications');
         if (saved) {
             try {
                 const parsed = JSON.parse(saved) || [];
                 setNotifications(parsed);
-                const unread = parsed.filter((n: Notification) => !n.read).length;
-                console.info(`[🔔 Sino] ${parsed.length} notificações carregadas (${unread} não lidas).`);
-                setHasUnread(unread > 0);
-                setUnreadCount(unread);
-            } catch (e) { console.error('[🔔 Sino] Erro ao ler cache:', e); }
+                setUnreadCount(parsed.filter((n: Notification) => !n.read).length);
+            } catch (e) { /* ignore */ }
         }
 
-        // Conectar ao SSE
+        // 2. Buscar histórico fresquinho do servidor
+        apiService.getNotifications()
+            .then(response => {
+                if (response.success && response.data) {
+                    setNotifications(prev => {
+                        // Mesclar: Prioriza o que veio do servidor, mas mantém novos SSE que chegaram nesse meio tempo
+                        const serveIds = new Set(response.data.map((n: any) => n.id));
+                        const uniqueLocal = prev.filter(n => !serveIds.has(n.id));
+                        const merged = [...uniqueLocal, ...response.data]
+                            .sort((a, b) => b.date - a.date)
+                            .slice(0, 50);
+
+                        localStorage.setItem('user_notifications', JSON.stringify(merged));
+
+                        const unread = merged.filter((n: Notification) => !n.read).length;
+                        setHasUnread(unread > 0);
+                        setUnreadCount(unread);
+                        return merged;
+                    });
+                    console.info('[🔔 Sino] Histórico do servidor sincronizado.');
+                }
+            })
+            .catch(err => console.error('[🔔 Sino] Erro ao buscar histórico:', err));
+
+        // 3. Conectar ao SSE
         console.info('[🔔 Sino] Iniciando escuta de notificações via SSE...');
         const cleanup = apiService.listenToNotifications((data) => {
             console.log('🚀 [🔔 Sino] EVENTO RECEBIDO:', data);
 
             const newNotif: Notification = {
-                id: Date.now().toString(),
+                id: Date.now().toString(), // Temp ID até persistir
                 title: data.title || 'Nova Notificação',
                 message: data.body || data.message || '',
                 type: data.type === 'PAYMENT' ? 'PAYMENT' :
@@ -58,15 +82,10 @@ export const NotificationBell: React.FC = () => {
             });
             setHasUnread(true);
             setUnreadCount(prev => prev + 1);
-            console.info('[🔔 Sino] Badge atualizada visualmente!');
 
-            // Vibração no mobile
-            if (navigator.vibrate) {
-                navigator.vibrate([100, 50, 100]);
-            }
-
-            // Tocar som suave
-            try { new Audio('/notification.mp3').play().catch(() => { /* mute */ }); } catch { /* ignore */ }
+            // Vibração e Som
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            try { new Audio('/notification.mp3').play().catch(() => { }); } catch { }
         });
 
         return cleanup;
@@ -89,6 +108,9 @@ export const NotificationBell: React.FC = () => {
         setHasUnread(false);
         setUnreadCount(0);
         localStorage.setItem('user_notifications', JSON.stringify(updated));
+
+        // Sincronizar com Backend
+        apiService.markNotificationRead('all').catch(console.error);
     };
 
     const clearAll = () => {
@@ -96,6 +118,8 @@ export const NotificationBell: React.FC = () => {
         setHasUnread(false);
         setUnreadCount(0);
         localStorage.removeItem('user_notifications');
+        // Opcional: Marcar todas como lidas no back ao limpar
+        apiService.markNotificationRead('all').catch(console.error);
     };
 
     const markAsRead = (id: string) => {
@@ -107,6 +131,9 @@ export const NotificationBell: React.FC = () => {
         setHasUnread(unread > 0);
         setUnreadCount(unread);
         localStorage.setItem('user_notifications', JSON.stringify(updated));
+
+        // Sincronizar com Backend
+        apiService.markNotificationRead(id).catch(console.error);
     };
 
     const getIcon = (type: string) => {

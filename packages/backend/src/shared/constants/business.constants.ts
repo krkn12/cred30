@@ -57,14 +57,20 @@ export const QUOTA_PURCHASE_FEE_RATE = 0.0; // Desativado (Substituído pela tax
 export const LOAN_ORIGINATION_FEE_RATE = 0.00; // Removido por solicitação do Josias (Valor integral no apoio)
 export const WITHDRAWAL_FIXED_FEE = 3.50; // Taxa fixa de R$ 3,50 por saque (se não tiver cotas suficientes)
 export const MIN_WITHDRAWAL_AMOUNT = 1.00; // Valor mínimo para saque = R$ 1,00
-export const MARKETPLACE_ESCROW_FEE_RATE = 0.12; // 12% de taxa de garantia (Escrow) para verificados
-export const MARKETPLACE_NON_VERIFIED_FEE_RATE = 0.12; // 12% de taxa para vendedores não verificados
+export const MARKETPLACE_ESCROW_FEE_RATE = 0.12; // 12% de taxa para vendedores verificados (Com Selo)
+export const MARKETPLACE_NON_VERIFIED_FEE_RATE = 0.275; // 27.5% de taxa para vendedores sem selo
+export const SELLER_MONTHLY_LIMIT_NON_VERIFIED = 2000.00; // Limite de vendas mensal para CPF sem selo
+
+// Taxas para Entregadores (Logística)
+export const COURIER_VERIFIED_FEE_RATE = 0.10; // 10% para entregadores com selo
+export const COURIER_NON_VERIFIED_FEE_RATE = 0.275; // 27.5% para entregadores sem selo
+export const LOGISTICS_SUSTAINABILITY_FEE_RATE = 0.10; // DEPRECATED: Usar as taxas acima (Mantendo compatibilidade temporária)
 export const MARKET_BOOST_PRICE = 5.00; // Taxa de impulsionamento de anúncio (7 dias)
 export const MARKET_CREDIT_INTEREST_RATE = 0.015; // 1.5% ao mês (Mais barato que o apoio mútuo padrão)
 export const MARKET_CREDIT_MAX_INSTALLMENTS = 24; // Até 24x para facilitar compras grandes
 export const MARKET_CREDIT_MIN_SCORE = 450; // Score mínimo para comprar parcelado
 export const MARKET_CREDIT_MIN_QUOTAS = 1; // Mínimo de 1 cota ativa (Skin in the Game) para parcelar
-export const LOGISTICS_SUSTAINABILITY_FEE_RATE = 0.10; // 10% de taxa administrativa sobre o valor do frete para sustentabilidade do grupo
+// export const LOGISTICS_SUSTAINABILITY_FEE_RATE = 0.10; // Removido para evitar conflito
 export const DELIVERY_MIN_FEES: Record<string, number> = {
     'BIKE': 5.00,
     'MOTO': 10.00,

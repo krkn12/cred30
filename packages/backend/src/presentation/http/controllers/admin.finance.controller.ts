@@ -93,20 +93,35 @@ export class AdminFinanceController {
 
                 // 2. Subtrair do saldo do sistema e das reservas (Modelo Lucro Líquido)
                 const configRes = await client.query('SELECT system_balance FROM system_config LIMIT 1');
-                if (parseFloat(configRes.rows[0].system_balance) < amount) {
+                const currentBalance = parseFloat(configRes.rows[0].system_balance);
+
+                if (currentBalance < amount) {
                     throw new Error('Saldo do sistema insuficiente para realizar este pagamento.');
                 }
 
-                // Importar VIDEO_QUOTA_HOLDERS_SHARE se necessário, ou usar hardcoded 0.25 por padrão se a constante não estiver acessível aqui
-                const QUOTA_HOLDERS_SHARE = 0.25;
+                // --- PROTEÇÃO DO CAPITAL SOCIAL (LASTRO) ---
+                const activeQuotasResult = await client.query(`SELECT COUNT(*) as count FROM quotas WHERE status = 'ACTIVE'`);
+                const activeQuotasCount = parseInt(activeQuotasResult.rows[0].count);
+                const capitalSocialExigivel = activeQuotasCount * QUOTA_SHARE_VALUE; // R$ 42,00 por cota
 
-                const quotaShare = amount * QUOTA_HOLDERS_SHARE;
-                const ownerShare = amount - quotaShare;
+                const saldoPosPagamento = currentBalance - amount;
 
-                // Deduz do balanço geral E das reservas específicas (Cotistas e Empresa)
+                if (saldoPosPagamento < capitalSocialExigivel) {
+                    throw new Error(`PAGAMENTO BLOQUEADO: Risco de Insolvência. Saldo restante (R$ ${saldoPosPagamento.toFixed(2)}) seria menor que o Capital Social dos Cotistas (R$ ${capitalSocialExigivel.toFixed(2)}). Aumente a receita antes de gastar.`);
+                }
+                // -------------------------------------------
+
+                // 2. Subtrair do saldo do sistema e das reservas (Taxa e Operacional)
+                // Ajuste solicitado: NÃO mexer no lucro dos cotistas (profit_pool) nem do dono (total_owner_profit)
+                // Vamos tirar 50% da reserva de impostos e 50% da reserva operacional
+
+                const taxShare = amount * 0.50;
+                const operationalShare = amount - taxShare; // Garante que soma 100% mesmo com arredondamento
+
+                // Deduz do balanço geral E das reservas de CUSTO (Imposto e Operacional)
                 await client.query(
-                    'UPDATE system_config SET system_balance = system_balance - $1, profit_pool = profit_pool - $2, total_owner_profit = total_owner_profit - $3',
-                    [amount, quotaShare, ownerShare]
+                    'UPDATE system_config SET system_balance = system_balance - $1, total_tax_reserve = total_tax_reserve - $2, total_operational_reserve = total_operational_reserve - $3',
+                    [amount, taxShare, operationalShare]
                 );
 
                 // 3. Remover o custo (como solicitado: "as dívidas somem")
@@ -219,7 +234,6 @@ export class AdminFinanceController {
             config.total_owner_profit = parseFloat(String(config.total_owner_profit || 0));
             config.investment_reserve = parseFloat(String(config.investment_reserve || 0));
             config.mutual_reserve = parseFloat(String(config.mutual_reserve || 0));
-            config.mutual_protection_fund = parseFloat(String(config.mutual_protection_fund || 0));
             config.total_corporate_investment_reserve = parseFloat(String(config.total_corporate_investment_reserve || 0));
             config.credit_guarantee_fund = parseFloat(String(config.credit_guarantee_fund || 0));
             config.courier_price_per_km = parseFloat(String(config.courier_price_per_km || '2.50'));

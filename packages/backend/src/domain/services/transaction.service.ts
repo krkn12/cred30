@@ -43,8 +43,19 @@ export async function executeInTransaction<T>(
       success: true,
       data: result
     };
-  } catch (error) {
+  } catch (error: any) {
     await client.query('ROLLBACK');
+
+    const logMessage = `\n[${new Date().toISOString()}] Erro na transação:\n${error.stack || error}\n`;
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const logDir = path.join(process.cwd(), 'logs');
+      if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
+      fs.appendFileSync(path.join(logDir, 'sql-error.log'), logMessage);
+    } catch (logErr) {
+      console.error('Falha ao escrever log de erro SQL:', logErr);
+    }
 
     console.error('Erro na transação:', error);
 
@@ -865,12 +876,18 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
   const currentDebt = parseFloat(activeLoansResult.rows[0].total);
   const realAvailable = availableLimit - currentDebt;
 
-  if (parseFloat(loan.amount) > realAvailable) {
+  const metadata = loan.metadata || {};
+  const guarantorId = metadata.guarantorId;
+
+  // Se NÃO tiver fiador, respeita o limite individual. 
+  // Se TIVER fiador, o limite é expandido (assumindo que o fiador cobre o risco).
+  if (!guarantorId && parseFloat(loan.amount) > realAvailable) {
     throw new Error(`Aprovação bloqueada: Limite insuficiente no momento (Disponível: R$ ${realAvailable.toFixed(2)}).`);
   }
 
   // === CORREÇÃO: USAR DADOS PRÉ-CALCULADOS DO METADATA ===
-  const metadata = loan.metadata || {};
+  // metadata já foi declarado acima para verificação do fiador
+
   const netAmount = parseFloat(metadata.disbursedAmount || loan.amount); // Valor líquido a cair na conta
   const grossAmount = parseFloat(loan.amount);
   const originationFee = parseFloat(metadata.originationFee || 0);

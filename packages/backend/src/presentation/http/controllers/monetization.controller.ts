@@ -19,7 +19,8 @@ import {
 import { UserContext } from '../../../shared/types/hono.types';
 import {
     VALUE_PER_1000_POINTS,
-    MIN_POINTS_FOR_CONVERSION
+    MIN_POINTS_FOR_CONVERSION,
+    PointsService
 } from '../../../application/services/points.service';
 
 const PRO_UPGRADE_FEE = 29.90;
@@ -163,6 +164,10 @@ export class MonetizationController {
                 // RESETANDO bloco incorreto acima para editar corretamente.
                 // O bloco anterior (chunk 2) tentou envolver tudo em tx.
                 // Melhor abordagem: Deixar o userCheck original (leitura suja rápida) E adicionar lock dentro da tx existente.
+                if (userCheck.rows[0].membership_type === 'PRO') {
+                    throw new Error('Você já é um Membro PRO!');
+                }
+
                 if (parseFloat(userCheck.rows[0].balance) < PRO_UPGRADE_FEE) {
                     throw new Error('Saldo insuficiente para o upgrade PRO.');
                 }
@@ -484,7 +489,12 @@ export class MonetizationController {
             const pool = getDbPool(c);
 
             const result = await executeInTransaction(pool, async (client: PoolClient) => {
-                const userRes = await client.query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [user.id]);
+                const userRes = await client.query('SELECT balance, is_protected FROM users WHERE id = $1 FOR UPDATE', [user.id]);
+
+                if (userRes.rows[0].is_protected) {
+                    throw new Error('Sua Proteção Mútua já está ativa!');
+                }
+
                 if (parseFloat(userRes.rows[0].balance) < MUTUAL_PROTECTION_PRICE) {
                     throw new Error(`Saldo insuficiente. A proteção mensal custa R$ ${MUTUAL_PROTECTION_PRICE.toFixed(2)}.`);
                 }
@@ -507,7 +517,7 @@ export class MonetizationController {
 
                 await client.query(
                     `UPDATE system_config SET 
-                        mutual_protection_fund = mutual_protection_fund + $1,
+                        mutual_reserve = mutual_reserve + $1,
                         total_tax_reserve = total_tax_reserve + $2,
                         total_operational_reserve = total_operational_reserve + $3,
                         total_owner_profit = total_owner_profit + $4,

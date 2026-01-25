@@ -102,7 +102,7 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         const quotasCount = parseInt(userData.quotas_count) || 0;
         const quotasValue = parseFloat(userData.total_quotas_value) || 0;
         const marketplaceTransactions = parseInt(userData.purchases || 0) + parseInt(userData.sales || 0);
-        const accountAgeDays = Math.floor((Date.now() - new Date(userData.created_at).getTime()) / (1000 * 60 * 60 * 24));
+        const accountAgeDays = Math.max(0, Math.floor((Date.now() - new Date(userData.created_at).getTime()) / (1000 * 60 * 60 * 24)));
         const hasOverdue = parseInt(userData.overdue_loans) > 0;
 
         // Total gasto (sem cotas resgatáveis) + Taxa Adm das Cotas (que é gasto)
@@ -184,17 +184,11 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
             return { eligible: false, reason: `Score mínimo de ${MIN_SCORE_FOR_LOAN} necessário. Seu: ${score}`, details };
         }
 
-        // Se NÃO tem fiador, exige pelo menos 1 cota.
-        // Se TEM fiador, a verificação de quotasCount deve ser tratada no calculateLoanOffer.
-        // Por padrão no checkLoanEligibility (que alimenta a UI de limite), mantemos o aviso se for 0.
-
         if (quotasCount < 1) {
             const pendingQuotas = parseInt(userData.pending_quotas || 0);
             if (pendingQuotas > 0) {
                 return { eligible: false, reason: 'Sua participação está aguardando aprovação bancária. O limite será liberado assim que confirmarmos seu PIX.', details };
             }
-            // Retornamos true mas com aviso no reason se o limite for 0, ou deixamos o controller tratar.
-            // Para manter a UI funcional, se o limite for 0 mas o usuário quiser usar fiador, o calculateLoanOffer cuidará disso.
             return { eligible: true, reason: 'Você não possui participações. Para solicitar apoio, você precisará de um Fiador.', details };
         }
 
@@ -273,8 +267,8 @@ export const calculateLoanOffer = async (
                 SELECT u.id, u.name,
                 COALESCE((SELECT SUM(current_value) FROM quotas WHERE user_id = u.id AND (status = 'ACTIVE' OR status IS NULL)), 0) as total_quotas,
                 (SELECT COUNT(*) FROM loans WHERE user_id = u.id AND status IN ('APPROVED', 'PAYMENT_PENDING')) as active_loans_count,
-                (SELECT COUNT(*) FROM loans WHERE (metadata->>'guarantorId' = u.id OR metadata->>'guarantor_id' = u.id) AND status IN ('APPROVED', 'PAYMENT_PENDING')) as active_guarantorships
-                FROM users u WHERE u.id = $1 OR u.email = $1 -- Permitir buscar por ID ou Email
+                (SELECT COUNT(*) FROM loans WHERE (metadata->>'guarantorId' = u.id::text OR metadata->>'guarantor_id' = u.id::text) AND status IN ('APPROVED', 'PAYMENT_PENDING')) as active_guarantorships
+                FROM users u WHERE u.id::text = $1 OR u.email = $1 -- Permitir buscar por ID ou Email
             `, [guarantorId]);
 
             if (guarantorRes.rows.length === 0) {

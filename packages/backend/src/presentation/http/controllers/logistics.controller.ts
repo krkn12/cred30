@@ -231,6 +231,7 @@ export class LogisticsController {
             return c.json({
                 success: true,
                 message: 'Entrega marcada como concluída! Aguardando confirmação do comprador.',
+                data: { orderId }
             });
         } catch (error) {
             console.error('[LOGISTICS] Erro ao marcar entrega:', error);

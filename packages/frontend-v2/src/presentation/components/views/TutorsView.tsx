@@ -372,7 +372,7 @@ export const TutorsView = ({ onBack, onSuccess, onError }: { onBack?: () => void
                                     </div>
                                     <div className="text-right">
                                         <p className="text-emerald-400 font-bold text-lg">R$ {(parseFloat(req.price_snapshot) * 0.8).toFixed(2)}</p>
-                                        <p className="text-[10px] text-slate-500">Seu lucro (80%)</p>
+                                        <p className="text-[10px] text-slate-500">Seu excedente (80%)</p>
                                     </div>
                                 </div>
 

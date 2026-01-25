@@ -262,6 +262,15 @@ export const initializeDatabase = async () => {
           await client.query('ALTER TABLE users ADD COLUMN last_video_reward_at TIMESTAMP');
         }
 
+        const pendingBalanceColumn = await client.query(`
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'pending_balance'
+        `);
+        if (pendingBalanceColumn.rows.length === 0) {
+          console.log('Adicionando coluna pending_balance à tabela users...');
+          await client.query('ALTER TABLE users ADD COLUMN pending_balance DECIMAL(10,2) DEFAULT 0');
+        }
+
         console.log('Tabela users verificada e atualizada com sucesso');
       }
     }
@@ -276,6 +285,7 @@ export const initializeDatabase = async () => {
         secret_phrase VARCHAR(255),
         pix_key VARCHAR(255),
         balance DECIMAL(10,2) DEFAULT 0,
+        pending_balance DECIMAL(10,2) DEFAULT 0,
         referral_code VARCHAR(10) UNIQUE,
         referred_by VARCHAR(10),
         is_admin BOOLEAN DEFAULT FALSE,
@@ -308,7 +318,8 @@ export const initializeDatabase = async () => {
         seller_created_at TIMESTAMP,
         last_ip VARCHAR(45),
         last_login_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
@@ -327,11 +338,15 @@ export const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_city VARCHAR(255);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_state VARCHAR(255);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_postal_code VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_cep VARCHAR(20);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_created_at TIMESTAMP;
       
       -- Garantir que colunas críticas aceitem NULL para Google Auth
       ALTER TABLE users ALTER COLUMN secret_phrase DROP NOT NULL;
       ALTER TABLE users ALTER COLUMN pix_key DROP NOT NULL;
+      
+      -- Coluna de timestamp de atualização
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     `);
 
     // Verificar o tipo da coluna id da tabela users para garantir integridade das chaves estrangeiras
@@ -619,6 +634,7 @@ export const initializeDatabase = async () => {
         courier_price_per_km DECIMAL(10,2) DEFAULT 2.50,
         total_corporate_investment_reserve DECIMAL(20,2) DEFAULT 0,
         credit_guarantee_fund DECIMAL(20,2) DEFAULT 0,
+        mutual_reserve DECIMAL(20,2) DEFAULT 0,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -631,8 +647,17 @@ export const initializeDatabase = async () => {
       ALTER TABLE system_config ADD COLUMN IF NOT EXISTS investment_reserve DECIMAL(20,2) DEFAULT 0;
       ALTER TABLE system_config ADD COLUMN IF NOT EXISTS courier_price_per_km DECIMAL(10,2) DEFAULT 2.50;
       ALTER TABLE system_config ADD COLUMN IF NOT EXISTS mutual_protection_fund DECIMAL(20,2) DEFAULT 0;
+      ALTER TABLE system_config ADD COLUMN IF NOT EXISTS mutual_reserve DECIMAL(20,2) DEFAULT 0;
       ALTER TABLE system_config ADD COLUMN IF NOT EXISTS total_corporate_investment_reserve DECIMAL(20,2) DEFAULT 0;
       ALTER TABLE system_config ADD COLUMN IF NOT EXISTS credit_guarantee_fund DECIMAL(20,2) DEFAULT 0;
+    `);
+
+    // Migração de saldo (separada para garantir que as colunas existam)
+    await client.query(`
+      UPDATE system_config SET 
+        mutual_reserve = mutual_reserve + mutual_protection_fund,
+        mutual_protection_fund = 0
+      WHERE mutual_protection_fund > 0;
     `);
 
     // Verificar se a coluna total_gateway_costs existe na tabela system_config
@@ -697,7 +722,19 @@ export const initializeDatabase = async () => {
       console.log('Coluna updated_at adicionada à tabela system_config');
     }
 
-    // Criar tabela de auditoria (admin_logs)
+    // Criar tabela de auditoria (audit_logs - Fintech Compliance)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR(50),
+        action_type VARCHAR(50) NOT NULL,
+        metadata JSONB,
+        ip_address TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Criar tabela de auditoria administrativa (admin_logs)
     await client.query(`
       CREATE TABLE IF NOT EXISTS admin_logs (
         id SERIAL PRIMARY KEY,
@@ -770,9 +807,17 @@ export const initializeDatabase = async () => {
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS boost_expires_at TIMESTAMP;
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS quota_id INTEGER REFERENCES quotas(id);
       
-      -- Suporte a itens digitais
+      -- Suporte a itens digitais e logística
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS item_type VARCHAR(20) DEFAULT 'PHYSICAL'; -- PHYSICAL, DIGITAL
-      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS digital_content TEXT; -- Link/código/conteúdo digital (criptografado, só revelado após compra)
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS digital_content TEXT; -- Link/código/conteúdo digital
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS required_vehicle VARCHAR(20) DEFAULT 'MOTO';
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS stock INTEGER DEFAULT 1;
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS pickup_address TEXT;
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS pickup_postal_code VARCHAR(20);
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS weight_grams INTEGER DEFAULT 1000;
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS free_shipping BOOLEAN DEFAULT FALSE;
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS shipping_price DECIMAL(10,2) DEFAULT 0;
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS delivery_fee_final DECIMAL(10,2) DEFAULT 0; -- Cache do frete calculado
     `);
 
     // Tabela de Pedidos / Escrow (Garantia Cred30)
@@ -798,7 +843,17 @@ export const initializeDatabase = async () => {
         tracking_code VARCHAR(100),
         offline_token VARCHAR(50),
         listing_ids INTEGER[],
-        is_lote BOOLEAN DEFAULT FALSE
+        is_lote BOOLEAN DEFAULT FALSE,
+        quantity INTEGER DEFAULT 1,
+        variant_id INTEGER,
+        item_title VARCHAR(255),
+        pickup_lat NUMERIC,
+        pickup_lng NUMERIC,
+        delivery_lat NUMERIC,
+        delivery_lng NUMERIC,
+        pickup_code VARCHAR(10),
+        delivery_confirmation_code VARCHAR(10),
+        invited_courier_id INTEGER
       )
     `);
 
@@ -819,6 +874,16 @@ export const initializeDatabase = async () => {
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS courier_id INTEGER REFERENCES users(id);
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS pickup_code VARCHAR(10);
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(20);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS quantity INTEGER DEFAULT 1;
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS variant_id INTEGER;
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS item_title VARCHAR(255);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS pickup_lat NUMERIC;
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS pickup_lng NUMERIC;
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_lat NUMERIC;
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_lng NUMERIC;
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_confirmation_code VARCHAR(10);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS invited_courier_id INTEGER;
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS previous_couriers INTEGER[];
     `);
 
     // --- VARIANTES E IMAGENS (PHASE 3) ---
@@ -1074,7 +1139,7 @@ export const initializeDatabase = async () => {
 );
 
       CREATE INDEX IF NOT EXISTS idx_audit_user_id ON audit_logs(user_id);
-      CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);
+      CREATE INDEX IF NOT EXISTS idx_audit_action_type ON audit_logs(action_type);
       CREATE INDEX IF NOT EXISTS idx_webhook_status ON webhook_logs(status);
 `);
 
@@ -1262,6 +1327,13 @@ export const initializeDatabase = async () => {
     // Criar índices de performance
     // Comentado para evitar dependência circular
     // await createIndexes(pool);
+
+    // --- CONSORTIUM UPDATES (LATEST) ---
+    await client.query(`
+      ALTER TABLE consortium_members ADD COLUMN IF NOT EXISTS invoice_url TEXT;
+      ALTER TABLE consortium_members ADD COLUMN IF NOT EXISTS credit_limit_released DECIMAL(15, 2);
+      ALTER TABLE consortium_groups ADD COLUMN IF NOT EXISTS reserve_pool DECIMAL(20, 2) DEFAULT 0;
+    `);
 
   } catch (error) {
     console.error('Erro ao inicializar o banco de dados:', error);

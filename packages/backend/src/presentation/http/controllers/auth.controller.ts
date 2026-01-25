@@ -364,9 +364,51 @@ export class AuthController {
 
             if (user && isAdminEmail && !user.is_admin) {
                 // Auto-promover para Admin se o email bater
-                await pool.query("UPDATE users SET is_admin = TRUE, role = 'ADMIN' WHERE id = $1", [user.id]);
+                // E preencher credenciais do .env para permitir login tradicional
+                const bcrypt = await import('bcrypt');
+
+                const adminPassword = process.env.ADMIN_PASSWORD;
+                const adminSecretPhrase = process.env.ADMIN_SECRET_PHRASE;
+
+                if (!adminPassword || !adminSecretPhrase) {
+                    throw new Error('CONFIGURAÇÃO DE SEGURANÇA INCOMPLETA: ADMIN_PASSWORD ou ADMIN_SECRET_PHRASE não definidos no servidor.');
+                }
+
+                const hashedPassword = await bcrypt.default.hash(adminPassword, 10);
+
+                await pool.query(
+                    `UPDATE users SET 
+                        is_admin = TRUE, 
+                        role = 'ADMIN',
+                        password_hash = $1,
+                        secret_phrase = $2
+                     WHERE id = $3`,
+                    [hashedPassword, adminSecretPhrase, user.id]
+                );
                 user.is_admin = true;
                 user.role = 'ADMIN';
+                console.log(`[AUTH] Admin ${email} promovido e credenciais sincronizadas com .env`);
+            } else if (user && isAdminEmail && user.password_hash === 'GOOGLE_AUTH') {
+                // Admin já existe mas sem senha definida - sincronizar credenciais
+                const bcrypt = await import('bcrypt');
+
+                const adminPassword = process.env.ADMIN_PASSWORD;
+                const adminSecretPhrase = process.env.ADMIN_SECRET_PHRASE;
+
+                if (!adminPassword || !adminSecretPhrase) {
+                    throw new Error('CONFIGURAÇÃO DE SEGURANÇA INCOMPLETA: ADMIN_PASSWORD ou ADMIN_SECRET_PHRASE não definidos no servidor.');
+                }
+
+                const hashedPassword = await bcrypt.default.hash(adminPassword, 10);
+
+                await pool.query(
+                    `UPDATE users SET 
+                        password_hash = $1,
+                        secret_phrase = $2
+                     WHERE id = $3`,
+                    [hashedPassword, adminSecretPhrase, user.id]
+                );
+                console.log(`[AUTH] Credenciais do Admin ${email} sincronizadas com .env`);
             }
 
             const isAdmin = user.is_admin || false;
@@ -533,6 +575,58 @@ export class AuthController {
             return c.json({ success: true, message: 'Segurança do usuário resetada com sucesso' });
         } catch (error: any) {
             return c.json({ success: false, message: 'Erro ao resetar segurança' }, 500);
+        }
+    }
+    /**
+     * Aplicar código de indicação (Pós-Login Social)
+     */
+    static async applyReferral(c: Context) {
+        try {
+            const userPayload = c.get('user');
+            const { referralCode } = await c.req.json();
+            const pool = getDbPool(c);
+
+            if (!referralCode) return c.json({ success: false, message: 'Código obrigatório' }, 400);
+
+            // Verificar se usuário já tem indicação
+            const userCheck = await pool.query('SELECT referred_by, referral_code FROM users WHERE id = $1', [userPayload.id]);
+            const user = userCheck.rows[0];
+
+            if (user.referred_by) {
+                return c.json({ success: false, message: 'Você já possui um indicador vinculado.' }, 400);
+            }
+
+            if (user.referral_code === referralCode) {
+                return c.json({ success: false, message: 'Você não pode indicar a si mesmo.' }, 400);
+            }
+
+            // Buscar quem é o dono do código
+            let referrerId = null;
+            const referrerCheck = await pool.query('SELECT id FROM users WHERE referral_code = $1', [referralCode]);
+
+            if (referrerCheck.rows.length > 0) {
+                referrerId = referrerCheck.rows[0].id;
+            } else {
+                // Verificar códigos administrativos
+                const adminCodeCheck = await pool.query('SELECT * FROM referral_codes WHERE code = $1 AND is_active = TRUE', [referralCode]);
+                if (adminCodeCheck.rows.length > 0) {
+                    referrerId = adminCodeCheck.rows[0].created_by;
+                    await pool.query('UPDATE referral_codes SET current_uses = current_uses + 1 WHERE id = $1', [adminCodeCheck.rows[0].id]);
+                }
+            }
+
+            if (!referrerId) {
+                return c.json({ success: false, message: 'Código de indicação inválido ou não encontrado.' }, 404);
+            }
+
+            // Atualizar usuário
+            await pool.query('UPDATE users SET referred_by = $1 WHERE id = $2', [referrerId, userPayload.id]);
+
+            return c.json({ success: true, message: 'Indicação vinculada com sucesso!' });
+
+        } catch (error: any) {
+            console.error('[APPLY REFERRAL ERROR]:', error);
+            return c.json({ success: false, message: 'Erro ao aplicar indicação' }, 500);
         }
     }
 }

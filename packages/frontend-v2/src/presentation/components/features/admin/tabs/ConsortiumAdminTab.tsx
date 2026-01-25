@@ -227,7 +227,7 @@ export const ConsortiumAdminView: React.FC = () => {
             {/* Performance Dashboard */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-900/20 border border-emerald-500/20 p-4 rounded-2xl">
-                    <p className="text-[10px] text-emerald-400 font-black uppercase mb-1">Lucro Acumulado (Seu)</p>
+                    <p className="text-[10px] text-emerald-400 font-black uppercase mb-1">Excedente Acumulado (Seu)</p>
                     <p className="text-xl font-black text-white">{stats.ownerProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                 </div>
                 <div className="bg-zinc-900 border border-white/5 p-4 rounded-2xl">

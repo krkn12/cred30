@@ -34,6 +34,7 @@ marketplaceRoutes.post('/order/:id/cancel', authMiddleware, MarketplaceOrdersCon
 marketplaceRoutes.post('/order/:id/dispute', authMiddleware, MarketplaceOrdersController.openDispute);
 marketplaceRoutes.post('/order/:id/rate', authMiddleware, MarketplaceOrdersController.rateOrder);
 marketplaceRoutes.post('/order/:id/receive', authMiddleware, MarketplaceOrdersController.confirmReceipt);
+marketplaceRoutes.post('/order/:id/tracking', authMiddleware, MarketplaceOrdersController.updateTrackingCode);
 marketplaceRoutes.get('/order/:id/tracking', authMiddleware, MarketplaceOrdersController.getOrderTracking);
 marketplaceRoutes.post('/order/:id/return', authMiddleware, MarketplaceOrdersController.requestReturn);
 
@@ -45,6 +46,7 @@ marketplaceRoutes.get('/logistic/missions', authMiddleware, MarketplaceControlle
 marketplaceRoutes.post('/logistic/mission/:id/accept', authMiddleware, MarketplaceController.acceptMission);
 marketplaceRoutes.post('/logistic/mission/:id/pickup', authMiddleware, MarketplaceController.pickupMission);
 marketplaceRoutes.post('/logistic/mission/:id/location', authMiddleware, MarketplaceController.updateMissionLocation);
+marketplaceRoutes.post('/logistic/mission/:id/delivered', authMiddleware, MarketplaceController.confirmDelivered);
 marketplaceRoutes.post('/logistic/settlement', authMiddleware, MarketplaceController.processSettlement);
 marketplaceRoutes.post('/order/:id/anticipate', authMiddleware, MarketplaceController.anticipate);
 marketplaceRoutes.post('/offline/sync', authMiddleware, MarketplaceController.syncOffline);

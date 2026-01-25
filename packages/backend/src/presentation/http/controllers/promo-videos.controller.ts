@@ -356,7 +356,7 @@ export class PromoVideosController {
                 const userBalance = parseFloat(user.balance);
                 if (userBalance < data.budget) return c.json({ success: false, message: 'Saldo insuficiente.' }, 400);
 
-                await executeInTransaction(pool, async (client) => {
+                const result = await executeInTransaction(pool, async (client) => {
                     await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [data.budget, userPayload.id]);
 
                     const quotaShare = data.budget * QUOTA_HOLDERS_SHARE;
@@ -412,7 +412,11 @@ export class PromoVideosController {
                 return c.json({
                     success: true,
                     message: `Campanha ativa! Alcance: ${targetViews} views.`,
-                    data: { targetViews, viewerEarningPoints: Math.floor(grossPPV * VIEWER_SHARE * POINTS_PER_REAL) }
+                    data: {
+                        targetViews,
+                        viewerEarningPoints: Math.floor(grossPPV * VIEWER_SHARE * POINTS_PER_REAL),
+                        id: result.data?.videoId || result.videoId // Handle both transaction wrapper types
+                    }
                 });
             }
 

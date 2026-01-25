@@ -258,8 +258,9 @@ export class QuotasController {
                             total_owner_profit = total_owner_profit + $3,
                             mutual_reserve = COALESCE(mutual_reserve, 0) + $4,
                             total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $5,
-                            investment_reserve = COALESCE(investment_reserve, 0) + $6
-                    `, [taxAmount, operationalAmount, ownerAmount, stabilityAmount, corporateAmount, principalAmount]);
+                            investment_reserve = COALESCE(investment_reserve, 0) + $6,
+                            system_balance = COALESCE(system_balance, 0) + $7
+                    `, [taxAmount, operationalAmount, ownerAmount, stabilityAmount, corporateAmount, principalAmount, baseCost]);
 
                     // AUDITORIA FINTECH
                     try {

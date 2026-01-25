@@ -58,7 +58,7 @@ export const FaqView: React.FC = () => {
         {
             icon: <MessageCircle size={18} />,
             question: "Como funciona o bônus de indicação?",
-            answer: "Você ganha uma participação sobre cada nova licença adquirida por membros que entrarem com seu código de convite. Esse valor cai direto no seu saldo disponível para resgate ou reinvestimento."
+            answer: "Você ganha uma participação sobre cada nova licença adquirida por membros que entrarem com seu código de convite. Esse valor cai direto no seu saldo disponível para resgate ou nova participação."
         }
     ];
 

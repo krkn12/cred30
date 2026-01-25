@@ -66,7 +66,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ onSuccess, onError }) =>
 
     const handleCreateManualLoan = async () => {
         if (!loanUserId || !loanAmount || !loanInterest || !loanInstallments) return;
-        if (!window.confirm(`CONFIRMAÇÃO CRÍTICA (EMPRÉSTIMO MANUAL): Criar empréstimo de R$ ${loanAmount} para o Usuário ID ${loanUserId}?`)) return;
+        if (!window.confirm(`CONFIRMAÇÃO CRÍTICA (APOIO MÚTUO MANUAL): Criar apoio mútuo de R$ ${loanAmount} para o Usuário ID ${loanUserId}?`)) return;
 
         try {
             const response = await apiService.post<any>('/admin/users/create-manual-loan', {
@@ -76,7 +76,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ onSuccess, onError }) =>
                 installments: parseInt(loanInstallments)
             });
             if (response.success) {
-                onSuccess('Empréstimo Criado!', response.message);
+                onSuccess('Apoio Mútuo Liberado!', response.message);
                 setLoanUserId('');
                 setLoanAmount('');
             } else {
@@ -163,7 +163,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ onSuccess, onError }) =>
             <div className="bg-zinc-900 border-2 border-primary-500/20 rounded-3xl p-8 shadow-2xl max-w-2xl mx-auto">
                 <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
                     <div className="p-2 bg-primary-500/10 rounded-lg"><Shield className="text-primary-400" size={20} /></div>
-                    Empréstimo Manual Especial (Forçar Liberação)
+                    Apoio Mútuo Manual Especial (Forçar Liberação)
                 </h3>
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
@@ -178,7 +178,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ onSuccess, onError }) =>
                             />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[10px] text-zinc-500 font-black uppercase ml-1">Valor do Empréstimo (R$)</label>
+                            <label className="text-[10px] text-zinc-500 font-black uppercase ml-1">Valor do Apoio (R$)</label>
                             <input
                                 type="number"
                                 placeholder="Ex: 500.00"
@@ -190,7 +190,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ onSuccess, onError }) =>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                            <label className="text-[10px] text-zinc-500 font-black uppercase ml-1">Juros Total (%)</label>
+                            <label className="text-[10px] text-zinc-500 font-black uppercase ml-1">Taxa de Manutenção Total (%)</label>
                             <input
                                 type="number"
                                 placeholder="20"
@@ -216,7 +216,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ onSuccess, onError }) =>
                         onClick={handleCreateManualLoan}
                         className="w-full bg-primary-500 hover:bg-primary-400 text-black font-black px-6 py-5 rounded-2xl transition-all shadow-xl flex items-center justify-center gap-2 mt-4"
                     >
-                        <Zap size={20} /> LIBERAR EMPRÉSTIMO MANUAL
+                        <Zap size={20} /> LIBERAR APOIO MÚTUO MANUAL
                     </button>
                     <p className="text-[9px] text-zinc-500 font-bold text-center uppercase tracking-widest px-4">
                         ESTA AÇÃO É IRREVERSÍVEL E DEDUZ DIRETAMENTE DA LIQUIDEZ REAL DO SISTEMA.

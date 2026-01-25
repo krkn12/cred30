@@ -71,20 +71,47 @@ const CourierRegistrationView = () => {
         return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'idPhoto' | 'vehiclePhoto' | 'docPhoto') => {
+    // Estado para controlar status de upload de cada campo
+    const [uploading, setUploading] = useState<Record<string, boolean>>({});
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, field: 'idPhoto' | 'vehiclePhoto' | 'docPhoto') => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (file.size > 2 * 1024 * 1024) {
-            setError('A imagem deve ter no máximo 2MB');
+        if (file.size > 5 * 1024 * 1024) {
+            setError('A imagem deve ter no máximo 5MB');
             return;
         }
 
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setForm(prev => ({ ...prev, [field]: reader.result as string }));
+        // Mapear campo para DocType do Backend
+        const docTypeMap: Record<string, string> = {
+            'idPhoto': 'ID',
+            'vehiclePhoto': 'VEHICLE',
+            'docPhoto': 'DOC_VEHICLE'
         };
-        reader.readAsDataURL(file);
+
+        const docType = docTypeMap[field] || 'ID';
+
+        setUploading(prev => ({ ...prev, [field]: true }));
+        setError('');
+
+        try {
+            // 1. Upload Seguro Imediato
+            const res = await apiService.kyc.uploadDocument(file, docType);
+
+            if (res.success) {
+                // 2. Se sucesso, mostrar preview local
+                const previewUrl = URL.createObjectURL(file);
+                setForm(prev => ({ ...prev, [field]: previewUrl })); // Guardamos URL blob para preview, mas backend já tem o arquivo real
+            } else {
+                setError(res.message || 'Erro ao enviar imagem');
+            }
+        } catch (err) {
+            console.error('Upload falhou:', err);
+            setError('Falha no upload seguro. Tente novamente.');
+        } finally {
+            setUploading(prev => ({ ...prev, [field]: false }));
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -375,7 +402,7 @@ const CourierRegistrationView = () => {
 
                 <button
                     type="submit"
-                    disabled={loading || !form.vehicle || !form.cpf || !form.phone || !form.city || !form.state || !form.idPhoto || !form.vehiclePhoto || !form.docPhoto}
+                    disabled={loading || Object.values(uploading).some(Boolean) || !form.vehicle || !form.cpf || !form.phone || !form.city || !form.state || !form.idPhoto || !form.vehiclePhoto || !form.docPhoto}
                     className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 mt-6"
                 >
                     {loading ? (

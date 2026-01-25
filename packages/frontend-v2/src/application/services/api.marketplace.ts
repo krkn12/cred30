@@ -53,19 +53,19 @@ export class MarketplaceApi extends ApiBase {
 
     // --- LOGISTICS ---
     async getAvailableDeliveries(): Promise<ApiResponse<any>> {
-        return await this.request<any>('/logistics/available');
+        return await this.request<any>('/marketplace/logistic/missions');
     }
 
     async acceptDelivery(orderId: number): Promise<ApiResponse<any>> {
-        return await this.post<any>(`/logistics/accept/${orderId}`, {});
+        return await this.post<any>(`/marketplace/logistic/mission/${orderId}/accept`, {});
     }
 
     async confirmPickup(orderId: number, pickupCode?: string): Promise<ApiResponse<any>> {
-        return await this.post<any>(`/logistics/pickup/${orderId}`, { pickupCode });
+        return await this.post<any>(`/marketplace/logistic/mission/${orderId}/pickup`, { pickupCode });
     }
 
     async confirmDelivered(orderId: number): Promise<ApiResponse<any>> {
-        return await this.post<any>(`/logistics/delivered/${orderId}`, {});
+        return await this.post<any>(`/marketplace/logistic/mission/${orderId}/delivered`, {});
     }
 
     async getMyDeliveries(status?: string): Promise<ApiResponse<any>> {
@@ -134,8 +134,14 @@ export class MarketplaceApi extends ApiBase {
         return await this.request<any>(`/marketplace/seller/${sellerId}/profile`);
     }
 
-    async getShippingQuote(listingId: number, destCep: string): Promise<ApiResponse<any>> {
-        return await this.request<any>(`/marketplace/logistic/quote?listingId=${listingId}&destCep=${destCep}`);
+    // --- SELLER REGISTRATION ---
+    async getSellerStatus(): Promise<any> {
+        const res = await this.request<any>('/seller/status');
+        return res.data || res; // Adaptação pois o backend pode retornar direto ou wrapado
+    }
+
+    async registerSeller(data: any): Promise<ApiResponse<any>> {
+        return await this.post<any>('/seller/register', data);
     }
 }
 

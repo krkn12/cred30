@@ -68,6 +68,34 @@ export const SellerRegistrationView = () => {
         }
     };
 
+    // Estados de Upload
+    const [uploadingDocs, setUploadingDocs] = useState<Record<string, boolean>>({});
+    const [docPreviews, setDocPreviews] = useState<Record<string, boolean>>({});
+
+    const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'ID' | 'BUSINESS') => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            setError('Arquivo muito grande. Máximo 5MB.');
+            return;
+        }
+
+        setUploadingDocs(prev => ({ ...prev, [type]: true }));
+        try {
+            const res = await apiService.kyc.uploadDocument(file, type);
+            if (res.success) {
+                setDocPreviews(prev => ({ ...prev, [type]: true }));
+            } else {
+                setError('Erro no upload: ' + res.message);
+            }
+        } catch (err) {
+            setError('Falha ao enviar documento.');
+        } finally {
+            setUploadingDocs(prev => ({ ...prev, [type]: false }));
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
@@ -368,10 +396,85 @@ export const SellerRegistrationView = () => {
                     </div>
                 </div>
 
+                {/* Documentação da Empresa (KYC) */}
+                <div className="space-y-4 pt-4 border-t border-white/5">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <BadgeCheck size={16} className="text-emerald-500" />
+                        Documentação para Verificação
+                    </h3>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Identidade do Sócio */}
+                        <div className="bg-zinc-900 border border-white/5 rounded-xl p-4">
+                            <p className="text-xs text-zinc-400 font-bold uppercase mb-2">Identidade do Responsável</p>
+                            <input
+                                type="file"
+                                id="doc-id"
+                                className="hidden"
+                                accept="image/*,.pdf"
+                                onChange={(e) => handleDocUpload(e, 'ID')}
+                            />
+                            <label
+                                htmlFor="doc-id"
+                                className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-all ${docPreviews['ID'] ? 'border-emerald-500 bg-emerald-500/10' : 'border-zinc-700 hover:border-zinc-500'}`}
+                            >
+                                {uploadingDocs['ID'] ? (
+                                    <Loader2 className="animate-spin text-primary-500" />
+                                ) : docPreviews['ID'] ? (
+                                    <div className="text-emerald-400 flex flex-col items-center">
+                                        <CheckCircle size={24} />
+                                        <span className="text-xs mt-2 font-bold">Enviado</span>
+                                    </div>
+                                ) : (
+                                    <div className="text-zinc-500 flex flex-col items-center">
+                                        <Fingerprint size={24} />
+                                        <span className="text-xs mt-2">RG ou CNH</span>
+                                    </div>
+                                )}
+                            </label>
+                        </div>
+
+                        {/* Contrato Social / MEI */}
+                        <div className="bg-zinc-900 border border-white/5 rounded-xl p-4">
+                            <p className="text-xs text-zinc-400 font-bold uppercase mb-2">
+                                {formData.companyType === 'MEI' ? 'Certificado CCMEI' : 'Contrato Social'}
+                            </p>
+                            <input
+                                type="file"
+                                id="doc-business"
+                                className="hidden"
+                                accept="image/*,.pdf"
+                                onChange={(e) => handleDocUpload(e, 'BUSINESS')}
+                            />
+                            <label
+                                htmlFor="doc-business"
+                                className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-all ${docPreviews['BUSINESS'] ? 'border-emerald-500 bg-emerald-500/10' : 'border-zinc-700 hover:border-zinc-500'}`}
+                            >
+                                {uploadingDocs['BUSINESS'] ? (
+                                    <Loader2 className="animate-spin text-primary-500" />
+                                ) : docPreviews['BUSINESS'] ? (
+                                    <div className="text-emerald-400 flex flex-col items-center">
+                                        <CheckCircle size={24} />
+                                        <span className="text-xs mt-2 font-bold">Enviado</span>
+                                    </div>
+                                ) : (
+                                    <div className="text-zinc-500 flex flex-col items-center">
+                                        <Briefcase size={24} />
+                                        <span className="text-xs mt-2">Documento da Empresa</span>
+                                    </div>
+                                )}
+                            </label>
+                        </div>
+                    </div>
+                    <p className="text-[10px] text-zinc-600 italic">
+                        * Seus documentos são criptografados e armazenados em cofre digital seguro (Off-Public). Apenas a equipe de Compliance tem acesso.
+                    </p>
+                </div>
+
                 {/* Botão Submit */}
                 <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || Object.values(uploadingDocs).some(Boolean)}
                     className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-3"
                 >
                     {submitting ? (

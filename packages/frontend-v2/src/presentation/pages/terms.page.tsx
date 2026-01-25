@@ -119,14 +119,15 @@ const TermsPage = () => {
                             <ShoppingBag size={150} />
                         </div>
                         <h2 className="text-xl sm:text-2xl font-bold mb-4 flex items-center gap-3 text-cyan-400 relative z-10">
-                            <ShoppingBag size={24} /> 2. O Ecossistema de Trocas
+                            <ShoppingBag size={24} /> 2. Clube de Compras e Cashback
                         </h2>
                         <p className="text-zinc-300 text-sm leading-relaxed mb-6 relative z-10">
-                            A Cred30 fundamenta sua existência jurídica na operação de um <strong>Marketplace de Bens e Serviços</strong>. O saldo circulante no sistema é um crédito de troca comunitária ("Pontos de Troca"), lastreado pelos produtos reais anunciados por outros membros.
+                            A Cred30 opera fundamentalmente como um <strong>Clube de Benefícios e Marketplace</strong>. A aquisição de cotas representa a compra antecipada de acesso a serviços e produtos com desconto.
+                            Os valores distribuídos aos membros não são juros financeiros, mas sim <strong>Cashback Coletivo (Benefício Econômico Compartilhado)</strong> gerado pela eficiência operacional e volume de transações no marketplace.
                         </p>
                         <div className="bg-black/40 p-5 rounded-2xl border border-white/5 relative z-10">
-                            <h4 className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.2em] mb-3">Compromisso de Transparência</h4>
-                            <p className="text-xs text-zinc-500 italic">"Nossa prioridade é o comércio entre associados. O apoio financeiro é apenas um recurso secundário de fomento à economia do clube."</p>
+                            <h4 className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.2em] mb-3">Natureza do Benefício</h4>
+                            <p className="text-xs text-zinc-500 italic">"Participação em Economia Real: O retorno financeiro é consequência direta do consumo e circulação de produtos entre os membros, caracterizando-se como programa de fidelidade e incentivo comercial, não investimento financeiro especulativo."</p>
                         </div>
                     </section>
 

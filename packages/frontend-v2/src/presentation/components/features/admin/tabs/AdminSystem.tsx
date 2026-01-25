@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { TrendingUp, Activity, ArrowUpRight, ArrowDownLeft, Trash2, Check, Settings as SettingsIcon, AlertTriangle, DollarSign } from 'lucide-react';
+import { TrendingUp, Activity, ArrowUpRight, ArrowDownLeft, Trash2, Check, Settings as SettingsIcon, AlertTriangle, DollarSign, Send, RefreshCw } from 'lucide-react';
 import { apiService } from '../../../../../application/services/api.service';
 import { AppState } from '../../../../../domain/types/common.types';
 
@@ -32,6 +32,7 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
     const [historyOffset, setHistoryOffset] = useState(0);
     const [hasMoreHistory, setHasMoreHistory] = useState(false);
+    const [isDistributing, setIsDistributing] = useState(false);
     const LIMIT = 50;
 
     const fetchSystemCosts = useCallback(async () => {
@@ -181,7 +182,7 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
                                 <div key={cost.id} className="group bg-black/40 border border-zinc-800/50 p-4 rounded-2xl flex justify-between items-center transition-all hover:border-zinc-700">
                                     <div className="flex-1">
                                         <p className="text-xs font-bold text-zinc-300">{cost.description}</p>
-                                        <p className="text-sm font-black text-white">{formatCurrency(parseFloat(cost.amount))}</p>
+                                        <p className="text-sm font-black text-white">{formatCurrency(parseFloat(String(cost.amount)))}</p>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button
@@ -239,7 +240,7 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
                         </div>
                         <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl col-span-2 lg:col-span-1">
                             <p className="text-[10px] text-blue-400 font-bold uppercase mb-1">Usuários Protegidos</p>
-                            <p className="text-lg font-black text-white">{state.stats?.protectedUsersCount || 0}</p>
+                            <p className="text-lg font-black text-white">{state.system?.protectedUsersCount || state.stats?.systemConfig?.protected_users_count || 0}</p>
                         </div>
                     </div>
                     <div className="mt-6 pt-6 border-t border-zinc-800">
@@ -261,6 +262,45 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
                             </div>
                         ) : (
                             <p className="text-[9px] text-zinc-600 mt-2 text-right">Sem cotas ativas para divisão.</p>
+                        )}
+
+                        {/* Botão Distribuir Excedentes Agora */}
+                        {state.profitPool > 0 && (
+                            <button
+                                onClick={async () => {
+                                    if (!window.confirm(`Deseja distribuir R$ ${state.profitPool.toFixed(2)} de excedentes para os cotistas agora?\n\n• 85% (R$ ${(state.profitPool * 0.85).toFixed(2)}) será distribuído proporcionalmente\n• 15% (R$ ${(state.profitPool * 0.15).toFixed(2)}) vai para manutenção`)) return;
+
+                                    setIsDistributing(true);
+                                    try {
+                                        const res = await apiService.distributeDividends();
+                                        if (res.success) {
+                                            onSuccess('Distribuição Realizada!', res.message || 'Excedentes distribuídos com sucesso para os cotistas elegíveis!');
+                                            onRefresh();
+                                            fetchFinanceHistory();
+                                        } else {
+                                            onError('Aviso', res.message || 'Não foi possível realizar a distribuição.');
+                                        }
+                                    } catch (e: any) {
+                                        onError('Erro', e.message || 'Falha ao distribuir excedentes.');
+                                    } finally {
+                                        setIsDistributing(false);
+                                    }
+                                }}
+                                disabled={isDistributing}
+                                className="w-full mt-6 bg-gradient-to-r from-primary-500 to-emerald-500 hover:from-primary-400 hover:to-emerald-400 disabled:from-zinc-700 disabled:to-zinc-800 text-black disabled:text-zinc-500 font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 shadow-xl shadow-primary-500/20 active:scale-95"
+                            >
+                                {isDistributing ? (
+                                    <>
+                                        <RefreshCw size={18} className="animate-spin" />
+                                        DISTRIBUINDO...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send size={18} />
+                                        DISTRIBUIR EXCEDENTES AGORA
+                                    </>
+                                )}
+                            </button>
                         )}
                     </div>
                 </div>
