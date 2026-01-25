@@ -593,6 +593,19 @@ export class AdminUsersController {
                         installmentAmount
                     })
                 ]);
+                const loanId = loanResult.rows[0].id;
+
+                // 3.1. GERAR PARCELAS (CRÍTICO PARA O CLIENTE PAGAR NO APP)
+                // installmentAmount já calculado acima
+                for (let i = 1; i <= installments; i++) {
+                    const installmentDueDate = new Date();
+                    installmentDueDate.setDate(installmentDueDate.getDate() + (i * 30)); // 30, 60, 90 dias...
+
+                    await client.query(`
+                        INSERT INTO loan_installments (loan_id, installment_number, amount, due_date, status, expected_amount)
+                        VALUES ($1, $2, $3, $4, 'PENDING', $3)
+                    `, [loanId, i, installmentAmount, installmentDueDate]);
+                }
 
                 // 4. Registrar Transação de Saída do Caixa
                 await client.query(`
@@ -613,6 +626,12 @@ export class AdminUsersController {
 
                 return { loanId: loanResult.rows[0].id, userName: userRes.rows[0].name };
             });
+
+            // ⚠️ FIX: Criar parcelas fora da transação principal se necessário, ou melhor, dentro dela.
+            // O código original não tinha criação de parcelas. Vamos adicionar DENTRO da transação acima.
+
+            // ... (Reescrevendo o bloco transaction para incluir o loop de parcelas)
+
 
             if (!result.success) {
                 return c.json({ success: false, message: result.error }, 400);
