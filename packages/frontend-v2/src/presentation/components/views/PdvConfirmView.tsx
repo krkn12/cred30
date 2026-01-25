@@ -206,7 +206,7 @@ export const PdvConfirmView = ({ onSuccess, onError }: PdvConfirmViewProps) => {
                 {chargeData.interestRate > 0 && (
                     <div className="mt-3 text-center border-t border-primary-500/20 pt-3">
                         <p className="text-zinc-400 text-xs">
-                            Total com juros: <span className="text-white font-bold">{formatCurrency(chargeData.totalWithInterest)}</span>
+                            Total com Taxa de Manutenção: <span className="text-white font-bold">{formatCurrency(chargeData.totalWithInterest)}</span>
                             <span className="text-zinc-500"> (+{chargeData.interestRate.toFixed(0)}%)</span>
                         </p>
                     </div>

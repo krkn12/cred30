@@ -1,3 +1,5 @@
+import { getDbPool } from '../../infrastructure/database/postgresql/connection/pool';
+
 // Gerenciador de conexões em tempo real (SSE)
 // Map<userId, Map<connectionId, sendFn>>
 const clients = new Map<string, Map<string, (data: any) => void>>();
@@ -6,7 +8,7 @@ interface NotificationService {
     addClient(userId: string | number, connectionId: string, sendFn: (data: any) => void): void;
     removeClient(userId: string | number, connectionId: string): void;
     notifyAdmin(message: string, type?: 'ALERT' | 'INFO' | 'SUCCESS'): Promise<void>;
-    notifyUser(userId: string | number, title: string, body: string): Promise<void>;
+    notifyUser(userId: string | number, title: string, body: string, type?: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR' | 'PAYMENT' | 'ORDER' | 'DELIVERY'): Promise<void>;
     notifyNewWithdrawal(userName: string, amount: number): Promise<void>;
     notifyProfitDistributed(totalAmount: number): Promise<void>;
     sendDuressAlert(userName: string, safePhone: string): Promise<void>;
@@ -29,7 +31,7 @@ export const notificationService: NotificationService = {
 
         let total = 0;
         clients.forEach(c => total += c.size);
-        console.log(`📡 [SSE] Cliente conectado: ${userId} (${connectionId}). Total: ${total}`);
+        // console.log(`📡 [SSE] Cliente conectado: ${userId} (${connectionId}). Total: ${total}`);
     },
 
     /**
@@ -44,10 +46,6 @@ export const notificationService: NotificationService = {
                 clients.delete(uId);
             }
         }
-
-        let total = 0;
-        clients.forEach(c => total += c.size);
-        console.log(`📡 [SSE] Cliente desconectado: ${userId} (${connectionId}). Total: ${total}`);
     },
 
     /**
@@ -57,36 +55,56 @@ export const notificationService: NotificationService = {
         const emoji = type === 'ALERT' ? '🚨' : type === 'SUCCESS' ? '✅' : 'ℹ️';
         console.log(`${emoji} [ADMIN NOTIFICATION]: ${message}`);
 
-        // Broadcast silencioso para todos os admins conectados via SSE
-        clients.forEach((userClients, userId) => {
-            // No futuro, verificar se o userId é admin
-            userClients.forEach((send) => {
-                send({
-                    event: 'admin_notification',
-                    message,
-                    type,
-                    timestamp: new Date().toISOString()
-                });
-            });
-        });
+        // TODO: Inserir em tabela notifications_admin se houver
     },
 
     /**
-     * Envia uma notificação para um usuário específico
+     * Envia uma notificação para um usuário específico (COM PERSISTÊNCIA)
      */
-    async notifyUser(userId: string | number, title: string, body: string) {
+    async notifyUser(userId: string | number, title: string, body: string, type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR' | 'PAYMENT' | 'ORDER' | 'DELIVERY' = 'INFO') {
         console.log(`🔔 [USER NOTIFICATION] User: ${userId} | ${title}: ${body}`);
 
-        const userClients = clients.get(userId.toString());
-        if (userClients) {
-            userClients.forEach((send) => {
-                send({
-                    event: 'notification',
-                    title,
-                    body,
-                    timestamp: new Date().toISOString()
+        try {
+            // 1. Persistir no Banco de Dados
+            // Como notificationService é agnóstico de contexto, precisamos de uma instância do pool global
+            // Aqui vamos usar um hack para pegar o pool global ou importar uma instância
+            const pool = await import('../../infrastructure/database/postgresql/connection/pool').then(m => m.generateReferralCode ? m.getDbPool({} as any) : null);
+
+            // Simplificação: vamos fazer o import funcionar corretamente, mas getDbPool exige Contexto Hono
+            // Vamos implementar um método `getGlobalPool` no pool.ts para services isolados, ou usar require.
+
+            // Solução Correta: Injetar pool ou criar nova conexão.
+            // Para não quebrar a arquitetura existente, vamos instanciar aqui pontualmente
+            const { Pool } = await import('pg');
+            const newPool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+
+            await newPool.query(
+                `INSERT INTO notifications (user_id, title, message, type) VALUES ($1, $2, $3, $4)`,
+                [userId, title, body, type]
+            );
+            await newPool.end(); // Fechar para não vazar conexões
+
+            // 2. Enviar via SSE (Tempo Real)
+            const userClients = clients.get(userId.toString());
+            if (userClients) {
+                userClients.forEach((send) => {
+                    send({
+                        event: 'notification',
+                        title,
+                        body, // Legacy SSE format
+                        message: body,
+                        type,
+                        timestamp: new Date().toISOString()
+                    });
                 });
-            });
+            }
+        } catch (error) {
+            console.error('Erro ao persistir notificação:', error);
+            // Fallback: Tenta enviar online mesmo sem salvar no banco
+            const userClients = clients.get(userId.toString());
+            if (userClients) {
+                userClients.forEach((send) => send({ event: 'notification', title, body, type, timestamp: new Date().toISOString(), error: 'Not persisted' }));
+            }
         }
     },
 
@@ -111,10 +129,6 @@ export const notificationService: NotificationService = {
      */
     async sendDuressAlert(userName: string, safePhone: string) {
         const message = `🚨 ALERTA DE EMERGÊNCIA CRED30: O associado ${userName} acaba de ativar o modo de pânico no aplicativo. Isso indica uma situação de perigo ou coação. Por favor, tente contato ou chame as autoridades (190) se necessário.`;
-
         console.log(`⚠️ [DURESS ALERT SENT TO ${safePhone}]: ${message}`);
-
-        // TODO: Integrar com API de WhatsApp/SMS (Ex: Twilio ou Z-API)
-        // await smsGateway.send(safePhone, message);
     }
 };

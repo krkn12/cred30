@@ -60,7 +60,7 @@ export const AdminOverview = ({ state }: AdminOverviewProps) => {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 <MetricCard title="Membros" value={state.stats?.usersCount ?? state.users?.length ?? 0} subtitle="Usuários Totais" icon={Users} color="blue" />
                 <MetricCard title="Participações" value={state.stats?.quotasCount ?? 0} subtitle="Licenças em Operação" icon={PieChart} color="cyan" />
-                <MetricCard title="Liquidez Real" value={formatCurrency(state.stats?.systemConfig?.real_liquidity ?? state.systemBalance ?? 0)} subtitle="Capital das Cotas - Empréstimos" icon={DollarSign} color="emerald" />
+                <MetricCard title="Liquidez Real" value={formatCurrency(state.stats?.systemConfig?.real_liquidity ?? state.systemBalance ?? 0)} subtitle="Capital das Cotas - Apoios Mútuos" icon={DollarSign} color="emerald" />
                 <MetricCard title="Votações Ativas" value={state.stats?.activeProposalsCount ?? 0} subtitle="Governança em Aberto" icon={Vote} color="purple" />
             </div>
 
@@ -101,7 +101,7 @@ export const AdminOverview = ({ state }: AdminOverviewProps) => {
                     <MetricCard
                         title="Pró-Labore (1.2%)"
                         value={formatCurrency(state.stats?.systemConfig?.total_owner_profit || 0)}
-                        subtitle="Lucro do Fundador"
+                        subtitle="Excedente do Fundador"
                         icon={DollarSign}
                         color="emerald"
                     />

@@ -80,8 +80,12 @@ export class ConsortiumController {
             const pool = getDbPool(c);
 
             const result = await pool.query(`
-                SELECT cm.*, cg.name as group_name, cg.total_value, cg.monthly_installment_value, 
+                SELECT cm.*, cg.name as group_name, cg.total_value, cg.monthly_installment_value, cg.duration_months,
+                       cg.admin_fee_percent, cg.reserve_fee_percent,
                        cg.status as group_status, cg.current_assembly_number, cg.current_pool,
+                       (cg.duration_months - cm.paid_installments) as remaining_installments,
+                       ((cg.duration_months - cm.paid_installments) * cg.monthly_installment_value) as total_remaining_due,
+                       (SELECT amount FROM consortium_bids WHERE member_id = cm.id ORDER BY amount DESC LIMIT 1) as my_bid_amount,
                        (SELECT u.name FROM consortium_assemblies ca 
                         JOIN consortium_members win_cm ON ca.winner_member_id = win_cm.id
                         JOIN users u ON win_cm.user_id = u.id
@@ -209,7 +213,8 @@ export class ConsortiumController {
             const result = await executeInTransaction(pool, async (client: PoolClient) => {
                 // 1. Validar Membro e Grupo
                 const memberRes = await client.query(`
-                    SELECT cm.*, cg.name as group_name, cg.monthly_installment_value, cg.admin_fee_percent, cg.id as group_id
+                    SELECT cm.*, cg.name as group_name, cg.monthly_installment_value, cg.admin_fee_percent, cg.id as group_id,
+                           cg.total_value, cg.duration_months, cg.reserve_fee_percent
                     FROM consortium_members cm
                     JOIN consortium_groups cg ON cm.group_id = cg.id
                     WHERE cm.id = $1 AND cm.user_id = $2
@@ -225,24 +230,30 @@ export class ConsortiumController {
                     throw new Error('Saldo insuficiente para pagar a parcela.');
                 }
 
-                // 3. Calcular Taxa Admin e Pool
-                const adminFeePercent = Number(member.admin_fee_percent || 10);
-                const adminFee = installmentValue * (adminFeePercent / 100);
-                const poolContribution = installmentValue - adminFee;
+                // 3. Calcular Taxa Admin e Pool (Baseado no valor da Carta e não da parcela total)
+                const totalValue = Number(member.total_value); // Precisa vir da query
+                const duration = Number(member.duration_months); // Precisa vir da query
+
+                // Recalcular base para garantir precisão
+                const baseShare = totalValue / duration;
+                const adminFeeVal = (totalValue * (Number(member.admin_fee_percent || 10) / 100)) / duration;
+                const reserveFeeVal = (totalValue * (Number(member.reserve_fee_percent || 1) / 100)) / duration;
 
                 // 4. Executar Débito e Créditos
                 await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [installmentValue, user.id]);
 
+                // Fundo Comum -> Paga as cartas
                 await client.query(`
                     UPDATE consortium_groups 
                     SET current_pool = COALESCE(current_pool, 0) + $1,
-                        current_pool_available = COALESCE(current_pool_available, 0) + $1
-                    WHERE id = $2
-                `, [poolContribution, member.group_id]);
+                        current_pool_available = COALESCE(current_pool_available, 0) + $1,
+                        reserve_pool = COALESCE(reserve_pool, 0) + $2
+                    WHERE id = $3
+                `, [baseShare, reserveFeeVal, member.group_id]);
 
-                // Divisão da taxa: 80% para cotistas (profit_pool), 20% para o projeto (owner_profit)
-                const cotistasShare = adminFee * 0.8;
-                const platformShare = adminFee * 0.2;
+                // Taxa Adm -> Lucro do Sistema (80% Investidores / 20% Plataforma)
+                const cotistasShare = adminFeeVal * 0.8;
+                const platformShare = adminFeeVal * 0.2;
 
                 await client.query(`
                     UPDATE system_config 
@@ -266,7 +277,7 @@ export class ConsortiumController {
                 // 6. Registrar Transações
                 await client.query(`
                     INSERT INTO transactions (user_id, type, amount, description, status, created_at)
-                    VALUES ($1, 'CONSORTIUM_INSTALLMENT', $2, $3, 'APPROVED', NOW())
+                    VALUES ($1, 'CONSORTIUM_PAY', $2, $3, 'APPROVED', NOW())
                 `, [user.id, -installmentValue, `Parcela Consórcio: ${member.group_name} (${member.paid_installments + 1}ª)`]);
 
                 return { success: true, message: 'Parcela paga com sucesso!' };
@@ -324,25 +335,60 @@ export class ConsortiumController {
                     const memberRes = await client.query('SELECT * FROM consortium_members WHERE id = $1', [winnerMemberId]);
                     const member = memberRes.rows[0];
 
-                    // Transfere o valor da carta de crédito (total_value)
                     const totalCredit = Number(group.total_value);
                     const bidAmount = Number(winningBidAmount || 0);
 
-                    // Se for lance embutido, precisamos saber o quanto foi descontado
-                    // No momento simplificado, assumimos que se bids.is_embedded estiver true, descontamos do crédito
                     const bidRes = await client.query('SELECT * FROM consortium_bids WHERE assembly_id = $1 AND member_id = $2', [assemblyId, winnerMemberId]);
                     const bid = bidRes.rows[0];
 
                     let finalCreditValue = totalCredit;
-                    if (bid && bid.is_embedded) {
-                        finalCreditValue = totalCredit - Number(bid.embedded_amount || 0);
-                    }
 
-                    // BLOQUEIO DE SEGURANÇA: Não libera o saldo na conta do usuário ainda
-                    // O crédito agora precisa de aprovação manual da garantia no Admin
-                    /* 
-                    await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [finalCreditValue, member.user_id]);
-                    */
+                    // --- LÓGICA DE PAGAMENTO DO LANCE ---
+                    if (bid && !bid.is_embedded && bidAmount > 0) {
+                        // Lance Livre: O usuário paga do bolso
+                        const userBal = await client.query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [member.user_id]);
+                        if (Number(userBal.rows[0].balance) < bidAmount) {
+                            throw new Error('O vencedor não tem saldo suficiente para honrar o lance livre.');
+                        }
+
+                        // 1. Debitar Usuario
+                        await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [bidAmount, member.user_id]);
+
+                        // 2. Registrar no Pool (Entra como antecipação)
+                        await client.query(`UPDATE consortium_groups SET current_pool = current_pool + $1 WHERE id = $2`, [bidAmount, group.id]);
+
+                        // 3. Amortizar Parcelas (De trás pra frente ou apenas reduzir saldo devedor)
+                        // Lógica Simplificada: Aumentar o total pago e numero de parcelas eq
+                        const installmentVal = Number(group.monthly_installment_value);
+                        const installmentsPaidByBid = Math.floor(bidAmount / installmentVal);
+
+                        await client.query(`
+                            UPDATE consortium_members 
+                            SET paid_installments = paid_installments + $1,
+                                total_paid = total_paid + $2
+                            WHERE id = $3
+                        `, [installmentsPaidByBid, bidAmount, winnerMemberId]);
+
+                        await client.query(`
+                            INSERT INTO transactions (user_id, type, amount, description, status, created_at)
+                            VALUES ($1, 'CONSORTIUM_BID_PAY', $2, $3, 'APPROVED', NOW())
+                        `, [member.user_id, -bidAmount, `Pagamento de Lance: ${group.name}`]);
+                    }
+                    else if (bid && bid.is_embedded) {
+                        // Lance Embutido: Desconta da carta
+                        finalCreditValue = totalCredit - Number(bid.embedded_amount || 0);
+
+                        // Consideramos o valor embutido como "pago" para fins de amortização da dívida?
+                        // Geralmente sim, pois ele abriu mão do crédito para quitar dívida.
+                        const installmentsPaidByBid = Math.floor(Number(bid.embedded_amount) / Number(group.monthly_installment_value));
+
+                        await client.query(`
+                            UPDATE consortium_members 
+                            SET paid_installments = paid_installments + $1,
+                                total_paid = total_paid + $2
+                            WHERE id = $3
+                        `, [installmentsPaidByBid, Number(bid.embedded_amount), winnerMemberId]);
+                    }
 
                     // Apenas atualiza o status do crédito para PENDING
                     await client.query(`
@@ -362,7 +408,7 @@ export class ConsortiumController {
 
                     await client.query(`
                         INSERT INTO transactions (user_id, type, amount, description, status, created_at)
-                        VALUES ($1, 'CONSORTIUM_CONTEMPLATION', $2, $3, 'PENDING', NOW())
+                        VALUES ($1, 'CONSORTIUM_AWARD', $2, $3, 'PENDING', NOW())
                     `, [member.user_id, finalCreditValue, `Crédito Consórcio: ${group.name}${bid?.is_embedded ? ' (Lance Embutido)' : ''} - Aguardando Garantia`]);
 
                     if (bid) {
@@ -397,7 +443,7 @@ export class ConsortiumController {
             const user = c.get('user') as UserContext;
             if (!user.isAdmin) return c.json({ success: false, message: 'Acesso negado.' }, 403);
 
-            const { memberId, guaranteeDescription } = await c.req.json();
+            const { memberId, guaranteeDescription, partnerId, invoiceUrl } = await c.req.json();
             const pool = getDbPool(c);
 
             const result = await executeInTransaction(pool, async (client: PoolClient) => {
@@ -409,8 +455,15 @@ export class ConsortiumController {
                 if (member.status !== 'CONTEMPLATED') throw new Error('Este membro ainda não foi contemplado.');
                 if (member.credit_status === 'APPROVED') throw new Error('Crédito já foi liberado.');
 
+                // 1.5 Validar Parceiro (Lojista)
+                if (!partnerId) throw new Error('É obrigatório informar o ID do Lojista Parceiro.');
+                const partnerRes = await client.query('SELECT id, name, role FROM users WHERE id = $1', [partnerId]);
+                if (partnerRes.rows.length === 0) throw new Error('Lojista parceiro não encontrado.');
+                // Opcional: Verificar se role é 'SELLER' ou 'PARTNER' se houver essa distinção. Por hora, qualquer user serve.
+                const partner = partnerRes.rows[0];
+
                 // 2. Buscar o valor do crédito (considerando lance embutido)
-                const groupRes = await client.query('SELECT total_value FROM consortium_groups WHERE id = $1', [member.group_id]);
+                const groupRes = await client.query('SELECT total_value, name FROM consortium_groups WHERE id = $1', [member.group_id]);
                 const group = groupRes.rows[0];
 
                 const bidRes = await client.query('SELECT * FROM consortium_bids WHERE member_id = $1 AND status = \'WINNER\'', [memberId]);
@@ -421,25 +474,34 @@ export class ConsortiumController {
                     finalCreditValue -= Number(bid.embedded_amount || 0);
                 }
 
-                // 3. Liberar o saldo na conta e aprovar status
-                await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [finalCreditValue, member.user_id]);
+                // 3. Liberar o saldo na conta do PARCEIRO (Lojista) e aprovar status
+                // AQUI ESTÁ A MUDANÇA: member.user_id -> partnerId
+                await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [finalCreditValue, partnerId]);
+
                 await client.query(`
                     UPDATE consortium_members 
                     SET credit_status = 'APPROVED', 
                         guarantee_description = $1,
-                        credit_limit_released = $2
-                    WHERE id = $3
-                `, [guaranteeDescription, finalCreditValue, memberId]);
+                        invoice_url = $2,
+                        credit_limit_released = $3
+                    WHERE id = $4
+                `, [guaranteeDescription, invoiceUrl, finalCreditValue, memberId]);
 
                 // 4. Atualizar transação de pendente para aprovado
                 await client.query(`
                     UPDATE transactions 
                     SET status = 'APPROVED', 
-                        description = description || ' (Garantia Aprovada)' 
-                    WHERE user_id = $1 AND type = 'CONSORTIUM_CONTEMPLATION' AND status = 'PENDING'
-                `, [member.user_id]);
+                        description = description || ' (Crédito Pago ao Lojista: ' || $1 || ')' 
+                    WHERE user_id = $2 AND type = 'CONSORTIUM_AWARD' AND status = 'PENDING'
+                `, [partner.name, member.user_id]);
 
-                return { success: true, message: 'Crédito liberado com sucesso após validação de garantia.' };
+                // 5. Registrar entrada no extrato do Lojista
+                await client.query(`
+                    INSERT INTO transactions (user_id, type, amount, description, status, created_at)
+                    VALUES ($1, 'SALE_RECEIPT', $2, $3, 'APPROVED', NOW())
+                `, [partnerId, finalCreditValue, `Venda Consórcio: ${group.name} (Cliente: ${member.user_id})`]);
+
+                return { success: true, message: `Crédito liberado com sucesso para o parceiro ${partner.name}.` };
             });
 
             return c.json(result.success ? result : { success: false, message: result.error });

@@ -49,6 +49,7 @@ import { tutorRoutes } from './presentation/http/routes/tutors.routes';
 import { logisticsRoutes } from './presentation/http/routes/logistics.routes';
 import { consortiumRoutes } from './presentation/http/routes/consortium.routes';
 import { pdvRoutes } from './presentation/http/routes/pdv.routes';
+import { kycRoutes } from './presentation/http/routes/kyc.routes';
 
 // Infraestrutura
 import { initializeScheduler } from './scheduler';
@@ -64,6 +65,7 @@ app.use('*', cors({
       'https://cred30-prod-app-2025.web.app',
       'https://cred30-prod-app-2025.firebaseapp.com',
       'http://localhost:3000',
+      'http://localhost:3003',
       'http://localhost:5173'
     ];
     if (!origin || allowed.includes(origin)) return origin || allowed[0];
@@ -153,7 +155,9 @@ app.route('/api/seller', sellerRoutes);
 app.route('/api/logistics', logisticsRoutes);
 app.route('/api/tutors', tutorRoutes);
 app.route('/api/consortium', consortiumRoutes);
+app.route('/api/consortium', consortiumRoutes);
 app.route('/api/pdv', pdvRoutes);
+app.route('/api/kyc', kycRoutes);
 
 // Rotas Base e Health Check
 app.get('/', (c: Context) => c.json({

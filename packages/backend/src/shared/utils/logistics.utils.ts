@@ -19,46 +19,62 @@ export function calculateShippingQuote(
         return { fee: 0, deliveryEstimateDays: 7, method: 'NATIONAL' };
     }
 
-    // Normalizar CEPs (apenas números)
     const origin = originCep.replace(/\D/g, '');
     const dest = destCep.replace(/\D/g, '');
 
-    // 1. Mesmo Bairro/Cidade (Mesmos 5 primeiros dígitos) -> Entregador Local
-    if (origin.substring(0, 4) === dest.substring(0, 4)) {
-        return {
-            fee: 15.00, // Preço fixo base para entrega local (pode ser ajustado por KM se houver lat/lng)
-            deliveryEstimateDays: 1,
-            method: 'COURIER'
-        };
-    }
+    // Constantes de Preço (Estilo SEDEX Blindado - Preços de Teto)
+    const BASE_LOCAL = 28.00;
+    const BASE_ESTADUAL = 38.00;
+    const BASE_NACIONAL_PROXIMO = 55.00; // Sul/Sudeste
+    const BASE_NACIONAL_DISTANTE = 78.00; // Norte/Nordeste/C-O
+    const WEIGHT_STEP = 8.00; // R$ por kg extra
+    const SAFETY_MARGIN = 1.25; // +25% de margem contra prejuízos
 
-    // 2. Mesmo Estado (Mesmo primeiro dígito ou conforme faixa estadual)
-    // No Brasil, o primeiro dígito define a região postal (ex: 0 e 1 = SP)
+    let baseFee = BASE_NACIONAL_DISTANTE;
+    let days = 10;
+    let method: any = 'NATIONAL';
+
     const originRegion = origin.substring(0, 1);
     const destRegion = dest.substring(0, 1);
+    const originArea = origin.substring(0, 5);
+    const destArea = dest.substring(0, 5);
 
-    if (originRegion === destRegion) {
-        return {
-            fee: 35.00 + (Math.floor(weightGrams / 1000) * 5),
-            deliveryEstimateDays: 3,
-            method: 'STATE'
-        };
+    // 1. Mesmo Bairro/Cidade (5 dígitos)
+    if (originArea === destArea) {
+        baseFee = BASE_LOCAL;
+        days = 1;
+        method = 'COURIER';
+    }
+    // 2. Mesmo Estado
+    else if (originRegion === destRegion) {
+        baseFee = BASE_ESTADUAL;
+        days = 3;
+        method = 'STATE';
+    }
+    // 3. Regiões Próximas (Sul 8-9 e Sudeste 0-3)
+    else {
+        const isSouthOrSoutheast = (c: string) => ['0', '1', '2', '3', '8', '9'].includes(c[0]);
+        if (isSouthOrSoutheast(origin) && isSouthOrSoutheast(dest)) {
+            baseFee = BASE_NACIONAL_PROXIMO;
+            days = 5;
+            method = 'REGIONAL';
+        } else {
+            baseFee = BASE_NACIONAL_DISTANTE;
+            days = 8;
+            method = 'NATIONAL';
+        }
     }
 
-    // 3. Regiões Próximas (ex: Sudeste 0-3, Sul 8-9)
-    const isSudeste = (c: string) => ['0', '1', '2', '3'].includes(c[0]);
-    if (isSudeste(origin) && isSudeste(dest)) {
-        return {
-            fee: 45.00 + (Math.floor(weightGrams / 1000) * 7),
-            deliveryEstimateDays: 5,
-            method: 'REGIONAL'
-        };
-    }
+    // Acréscimo por Peso (Peso mínimo considerado 1kg)
+    const weightKg = Math.max(1, Math.ceil(weightGrams / 1000));
+    const weightExtra = (weightKg - 1) * WEIGHT_STEP;
 
-    // 4. Nacional (Brasil Todo)
+    // Cálculo Final com Margem de Segurança
+    const finalFee = (baseFee + weightExtra) * SAFETY_MARGIN;
+
     return {
-        fee: 65.00 + (Math.floor(weightGrams / 1000) * 10),
-        deliveryEstimateDays: 10,
-        method: 'NATIONAL'
+        fee: parseFloat(finalFee.toFixed(2)),
+        deliveryEstimateDays: days,
+        method: method
     };
 }

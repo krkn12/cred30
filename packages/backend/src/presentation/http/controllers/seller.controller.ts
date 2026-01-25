@@ -36,6 +36,9 @@ export class SellerController {
     /**
      * Registrar como vendedor
      */
+    /**
+     * Registrar como vendedor
+     */
     static async registerSeller(c: Context) {
         try {
             const user = c.get('user') as UserContext;
@@ -43,6 +46,7 @@ export class SellerController {
             const body = await c.req.json();
 
             const {
+                type, // 'PF' | 'PJ'
                 companyName,
                 cpfCnpj,
                 mobilePhone,
@@ -54,11 +58,45 @@ export class SellerController {
                 postalCode
             } = body;
 
-            if (!companyName || !cpfCnpj || !mobilePhone || !address || !city || !state || !postalCode) {
+            // Validação de Campos Básicos
+            if (!type || !cpfCnpj || !mobilePhone || !address || !city || !state || !postalCode) {
                 return c.json({
                     success: false,
                     message: 'Preencha todos os campos obrigatórios'
                 }, 400);
+            }
+
+            // Normalizar Documento (apenas números)
+            const cleanDoc = cpfCnpj.replace(/\D/g, '');
+
+            // Validação PF vs PJ
+            let finalCompanyName = companyName;
+
+            if (type === 'PF') {
+                if (cleanDoc.length !== 11) return c.json({ success: false, message: 'CPF deve ter 11 dígitos.' }, 400);
+                if (!companyName) {
+                    // Para PF, se não informar nome fantasia, usa o nome do usuário
+                    const userRes = await pool.query('SELECT name FROM users WHERE id = $1', [user.id]);
+                    finalCompanyName = userRes.rows[0]?.name;
+                }
+            } else if (type === 'PJ') {
+                if (cleanDoc.length !== 14) return c.json({ success: false, message: 'CNPJ deve ter 14 dígitos.' }, 400);
+                if (!companyName) return c.json({ success: false, message: 'Nome da Empresa é obrigatório para PJ.' }, 400);
+            } else {
+                return c.json({ success: false, message: 'Tipo de conta inválido (Use PF ou PJ).' }, 400);
+            }
+
+            // Checar duplicidade de Vendedor (Trava de Unicidade)
+            const uniqueCheck = await pool.query(
+                'SELECT id FROM users WHERE seller_cpf_cnpj = $1 AND id != $2',
+                [cleanDoc, user.id]
+            );
+
+            if (uniqueCheck.rows.length > 0) {
+                return c.json({
+                    success: false,
+                    message: 'Este CPF/CNPJ já está cadastrado em outra conta de vendedor.'
+                }, 409);
             }
 
             const existingCheck = await pool.query(
@@ -96,8 +134,8 @@ export class SellerController {
                     seller_created_at = CURRENT_TIMESTAMP
                  WHERE id = $10`,
                 [
-                    companyName,
-                    cpfCnpj,
+                    finalCompanyName,
+                    cleanDoc,
                     mobilePhone,
                     address,
                     addressNumber || 'S/N',
@@ -114,6 +152,7 @@ export class SellerController {
                 message: 'Conta de vendedor criada com sucesso! Os pagamentos serão processados manualmente.',
                 seller: {
                     status: 'approved',
+                    type: type, // Retorna o tipo registrado
                     paymentMethod: 'MANUAL_PIX'
                 }
             });

@@ -138,7 +138,7 @@ export const AdminFiscal = () => {
                                         <p className="text-xl font-black text-white">{formatCurrency(report.details.quota_maintenance_fees)}</p>
                                     </div>
                                     <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
-                                        <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Juros de Empréstimos</p>
+                                        <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Taxa de Manutenção de Apoios</p>
                                         <p className="text-xl font-black text-white">{formatCurrency(report.details.loan_interest_revenue)}</p>
                                     </div>
                                 </div>
@@ -156,7 +156,7 @@ export const AdminFiscal = () => {
                                     </div>
                                 </div>
                                 <p className="text-xs text-zinc-500 leading-relaxed mt-4">
-                                    Valor total repassado aos cotistas como dividendos. Isso é custo de capital e reduz o lucro retido do sistema.
+                                    Valor total repassado aos cotistas como excedentes. Isso é custo de capital e reduz o excedente retido do sistema.
                                 </p>
                             </div>
 
@@ -168,12 +168,12 @@ export const AdminFiscal = () => {
                                         <DollarSign size={20} className="text-black" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] text-primary-300 font-black uppercase tracking-widest">Lucro Líquido Real</p>
+                                        <p className="text-[10px] text-primary-300 font-black uppercase tracking-widest">Excedente Operacional Líquido</p>
                                         <p className="text-2xl font-black text-white">{formatCurrency(report.net_profit)}</p>
                                     </div>
                                 </div>
                                 <p className="text-xs text-primary-200/60 leading-relaxed mt-4 relative z-10">
-                                    Resultado final após pagamento de todas as obrigações e dividendos. Este valor compõe o fundo de reserva e reinvestimento.
+                                    Resultado final após pagamento de todas as obrigações e distribuições. Este valor compõe o fundo de reserva e proteção.
                                 </p>
                             </div>
                         </div>

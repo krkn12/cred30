@@ -263,7 +263,7 @@ export class UsersController {
                     FROM users u WHERE u.id = $1
                 ),
                 system_stats AS (
-                    SELECT mutual_protection_fund FROM system_config LIMIT 1
+                    SELECT mutual_reserve FROM system_config LIMIT 1
                 ),
                 global_protected_count AS (
                     SELECT COUNT(*) as count FROM users WHERE is_protected = TRUE
@@ -338,7 +338,7 @@ export class UsersController {
                         protection_expires_at: stats.protection_expires_at || null
                     },
                     system: {
-                        mutualProtectionFund: parseFloat(data.system_stats?.mutual_protection_fund || '0'),
+                        mutualProtectionFund: parseFloat(data.system_stats?.mutual_reserve || '0'),
                         protectedUsersCount: parseInt(data.protected_users_count || '0')
                     },
                     stats: {

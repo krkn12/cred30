@@ -2,6 +2,7 @@ import { Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { notificationService } from '../../../application/services/notification.service';
 import { UserContext } from '../../../shared/types/hono.types';
+import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 
 export class NotificationsController {
     /**
@@ -86,5 +87,62 @@ export class NotificationsController {
             success: true,
             message: 'Notificação de teste enviada! Verifique o sino.'
         });
+    }
+
+    /**
+     * Listar notificações do usuário (Histórico)
+     */
+    static async listNotifications(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+
+            const result = await pool.query(
+                `SELECT id, title, message, type, is_read as read, created_at as date 
+                 FROM notifications 
+                 WHERE user_id = $1 
+                 ORDER BY created_at DESC 
+                 LIMIT 50`,
+                [user.id]
+            );
+
+            // Converter date para timestamp numérico para compatibilidade com interface do frontend
+            const notifications = result.rows.map(n => ({
+                ...n,
+                date: new Date(n.date).getTime()
+            }));
+
+            return c.json({ success: true, data: notifications });
+        } catch (error) {
+            console.error('Erro ao listar notificações:', error);
+            return c.json({ success: false, message: 'Erro ao buscar notificações' }, 500);
+        }
+    }
+
+    /**
+     * Marcar notificação como lida
+     */
+    static async markAsRead(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const { id } = await c.req.json();
+            const pool = getDbPool(c);
+
+            if (id === 'all') {
+                await pool.query(
+                    'UPDATE notifications SET is_read = TRUE WHERE user_id = $1',
+                    [user.id]
+                );
+            } else {
+                await pool.query(
+                    'UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2',
+                    [id, user.id]
+                );
+            }
+
+            return c.json({ success: true, message: 'Notificação marcada como lida' });
+        } catch (error) {
+            return c.json({ success: false, message: 'Erro ao atualizar notificação' }, 500);
+        }
     }
 }

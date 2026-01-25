@@ -40,3 +40,6 @@ authRoutes.post('/admin/reset-user-security', authMiddleware, AuthController.adm
 
 // Rota de autenticação via Google (Firebase)
 authRoutes.post('/google', AuthController.loginGoogle);
+
+// Rota para aplicar código de indicação (Pós-Login Social)
+authRoutes.post('/apply-referral', authMiddleware, AuthController.applyReferral);

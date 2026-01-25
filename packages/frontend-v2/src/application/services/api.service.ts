@@ -5,6 +5,8 @@ import { MarketplaceApi } from './api.marketplace';
 import { FinanceApi } from './api.finance';
 import { AdminApi } from './api.admin';
 import { MiscApi } from './api.misc';
+import { NotificationsApi } from './api.notifications';
+import { KycApi } from './api.kyc';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -23,6 +25,8 @@ class ApiService extends ApiBase {
   public finance = new FinanceApi();
   public admin = new AdminApi();
   public misc = new MiscApi();
+  public notifs = new NotificationsApi();
+  public kyc = new KycApi();
 
   constructor() {
     super();
@@ -136,8 +140,16 @@ class ApiService extends ApiBase {
     return await this.get<any>('/logistics/stats');
   };
 
+  // Seller Registration
+  getSellerStatus = this.marketplace.getSellerStatus.bind(this.marketplace);
+  registerSeller = this.marketplace.registerSeller.bind(this.marketplace);
+
   // Bug Reports
   getMyBugReports = this.misc.getMyBugReports.bind(this.misc);
+
+  // Notifications (Persistentes)
+  getNotifications = this.notifs.getHistory.bind(this.notifs);
+  markNotificationRead = this.notifs.markAsRead.bind(this.notifs);
 
   checkTitleEligibility = async () => {
     return await this.get<any>('/users/title-eligibility');

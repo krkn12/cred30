@@ -26,6 +26,9 @@ const createListingSchema = z.object({
     stock: z.coerce.number().int().min(1).optional().default(1), // Estoque total/fallback
     pickupAddress: z.string().optional(),
     postalCode: z.string().optional(),
+    weightGrams: z.coerce.number().int().min(0).optional().default(1000),
+    freeShipping: z.coerce.boolean().optional().default(false),
+    shippingPrice: z.coerce.number().min(0).optional().default(0)
 });
 
 export class MarketplaceListingsController {
@@ -171,7 +174,8 @@ export class MarketplaceListingsController {
 
             const {
                 title, description, price, category, imageUrl, images, variants,
-                itemType, digitalContent, requiredVehicle, stock, pickupAddress, postalCode
+                itemType, digitalContent, requiredVehicle, stock, pickupAddress, postalCode,
+                weightGrams, freeShipping, shippingPrice
             } = parseResult.data;
 
             // ... (digital check kept)
@@ -204,11 +208,13 @@ export class MarketplaceListingsController {
                 const result = await client.query(
                     `INSERT INTO marketplace_listings (
                         seller_id, title, description, price, category, image_url, 
-                        item_type, digital_content, required_vehicle, stock, pickup_address, pickup_postal_code
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, *`,
+                        item_type, digital_content, required_vehicle, stock, pickup_address, pickup_postal_code,
+                        weight_grams, free_shipping, shipping_price
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id, *`,
                     [
                         user.id, title, description, price, category, mainImage,
-                        itemType, digitalContent || null, requiredVehicle, stock || 1, pickupAddress || null, postalCode || bodyPostalCode || null
+                        itemType, digitalContent || null, requiredVehicle, stock || 1, pickupAddress || null, postalCode || null,
+                        weightGrams, freeShipping, shippingPrice
                     ]
                 );
                 const listing = result.rows[0];
@@ -248,7 +254,7 @@ export class MarketplaceListingsController {
 
                 return c.json({
                     success: true,
-                    listing: listing,
+                    data: listing,
                     message: 'Anúncio publicado com sucesso!'
                 });
 

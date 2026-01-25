@@ -153,7 +153,31 @@ export class MarketplaceOrdersController {
                     throw new Error('Todos os itens de um lote devem ser do mesmo vendedor.');
                 }
 
-                const sellerRes = await client.query('SELECT address, asaas_wallet_id FROM users WHERE id = $1', [sellerId]);
+
+
+                /* REMOVED
+                    const startOfMonth = new Date();
+                    startOfMonth.setDate(1);
+                    startOfMonth.setHours(0, 0, 0, 0);
+
+                    const salesRes = await client.query(`
+                        SELECT COALESCE(SUM(amount), 0) as total 
+                        FROM marketplace_orders 
+                        WHERE seller_id = $1 
+                        AND created_at >= $2 
+                        AND status != 'CANCELLED'
+                    `, [sellerId, startOfMonth]);
+
+                    const currentMonthlySales = parseFloat(salesRes.rows[0].total);
+
+
+                */
+                // --------------------------------------------------
+
+                const sellerRes = await client.query('SELECT address, asaas_wallet_id, is_verified_seller, seller_cpf_cnpj FROM users WHERE id = $1', [sellerId]);
+                const sellerData = sellerRes.rows[0];
+                const isVerified = !!sellerData?.is_verified_seller; // Agora baseado no Selo
+
                 // Usar pickup_address do anúncio se for retirada e o vendedor informou
                 let finalPickupAddress = pickupAddress || listings[0].pickup_address || 'Endereço informado pelo vendedor no chat';
 
@@ -163,6 +187,39 @@ export class MarketplaceOrdersController {
                     if (selectedVariantId && variantPrice) price = variantPrice;
                     return acc + (price * (listings.length === 1 ? quantity : 1));
                 }, 0);
+
+                // --- TRAVA DE VENDAS & TIPO DE PESSOA ---
+                const SELLER_MONTHLY_LIMIT_CPF = 2000.00;
+
+                const sellerDoc = sellerData?.seller_cpf_cnpj;
+                const docClean = sellerDoc ? sellerDoc.replace(/\D/g, '') : '';
+                const isCnpj = docClean.length === 14;
+                const isCpf = !isCnpj; // Se não é CNPJ, tratamos como CPF (limite mais restrito)
+
+                // Calcular vendas do mês
+                const startOfMonth = new Date();
+                startOfMonth.setDate(1);
+                startOfMonth.setHours(0, 0, 0, 0);
+
+                const salesRes = await client.query(`
+                    SELECT COALESCE(SUM(amount), 0) as total 
+                    FROM marketplace_orders 
+                    WHERE seller_id = $1 
+                    AND created_at >= $2 
+                    AND status != 'CANCELLED'
+                `, [sellerId, startOfMonth]);
+
+                const currentMonthlySales = parseFloat(salesRes.rows[0].total);
+                const estimatedNewTotal = currentMonthlySales + baseAmount;
+
+                // REGRA DE OURO: CPF tem trava rígida de R$ 2.000,00
+                // Para vender mais que isso, TEM QUE SER CNPJ.
+                if (isCpf) {
+                    if (estimatedNewTotal > SELLER_MONTHLY_LIMIT_CPF) {
+                        throw new Error(`Limite mensal de vendas para CPF atingido (R$ ${SELLER_MONTHLY_LIMIT_CPF.toFixed(2)}). Para continuar vendendo, você deve atualizar sua conta para CNPJ (MEI ou Empresa).`);
+                    }
+                }
+                // --------------------------------------------------
 
                 let totalPrice = baseAmount;
                 let maxVehicleRank = -1;
@@ -195,17 +252,58 @@ export class MarketplaceOrdersController {
                         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
                         const distanceKm = R * c;
 
-                        // Pegar preço por KM do sistema
-                        const configRes = await client.query('SELECT courier_price_per_km FROM system_config LIMIT 1');
-                        const systemBasePriceKm = parseFloat(configRes.rows[0]?.courier_price_per_km || '2.50');
-                        const baseFee = distanceKm * systemBasePriceKm;
+                        // --- TRAVA DE SEGURANÇA GEOGRÁFICA ---
+                        const isBike = requiredVehicle === 'BIKE';
+                        const MAX_COURIER_DISTANCE = isBike ? 7 : 60;
+                        if (distanceKm > MAX_COURIER_DISTANCE) {
+                            throw new Error(`Distância de ${distanceKm.toFixed(1)}km excede o limite para ${isBike ? 'Bike' : 'entregadores'} (Máx: ${MAX_COURIER_DISTANCE}km).`);
+                        }
 
-                        // Aplicar margem de 27.5% de lucro para a plataforma
-                        calculatedDeliveryFee = Math.max(minFee, baseFee * 1.275);
-                        console.log(`[LOGISTICS] Distância: ${distanceKm.toFixed(2)}km | Preço/KM: R$ ${systemBasePriceKm.toFixed(2)} | Frete Calculado: R$ ${calculatedDeliveryFee.toFixed(2)}`);
+                        // Verificar se é interestadual (se tivermos os dados de endereço)
+                        const sellerLocation = await client.query('SELECT seller_address_state FROM users WHERE id = $1', [sellerId]);
+                        const sellerState = sellerLocation.rows[0]?.seller_address_state;
+
+                        // O comprador pode enviar as coordenadas mas o estado pode ser inferido pelo endereço
+                        // Para simplificar, focamos na distância primeiro, mas se o estado for informado no body:
+                        const destState = (body.deliveryAddress || '').split(',').pop()?.trim().toUpperCase();
+                        if (sellerState && destState && destState.length === 2 && sellerState !== destState) {
+                            throw new Error(`Entregadores parceiros não realizam viagens entre estados (${sellerState} -> ${destState}).`);
+                        }
+
+                        // Pegar preço por KM (Bike R$ 1,50 / Outros R$ 2,50)
+                        const configRes = await client.query('SELECT courier_price_per_km FROM system_config LIMIT 1');
+                        const basePriceKm = parseFloat(configRes.rows[0]?.courier_price_per_km || '2.50');
+                        const effectiveKmPrice = isBike ? 1.50 : basePriceKm;
+
+                        // FÓRMULA: Base + (Distância * Km)
+                        calculatedDeliveryFee = (minFee + (distanceKm * effectiveKmPrice)) * 1.275;
+                        console.log(`[LOGISTICS] ${requiredVehicle} | Distância: ${distanceKm.toFixed(2)}km | Frete: R$ ${calculatedDeliveryFee.toFixed(2)}`);
                     } else {
                         calculatedDeliveryFee = Math.max(minFee, offeredDeliveryFee);
                     }
+                } else if (deliveryType === 'EXTERNAL_SHIPPING') {
+                    // --- CÁLCULO SEDEX BLINDADO ---
+                    const listing = listings[0];
+                    let originCep = listing.pickup_postal_code;
+                    if (!originCep) {
+                        const sellerRes = await client.query('SELECT seller_address_postal_code, seller_address_cep FROM users WHERE id = $1', [sellerId]);
+                        originCep = sellerRes.rows[0]?.seller_address_cep || sellerRes.rows[0]?.seller_address_postal_code || '00000000';
+                    }
+
+                    // Extrair CEP do endereço de destino (últimos dígitos)
+                    const destCepMatch = (deliveryAddress || '').match(/\d{5}-?\d{3}/);
+                    const destCep = destCepMatch ? destCepMatch[0] : '00000000';
+
+                    const totalWeight = listings.reduce((acc: number, l: any) => acc + (l.weight_grams || 1000), 0);
+                    const quote = calculateShippingQuote(originCep, destCep, totalWeight, listing.free_shipping);
+
+                    // Se o vendedor definiu um frete fixo no anúncio e não for grátis
+                    if (listing.shipping_price > 0 && !listing.free_shipping) {
+                        calculatedDeliveryFee = parseFloat(listing.shipping_price);
+                    } else {
+                        calculatedDeliveryFee = quote.fee;
+                    }
+                    console.log(`[EXTERNAL_LOGISTICS] ${originCep} -> ${destCep} | Peso: ${totalWeight}g | Frete: R$ ${calculatedDeliveryFee}`);
                 }
 
                 const isDigitalLote = containsDigital && listings.length === 1;
@@ -214,11 +312,11 @@ export class MarketplaceOrdersController {
                 // Se o pagamento for via saldo
                 if (paymentMethod === 'BALANCE') {
                     // Determinar taxa base (Verificado vs Não Verificado)
-                    const isVerified = !!sellerRes.rows[0]?.asaas_wallet_id;
+                    // isVerified já foi calculado no início da transação baseado no Selo
                     const baseFeeRate = isVerified ? MARKETPLACE_ESCROW_FEE_RATE : MARKETPLACE_NON_VERIFIED_FEE_RATE;
 
                     // ===== SISTEMA DE BENEFÍCIO DE BOAS-VINDAS =====
-                    const welcomeBenefit = await getWelcomeBenefit(pool, user.id);
+                    const welcomeBenefit = await getWelcomeBenefit(client, user.id);
                     // Se o comprador tem benefício, aplica taxa especial do marketplace
                     const effectiveEscrowRate = welcomeBenefit.hasDiscount ? welcomeBenefit.marketplaceEscrowFeeRate : baseFeeRate;
 
@@ -248,7 +346,7 @@ export class MarketplaceOrdersController {
                         ) VALUES (
                             $1::INTEGER, $2::INTEGER[], $3::BOOLEAN, $4::INTEGER, $5::INTEGER, $6::NUMERIC, $7::NUMERIC, $8::NUMERIC,
                             $9, $10, $11, $12, $13,
-                            $14, $15, $16::NUMERIC, $17, $18, $19::UUID,
+                            $14, $15, $16::NUMERIC, $17, $18, $19,
                             $20::NUMERIC, $21::NUMERIC, $22::NUMERIC, $23::NUMERIC, $24::INTEGER, $25::INTEGER
                         ) RETURNING id`,
                         [
@@ -261,6 +359,7 @@ export class MarketplaceOrdersController {
                         ]
                     );
                     const orderId = orderResult.rows[0].id;
+                    console.log(`[DEBUG_BUY] Pedido criado: ${orderId}`);
 
                     // Se usou benefício, consumir um uso
                     if (welcomeBenefit.hasDiscount) {
@@ -319,11 +418,13 @@ export class MarketplaceOrdersController {
             return c.json({
                 success: true,
                 message: successMessage,
-                orderId: data.orderId,
-                welcomeBenefitApplied: data.welcomeBenefitApplied,
-                usesRemaining: data.usesRemaining,
-                digitalContent: data.digitalContent,
-                isDigitalLote: data.isDigitalItem
+                data: {
+                    orderId: data.orderId,
+                    welcomeBenefitApplied: data.welcomeBenefitApplied,
+                    usesRemaining: data.usesRemaining,
+                    digitalContent: data.digitalContent,
+                    isDigitalLote: data.isDigitalItem
+                }
             });
 
         } catch (error: any) {
@@ -390,6 +491,26 @@ export class MarketplaceOrdersController {
                 }
                 if (sellerId === user.id) throw new Error('Você não pode comprar de si mesmo.');
 
+
+
+                /* REMOVED
+                    const startOfMonth = new Date();
+                    startOfMonth.setDate(1);
+                    startOfMonth.setHours(0, 0, 0, 0);
+
+                    const salesRes = await client.query(`
+                        SELECT COALESCE(SUM(amount), 0) as total 
+                        FROM marketplace_orders 
+                        WHERE seller_id = $1 
+                        AND created_at >= $2 
+                        AND status != 'CANCELLED'
+                    `, [sellerId, startOfMonth]);
+
+                    const currentMonthlySales = parseFloat(salesRes.rows[0].total);
+
+                */
+                // --------------------------------------------------
+
                 // 3. Validações de Score e Cotas do Usuário
                 const userResult = await client.query(`
                     SELECT u.score, COUNT(q.id) as quota_count, u.is_verified, u.cpf, u.pix_key 
@@ -421,6 +542,46 @@ export class MarketplaceOrdersController {
                 }, 0);
 
                 const totalPrice = baseAmount;
+
+
+
+                // --- TRAVA DE VENDAS & DADOS DO VENDEDOR ---
+                const sellerFullRes = await client.query('SELECT address, asaas_wallet_id, is_verified_seller, seller_cpf_cnpj FROM users WHERE id = $1', [sellerId]);
+                const sellerFullData = sellerFullRes.rows[0];
+                const sellerDoc = sellerFullData?.seller_cpf_cnpj;
+                const isVerified = !!sellerFullData?.is_verified_seller;
+
+                const docClean = sellerDoc ? sellerDoc.replace(/\D/g, '') : '';
+                const isCnpj = docClean.length === 14;
+                const isCpf = !isCnpj;
+
+                const SELLER_MONTHLY_LIMIT_CPF = 2000.00;
+
+                // Calcular vendas do mês
+                const startOfMonth = new Date();
+                startOfMonth.setDate(1);
+                startOfMonth.setHours(0, 0, 0, 0);
+
+                const salesRes = await client.query(`
+                    SELECT COALESCE(SUM(amount), 0) as total 
+                    FROM marketplace_orders 
+                    WHERE seller_id = $1 
+                    AND created_at >= $2 
+                    AND status != 'CANCELLED'
+                `, [sellerId, startOfMonth]);
+
+                const currentMonthlySales = parseFloat(salesRes.rows[0].total);
+                const estimatedNewTotal = currentMonthlySales + totalPrice;
+
+                // REGRA CPF: Trava Rígida de 2k
+                if (isCpf) {
+                    if (estimatedNewTotal > SELLER_MONTHLY_LIMIT_CPF) {
+                        throw new Error(`Limite mensal de vendas para CPF atingido (R$ ${SELLER_MONTHLY_LIMIT_CPF.toFixed(2)}). Para continuar vendendo, você deve atualizar sua conta para CNPJ (MEI ou Empresa).`);
+                    }
+                }
+                // --------------------------------------------------
+
+
                 if (totalPrice > availableLimit) throw new Error(`O valor do lote (R$ ${totalPrice.toFixed(2)}) excede seu limite de crédito (R$ ${availableLimit.toFixed(2)}).`);
 
                 // Buscar Vendedor
@@ -451,16 +612,56 @@ export class MarketplaceOrdersController {
                         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
                         const distanceKm = R * c;
 
+                        // --- TRAVA DE SEGURANÇA GEOGRÁFICA ---
+                        const isBike = requiredVehicle === 'BIKE';
+                        const MAX_COURIER_DISTANCE = isBike ? 7 : 60;
+                        if (distanceKm > MAX_COURIER_DISTANCE) {
+                            throw new Error(`Distância de ${distanceKm.toFixed(1)}km excede o limite para ${isBike ? 'Bike' : 'entregadores'} (Máx: ${MAX_COURIER_DISTANCE}km).`);
+                        }
+
+                        // Verificar Interestadual
+                        const sellerLocation = await client.query('SELECT seller_address_state FROM users WHERE id = $1', [sellerId]);
+                        const sellerState = sellerLocation.rows[0]?.seller_address_state;
+                        const destState = (deliveryAddress || '').split(',').pop()?.trim().toUpperCase();
+
+                        if (sellerState && destState && destState.length === 2 && sellerState !== destState) {
+                            throw new Error(`Entregadores parceiros não realizam viagens entre estados (${sellerState} -> ${destState}).`);
+                        }
+
                         const configRes = await client.query('SELECT courier_price_per_km FROM system_config LIMIT 1');
-                        const systemBasePriceKm = parseFloat(configRes.rows[0]?.courier_price_per_km || '2.50');
-                        calculatedDeliveryFee = Math.max(minFee, (distanceKm * systemBasePriceKm) * 1.275);
+                        const basePriceKm = parseFloat(configRes.rows[0]?.courier_price_per_km || '2.50');
+                        const effectiveKmPrice = isBike ? 1.50 : basePriceKm;
+
+                        // FÓRMULA: Base + (Distância * Km)
+                        calculatedDeliveryFee = (minFee + (distanceKm * effectiveKmPrice)) * 1.275;
                     } else {
                         calculatedDeliveryFee = Math.max(minFee, calculatedDeliveryFee);
                     }
+                } else if (parseResult.data.deliveryType === 'EXTERNAL_SHIPPING') {
+                    // --- CÁLCULO SEDEX BLINDADO (CREDIT) ---
+                    const listing = listings[0];
+                    let originCep = listing.pickup_postal_code;
+                    if (!originCep) {
+                        const sellerRes = await client.query('SELECT seller_address_postal_code, seller_address_cep FROM users WHERE id = $1', [sellerId]);
+                        originCep = sellerRes.rows[0]?.seller_address_cep || sellerRes.rows[0]?.seller_address_postal_code || '00000000';
+                    }
+
+                    const destCepMatch = (parseResult.data.deliveryAddress || '').match(/\d{5}-?\d{3}/);
+                    const destCep = destCepMatch ? destCepMatch[0] : '00000000';
+
+                    const totalWeight = listings.reduce((acc: number, l: any) => acc + (l.weight_grams || 1000), 0);
+                    const quote = calculateShippingQuote(originCep, destCep, totalWeight, listing.free_shipping);
+
+                    if (listing.shipping_price > 0 && !listing.free_shipping) {
+                        calculatedDeliveryFee = parseFloat(listing.shipping_price);
+                    } else {
+                        calculatedDeliveryFee = quote.fee;
+                    }
+                    console.log(`[EXTERNAL_LOGISTICS_CREDIT] ${originCep} -> ${destCep} | Peso: ${totalWeight}g | Frete: R$ ${calculatedDeliveryFee}`);
                 }
 
                 const fee = calculatedDeliveryFee;
-                const isVerified = !!sellerRes.rows[0]?.asaas_wallet_id;
+                // isVerified calculado no início (baseado no Selo)
                 const baseFeeRate = isVerified ? MARKETPLACE_ESCROW_FEE_RATE : MARKETPLACE_NON_VERIFIED_FEE_RATE;
 
                 const welcomeBenefit = await getWelcomeBenefit(pool, user.id);
@@ -1030,6 +1231,44 @@ export class MarketplaceOrdersController {
             return c.json({ success: true, message: 'Solicitação de devolução enviada. O saldo está bloqueado para sua segurança.' });
         } catch (error) {
             return c.json({ success: false, message: 'Erro ao solicitar devolução' }, 500);
+        }
+    }
+
+    /**
+     * Atualizar Código de Rastreio (Transportadora)
+     */
+    static async updateTrackingCode(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const orderId = c.req.param('id');
+            const { trackingCode } = await c.req.json();
+            const pool = getDbPool(c);
+
+            if (!trackingCode) {
+                return c.json({ success: false, message: 'Código de rastreio é obrigatório.' }, 400);
+            }
+
+            const result = await pool.query(
+                `UPDATE marketplace_orders 
+                 SET tracking_code = $1, status = 'IN_TRANSIT', delivery_status = 'SHIPPED', updated_at = NOW()
+                 WHERE id = $2 AND seller_id = $3
+                 RETURNING buyer_id`,
+                [trackingCode, orderId, user.id]
+            );
+
+            if (result.rows.length === 0) {
+                return c.json({ success: false, message: 'Pedido não encontrado ou você não é o vendedor.' }, 404);
+            }
+
+            // Notificar Comprador (Simulação de notificação interna por enquanto)
+            console.log(`[NOTIFICATION] Comprador ${result.rows[0].buyer_id}: Seu pedido foi postado! Código: ${trackingCode}`);
+
+            return c.json({
+                success: true,
+                message: 'Código de rastreio atualizado com sucesso! O comprador foi notificado.'
+            });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
         }
     }
 }
