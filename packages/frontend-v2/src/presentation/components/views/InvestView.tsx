@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TrendingUp, X as XIcon, Users, ShieldCheck, Info, CheckCircle2, Building2, ArrowRight, Zap, Gavel } from 'lucide-react';
 import { QUOTA_PRICE, QUOTA_SHARE_VALUE, QUOTA_ADM_FEE } from '../../../shared/constants/app.constants';
 import { calculateTotalToPay } from '../../../shared/utils/financial.utils';
@@ -7,15 +8,18 @@ interface InvestViewProps {
     onBuy: (qty: number, acceptedTerms: boolean) => void;
     isPro?: boolean;
     userBalance?: number;
+    isVerified?: boolean;
+    kycStatus?: string;
 }
 
-export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) => {
+export const InvestView = ({ onBuy, isPro, userBalance = 0, isVerified = false, kycStatus = 'NONE' }: InvestViewProps) => {
     void isPro;
     const [qty, setQty] = useState(1);
     const [method] = useState<'BALANCE'>('BALANCE');
     const [showConfirm, setShowConfirm] = useState(false);
     const [acceptedTerms, setAcceptedTerms] = useState(false);
     const [showTermsModal, setShowTermsModal] = useState(false);
+    const navigate = useNavigate();
 
     const baseAmount = qty * QUOTA_PRICE;
     const { total } = calculateTotalToPay(baseAmount, method.toLowerCase() as any);
@@ -120,6 +124,28 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
                             </div>
                         </div>
 
+                        {/* KYC Warning (Mobile/Inline) */}
+                        {(!isVerified && kycStatus !== 'APPROVED') && (
+                            <div className="bg-amber-500/5 border border-amber-500/20 rounded-3xl p-6 lg:hidden">
+                                <h4 className="text-amber-500 font-bold uppercase tracking-wider mb-2 flex items-center gap-2">
+                                    <ShieldCheck size={18} /> Verificação Necessária
+                                </h4>
+                                <p className="text-xs text-zinc-500 mb-4">
+                                    {kycStatus === 'PENDING' ? 'Seus documentos estão em análise. Aguarde a aprovação para investir.' :
+                                        kycStatus === 'REJECTED' ? 'Sua verificação foi recusada. Verifique os motivos e envie novamente.' :
+                                            'Para segurança da cooperativa, precisamos validar sua identidade.'}
+                                </p>
+                                {kycStatus !== 'PENDING' && (
+                                    <button
+                                        onClick={() => navigate('/app/settings')}
+                                        className="w-full py-3 bg-amber-500/10 text-amber-500 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-amber-500 hover:text-black transition-all"
+                                    >
+                                        Enviar Documentos
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
                         {/* Legal Disclaimers */}
                         <div className="bg-zinc-900/30 border border-white/5 rounded-3xl p-6 flex gap-4 items-start">
                             <Info size={18} className="text-primary-500 shrink-0 mt-0.5" />
@@ -137,7 +163,7 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
 
                             <div className="space-y-4 mb-8">
                                 <SummaryItem label={`Capital Social (${qty}x)`} value={qty * QUOTA_SHARE_VALUE} />
-                                <SummaryItem label="Taxa Operacional" value={qty * QUOTA_ADM_FEE} />
+                                {QUOTA_ADM_FEE > 0 && <SummaryItem label="Taxa Operacional" value={qty * QUOTA_ADM_FEE} />}
 
                                 <div className="pt-4 mt-4 border-t border-white/5">
                                     <div className="flex justify-between items-baseline">
@@ -166,23 +192,72 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
                                     </label>
                                 </div>
 
-                                <button
-                                    onClick={() => {
-                                        if (!acceptedTerms) {
-                                            alert('Por favor, aceite os termos de adesão para continuar.');
-                                            return;
-                                        }
-                                        setShowConfirm(true);
-                                    }}
-                                    disabled={!acceptedTerms}
-                                    className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl ${acceptedTerms
-                                        ? 'bg-primary-500 text-black hover:bg-primary-400 shadow-primary-500/20 active:scale-[0.98]'
-                                        : 'bg-zinc-800 text-zinc-600 opacity-50 cursor-not-allowed shadow-none'
-                                        }`}
-                                >
-                                    Confirmar Ingresso
-                                    <ArrowRight size={18} />
-                                </button>
+                                {isVerified || kycStatus === 'APPROVED' ? (
+                                    <button
+                                        onClick={() => {
+                                            if (!acceptedTerms) {
+                                                alert('Por favor, aceite os termos de adesão para continuar.');
+                                                return;
+                                            }
+                                            setShowConfirm(true);
+                                        }}
+                                        disabled={!acceptedTerms}
+                                        className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl ${acceptedTerms
+                                            ? 'bg-primary-500 text-black hover:bg-primary-400 shadow-primary-500/20 active:scale-[0.98]'
+                                            : 'bg-zinc-800 text-zinc-600 opacity-50 cursor-not-allowed shadow-none'
+                                            }`}
+                                    >
+                                        Confirmar Ingresso
+                                        <ArrowRight size={18} />
+                                    </button>
+                                ) : (
+                                    <div className="w-full py-6 rounded-2xl bg-zinc-800/30 border border-zinc-700/50 p-6 text-center backdrop-blur-sm">
+                                        <div className="flex justify-center mb-4">
+                                            {kycStatus === 'PENDING' ? (
+                                                <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 animate-pulse border border-amber-500/20 shadow-lg shadow-amber-500/5">
+                                                    <ShieldCheck size={24} />
+                                                </div>
+                                            ) : kycStatus === 'REJECTED' ? (
+                                                <div className="w-12 h-12 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 border border-red-500/20 shadow-lg shadow-red-500/5">
+                                                    <XIcon size={24} />
+                                                </div>
+                                            ) : (
+                                                <div className="w-12 h-12 bg-zinc-700/30 rounded-2xl flex items-center justify-center text-zinc-400 border border-zinc-600/30">
+                                                    <ShieldCheck size={24} />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <p className="text-white font-black text-sm uppercase tracking-wider mb-2">
+                                            {kycStatus === 'PENDING' ? 'Análise em Andamento' :
+                                                kycStatus === 'REJECTED' ? 'Verificação Recusada' :
+                                                    'Acesso Restrito'}
+                                        </p>
+                                        <p className="text-zinc-500 text-[11px] leading-relaxed mb-6 px-2 font-medium">
+                                            {kycStatus === 'PENDING'
+                                                ? 'Nossa equipe está validando seus documentos. Você será notificado assim que aprovado.'
+                                                : kycStatus === 'REJECTED'
+                                                    ? 'Identificamos um problema com seus documentos. Por favor, envie novamente.'
+                                                    : 'A compra de cotas é exclusiva para membros verificados. Realize seu KYC para liberar.'}
+                                        </p>
+
+                                        {(kycStatus === 'NONE' || kycStatus === 'REJECTED') && (
+                                            <button
+                                                onClick={() => navigate('/app/settings')}
+                                                className="w-full py-4 bg-white/[0.05] hover:bg-white/[0.1] text-white rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all border border-white/10 flex items-center justify-center gap-2 group"
+                                            >
+                                                <span>Resolver Agora</span>
+                                                <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                            </button>
+                                        )}
+
+                                        {kycStatus === 'PENDING' && (
+                                            <div className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+                                                <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                                                Aguardando Aprovação
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -216,104 +291,108 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0 }: InvestViewProps) =
             </div>
 
             {/* Modal: Termo de Ciência e Sustentabilidade Financeira */}
-            {showTermsModal && (
-                <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[700] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300" onClick={(e) => { if (e.target === e.currentTarget) setShowTermsModal(false); }}>
-                    <div className="bg-[#0A0A0A] border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-10 w-full max-w-sm max-h-[90vh] overflow-y-auto relative shadow-2xl ring-1 ring-white/10 scrollbar-hide pb-[calc(2rem+var(--safe-bottom))] sm:pb-10">
-                        <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-8 sm:hidden opacity-50" />
-                        <button onClick={() => setShowTermsModal(false)} className="absolute top-6 right-6 text-zinc-600 hover:text-white bg-zinc-900/50 p-2 rounded-full hidden sm:block transition-colors outline-none"><XIcon size={20} /></button>
+            {
+                showTermsModal && (
+                    <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[700] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300" onClick={(e) => { if (e.target === e.currentTarget) setShowTermsModal(false); }}>
+                        <div className="bg-[#0A0A0A] border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-10 w-full max-w-sm max-h-[90vh] overflow-y-auto relative shadow-2xl ring-1 ring-white/10 scrollbar-hide pb-[calc(2rem+var(--safe-bottom))] sm:pb-10">
+                            <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-8 sm:hidden opacity-50" />
+                            <button onClick={() => setShowTermsModal(false)} className="absolute top-6 right-6 text-zinc-600 hover:text-white bg-zinc-900/50 p-2 rounded-full hidden sm:block transition-colors outline-none"><XIcon size={20} /></button>
 
-                        <div className="text-center mb-8">
-                            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary-500/10 rounded-[1.5rem] sm:rounded-3xl flex items-center justify-center mx-auto mb-6 border border-primary-500/20 shadow-xl shadow-primary-900/20">
-                                <Building2 className="w-8 h-8 sm:w-10 sm:h-10 text-primary-500" />
-                            </div>
-                            <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase">Termo de Ciência</h3>
-                            <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mt-2 px-2 leading-tight">Sustentabilidade e Transparência</p>
-                        </div>
-
-                        <div className="space-y-3 sm:space-y-4 text-[11px] sm:text-xs text-zinc-500 leading-relaxed font-medium">
-                            <p className="text-black font-black bg-emerald-500 p-3 sm:p-4 rounded-2xl text-center shadow-lg shadow-emerald-500/20 uppercase tracking-tighter">Economia Circular Cooperativa</p>
-
-                            <TermItem num="01" text="Natureza Associativa: O Cred30 é um sistema de suporte mútuo privado. Você não está realizando um 'investimento financeiro', mas sim integralizando capital em uma Sociedade Cooperativa Digital." />
-                            <TermItem num="02" text="Sustentabilidade Real: A receita da plataforma provém de serviços reais de marketing (vídeos), taxas de marketplace e contribuições de apoio social." highlight />
-                            <TermItem num="03" text="Retorno Variável (Sobras): A distribuição de resultados é variável e depende exclusivamente do faturamento real da comunidade, sem garantia de lucro fixo." highlight />
-                            <TermItem num="04" text="Circulação de Valor: O capital social é utilizado para fomentar o apoio interno entre associados, gerando riqueza que volta para você." />
-                            <TermItem num="05" text="Carência e Segurança: O resgate integral (100%) é liberado após 365 dias da primeira cota. Antes disso, há multa de 40% em prol da cooperativa." />
-                        </div>
-
-                        <button
-                            onClick={() => { setAcceptedTerms(true); setShowTermsModal(false); }}
-                            className="w-full bg-white text-black font-black py-4 sm:py-5 rounded-2xl mt-8 text-[10px] sm:text-xs uppercase tracking-[0.2em] hover:scale-[1.02] transition-all shadow-xl active:scale-95 outline-none"
-                        >
-                            ENTENDI E ACEITO OS TERMOS
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {showConfirm && (
-                <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-500" onClick={(e) => { if (e.target === e.currentTarget) setShowConfirm(false); }}>
-                    <div className="bg-[#0A0A0A] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[2.5rem] p-8 sm:p-10 w-full sm:max-w-sm relative shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300 ring-1 ring-white/10 pb-[calc(2rem+var(--safe-bottom))] sm:pb-10">
-                        <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-8 sm:hidden opacity-50" />
-                        <button title="Fechar" onClick={() => setShowConfirm(false)} className="absolute top-6 right-6 text-zinc-600 hover:text-white bg-zinc-900/50 p-2 rounded-full hidden sm:block transition-colors outline-none"><XIcon size={20} /></button>
-
-                        <div className="text-center mb-10">
-                            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary-500/10 rounded-[1.5rem] sm:rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary-900/20 ring-1 ring-primary-500/20">
-                                <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-primary-500" strokeWidth={2.5} />
-                            </div>
-                            <h3 className="text-2xl font-black text-white tracking-tight">Confirmar Adesão</h3>
-                            <p className="text-zinc-500 text-sm mt-3 font-medium tracking-tight">Integralização de <span className="text-white font-bold">{qty} cota(s)-parte</span></p>
-                        </div>
-
-                        <div className="bg-zinc-900/50 border border-white/10 rounded-[2rem] p-6 mb-10 space-y-4">
-                            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                                <span className="text-zinc-600">Subtotal Aporte</span>
-                                <span className="text-white">{baseAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                            </div>
-
-                            <div className="h-px bg-white/5 my-2"></div>
-                            <div className="flex justify-between items-end">
-                                <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest mb-1">Total Final</span>
-                                <span className="text-3xl font-black text-primary-400">{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            {userBalance < total ? (
-                                <div className="space-y-3">
-                                    <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-center">
-                                        <p className="text-red-400 text-xs font-bold uppercase tracking-wider mb-1">Saldo Insuficiente</p>
-                                        <p className="text-zinc-500 text-[10px]">Você precisa depositar para continuar.</p>
-                                    </div>
-                                    <button
-                                        onClick={() => {
-                                            setShowConfirm(false);
-                                            window.location.hash = '#/app/dashboard';
-                                        }}
-                                        className="w-full py-4 sm:py-5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] bg-white text-black hover:bg-zinc-200 transition-all shadow-xl active:scale-95 outline-none"
-                                    >
-                                        FAZER DEPÓSITO AGORA
-                                    </button>
+                            <div className="text-center mb-8">
+                                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary-500/10 rounded-[1.5rem] sm:rounded-3xl flex items-center justify-center mx-auto mb-6 border border-primary-500/20 shadow-xl shadow-primary-900/20">
+                                    <Building2 className="w-8 h-8 sm:w-10 sm:h-10 text-primary-500" />
                                 </div>
-                            ) : (
-                                <button
-                                    onClick={handlePurchase}
-                                    className="w-full py-4 sm:py-5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl bg-primary-500 text-black hover:bg-primary-400 shadow-primary-500/20 active:scale-[0.98] outline-none"
-                                >
-                                    CONFIRMAR E PAGAR
-                                    <ArrowRight size={18} />
-                                </button>
-                            )}
+                                <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase">Termo de Ciência</h3>
+                                <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mt-2 px-2 leading-tight">Sustentabilidade e Transparência</p>
+                            </div>
+
+                            <div className="space-y-3 sm:space-y-4 text-[11px] sm:text-xs text-zinc-500 leading-relaxed font-medium">
+                                <p className="text-black font-black bg-emerald-500 p-3 sm:p-4 rounded-2xl text-center shadow-lg shadow-emerald-500/20 uppercase tracking-tighter">Economia Circular Cooperativa</p>
+
+                                <TermItem num="01" text="Natureza Associativa: O Cred30 é um sistema de suporte mútuo privado. Você não está realizando um 'investimento financeiro', mas sim integralizando capital em uma Sociedade Cooperativa Digital." />
+                                <TermItem num="02" text="Sustentabilidade Real: A receita da plataforma provém de serviços reais de marketing (vídeos), taxas de marketplace e contribuições de apoio social." highlight />
+                                <TermItem num="03" text="Retorno Variável (Sobras): A distribuição de resultados é variável e depende exclusivamente do faturamento real da comunidade, sem garantia de lucro fixo." highlight />
+                                <TermItem num="04" text="Circulação de Valor: O capital social é utilizado para fomentar o apoio interno entre associados, gerando riqueza que volta para você." />
+                                <TermItem num="05" text="Carência e Segurança: O resgate integral (100%) é liberado após 365 dias da primeira cota. Antes disso, há multa de 40% em prol da cooperativa." />
+                            </div>
+
                             <button
-                                onClick={() => setShowConfirm(false)}
-                                className="w-full py-3 sm:py-4 text-zinc-700 hover:text-zinc-400 text-[10px] font-black uppercase tracking-[0.3em] transition-all outline-none"
+                                onClick={() => { setAcceptedTerms(true); setShowTermsModal(false); }}
+                                className="w-full bg-white text-black font-black py-4 sm:py-5 rounded-2xl mt-8 text-[10px] sm:text-xs uppercase tracking-[0.2em] hover:scale-[1.02] transition-all shadow-xl active:scale-95 outline-none"
                             >
-                                CANCELAR
+                                ENTENDI E ACEITO OS TERMOS
                             </button>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+
+            {
+                showConfirm && (
+                    <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-500" onClick={(e) => { if (e.target === e.currentTarget) setShowConfirm(false); }}>
+                        <div className="bg-[#0A0A0A] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[2.5rem] p-8 sm:p-10 w-full sm:max-w-sm relative shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 sm:duration-300 ring-1 ring-white/10 pb-[calc(2rem+var(--safe-bottom))] sm:pb-10">
+                            <div className="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mb-8 sm:hidden opacity-50" />
+                            <button title="Fechar" onClick={() => setShowConfirm(false)} className="absolute top-6 right-6 text-zinc-600 hover:text-white bg-zinc-900/50 p-2 rounded-full hidden sm:block transition-colors outline-none"><XIcon size={20} /></button>
+
+                            <div className="text-center mb-10">
+                                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary-500/10 rounded-[1.5rem] sm:rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary-900/20 ring-1 ring-primary-500/20">
+                                    <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-primary-500" strokeWidth={2.5} />
+                                </div>
+                                <h3 className="text-2xl font-black text-white tracking-tight">Confirmar Adesão</h3>
+                                <p className="text-zinc-500 text-sm mt-3 font-medium tracking-tight">Integralização de <span className="text-white font-bold">{qty} cota(s)-parte</span></p>
+                            </div>
+
+                            <div className="bg-zinc-900/50 border border-white/10 rounded-[2rem] p-6 mb-10 space-y-4">
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                                    <span className="text-zinc-600">Subtotal Aporte</span>
+                                    <span className="text-white">{baseAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                </div>
+
+                                <div className="h-px bg-white/5 my-2"></div>
+                                <div className="flex justify-between items-end">
+                                    <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest mb-1">Total Final</span>
+                                    <span className="text-3xl font-black text-primary-400">{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                {userBalance < total ? (
+                                    <div className="space-y-3">
+                                        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-center">
+                                            <p className="text-red-400 text-xs font-bold uppercase tracking-wider mb-1">Saldo Insuficiente</p>
+                                            <p className="text-zinc-500 text-[10px]">Você precisa depositar para continuar.</p>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                setShowConfirm(false);
+                                                window.location.hash = '#/app/dashboard';
+                                            }}
+                                            className="w-full py-4 sm:py-5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] bg-white text-black hover:bg-zinc-200 transition-all shadow-xl active:scale-95 outline-none"
+                                        >
+                                            FAZER DEPÓSITO AGORA
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={handlePurchase}
+                                        className="w-full py-4 sm:py-5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl bg-primary-500 text-black hover:bg-primary-400 shadow-primary-500/20 active:scale-[0.98] outline-none"
+                                    >
+                                        CONFIRMAR E PAGAR
+                                        <ArrowRight size={18} />
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => setShowConfirm(false)}
+                                    className="w-full py-3 sm:py-4 text-zinc-700 hover:text-zinc-400 text-[10px] font-black uppercase tracking-[0.3em] transition-all outline-none"
+                                >
+                                    CANCELAR
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 

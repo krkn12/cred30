@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import packageJson from '../../../../package.json';
 import {
-    ShieldCheck, RefreshCw, LogOut, Send, MessageSquare, PieChart, Activity, Settings as SettingsIcon, UserPlus, ShoppingBag as ShoppingBagIcon, Vote, Bug, TrendingUp, Truck, Gift, FileText, Users, Scale
+    ShieldCheck, RefreshCw, LogOut, Send, MessageSquare, PieChart, Activity, Settings as SettingsIcon, UserPlus, ShoppingBag as ShoppingBagIcon, Vote, Bug, TrendingUp, Truck, Gift, FileText, Users, Scale, AlertCircle
 } from 'lucide-react';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { AppState } from '../../../domain/types/common.types';
@@ -27,6 +27,7 @@ import { AdminFiscal } from '../features/admin/tabs/AdminFiscal';
 import { AdminDisputes } from '../features/admin/tabs/AdminDisputes';
 import { ConsortiumAdminView } from '../features/admin/tabs/ConsortiumAdminTab';
 import { AdminCompliance } from '../features/admin/tabs/AdminCompliance';
+import { AdminClaimsTab } from '../features/admin/AdminClaimsTab';
 
 // Existing Shared Components
 import { AdminStoreManager } from '../features/store/admin-store.component';
@@ -40,7 +41,7 @@ interface AdminViewProps {
     onError: (title: string, message: string) => void;
 }
 
-type TabType = 'overview' | 'approvals' | 'payouts' | 'disputes' | 'system' | 'investments' | 'store' | 'rewards' | 'referrals' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics' | 'partners' | 'fiscal' | 'consortium' | 'compliance';
+type TabType = 'overview' | 'approvals' | 'payouts' | 'disputes' | 'claims' | 'system' | 'investments' | 'store' | 'rewards' | 'referrals' | 'users' | 'metrics' | 'governance' | 'reviews' | 'bugs' | 'logistics' | 'partners' | 'fiscal' | 'consortium' | 'compliance';
 
 export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: AdminViewProps) => {
     const [isLoading, setIsLoading] = useState(false);
@@ -130,6 +131,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
         { id: 'approvals', name: 'Pendentes', icon: ShieldCheck, count: pendingApprovalsCount, roles: ['ADMIN', 'ATTENDANT'] },
         { id: 'payouts', name: 'Resgates', icon: Send, count: pendingPayoutsCount, roles: ['ADMIN'] },
         { id: 'disputes', name: 'Mediação', icon: Scale, count: pendingDisputesCount, roles: ['ADMIN'] },
+        { id: 'claims', name: 'Incidentes', icon: AlertCircle, roles: ['ADMIN'] },
         { id: 'metrics', name: 'Monitoramento', icon: Activity, roles: ['ADMIN', 'ATTENDANT'] },
         { id: 'system', name: 'Financeiro', icon: SettingsIcon, roles: ['ADMIN'] },
         { id: 'referrals', name: 'Indicações', icon: UserPlus, roles: ['ADMIN'] },
@@ -251,6 +253,7 @@ export const AdminView = ({ state, onRefresh, onLogout, onSuccess, onError }: Ad
                 {activeTab === 'approvals' && <AdminApprovals onSuccess={onSuccess} onError={onError} onRefresh={fetchCounts} />}
                 {activeTab === 'payouts' && <AdminPayouts onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'disputes' && <AdminDisputes onSuccess={onSuccess} onError={onError} />}
+                {activeTab === 'claims' && <AdminClaimsTab />}
                 {activeTab === 'metrics' && <AdminMetrics />}
                 {activeTab === 'system' && <AdminSystem state={state} onRefresh={onRefresh} onSuccess={onSuccess} onError={onError} />}
                 {activeTab === 'referrals' && <AdminReferrals onSuccess={onSuccess} onError={onError} />}

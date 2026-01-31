@@ -38,10 +38,29 @@ export class AuditService {
             console.log(`[AUDIT] [${actionType}] User: ${userId} | IP: ${ip} | Data:`, JSON.stringify(metadata));
 
             // Implementação Ativa: Persistência Fintech Imutável
+            const { entityType, entityId, oldValues, newValues, ...otherMetadata } = metadata || {};
+
             await pool.query(
-                `INSERT INTO audit_logs (user_id, action_type, metadata, ip_address, created_at)
-                 VALUES ($1, $2, $3, $4, NOW())`,
-                [userId, actionType, JSON.stringify(metadata), ip]
+                `INSERT INTO audit_logs (
+                    user_id, 
+                    action, 
+                    entity_type, 
+                    entity_id, 
+                    old_values, 
+                    new_values, 
+                    ip_address, 
+                    created_at
+                )
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+                [
+                    userId,
+                    actionType,
+                    entityType || null,
+                    entityId || null,
+                    oldValues || (Object.keys(otherMetadata).length > 0 ? otherMetadata : null), // Fallback para salvar outros dados se não houver oldValues
+                    newValues || JSON.stringify(metadata), // Garante que tudo seja salvo em new_values se não estiver estruturado
+                    ip
+                ]
             );
 
         } catch (error) {

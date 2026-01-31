@@ -75,7 +75,7 @@ export class LoansController {
                 ) as installments_json
          FROM loans l
          LEFT JOIN users u ON u.id = l.user_id
-         WHERE l.user_id = $1 OR l.metadata->>'guarantorId' = $1
+         WHERE l.user_id = $1::integer OR l.metadata->>'guarantorId' = $1::text OR l.metadata->>'guarantor_id' = $1::text
          ORDER BY l.created_at DESC`,
                 [user.id]
             );
@@ -104,7 +104,7 @@ export class LoansController {
                     paidInstallmentsCount: paidInstallments.length,
                     isFullyPaid: totalPaid >= parseFloat(loan.total_repayment) - 0.01,
                     requesterName: loan.requester_name || null,
-                    isGuarantor: loan.metadata?.guarantorId === user.id
+                    isGuarantor: loan.metadata?.guarantorId === String(user.id) || loan.metadata?.guarantor_id === String(user.id)
                 };
             });
 
@@ -125,20 +125,12 @@ export class LoansController {
 
             const creditAnalysis = await getCreditAnalysis(pool, user.id);
 
-            const activeLoansResult = await pool.query(
-                `SELECT COALESCE(SUM(amount), 0) as total FROM loans 
-         WHERE user_id = $1 AND status IN ('APPROVED', 'PAYMENT_PENDING', 'PENDING')`,
-                [user.id]
-            );
-            const activeDebt = parseFloat(activeLoansResult.rows[0].total);
-            const remainingLimit = Math.max(0, creditAnalysis.limit - activeDebt);
-
             return c.json({
                 success: true,
                 data: {
                     totalLimit: creditAnalysis.limit,
-                    activeDebt: activeDebt,
-                    remainingLimit: remainingLimit,
+                    activeDebt: creditAnalysis.details.activeDebt,
+                    remainingLimit: creditAnalysis.details.availableLimit,
                     analysis: creditAnalysis
                 }
             });
@@ -526,9 +518,17 @@ export class LoansController {
                 // 2. Verificar saldo devedor
                 const paidInstallmentsResult = await client.query('SELECT COALESCE(SUM(CAST(COALESCE(amount, expected_amount) AS NUMERIC)), 0) as paid_amount FROM loan_installments WHERE loan_id = $1 AND status = $2', [loanId, 'PAID']);
                 const paidAmount = parseFloat(paidInstallmentsResult.rows[0].paid_amount);
-                const remainingAmountPre = parseFloat(loan.total_repayment) - paidAmount;
+                const totalRepayment = parseFloat(loan.total_repayment);
+                const remainingAmountPre = Math.round((totalRepayment - paidAmount) * 100) / 100;
 
-                if (installmentAmount > remainingAmountPre + 0.01) {
+                let actualInstallmentAmount = Math.round(installmentAmount * 100) / 100;
+
+                // Margem de manobra para arredondamento (ajusta se for quase o total)
+                if (actualInstallmentAmount > remainingAmountPre && actualInstallmentAmount <= remainingAmountPre + 0.05) {
+                    actualInstallmentAmount = remainingAmountPre;
+                }
+
+                if (actualInstallmentAmount > remainingAmountPre + 0.01) {
                     throw new Error(`Valor excede o restante (Restante: R$ ${remainingAmountPre.toFixed(2)})`);
                 }
 
@@ -540,7 +540,7 @@ export class LoansController {
                 const pendingInstallment = pendingInstallmentRes.rows[0];
 
                 const method: PaymentMethod = useBalance ? 'balance' : (paymentMethod as PaymentMethod);
-                const { total: finalInstallmentCost } = calculateTotalToPay(installmentAmount, method);
+                const { total: finalInstallmentCost } = calculateTotalToPay(actualInstallmentAmount, method);
 
                 // FLUXO PIX MANUAL
                 if (!useBalance) {
@@ -549,7 +549,7 @@ export class LoansController {
                          VALUES ($1, 'LOAN_PAYMENT', $2, $3, 'PENDING', $4)`,
                         [user.id, finalInstallmentCost, `Parcela (PIX Manual)`, JSON.stringify({
                             loanId,
-                            installmentAmount,
+                            installmentAmount: actualInstallmentAmount,
                             isInstallment: true,
                             manualPix: true,
                             installmentId: pendingInstallment?.id || null
@@ -563,29 +563,29 @@ export class LoansController {
                 const balanceLock = await client.query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [user.id]);
                 const currentBalance = parseFloat(balanceLock.rows[0].balance);
 
-                if (currentBalance < installmentAmount) {
+                if (currentBalance < actualInstallmentAmount) {
                     throw new Error('Saldo insuficiente para pagar esta parcela.');
                 }
 
                 // A. Debitar saldo
-                await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [installmentAmount, user.id]);
+                await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [actualInstallmentAmount, user.id]);
 
                 // B. Registrar/Atualizar parcela
                 if (pendingInstallment) {
                     await client.query(
                         'UPDATE loan_installments SET amount = $1, status = $2, use_balance = $3, paid_at = NOW() WHERE id = $4',
-                        [installmentAmount, 'PAID', true, pendingInstallment.id]
+                        [actualInstallmentAmount, 'PAID', true, pendingInstallment.id]
                     );
                 } else {
                     await client.query(
                         'INSERT INTO loan_installments (loan_id, amount, use_balance, created_at, status, paid_at) VALUES ($1, $2, $3, NOW(), $4, NOW())',
-                        [loanId, installmentAmount, true, 'PAID']
+                        [loanId, actualInstallmentAmount, true, 'PAID']
                     );
                 }
 
                 // C. Distribuição Contábil
-                const principalPortion = installmentAmount * (parseFloat(loan.amount) / parseFloat(loan.total_repayment));
-                const interestPortion = Math.max(0, installmentAmount - principalPortion);
+                const principalPortion = actualInstallmentAmount * (parseFloat(loan.amount) / parseFloat(loan.total_repayment));
+                const interestPortion = Math.max(0, actualInstallmentAmount - principalPortion);
 
                 const profitShare = interestPortion * 0.80; // 80% dos juros para cotistas
                 const systemShare = interestPortion * 0.20; // 20% dos juros para o sistema

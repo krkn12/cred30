@@ -297,18 +297,22 @@ export class MarketplaceEnhancementsController {
     }
 
     /**
-     * Buscar perfil público do vendedor
+     * Buscar perfil público do vendedor (Loja)
      */
     static async getSellerProfile(c: Context) {
         try {
             const pool = getDbPool(c);
             const sellerId = c.req.param('id');
 
+            // Dados do Perfil
             const result = await pool.query(`
                 SELECT 
-                    u.id, u.name, u.is_verified, u.created_at as member_since,
+                    u.id, u.name, 
+                    COALESCE(u.seller_company_name, u.name) as store_name,
+                    u.is_verified, u.created_at as member_since,
                     u.seller_rating, u.seller_total_reviews, u.seller_total_sales, u.seller_reputation,
                     u.seller_address_city as city, u.seller_address_state as state,
+                    u.avatar_url,
                     (SELECT COUNT(*) FROM marketplace_listings WHERE seller_id = u.id AND status = 'ACTIVE') as active_listings
                 FROM users u
                 WHERE u.id = $1 AND u.is_seller = true
@@ -318,7 +322,22 @@ export class MarketplaceEnhancementsController {
                 return c.json({ success: false, message: 'Vendedor não encontrado' }, 404);
             }
 
-            return c.json({ success: true, data: result.rows[0] });
+            // Anúncios da Loja
+            const listings = await pool.query(`
+                SELECT id, title, description, price, category, image_url, stock, is_boosted, created_at
+                FROM marketplace_listings
+                WHERE seller_id = $1 AND status = 'ACTIVE' AND stock > 0
+                ORDER BY is_boosted DESC, created_at DESC
+                LIMIT 50
+            `, [sellerId]);
+
+            return c.json({
+                success: true,
+                data: {
+                    ...result.rows[0],
+                    listings: listings.rows
+                }
+            });
         } catch (error: any) {
             console.error('[SELLER_PROFILE] Erro:', error);
             return c.json({ success: false, message: error.message }, 500);

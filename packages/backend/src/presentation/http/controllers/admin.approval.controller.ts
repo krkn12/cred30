@@ -38,6 +38,7 @@ export class AdminApprovalController {
             // Executar dentro de transação para garantir consistência
             const result = await executeInTransaction(pool, async (client) => {
                 if (type === 'TRANSACTION') {
+                    console.log(`[DEBUG_CTRL] Chamando processTransactionApproval para ID: ${id}`);
                     return await processTransactionApproval(client, id, action);
                 } else if (type === 'LOAN') {
                     // Importamos a função de processamento de loan
@@ -56,7 +57,7 @@ export class AdminApprovalController {
 
             return c.json({
                 success: true,
-                message: `${action === 'APPROVE' ? 'Aprovado' : 'Rejeitado'} com sucesso!`,
+                message: `${action === 'APPROVE' ? 'Aprovado' : 'Rejeitado'} com sucesso! [SERVER_ID: ${Date.now()}]`,
             });
         } catch (error) {
             if (error instanceof z.ZodError) {

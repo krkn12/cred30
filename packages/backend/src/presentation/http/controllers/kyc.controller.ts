@@ -77,22 +77,26 @@ export class KycController {
         try {
             const user = c.get('user') as UserContext;
             const userIdTarget = c.req.param('userId');
-            // Se for admin, pode ver de qualquer um. Se não, só do próprio.
-            // Para simplificar aqui, vamos assumir que o parametro é o ID do usuário dono do doc.
+            const docType = c.req.query('type') || 'ID'; // ID, VEHICLE, DOC_VEHICLE
 
             const pool = getDbPool(c);
 
             // Verificar permissão
-            const canView = user.isAdmin || user.id === userIdTarget;
+            const canView = user.isAdmin || user.id.toString() === userIdTarget.toString();
             if (!canView) return c.json({ success: false, message: 'Acesso negado.' }, 403);
 
+            // Mapear coluna baseada no tipo
+            let column = 'kyc_document_path';
+            if (docType === 'VEHICLE') column = 'courier_vehicle_photo';
+            if (docType === 'DOC_VEHICLE') column = 'courier_doc_photo';
+
             // Buscar nome do arquivo no banco
-            const res = await pool.query('SELECT kyc_document_path FROM users WHERE id = $1', [userIdTarget]);
-            if (res.rows.length === 0 || !res.rows[0].kyc_document_path) {
+            const res = await pool.query(`SELECT ${column} FROM users WHERE id = $1`, [userIdTarget]);
+            if (res.rows.length === 0 || !res.rows[0][column]) {
                 return c.json({ success: false, message: 'Documento não encontrado.' }, 404);
             }
 
-            const fileName = res.rows[0].kyc_document_path;
+            const fileName = res.rows[0][column];
             const diskPath = path.join(SECURE_STORAGE_PATH, fileName);
 
             if (!fs.existsSync(diskPath)) {
@@ -115,6 +119,33 @@ export class KycController {
     }
 
     /**
+     * Solicitar Revisão (Sem Upload - Flow Simplificado)
+     */
+    static async requestReview(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+
+            // Verifica se já não está aprovado
+            const check = await pool.query('SELECT kyc_status FROM users WHERE id = $1', [user.id]);
+            if (check.rows[0]?.kyc_status === 'APPROVED') {
+                return c.json({ success: false, message: 'Já verificado' }, 400);
+            }
+
+            // Atualiza para PENDING
+            await pool.query(
+                `UPDATE users SET kyc_status = 'PENDING', kyc_notes = 'Solicitação Simplificada via App' WHERE id = $1`,
+                [user.id]
+            );
+
+            return c.json({ success: true, message: 'Solicitação enviada com sucesso.' });
+        } catch (error) {
+            console.error('KYC Request Error:', error);
+            return c.json({ success: false, message: 'Erro ao solicitar' }, 500);
+        }
+    }
+
+    /**
      * Aprovar/Rejeitar KYC (Admin)
      */
     static async reviewKyc(c: Context) {
@@ -129,8 +160,8 @@ export class KycController {
 
             const pool = getDbPool(c);
             await pool.query(
-                `UPDATE users SET kyc_status = $1, kyc_notes = $2 WHERE id = $3`,
-                [status, notes, userId]
+                `UPDATE users SET kyc_status = $1, kyc_notes = $2, is_verified = $4 WHERE id = $3`,
+                [status, notes, userId, status === 'APPROVED']
             );
 
             // Se aprovado, poderia liberar automaticamente tags de "Vendedor Verificado" etc.

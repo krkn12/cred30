@@ -25,7 +25,12 @@ import {
     DELIVERY_MIN_FEES,
     LOAN_GFC_FEE_RATE
 } from '../../../shared/constants/business.constants';
-import { calculateUserLoanLimit } from '../../../application/services/credit-analysis.service';
+import {
+    calculateLoanOffer,
+    getCreditAnalysis,
+    calculateUserLoanLimit,
+    calculateMonthlyInterestRate
+} from '../../../application/services/credit-analysis.service';
 import { getWelcomeBenefit, consumeWelcomeBenefitUse } from '../../../application/services/welcome-benefit.service';
 
 // Schemas
@@ -55,6 +60,10 @@ const buyListingSchema = z.object({
         ccv: z.string(),
         cpf: z.string(),
     }).optional(),
+    selectedOptions: z.array(z.object({
+        name: z.string(),
+        price: z.number()
+    })).optional().default([]),
 }).refine(data => {
     if (data.deliveryType !== 'SELF_PICKUP' && !/\d/.test(data.deliveryAddress)) {
         return false;
@@ -81,6 +90,10 @@ const buyOnCreditSchema = z.object({
     deliveryLng: z.coerce.number().optional(),
     pickupLat: z.coerce.number().optional(),
     pickupLng: z.coerce.number().optional(),
+    selectedOptions: z.array(z.object({
+        name: z.string(),
+        price: z.number()
+    })).optional().default([]),
 }).refine(data => {
     if (data.deliveryType !== 'SELF_PICKUP' && !/\d/.test(data.deliveryAddress)) {
         return false;
@@ -110,25 +123,66 @@ export class MarketplaceOrdersController {
                 }, 400);
             }
 
-            const parsedBody = parseResult.data;
             const {
-                listingId, listingIds, selectedVariantId, deliveryAddress, contactPhone, offlineToken,
                 paymentMethod, deliveryType, offeredDeliveryFee, invitedCourierId,
-                deliveryLat, deliveryLng, pickupLat, pickupLng, pickupAddress
-            } = parsedBody;
+                deliveryLat, deliveryLng, pickupLat, pickupLng, pickupAddress, selectedOptions,
+                listingId, listingIds, quantity, selectedVariantId, deliveryAddress, contactPhone, offlineToken
+            } = parseResult.data;
 
             const idsToProcess = listingIds || (listingId ? [listingId] : []);
             if (idsToProcess.length === 0) return c.json({ success: false, message: 'Nenhum item selecionado.' }, 400);
 
             // Iniciar transação no início para garantir consistência de leitura do estoque
             const result = await executeInTransaction(pool, async (client: any) => {
+                const buyerRes = await client.query('SELECT is_verified FROM users WHERE id = $1', [user.id]);
+                const buyerData = buyerRes.rows[0];
+
                 const listingsResult = await client.query('SELECT *, COALESCE(stock, 1) as current_stock, required_vehicle FROM marketplace_listings WHERE id = ANY($1) AND status = $2 FOR UPDATE', [idsToProcess, 'ACTIVE']);
 
                 if (listingsResult.rows.length === 0) throw new Error('Itens indisponíveis ou não encontrados.');
 
                 const listings = listingsResult.rows;
                 const sellerId = listings[0].seller_id;
-                const quantity = parsedBody.quantity || 1;
+                const finalQuantity = quantity || 1;
+
+                // VALIDAR HORÁRIO DE FUNCIONAMENTO (Se for comida/delivery)
+                const isAnyFood = listings.some((l: any) => l.is_food);
+                if (isAnyFood) {
+                    const sellerDataRes = await client.query('SELECT opening_hours, is_restaurant, is_liquor_store, is_paused FROM users WHERE id = $1', [sellerId]);
+                    const sellerRow = sellerDataRes.rows[0];
+
+                    if (sellerRow && sellerRow.is_paused) {
+                        throw new Error('Este estabelecimento está temporariamente fechado para novos pedidos.');
+                    }
+
+                    if (sellerRow && sellerRow.opening_hours) {
+                        const now = new Date();
+                        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                        const currentDay = dayNames[now.getDay()];
+                        const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+
+                        const hours = sellerRow.opening_hours[currentDay];
+                        if (!hours || !hours.open || !hours.close) {
+                            throw new Error('Este estabelecimento está fechado hoje.');
+                        }
+
+                        const [openH, openM] = hours.open.split(':').map(Number);
+                        const [closeH, closeM] = hours.close.split(':').map(Number);
+                        const openMin = openH * 60 + openM;
+                        const closeMin = closeH * 60 + closeM;
+
+                        let isOpen = false;
+                        if (closeMin < openMin) { // Caso vire a noite (ex: 18:00 às 02:00)
+                            isOpen = currentTimeMinutes >= openMin || currentTimeMinutes <= closeMin;
+                        } else {
+                            isOpen = currentTimeMinutes >= openMin && currentTimeMinutes <= closeMin;
+                        }
+
+                        if (!isOpen) {
+                            throw new Error(`Este estabelecimento está fechado no momento. Abre às ${hours.open} e fecha às ${hours.close}.`);
+                        }
+                    }
+                }
 
                 // Check Variants
                 let variantPrice = null;
@@ -159,7 +213,7 @@ export class MarketplaceOrdersController {
                     const startOfMonth = new Date();
                     startOfMonth.setDate(1);
                     startOfMonth.setHours(0, 0, 0, 0);
-
+ 
                     const salesRes = await client.query(`
                         SELECT COALESCE(SUM(amount), 0) as total 
                         FROM marketplace_orders 
@@ -167,10 +221,10 @@ export class MarketplaceOrdersController {
                         AND created_at >= $2 
                         AND status != 'CANCELLED'
                     `, [sellerId, startOfMonth]);
-
+ 
                     const currentMonthlySales = parseFloat(salesRes.rows[0].total);
-
-
+ 
+ 
                 */
                 // --------------------------------------------------
 
@@ -221,7 +275,12 @@ export class MarketplaceOrdersController {
                 }
                 // --------------------------------------------------
 
-                let totalPrice = baseAmount;
+                // Somar opcionais (SE FOR COMIDA)
+                let optionsTotal = 0;
+                if (isAnyFood && selectedOptions && selectedOptions.length > 0) {
+                    optionsTotal = selectedOptions.reduce((acc, opt) => acc + (Number(opt.price) || 0), 0);
+                }
+                const totalPrice = baseAmount + optionsTotal;
                 let maxVehicleRank = -1;
                 const vehicleRank: Record<string, number> = { 'BIKE': 0, 'MOTO': 1, 'CAR': 2, 'TRUCK': 3 };
                 let requiredVehicle = 'MOTO';
@@ -325,13 +384,32 @@ export class MarketplaceOrdersController {
                     const fee = totalPrice * effectiveEscrowRate;
                     const sellerAmount = totalPrice - fee;
 
-                    const balanceCheck = await lockUserBalance(client, user.id, baseAmountToCharge);
-                    if (!balanceCheck.success) throw new Error('Saldo insuficiente.');
+
+                    console.log(`[DEBUG_BUY] baseAmount: ${baseAmount}, optionsTotal: ${optionsTotal}, deliveryFee: ${calculatedDeliveryFee}, totalToCharge: ${baseAmountToCharge}`);
+                    const balanceCheck = await lockUserBalance(client, user.id, baseAmountToCharge, { skipLockCheck: true });
+                    if (!balanceCheck.success) {
+                        console.error(`[DEBUG_BUY] Falha no saldo: ${balanceCheck.error}. Requisitado: ${baseAmountToCharge}, Disponível: ${balanceCheck.currentBalance}`);
+                        throw new Error(balanceCheck.error || 'Saldo insuficiente.');
+                    }
+
 
                     await updateUserBalance(client, user.id, baseAmountToCharge, 'debit');
 
+                    // --- REGRAS DE DELIVERY DE COMIDA ---
                     // Itens digitais são completados instantaneamente
-                    const orderStatus = isDigitalLote ? 'COMPLETED' : 'WAITING_SHIPPING';
+                    let orderStatus = isDigitalLote ? 'COMPLETED' : 'WAITING_SHIPPING';
+
+                    // Se for comida, status inicial é PREPARING (Cozinha preparando)
+                    if (!isDigitalLote && listings.some((l: any) => l.is_food)) {
+                        orderStatus = 'PREPARING';
+                    }
+
+                    // --- TRAVA DE BEBIDAS ALCOÓLICAS (+18 / KYC) ---
+                    const isLiquor = listings.some((l: any) => l.category === 'Bebidas' || l.category === 'Bebidas Alcoólicas');
+                    if (isLiquor && !buyerData?.is_verified) {
+                        throw new Error('Você precisa ter o Selo de Verificação (KYC) aprovado para comprar bebidas alcoólicas.');
+                    }
+
                     const deliveryStatus = isDigitalLote ? 'DELIVERED' : (deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE');
                     const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
@@ -342,48 +420,55 @@ export class MarketplaceOrdersController {
                             listing_id, listing_ids, is_lote, buyer_id, seller_id, amount, fee_amount, seller_amount, 
                             status, payment_method, delivery_address, pickup_address, contact_phone, 
                             offline_token, delivery_status, delivery_fee, pickup_code, delivery_confirmation_code, invited_courier_id,
-                            pickup_lat, pickup_lng, delivery_lat, delivery_lng, quantity, variant_id
+                            pickup_lat, pickup_lng, delivery_lat, delivery_lng, quantity, variant_id, selected_options
                         ) VALUES (
                             $1::INTEGER, $2::INTEGER[], $3::BOOLEAN, $4::INTEGER, $5::INTEGER, $6::NUMERIC, $7::NUMERIC, $8::NUMERIC,
                             $9, $10, $11, $12, $13,
                             $14, $15, $16::NUMERIC, $17, $18, $19,
-                            $20::NUMERIC, $21::NUMERIC, $22::NUMERIC, $23::NUMERIC, $24::INTEGER, $25::INTEGER
+                            $20::NUMERIC, $21::NUMERIC, $22::NUMERIC, $23::NUMERIC, $24::INTEGER, $25::INTEGER, $26::JSONB
                         ) RETURNING id`,
                         [
                             listings[0].id, idsToProcess, listings.length > 1, user.id, sellerId, totalPrice, fee, sellerAmount,
                             orderStatus, 'BALANCE', deliveryAddress, isDigitalLote ? null : finalPickupAddress, contactPhone,
                             offlineToken, deliveryStatus, isDigitalLote ? 0 : calculatedDeliveryFee, pickupCode, pickupCode,
                             (invitedCourierId && invitedCourierId.length > 30) ? invitedCourierId : null,
-                            pickupLat || null, pickupLng || null, deliveryLat || null, deliveryLng || null,
-                            quantity, selectedVariantId || null
+                            // Se não houver coordenadas enviadas, tentar pegar as que estão no anúncio
+                            pickupLat || (listings[0] as any)?.pickup_lat || null,
+                            pickupLng || (listings[0] as any)?.pickup_lng || null,
+                            deliveryLat || null, deliveryLng || null,
+                            quantity, selectedVariantId || null, JSON.stringify(selectedOptions)
                         ]
                     );
                     const orderId = orderResult.rows[0].id;
-                    console.log(`[DEBUG_BUY] Pedido criado: ${orderId}`);
+                    console.log(`[DEBUG_BUY] Pedido criado: ${orderId} `);
 
                     // Se usou benefício, consumir um uso
                     if (welcomeBenefit.hasDiscount) {
                         await consumeWelcomeBenefitUse(client, user.id, 'MARKETPLACE');
                     }
 
-                    // Para itens digitais, pagar vendedor imediatamente
-                    if (isDigitalLote) {
-                        await updateUserBalance(client, sellerId, sellerAmount, 'credit');
-                        await createTransaction(client, sellerId, 'MARKET_SALE', sellerAmount, `Venda Digital: ${listings[0].title}`, 'APPROVED', { orderId });
-                    } else {
+                    await updateUserBalance(client, sellerId, sellerAmount, 'credit');
+                    await createTransaction(client, sellerId, 'MARKET_SALE', sellerAmount, `Venda Digital: ${listings[0].title} `, 'APPROVED', { orderId });
+
+                    // RESERVAR ESTOQUE AGORA (FÍSICO)
+                    if (!isDigitalLote) {
                         // RESERVAR ESTOQUE AGORA (FÍSICO)
                         if (selectedVariantId) {
                             await client.query('UPDATE marketplace_listing_variants SET stock = GREATEST(0, stock - $1) WHERE id = $2', [quantity, selectedVariantId]);
                         }
-                        // Sempre decrementar estoque principal (como cache ou item único)
+                        // Sempre decrementar estoque principal
                         for (const l of listings) {
                             await client.query('UPDATE marketplace_listings SET stock = GREATEST(0, stock - $1) WHERE id = $2', [quantity, l.id]);
-                            // Se estoque zerar, pausar
                             await client.query("UPDATE marketplace_listings SET status = 'PAUSED' WHERE id = $1 AND stock <= 0", [l.id]);
                         }
                     }
 
-                    await createTransaction(client, user.id, 'MARKET_PURCHASE', totalPrice, `Compra${isDigitalLote ? ' Digital' : ''}: ${listings.length > 1 ? `Lote (${listings.length} itens)` : listings[0].title}${welcomeBenefit.hasDiscount ? ' (🎁 Taxa reduzida)' : ''}`, 'APPROVED', { orderId, listingId: listings[0].id, welcomeBenefitApplied: welcomeBenefit.hasDiscount, isDigital: isDigitalLote });
+                    // ADICIONAR TAXA AO PROFIT POOL DO CLUBE
+                    if (fee > 0) {
+                        await client.query('UPDATE system_config SET profit_pool = profit_pool + $1', [fee]);
+                    }
+
+                    await createTransaction(client, user.id, 'MARKET_PURCHASE', totalPrice, `Compra${isDigitalLote ? ' Digital' : ''}: ${listings.length > 1 ? `Lote (${listings.length} itens)` : listings[0].title}${welcomeBenefit.hasDiscount ? ' (🎁 Taxa reduzida)' : ''} `, 'APPROVED', { orderId, listingId: listings[0].id, welcomeBenefitApplied: welcomeBenefit.hasDiscount, isDigital: isDigitalLote, useBalance: true });
 
                     return { orderId, sellerId, welcomeBenefitApplied: welcomeBenefit.hasDiscount, usesRemaining: welcomeBenefit.hasDiscount ? welcomeBenefit.usesRemaining - 1 : 0, isDigitalItem: isDigitalLote, digitalContent: isDigitalLote ? listings[0].digital_content : null };
                 }
@@ -403,7 +488,7 @@ export class MarketplaceOrdersController {
 
             let successMessage = data.isDigitalItem ? 'Compra realizada! O conteúdo digital está disponível em Seus Pedidos.' : 'Compra realizada! Aguarde o envio/retirada.';
             if (data.welcomeBenefitApplied) {
-                successMessage += ` 🎁 Taxa de base aplicada (Benefício de Boas-Vindas). Usos restantes: ${data.usesRemaining}/3`;
+                successMessage += ` 🎁 Taxa de base aplicada(Benefício de Boas - Vindas).Usos restantes: ${data.usesRemaining}/3`;
             }
 
             // Notificar VENDEDOR sobre a nova venda (antes de retornar)
@@ -453,7 +538,7 @@ export class MarketplaceOrdersController {
                 }, 400);
             }
 
-            const { listingId, listingIds, selectedVariantId, installments, deliveryAddress, contactPhone, invitedCourierId, quantity, pickupAddress } = parseResult.data;
+            const { listingId, listingIds, selectedVariantId, installments, deliveryAddress, contactPhone, invitedCourierId, quantity, pickupAddress, selectedOptions } = parseResult.data;
 
             const idsToProcess = listingIds || (listingId ? [listingId] : []);
             if (idsToProcess.length === 0) return c.json({ success: false, message: 'Nenhum item selecionado.' }, 400);
@@ -467,6 +552,45 @@ export class MarketplaceOrdersController {
 
                 const listings = listingsResult.rows;
                 const sellerId = listings[0].seller_id;
+
+                // VALIDAR HORÁRIO DE FUNCIONAMENTO (Se for comida/delivery)
+                const isAnyFood = listings.some((l: any) => l.is_food);
+                if (isAnyFood) {
+                    const sellerDataRes = await client.query('SELECT opening_hours, is_restaurant, is_liquor_store, is_paused FROM users WHERE id = $1', [sellerId]);
+                    const sellerRow = sellerDataRes.rows[0];
+
+                    if (sellerRow && sellerRow.is_paused) {
+                        throw new Error('Este estabelecimento está temporariamente fechado para novos pedidos.');
+                    }
+
+                    if (sellerRow && sellerRow.opening_hours) {
+                        const now = new Date();
+                        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                        const currentDay = dayNames[now.getDay()];
+                        const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+
+                        const hours = sellerRow.opening_hours[currentDay];
+                        if (!hours || !hours.open || !hours.close) {
+                            throw new Error('Este estabelecimento está fechado hoje.');
+                        }
+
+                        const [openH, openM] = hours.open.split(':').map(Number);
+                        const [closeH, closeM] = hours.close.split(':').map(Number);
+                        const openMin = openH * 60 + openM;
+                        const closeMin = closeH * 60 + closeM;
+
+                        let isOpen = false;
+                        if (closeMin < openMin) {
+                            isOpen = currentTimeMinutes >= openMin || currentTimeMinutes <= closeMin;
+                        } else {
+                            isOpen = currentTimeMinutes >= openMin && currentTimeMinutes <= closeMin;
+                        }
+
+                        if (!isOpen) {
+                            throw new Error(`Este estabelecimento está fechado no momento. Abre às ${hours.open} e fecha às ${hours.close}.`);
+                        }
+                    }
+                }
 
                 // 2. Check Variants com Lock
                 let variantPrice = null;
@@ -497,7 +621,7 @@ export class MarketplaceOrdersController {
                     const startOfMonth = new Date();
                     startOfMonth.setDate(1);
                     startOfMonth.setHours(0, 0, 0, 0);
-
+    
                     const salesRes = await client.query(`
                         SELECT COALESCE(SUM(amount), 0) as total 
                         FROM marketplace_orders 
@@ -505,9 +629,9 @@ export class MarketplaceOrdersController {
                         AND created_at >= $2 
                         AND status != 'CANCELLED'
                     `, [sellerId, startOfMonth]);
-
+    
                     const currentMonthlySales = parseFloat(salesRes.rows[0].total);
-
+    
                 */
                 // --------------------------------------------------
 
@@ -531,8 +655,8 @@ export class MarketplaceOrdersController {
                     throw new Error('Para comprar parcelado, você precisa completar a verificação do seu perfil (CPF, PIX e Telefone).');
                 }
 
-                // 4. Limite de Crédito (Leitura do Pool é aceitável aqui, transacional seria melhor mas exige refatoração do service)
-                const availableLimit = await calculateUserLoanLimit(pool, user.id); // TODO: Passar client se service suportar
+                // 4. Limite de Crédito UNIFICADO (Subtrai dívida ativa automaticamente)
+                const availableLimit = await calculateUserLoanLimit(pool, user.id);
 
                 // Cálculos
                 const baseAmount = listings.reduce((acc: number, item: any) => {
@@ -541,7 +665,15 @@ export class MarketplaceOrdersController {
                     return acc + (price * (listings.length === 1 ? quantity : 1));
                 }, 0);
 
-                const totalPrice = baseAmount;
+                // Somar opcionais (SE FOR COMIDA - CREDIT)
+                let optionsTotal = 0;
+                // No buyOnCredit, selectedOptions também deve vir do body.
+                // Vou adicionar ao desestruturação do body no buyOnCredit também.
+                if (isAnyFood && selectedOptions && selectedOptions.length > 0) {
+                    optionsTotal = selectedOptions.reduce((acc, opt) => acc + (Number(opt.price) || 0), 0);
+                }
+
+                const totalPrice = baseAmount + optionsTotal;
 
 
 
@@ -669,7 +801,9 @@ export class MarketplaceOrdersController {
                 const escrowFee = totalPrice * effectiveEscrowRate;
                 const sellerAmount = totalPrice - escrowFee;
 
-                const interestAmount = totalPrice * MARKET_CREDIT_INTEREST_RATE * installments;
+                // CÁLCULO DE JUROS UNIFICADO (Baseado na Garantia - Marketplace assume 100%)
+                const monthlyRate = calculateMonthlyInterestRate(100);
+                const interestAmount = totalPrice * monthlyRate * installments;
                 // const totalToPay = totalPrice + interestAmount; // Errado na logica original? totalToPay deve ser principal + juros. Sim.
                 // Mas wait, o fee de entrega entra no financiamento?
                 // Na implementação anterior: totalWithFee = totalToPay + fee.
@@ -688,8 +822,25 @@ export class MarketplaceOrdersController {
                 const systemConfig = await lockSystemConfig(client);
                 if (parseFloat(systemConfig.system_balance) < totalPrice) throw new Error('Limite diário de financiamento do sistema atingido.');
 
+                // --- REGRAS DE DELIVERY DE COMIDA ---
+                let orderStatus = 'WAITING_SHIPPING';
+                if (listings.some((l: any) => l.is_food)) {
+                    orderStatus = 'PREPARING';
+                }
+
+                // --- TRAVA DE BEBIDAS ALCOÓLICAS (+18 / KYC) ---
+                const isLiquor = listings.some((l: any) => l.category === 'Bebidas' || l.category === 'Bebidas Alcoólicas');
+                if (isLiquor && !userStats?.is_verified) {
+                    throw new Error('Você precisa ter o Selo de Verificação (KYC) aprovado para comprar bebidas alcoólicas.');
+                }
+
                 const deliveryStatus = (parseResult.data.deliveryType === 'COURIER_REQUEST' ? 'AVAILABLE' : 'NONE');
                 const pickupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+                // ADICIONAR TAXA DE ESCROW AO PROFIT POOL DO CLUBE
+                if (escrowFee > 0) {
+                    await client.query('UPDATE system_config SET profit_pool = profit_pool + $1', [escrowFee]);
+                }
 
                 console.log(`[MARKETPLACE_CREDIT] Inserindo pedido: listing_id=${listings[0].id}, buyer=${user.id}`);
 
@@ -698,28 +849,30 @@ export class MarketplaceOrdersController {
                         listing_id, listing_ids, is_lote, buyer_id, seller_id, amount, fee_amount, seller_amount, 
                         status, payment_method, delivery_address, pickup_address, contact_phone, 
                         delivery_status, delivery_fee, pickup_code, delivery_confirmation_code, invited_courier_id,
-                        pickup_lat, pickup_lng, delivery_lat, delivery_lng, quantity, variant_id
+                        pickup_lat, pickup_lng, delivery_lat, delivery_lng, quantity, variant_id, selected_options
                     ) VALUES (
                         $1::INTEGER, $2::INTEGER[], $3::BOOLEAN, $4::INTEGER, $5::INTEGER, $6::NUMERIC, $7::NUMERIC, $8::NUMERIC,
                         $9, $10, $11, $12, $13,
                         $14, $15, $16, $17, $18::UUID,
-                        $19::NUMERIC, $20::NUMERIC, $21::NUMERIC, $22::NUMERIC, $23::INTEGER, $24::INTEGER
+                        $19::NUMERIC, $20::NUMERIC, $21::NUMERIC, $22::NUMERIC, $23::INTEGER, $24::INTEGER, $25::JSONB
                     ) RETURNING id`,
                     [
                         listings[0].id, idsToProcess, listings.length > 1, user.id, sellerId, totalWithFee, escrowFee, sellerAmount,
-                        'WAITING_SHIPPING', 'CRED30_CREDIT', deliveryAddress, finalPickupAddress, contactPhone,
+                        orderStatus, 'CRED30_CREDIT', deliveryAddress, finalPickupAddress, contactPhone,
                         deliveryStatus, fee, pickupCode, pickupCode, (invitedCourierId && invitedCourierId.length > 30) ? invitedCourierId : null,
-                        body.pickupLat || null, body.pickupLng || null, body.deliveryLat || null, body.deliveryLng || null,
-                        quantity, selectedVariantId || null
+                        (parseResult.data as any).pickupLat || (listings[0] as any)?.pickup_lat || null,
+                        (parseResult.data as any).pickupLng || (listings[0] as any)?.pickup_lng || null,
+                        (parseResult.data as any).deliveryLat || null, (parseResult.data as any).deliveryLng || null,
+                        quantity, selectedVariantId || null, JSON.stringify(selectedOptions || [])
                     ]
                 );
                 const orderId = orderResult.rows[0].id;
 
                 // Criar Contrato de Crédito (Empréstimo)
                 const loanResult = await client.query(
-                    `INSERT INTO loans (user_id, amount, total_payable, total_paid, term_months, interest_rate, status, purpose, metadata)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-                    [user.id, principalFinanciado, totalWithFee, 0, installments, MARKET_CREDIT_INTEREST_RATE, 'ACTIVE', 'MARKETPLACE_PURCHASE', JSON.stringify({ orderId, sellerId, gfcFee })]
+                    `INSERT INTO loans (user_id, amount, total_repayment, total_paid, installments, interest_rate, status, metadata)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+                    [user.id, principalFinanciado, totalWithFee, 0, installments, monthlyRate, 'APPROVED', JSON.stringify({ orderId, sellerId, gfcFee, type: 'MARKETPLACE_PURCHASE' })]
                 );
                 const loanId = loanResult.rows[0].id;
 
@@ -733,17 +886,27 @@ export class MarketplaceOrdersController {
                 }
 
                 // Gerar Parcelas
+                const standardMarketplaceInstallment = Math.floor((totalWithFee / installments) * 100) / 100;
+                let remainingMarketplaceTotal = totalWithFee;
+
                 for (let i = 1; i <= installments; i++) {
                     const dueDate = new Date();
                     dueDate.setMonth(dueDate.getMonth() + i);
+
+                    const currentMarketplaceInstallmentAmount = (i === installments)
+                        ? Math.round(remainingMarketplaceTotal * 100) / 100
+                        : standardMarketplaceInstallment;
+
                     await client.query(
-                        `INSERT INTO loan_installments (loan_id, installment_number, amount, due_date, status)
-                         VALUES ($1, $2, $3, $4, $5)`,
-                        [loanId, i, installmentAmount, dueDate, 'PENDING']
+                        `INSERT INTO loan_installments (loan_id, installment_number, amount, expected_amount, due_date, status)
+                         VALUES ($1, $2, $3, $3, $4, $5)`,
+                        [loanId, i, currentMarketplaceInstallmentAmount, dueDate, 'PENDING']
                     );
+
+                    remainingMarketplaceTotal -= currentMarketplaceInstallmentAmount;
                 }
 
-                await createTransaction(client, user.id, 'MARKET_CREDIT_PURCHASE', totalPrice + fee, `Compra Parcelada (${installments}x): ${listings.length > 1 ? `Lote (${listings.length} itens)` : listings[0].title}`, 'APPROVED', { orderId, loanId });
+                await createTransaction(client, user.id, 'MARKET_CREDIT_PURCHASE', totalPrice + fee, `Compra Parcelada (${installments}x): ${listings.length > 1 ? `Lote (${listings.length} itens)` : listings[0].title}`, 'APPROVED', { orderId, loanId, useBalance: true });
 
                 if (welcomeBenefit.hasDiscount) {
                     await consumeWelcomeBenefitUse(client, user.id, 'MARKETPLACE');
@@ -1118,6 +1281,26 @@ export class MarketplaceOrdersController {
                             system_balance = system_balance + $7
                         `, [profitShare, taxPart, operPart, ownerPart, investPart, corpPart, companyShare]
                     );
+
+                    // --- LIBERAR SEGURO DE ENTREGA ---
+                    // Entrega bem sucedida: devolve contribuição do entregador
+                    const insuranceResult = await client.query(`
+                        UPDATE delivery_insurance_fund 
+                        SET status = 'RELEASED', released_at = NOW()
+                        WHERE order_id = $1 AND status = 'RESERVED'
+                        RETURNING courier_contribution
+                    `, [orderId]);
+
+                    if (insuranceResult.rows.length > 0) {
+                        const courierContribution = parseFloat(insuranceResult.rows[0].courier_contribution || '0');
+                        if (courierContribution > 0) {
+                            // Devolve a contribuição do entregador
+                            await client.query(
+                                'UPDATE users SET courier_insurance_balance = courier_insurance_balance + $1 WHERE id = $2',
+                                [courierContribution, order.courier_id]
+                            );
+                        }
+                    }
                 }
 
                 // 4. Se foi no crediário, o dinheiro sai do caixa do sistema para o vendedor + courier
@@ -1267,6 +1450,109 @@ export class MarketplaceOrdersController {
                 success: true,
                 message: 'Código de rastreio atualizado com sucesso! O comprador foi notificado.'
             });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
+     * Atualizar status de pedido de comida (Restaurante)
+     */
+    static async updateFoodOrderStatus(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+            const orderId = c.req.param('orderId');
+            const { status } = await c.req.json(); // 'PREPARING', 'READY_FOR_PICKUP'
+
+            if (!['PREPARING', 'READY_FOR_PICKUP'].includes(status)) {
+                return c.json({ success: false, message: 'Status inválido para pedidos de comida.' }, 400);
+            }
+
+            const orderRes = await pool.query(
+                `SELECT mo.*, ml.title, ml.is_food 
+                 FROM marketplace_orders mo 
+                 JOIN marketplace_listings ml ON mo.listing_id = ml.id
+                 WHERE mo.id = $1 AND mo.seller_id = $2`,
+                [orderId, user.id]
+            );
+
+            if (orderRes.rows.length === 0) {
+                return c.json({ success: false, message: 'Pedido não encontrado ou você não é o vendedor.' }, 404);
+            }
+
+            const order = orderRes.rows[0];
+            if (!order.is_food) {
+                return c.json({ success: false, message: 'Este pedido não é de alimentação.' }, 400);
+            }
+
+            let newOrderStatus = status;
+            let newDeliveryStatus = order.delivery_status;
+
+            // Se marcar como PRONTO, libera para os entregadores
+            if (status === 'READY_FOR_PICKUP') {
+                newOrderStatus = 'WAITING_SHIPPING'; // Status padrão para aguardando envio
+                newDeliveryStatus = 'AVAILABLE';   // Libera na logística
+            }
+
+            await pool.query(
+                `UPDATE marketplace_orders 
+                 SET status = $1, delivery_status = $2, updated_at = NOW() 
+                 WHERE id = $3`,
+                [newOrderStatus, newDeliveryStatus, orderId]
+            );
+
+            // Notificar Comprador
+            const msg = status === 'PREPARING'
+                ? `Seu pedido de "${order.title}" começou a ser preparado! 🍳`
+                : `Seu pedido de "${order.title}" está pronto e aguardando um entregador! 🛵`;
+
+            await pool.query(`
+                INSERT INTO notifications (user_id, title, message, type)
+                VALUES ($1, $2, $3, $4)
+            `, [order.buyer_id, 'Status do Pedido', msg, 'MARKETPLACE_ORDER']);
+
+            return c.json({
+                success: true,
+                message: `Status atualizado para ${status}.`
+            });
+
+        } catch (error: any) {
+            console.error('Update Food Status Error:', error);
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
+     * Listar vendas do vendedor logado
+     */
+    static async getMySales(c: Context) {
+        try {
+            const user = c.get('user') as any;
+            const pool = getDbPool(c);
+
+            const result = await pool.query(`
+                SELECT 
+                    o.*, 
+                    l.title as listing_title, 
+                    l.image_url as listing_image, 
+                    l.is_food,
+                    u.name as courier_name,
+                    u.phone as courier_phone,
+                    u.avatar_url as courier_photo,
+                    u.courier_vehicle as courier_vehicle_type,
+                    NULL as courier_vehicle_plate,
+                    u.courier_vehicle as courier_vehicle_model
+                FROM marketplace_orders o
+                JOIN marketplace_listings l ON o.listing_id = l.id
+                LEFT JOIN users u ON o.courier_id = u.id
+                WHERE o.seller_id = $1
+                ORDER BY o.created_at DESC
+            `, [user.id]);
+
+            console.log('DEBUG: getMySales result for user ' + user.id, result.rows); // DEBUG LOG
+
+            return c.json({ success: true, data: result.rows });
         } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }

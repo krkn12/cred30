@@ -11,6 +11,8 @@ console.log(`--- [INDEX] NODE_ENV: ${process.env.NODE_ENV} ---`);
 validateEnv();
 validateJwtSecret();
 
+
+// Force restart: Logistics Fee Fix at 2026-01-29 Audit
 import { serve } from '@hono/node-server';
 import { Hono, Context } from 'hono';
 import { cors } from 'hono/cors';
@@ -50,6 +52,8 @@ import { logisticsRoutes } from './presentation/http/routes/logistics.routes';
 import { consortiumRoutes } from './presentation/http/routes/consortium.routes';
 import { pdvRoutes } from './presentation/http/routes/pdv.routes';
 import { kycRoutes } from './presentation/http/routes/kyc.routes';
+import { termsRoutes } from './presentation/http/routes/terms.routes';
+import { claimsRoutes } from './presentation/http/routes/claims.routes';
 
 // Infraestrutura
 import { initializeScheduler } from './scheduler';
@@ -68,8 +72,12 @@ app.use('*', cors({
       'http://localhost:3003',
       'http://localhost:5173'
     ];
-    if (!origin || allowed.includes(origin)) return origin || allowed[0];
-    return allowed[0];
+    // Em produção, restringimos mais. No desenvolvimento, permitimos localhost.
+    if (!origin) return allowed[0]; // Permite apps mobile/ferramentas de teste
+    if (allowed.includes(origin)) return origin;
+
+    console.warn(`[SECURITY] Origem bloqueada pelo CORS: ${origin}`);
+    return allowed[0]; // Fallback para a primeira origem
   },
   credentials: true,
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -90,9 +98,11 @@ app.use('*', secureHeaders({
     frameSrc: ["'self'", "https://*.firebaseapp.com"],
     connectSrc: ["'self'", "https://*.googleapis.com", "https://*.firebaseio.com", "https://*.adsterra.com"]
   },
+  strictTransportSecurity: 'max-age=63072000; includeSubDomains; preload', // HSTS Ativado (2 anos)
   xXssProtection: '1; mode=block',
   xContentTypeOptions: 'nosniff',
-  referrerPolicy: 'no-referrer'
+  referrerPolicy: 'no-referrer',
+  xFrameOptions: 'DENY' // Impede Clickjacking
 }));
 app.use('*', timing());
 
@@ -155,8 +165,9 @@ app.route('/api/seller', sellerRoutes);
 app.route('/api/logistics', logisticsRoutes);
 app.route('/api/tutors', tutorRoutes);
 app.route('/api/consortium', consortiumRoutes);
-app.route('/api/consortium', consortiumRoutes);
 app.route('/api/pdv', pdvRoutes);
+app.route('/api/terms', termsRoutes);
+app.route('/api/claims', claimsRoutes);
 app.route('/api/kyc', kycRoutes);
 
 // Rotas Base e Health Check

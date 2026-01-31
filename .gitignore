@@ -1,31 +1,89 @@
-# Dependencies
+# ============================================
+# CRED30 - .gitignore Organizacional
+# Atualizado: 2026-01-31
+# ============================================
+
+# ===========================================
+# 🔐 SEGURANÇA CRÍTICA (NUNCA SUBIR!)
+# ===========================================
+.env*
+*.key
+*.pem
+*-firebase-adminsdk-*.json
+*serviceAccountKey*.json
+*credentials*.json
+secure_storage/
+backups/
+*.backup
+*.bak
+
+# ===========================================
+# 📦 DEPENDÊNCIAS
+# ===========================================
 node_modules/
+pnpm-lock.yaml
+bun.lock
+bun.lockb
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.pnpm-store/
 
-# Production builds
+# ===========================================
+# 🏗️ BUILD & COMPILAÇÃO
+# ===========================================
 dist/
 build/
 .next/
 out/
+*.tsbuildinfo
+.turbo/
+.cache/
+.parcel-cache/
+.vite/
 
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# ===========================================
+# 📝 LOGS E ARQUIVOS TEMPORÁRIOS
+# ===========================================
+logs/
+build_logs/
+*.log
+tmp/
+temp/
+temp_tests/
 
-# IDE
+# ===========================================
+# 🧪 TESTES E DEBUG
+# ===========================================
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+test-results.xml
+*.lcov
+**/testing/
+**/debug*/
+*debug*.js
+*debug*.ts
+*simulate*.js
+*simulate*.ts
+*hack*.js
+*hack*.ts
+
+# Scripts de debug soltos (backend)
+packages/backend/check_db.js
+packages/backend/diag_orders.js
+packages/backend/fix_db.js
+
+# ===========================================
+# 💻 IDE & SISTEMA OPERACIONAL
+# ===========================================
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
 .DS_Store?
 ._*
@@ -34,171 +92,80 @@ out/
 ehthumbs.db
 Thumbs.db
 
-# Logs
-logs
-*.log
+# ===========================================
+# 🔥 FIREBASE
+# ===========================================
+.firebase/
+.firebaserc
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
+# ===========================================
+# 📁 PASTAS EXTERNAS E ESPECÍFICAS
+# ===========================================
+landing_github/
+tools/
 
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
-
-# nyc test coverage
-.nyc_output
-
-# Dependency directories
-jspm_packages/
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
-
-# next.js build output
-.next
-
-# nuxt.js build output
-.nuxt
-
-# vuepress build output
-.vuepress/dist
-
-# Serverless directories
-.serverless
-
-# FuseBox cache
-.fusebox/
-
-# DynamoDB Local files
-.dynamodb/
-
-# TernJS port file
-.tern-port
-
-# Stores VSCode versions used for testing VSCode extensions
-.vscode-test
-
-# Temporary folders
-tmp/
-temp/
-
-# Database
+# ===========================================
+# 📊 ARQUIVOS DE DADOS LOCAIS
+# ===========================================
 *.db
 *.sqlite
 *.sqlite3
+*.sql
+!scripts/maintenance/*.sql
+!scripts/migrations/*.sql
 
-# Docker
-.dockerignore
+# ===========================================
+# ⚙️ RUNTIME E PROCESSOS
+# ===========================================
+pids/
+*.pid
+*.seed
+*.pid.lock
+.node_repl_history
 
-# TypeScript
-*.tsbuildinfo
+# ===========================================
+# 📦 EMPACOTAMENTO
+# ===========================================
+*.tgz
+.yarn-integrity
+jspm_packages/
+.npm/
+.eslintcache
 
-# Bun
-bun.lockb
-
-# Test results
-test-results/
-playwright-report/
-test-results.xml
-
-# Vite
-.vite/
-
-# Turbo
-.turbo/
-
-# Firebase
-.firebase/
-
-# Scripts de desenvolvimento (não subir para produção)
+# ===========================================
+# 🚫 SCRIPTS DE DESENVOLVIMENTO (Não Produção)
+# ===========================================
+scripts/debug/
 scripts/development/
 
-# Arquivos de teste locais
-test-*.js
-# Ngrok
-.last_ngrok_url
-
-# Vite & Build Tools
-*.timestamp-*
-.vite/
-.turbo/
-
-# Repositórios Externos (Separate projects)
-landing_github/
-
-# Auditoria, Logs e Snapshots (Limpeza Josias)
-logs/
-build_logs/
-*.txt
-*.log
-*.json
-*.md
+# ===========================================
+# ✅ EXCEÇÕES (ARQUIVOS QUE DEVEM SER COMMITADOS)
+# ===========================================
 !package.json
 !package-lock.json
 !firebase.json
 !render.yaml
 !tsconfig*.json
+!.eslintrc*.json
+!vitest.config.ts
 !README.md
-!walkthrough.md
-!task.md
-!*.md
-logs/*.md
-build_logs/*.md
+!.env.example
 
-# Segredos e Chaves (Segurança Crítica)
-.env*
-*-firebase-adminsdk-*.json
-*.key
-*.pem
-
-# Pastas de ferramentas e cache
-.firebase/
-.vscode/
-node_modules/
-dist/
-build/
-.next/
-tmp/
-temp/
-landing_github/
-
-# Scripts de Auditoria e Debug (Ignorar execuções, manter fontes essenciais)
-**/debug*/
-**/logs/
-**/testing/
-**/tests/
-*debug*
-*simulate*
-*hack*
+# Manter testes oficiais
 !packages/backend/src/tests/
 !packages/backend/src/tests/**/*.test.ts
 !packages/backend/src/tests/**/*.test.js
+
+# Manter scripts de operações e migração
 !scripts/ops/
-!scripts/migrations/
-!scripts/maintenance/
 !scripts/ops/*.ts
 !scripts/ops/*.js
+!scripts/migrations/
 !scripts/migrations/*.ts
 !scripts/migrations/*.js
+!scripts/maintenance/
 !scripts/maintenance/*.ts
 !scripts/maintenance/*.js
 !scripts/maintenance/*.sql
+!scripts/database/
+!scripts/database/*.sql

@@ -19,12 +19,15 @@ export interface UserContext {
   membership_type?: string;
   is_verified?: boolean;
   is_seller?: boolean;
+  video_points?: number;
   ad_points?: number;
   pending_ad_points?: number;
+  is_protected?: boolean;
+  protection_expires_at?: number | null;
   address?: string;
   total_dividends_earned?: number;
   last_login_at?: string;
-  passwordHash?: string | null; // Para verificar se usuário tem senha (usuários Google não têm)
+  hasPassword?: boolean;
 }
 
 // Estender o tipo de variáveis do Hono

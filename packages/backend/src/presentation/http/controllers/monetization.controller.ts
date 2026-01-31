@@ -203,9 +203,10 @@ export class MonetizationController {
                     client,
                     user.id,
                     'MEMBERSHIP_UPGRADE',
-                    -PRO_UPGRADE_FEE,
+                    PRO_UPGRADE_FEE,
                     'Upgrade para Plano Cred30 PRO (Saldo)',
-                    'APPROVED'
+                    'APPROVED',
+                    { useBalance: true }
                 );
 
                 return { success: true };
@@ -265,9 +266,10 @@ export class MonetizationController {
                     client,
                     user.id,
                     'PREMIUM_PURCHASE',
-                    -VERIFIED_BADGE_PRICE,
+                    VERIFIED_BADGE_PRICE,
                     'Compra de Selo de Verificado',
-                    'APPROVED'
+                    'APPROVED',
+                    { useBalance: true }
                 );
 
                 return { success: true };
@@ -323,9 +325,10 @@ export class MonetizationController {
                     client,
                     user.id,
                     'PREMIUM_PURCHASE',
-                    -SCORE_BOOST_PRICE,
+                    SCORE_BOOST_PRICE,
                     'Compra de Pacote Score Boost (+100)',
-                    'APPROVED'
+                    'APPROVED',
+                    { useBalance: true }
                 );
 
                 return { success: true };
@@ -453,9 +456,10 @@ export class MonetizationController {
                     client,
                     user.id,
                     'REPUTATION_CONSULT',
-                    -REPUTATION_CHECK_PRICE,
+                    REPUTATION_CHECK_PRICE,
                     `Consulta de Idoneidade: ${targetEmail}`,
-                    'APPROVED'
+                    'APPROVED',
+                    { useBalance: true }
                 );
 
                 return {
@@ -540,9 +544,10 @@ export class MonetizationController {
                     client,
                     user.id,
                     'PROTECTION_PURCHASE',
-                    -MUTUAL_PROTECTION_PRICE,
+                    MUTUAL_PROTECTION_PRICE,
                     'Ativação de Proteção Mútua (Mensal)',
-                    'APPROVED'
+                    'APPROVED',
+                    { useBalance: true }
                 );
 
                 return { success: true, expiry: protectionExpiry };

@@ -28,7 +28,11 @@ const createListingSchema = z.object({
     postalCode: z.string().optional(),
     weightGrams: z.coerce.number().int().min(0).optional().default(1000),
     freeShipping: z.coerce.boolean().optional().default(false),
-    shippingPrice: z.coerce.number().min(0).optional().default(0)
+    shippingPrice: z.coerce.number().min(0).optional().default(0),
+    isFood: z.coerce.boolean().optional().default(false),
+    estimatedPrepTimeMinutes: z.coerce.number().int().min(1).optional().default(20),
+    pickupLat: z.coerce.number().optional(),
+    pickupLng: z.coerce.number().optional()
 });
 
 export class MarketplaceListingsController {
@@ -42,9 +46,10 @@ export class MarketplaceListingsController {
             const { category, search, city, state, minPrice, maxPrice } = c.req.query();
 
             let query = `
-                SELECT l.*, u.name as seller_name, u.is_verified as seller_verified,
+                SELECT l.*, COALESCE(u.seller_company_name, u.name) as seller_name, u.is_verified as seller_verified,
                 u.seller_address_city as city, u.seller_address_state as state,
-                u.seller_address_neighborhood as neighborhood
+                u.seller_address_neighborhood as neighborhood,
+                l.pickup_lat, l.pickup_lng
                 FROM marketplace_listings l
                 JOIN users u ON l.seller_id = u.id
                 WHERE l.status = 'ACTIVE' AND l.stock > 0
@@ -104,9 +109,10 @@ export class MarketplaceListingsController {
             const listingRes = await pool.query(`
                 SELECT 
                     l.*, 
-                    u.name as seller_name, 
+                    COALESCE(u.seller_company_name, u.name) as seller_name, 
                     u.is_verified as seller_verified,
                     u.avatar_url as seller_avatar,
+                    u.is_paused as is_paused,
                     COALESCE(u.seller_rating, 0) as seller_rating,
                     (SELECT COUNT(*) FROM marketplace_orders WHERE seller_id = l.seller_id AND status = 'COMPLETED') as sales_count,
                     COALESCE(
@@ -175,7 +181,7 @@ export class MarketplaceListingsController {
             const {
                 title, description, price, category, imageUrl, images, variants,
                 itemType, digitalContent, requiredVehicle, stock, pickupAddress, postalCode,
-                weightGrams, freeShipping, shippingPrice
+                weightGrams, freeShipping, shippingPrice, pickupLat, pickupLng
             } = parseResult.data;
 
             // ... (digital check kept)
@@ -187,11 +193,28 @@ export class MarketplaceListingsController {
             }
 
             // Atualizar GPS do vendedor
-            const { city, state, neighborhood, postalCode: bodyPostalCode } = body;
+            const { city, state, neighborhood, postalCode: bodyPostalCode, houseNumber, contactPhone } = body;
             if (city && state) {
                 await pool.query(
                     'UPDATE users SET seller_address_city = $1, seller_address_state = $2, seller_address_neighborhood = $3, seller_address_postal_code = $4 WHERE id = $5',
                     [city, state, neighborhood || null, bodyPostalCode || postalCode || null, user.id]
+                );
+            }
+
+            // Compor endereço de coleta completo (Rua + Número + Bairro + Cidade/UF)
+            let finalPickupAddress = pickupAddress;
+            if (!finalPickupAddress && neighborhood) {
+                const addressParts = [neighborhood];
+                if (houseNumber) addressParts.push(`Nº ${houseNumber}`);
+                if (city) addressParts.push(`${city}/${state || 'PA'}`);
+                finalPickupAddress = addressParts.join(', ');
+            }
+
+            // Salvar telefone de contato do vendedor se informado
+            if (contactPhone) {
+                await pool.query(
+                    'UPDATE users SET phone = COALESCE(phone, $1), seller_phone = $1 WHERE id = $2',
+                    [contactPhone, user.id]
                 );
             }
 
@@ -209,12 +232,14 @@ export class MarketplaceListingsController {
                     `INSERT INTO marketplace_listings (
                         seller_id, title, description, price, category, image_url, 
                         item_type, digital_content, required_vehicle, stock, pickup_address, pickup_postal_code,
-                        weight_grams, free_shipping, shipping_price
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id, *`,
+                        weight_grams, free_shipping, shipping_price, is_food, estimated_prep_time_minutes,
+                        pickup_lat, pickup_lng, seller_phone
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING id, *`,
                     [
                         user.id, title, description, price, category, mainImage,
-                        itemType, digitalContent || null, requiredVehicle, stock || 1, pickupAddress || null, postalCode || null,
-                        weightGrams, freeShipping, shippingPrice
+                        itemType, digitalContent || null, requiredVehicle, stock || 1, finalPickupAddress || null, postalCode || null,
+                        weightGrams, freeShipping, shippingPrice, parseResult.data.isFood, parseResult.data.estimatedPrepTimeMinutes,
+                        pickupLat || null, pickupLng || null, contactPhone || null
                     ]
                 );
                 const listing = result.rows[0];
@@ -341,7 +366,7 @@ export class MarketplaceListingsController {
             // PAGAMENTO VIA SALDO
             if (paymentMethod === 'BALANCE') {
                 const result = await executeInTransaction(pool, async (client: any) => {
-                    const balanceCheck = await lockUserBalance(client, user.id, BOOST_FEE);
+                    const balanceCheck = await lockUserBalance(client, user.id, BOOST_FEE, { skipLockCheck: true });
                     if (!balanceCheck.success) throw new Error('Saldo insuficiente para impulsionar');
 
                     await updateUserBalance(client, user.id, BOOST_FEE, 'debit');
@@ -376,7 +401,7 @@ export class MarketplaceListingsController {
                         BOOST_FEE,
                         `Impulsionamento de Anúncio: ${listing.title}`,
                         'APPROVED',
-                        { listingId }
+                        { listingId, useBalance: true }
                     );
 
                     return { success: true };
@@ -411,7 +436,7 @@ export class MarketplaceListingsController {
             const result = await pool.query(`
                 SELECT 
                     l.id, l.title, l.price, l.description, l.image_url, l.seller_id,
-                    u.name as seller_name, 
+                    COALESCE(u.seller_company_name, u.name) as seller_name, 
                     COALESCE(u.phone, u.pix_key) as seller_phone, 
                     COALESCE(
                         u.address,

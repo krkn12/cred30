@@ -63,10 +63,63 @@ export const ItemDetailsView = ({
     const [additionalImages, setAdditionalImages] = React.useState<string[]>([]);
     const [isLoadingDetails, setIsLoadingDetails] = React.useState(true);
 
+    // Food Options State
+    const [selectedOptions, setSelectedOptions] = React.useState<any[]>([]);
+
     // Shipping State
     const [shippingCep, setShippingCep] = React.useState('');
     const [isCalculatingShipping, setIsCalculatingShipping] = React.useState(false);
     const [shippingQuote, setShippingQuote] = React.useState<any>(null);
+
+    // Structured Address State
+    const [addressForm, setAddressForm] = React.useState({
+        cep: '',
+        street: '',
+        number: '',
+        complement: '',
+        district: '',
+        city: '',
+        state: ''
+    });
+    const [isLoadingCep, setIsLoadingCep] = React.useState(false);
+    const [creditSimulation, setCreditSimulation] = React.useState<any>(null);
+    const [selectedInstallments, setSelectedInstallments] = React.useState(1);
+    const numberInputRef = React.useRef<HTMLInputElement>(null);
+
+    // Sync Structured Address to deliveryAddress string
+    React.useEffect(() => {
+        if (addressForm.street) {
+            const fullAddr = `${addressForm.street}, ${addressForm.number || 'S/N'} ${addressForm.complement ? `- ${addressForm.complement}` : ''} - ${addressForm.district}, ${addressForm.city}/${addressForm.state} - CEP: ${addressForm.cep}`;
+            setDeliveryAddress(fullAddr);
+            // Sync with shipping calc cep if not set
+            if (!shippingCep && addressForm.cep.length === 8) {
+                setShippingCep(addressForm.cep);
+            }
+        }
+    }, [addressForm]);
+
+    const fetchAddressByCep = async (cep: string) => {
+        setIsLoadingCep(true);
+        try {
+            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+            const data = await res.json();
+            if (!data.erro) {
+                setAddressForm(prev => ({
+                    ...prev,
+                    street: data.logradouro,
+                    district: data.bairro,
+                    city: data.localidade,
+                    state: data.uf
+                }));
+                // Focus number input
+                setTimeout(() => numberInputRef.current?.focus(), 100);
+            }
+        } catch (error) {
+            console.error('Error fetching CEP:', error);
+        } finally {
+            setIsLoadingCep(false);
+        }
+    };
 
     const handleCalculateShipping = async () => {
         if (shippingCep.length < 8) return;
@@ -121,17 +174,55 @@ export const ItemDetailsView = ({
         }
     }, [variants]);
 
+    // Auto-fill address info if available
+    React.useEffect(() => {
+        if (currentUser && !addressForm.cep) {
+            const user = currentUser as any;
+            if (user.address_zip) {
+                const cleanCep = user.address_zip.replace(/\D/g, '');
+                setAddressForm(prev => ({ ...prev, cep: cleanCep }));
+                fetchAddressByCep(cleanCep);
+            }
+        }
+    }, [currentUser]);
+
+    // Handle initial Offered Fee based heavily on minimum
+    const minFeeValue = DELIVERY_MIN_FEES[item.required_vehicle || 'MOTO'] || 5.00;
+    React.useEffect(() => {
+        if (!offeredFee || parseFloat(offeredFee) < minFeeValue) {
+            setOfferedFee(minFeeValue.toFixed(2));
+        }
+    }, [item.required_vehicle]);
+
     const currentPrice = selectedVariant?.price ? parseFloat(selectedVariant.price) : parseFloat(item.price);
     const currentStock = selectedVariant ? selectedVariant.stock : (item.stock ? parseInt(item.stock) : 1);
     const isOutOfStock = currentStock <= 0;
 
     const deliveryFee = deliveryOption === 'COURIER_REQUEST'
-        ? parseFloat(offeredFee || '0')
+        ? Math.max(parseFloat(offeredFee || '0'), minFeeValue) // Garante que nunca seja menor que o mínimo no cálculo final
         : deliveryOption === 'EXTERNAL_SHIPPING'
             ? (shippingQuote?.fee || (item.free_shipping ? 0 : parseFloat(item.shipping_cost || '35')))
             : 0;
 
-    const totalAmount = (currentPrice * quantity) + deliveryFee;
+    const optionsTotal = selectedOptions.reduce((acc, opt: any) => acc + (opt.price || 0), 0);
+
+    const totalAmount = ((currentPrice + optionsTotal) * quantity) + deliveryFee;
+
+    // Fetch Credit Simulation
+    React.useEffect(() => {
+        const fetchSimulation = async () => {
+            if (totalAmount <= 0 || !currentUser) return;
+            try {
+                const res = await apiMarketplace.get<any>(`/pdv/simulate-credit?amount=${totalAmount}`);
+                if (res.success) {
+                    setCreditSimulation(res.data);
+                }
+            } catch (err) {
+                console.error("Error fetching credit simulation", err);
+            }
+        };
+        fetchSimulation();
+    }, [totalAmount, currentUser]);
 
     return (
         <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl animate-in fade-in duration-300 overflow-y-auto">
@@ -257,6 +348,57 @@ export const ItemDetailsView = ({
                                         )}
                                     </button>
                                 ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* STORE PAUSED BANNER */}
+                    {item.is_paused && (
+                        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl flex items-center gap-3 animate-pulse">
+                            <div className="bg-red-500 p-2 rounded-xl">
+                                <Clock size={20} className="text-white" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-xs font-black text-red-500 uppercase tracking-tighter">ESTA LOJA ESTÁ PAUSADA AGORA</p>
+                                <p className="text-[10px] text-red-400 font-bold uppercase tracking-widest mt-0.5">
+                                    O vendedor não está aceitando novos pedidos no momento.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* FOOD OPTIONS SELECTOR */}
+                    {item.food_options && item.food_options.length > 0 && (
+                        <div className="space-y-3 bg-zinc-900/40 p-4 rounded-2xl border border-zinc-800">
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest flex items-center justify-between">
+                                <span>Complete seu pedido (Opcionais)</span>
+                                <span className="text-primary-400 bg-primary-500/10 px-2 py-0.5 rounded text-[8px]">{selectedOptions.length} Selecionados</span>
+                            </p>
+                            <div className="grid grid-cols-1 gap-2">
+                                {item.food_options.map((opt: any, idx: number) => {
+                                    const isSelected = selectedOptions.some(o => o.name === opt.name);
+                                    return (
+                                        <button
+                                            key={idx}
+                                            onClick={() => {
+                                                if (isSelected) {
+                                                    setSelectedOptions(prev => prev.filter(o => o.name !== opt.name));
+                                                } else {
+                                                    setSelectedOptions(prev => [...prev, opt]);
+                                                }
+                                            }}
+                                            className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isSelected ? 'bg-primary-500/10 border-primary-500/50 text-white' : 'bg-zinc-950/50 border-zinc-800 text-zinc-400'}`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-primary-500 border-primary-500' : 'bg-zinc-900 border-zinc-700'}`}>
+                                                    {isSelected && <div className="w-2 h-2 bg-black rounded-full" />}
+                                                </div>
+                                                <span className="text-xs font-bold uppercase">{opt.name}</span>
+                                            </div>
+                                            <span className={`text-[10px] font-black ${isSelected ? 'text-primary-400' : 'text-zinc-500'}`}>+ {formatCurrency(opt.price)}</span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
@@ -432,10 +574,28 @@ export const ItemDetailsView = ({
                                 <div className="flex items-center justify-between">
                                     <label className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">Ajuda de Custo (Frete)</label>
                                     <span className="text-[9px] bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-lg font-black">
-                                        MÍNIMO: {formatCurrency(DELIVERY_MIN_FEES[item.required_vehicle || 'MOTO'] || 5.00)}
+                                        MÍNIMO CALCULADO: {formatCurrency(minFeeValue)}
                                     </span>
                                 </div>
-                                <input type="number" value={offeredFee} onChange={e => setOfferedFee(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white" />
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-xs font-bold">R$</span>
+                                    <input
+                                        type="number"
+                                        min={minFeeValue}
+                                        step="0.50"
+                                        value={offeredFee}
+                                        onChange={e => setOfferedFee(e.target.value)}
+                                        onBlur={() => {
+                                            if (parseFloat(offeredFee) < minFeeValue || !offeredFee) {
+                                                setOfferedFee(minFeeValue.toFixed(2));
+                                            }
+                                        }}
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:border-indigo-500 transition-colors"
+                                    />
+                                </div>
+                                <p className="text-[9px] text-zinc-500 mt-1">
+                                    Você pode oferecer um valor maior para atrair entregadores mais rápido. O valor mínimo é calculado pelo sistema.
+                                </p>
                                 <div className="space-y-2">
                                     <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Convidar Entregador (Opcional)</label>
                                     <input value={invitedCourierId} onChange={e => setInvitedCourierId(e.target.value)} placeholder="ID do entregador" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-[10px] text-white" />
@@ -444,9 +604,69 @@ export const ItemDetailsView = ({
                         )}
 
                         {deliveryOption !== 'SELF_PICKUP' && (
-                            <div className="space-y-2">
-                                <label className="text-[10px] text-zinc-500 font-black uppercase">Endereço de Entrega</label>
-                                <input placeholder="Endereço completo" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white" />
+                            <div className="bg-zinc-950/50 border border-zinc-800 rounded-2xl p-4 space-y-3">
+                                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest flex items-center gap-2">
+                                    <MapPin size={14} className="text-primary-400" /> Endereço de Entrega
+                                </label>
+
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="col-span-1">
+                                        <input
+                                            placeholder="CEP"
+                                            value={addressForm.cep}
+                                            onChange={e => {
+                                                const val = e.target.value.replace(/\D/g, '').slice(0, 8);
+                                                setAddressForm(prev => ({ ...prev, cep: val }));
+                                                if (val.length === 8) fetchAddressByCep(val);
+                                            }}
+                                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white text-center tracking-wider"
+                                        />
+                                    </div>
+                                    <div className="col-span-2 relative">
+                                        <input
+                                            placeholder="Rua / Logradouro"
+                                            value={addressForm.street}
+                                            readOnly
+                                            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-400 cursor-not-allowed"
+                                        />
+                                        {isLoadingCep && <div className="absolute right-3 top-2"><div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div></div>}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-4 gap-2">
+                                    <div className="col-span-1">
+                                        <input
+                                            placeholder="Nº"
+                                            ref={numberInputRef}
+                                            value={addressForm.number}
+                                            onChange={e => setAddressForm(prev => ({ ...prev, number: e.target.value }))}
+                                            className={`w-full bg-zinc-900 border rounded-xl px-3 py-2 text-xs text-white text-center font-bold ${!addressForm.number && addressForm.street ? 'border-red-500/50 animate-pulse' : 'border-zinc-800'}`}
+                                        />
+                                    </div>
+                                    <div className="col-span-3">
+                                        <input
+                                            placeholder="Complemento (Opcional)"
+                                            value={addressForm.complement}
+                                            onChange={e => setAddressForm(prev => ({ ...prev, complement: e.target.value }))}
+                                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <input
+                                        placeholder="Bairro"
+                                        value={addressForm.district}
+                                        readOnly
+                                        className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-400"
+                                    />
+                                    <input
+                                        placeholder="Cidade - UF"
+                                        value={addressForm.city ? `${addressForm.city} - ${addressForm.state}` : ''}
+                                        readOnly
+                                        className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-400"
+                                    />
+                                </div>
                             </div>
                         )}
                     </div>
@@ -468,6 +688,40 @@ export const ItemDetailsView = ({
                             </p>
                         </div>
 
+                        {/* SEÇÃO DE CRÉDITO UNIFICADO */}
+                        {creditSimulation && (
+                            <div className="bg-blue-900/10 border border-blue-500/20 rounded-3xl p-5 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                                        <Zap size={14} className="fill-blue-400" /> Opções de Crédito
+                                    </h4>
+                                    <span className="text-[9px] text-zinc-500 font-bold uppercase">Limite: {formatCurrency(creditSimulation.remainingLimit)}</span>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-2">
+                                    {creditSimulation.installmentOptions.map((opt: any) => (
+                                        <button
+                                            key={opt.installments}
+                                            onClick={() => setSelectedInstallments(opt.installments)}
+                                            className={`p-2 rounded-xl border transition-all text-center flex flex-col gap-1 ${selectedInstallments === opt.installments ? 'bg-blue-500/20 border-blue-500 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-500'}`}
+                                        >
+                                            <span className="text-[10px] font-black">{opt.installments}x</span>
+                                            <span className="text-[9px] font-bold">{formatCurrency(opt.installmentValue)}</span>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {selectedInstallments > 1 && (
+                                    <div className="flex justify-between items-center text-[9px] text-zinc-500 uppercase font-black px-1">
+                                        <span>Total parcelado:</span>
+                                        <span className="text-white">
+                                            {formatCurrency(creditSimulation.installmentOptions.find((o: any) => o.installments === selectedInstallments)?.total)}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         <div className="flex flex-col sm:flex-row gap-3">
                             <button
                                 onClick={() => onBuy({
@@ -477,26 +731,19 @@ export const ItemDetailsView = ({
                                     deliveryAddress: deliveryAddress || 'Principal',
                                     invitedCourierId: invitedCourierId || undefined,
                                     quantity: quantity,
+                                    selectedOptions: selectedOptions,
                                     paymentMethod: 'BALANCE'
                                 })}
-                                className="flex-1 bg-zinc-900 hover:bg-zinc-800 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[10px] border border-zinc-800 transition-all active:scale-95"
+                                disabled={item.is_paused}
+                                className={`flex-1 bg-zinc-900 hover:bg-zinc-800 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[10px] border border-zinc-800 transition-all active:scale-95 ${item.is_paused ? 'opacity-50 grayscale' : ''}`}
                             >
                                 Pagar com Saldo
                             </button>
 
                             <button
                                 onClick={() => {
-                                    const userScore = currentUser?.score || 0;
-                                    const activeQuotas = currentUser?.quota_count || 0;
-
-                                    if (userScore < 450 || activeQuotas < 1) {
-                                        alert(`Requisitos para Crédito não atingidos.\nScore Mínimo: 450 (Seu: ${userScore})\nCotas Ativas: 1 (Sua: ${activeQuotas})`);
-                                        return;
-                                    }
-
-                                    const installments = parseInt(window.prompt("Em quantas parcelas deseja pagar? (1x a 24x)", "1") || "0");
-                                    if (installments < 1 || installments > 24) {
-                                        alert("Número de parcelas inválido (mínimo 1, máximo 24).");
+                                    if (totalAmount > (creditSimulation?.remainingLimit || 0)) {
+                                        alert(`Limite insuficiente. Seu limite disponível é ${formatCurrency(creditSimulation?.remainingLimit || 0)}`);
                                         return;
                                     }
 
@@ -507,18 +754,20 @@ export const ItemDetailsView = ({
                                         deliveryAddress: deliveryAddress || 'Principal',
                                         invitedCourierId: invitedCourierId || undefined,
                                         quantity: quantity,
+                                        selectedOptions: selectedOptions,
                                         paymentMethod: 'CREDIT',
-                                        installments
+                                        installments: selectedInstallments
                                     });
                                 }}
-                                className="flex-1 bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl uppercase tracking-widest text-[10px] shadow-lg shadow-primary-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+                                disabled={item.is_paused || !creditSimulation || totalAmount > (creditSimulation?.remainingLimit || 0)}
+                                className={`flex-1 bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl uppercase tracking-widest text-[10px] shadow-lg shadow-primary-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 ${item.is_paused ? 'opacity-50 grayscale' : ''}`}
                             >
                                 <Zap size={14} />
-                                Comprar Parcelado
+                                {selectedInstallments > 1 ? `Pagar ${selectedInstallments}x` : 'Comprar Parcelado'}
                             </button>
                         </div>
                         <p className="text-[8px] text-zinc-600 font-bold uppercase text-center tracking-tighter">
-                            Crédito sujeito a análise de score (Min. 450) e participação social (1+ Cota)
+                            Crédito unificado baseado em participação social e score. Juros dinâmicos conforme garantia.
                         </p>
                     </div>
                 </div>

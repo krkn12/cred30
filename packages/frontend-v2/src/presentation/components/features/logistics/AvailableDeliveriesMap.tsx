@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { MapPin, X, Truck, Package, User, Navigation2 } from 'lucide-react';
+import { MapPin, X, Truck, Package, User, Navigation2, ArrowRight } from 'lucide-react';
 import { correctStoredAddress } from '../../../../application/utils/location_corrections';
 import { useWakeLock } from '../../../hooks/use-wake-lock';
 
@@ -42,6 +42,9 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
     const markersRef = useRef<L.Marker[]>([]);
     const [selectedDelivery, setSelectedDelivery] = useState<DeliveryMission | null>(null);
     const [isAccepting, setIsAccepting] = useState(false);
+    const [locationError, setLocationError] = useState<string | null>(null);
+    const [bypassGPS, setBypassGPS] = useState(false);
+    const [showSkipButton, setShowSkipButton] = useState(false);
 
     // Manter tela ligada no celular
     useWakeLock();
@@ -89,8 +92,8 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
     };
 
     const [userCoords, setUserCoords] = useState<{ lat: number, lng: number } | null>(null);
-    const [passedMarkers, setPassedMarkers] = useState<Set<string>>(new Set());
-    const [reachedMarkers, setReachedMarkers] = useState<Set<string>>(new Set());
+
+    console.log('[DEBUG_LOGISTICS] AvailableDeliveriesMap State Init', { deliveriesCount: deliveries.length, userCoords });
 
     useEffect(() => {
         if (!mapContainerRef.current || mapRef.current) return;
@@ -106,16 +109,25 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
         }).addTo(mapRef.current);
 
         if (navigator.geolocation) {
+            // Mostrar botão de pular após 5 segundos se não carregar
+            const timer = setTimeout(() => setShowSkipButton(true), 5000);
+
             const watchId = navigator.geolocation.watchPosition(
                 (position) => {
                     const { latitude, longitude } = position.coords;
                     setUserCoords({ lat: latitude, lng: longitude });
+                    clearTimeout(timer);
 
                     if (mapRef.current && !userCoords) {
                         mapRef.current.flyTo([latitude, longitude], 15);
                     }
                 },
-                (error) => console.log('Location error:', error),
+                (error) => {
+                    console.log('Location error:', error);
+                    setLocationError(error.code === 1 ? 'Permissão negada. Ative o GPS nas configurações.' : 'Não foi possível obter sua localização exata.');
+                    setShowSkipButton(true);
+                    clearTimeout(timer);
+                },
                 {
                     enableHighAccuracy: true,
                     timeout: 10000,
@@ -123,7 +135,13 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                 }
             );
 
-            return () => navigator.geolocation.clearWatch(watchId);
+            return () => {
+                navigator.geolocation.clearWatch(watchId);
+                clearTimeout(timer);
+            };
+        } else {
+            setLocationError('Seu navegador não suporta geolocalização.');
+            setShowSkipButton(true);
         }
     }, []);
 
@@ -134,42 +152,49 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
     };
 
     useEffect(() => {
-        if (!mapRef.current || !userCoords) return;
+        if (!mapRef.current) return;
 
         // Limpar marcadores anteriores
         markersRef.current.forEach(marker => marker.remove());
         markersRef.current = [];
 
         // Adicionar localização do usuário
-        L.circleMarker([userCoords.lat, userCoords.lng], {
-            radius: 8,
-            fillColor: "#3b82f6",
-            color: "#fff",
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.8
-        }).addTo(mapRef.current).bindPopup("Sua localização");
+        if (userCoords) {
+            L.circleMarker([userCoords.lat, userCoords.lng], {
+                radius: 8,
+                fillColor: "#3b82f6",
+                color: "#fff",
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(mapRef.current).bindPopup("Sua localização");
 
-        // Círculo de Precisão (Acurácia)
-        const accuracyCircle = L.circle([userCoords.lat, userCoords.lng], {
-            radius: 300,
-            fillColor: "#3b82f6",
-            fillOpacity: 0.15,
-            color: "#3b82f6",
-            weight: 1,
-            dashArray: '5, 5'
-        }).addTo(mapRef.current);
+            // Círculo de Precisão (Acurácia)
+            const accuracyCircle = L.circle([userCoords.lat, userCoords.lng], {
+                radius: 300,
+                fillColor: "#3b82f6",
+                fillOpacity: 0.15,
+                color: "#3b82f6",
+                weight: 1,
+                dashArray: '5, 5'
+            }).addTo(mapRef.current);
 
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((pos) => {
-                accuracyCircle.setRadius(pos.coords.accuracy);
-            });
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    accuracyCircle.setRadius(pos.coords.accuracy);
+                });
+            }
         }
 
         const sortedDeliveries = [...deliveries];
-        const newPassed = new Set(passedMarkers);
-        const newReached = new Set(reachedMarkers);
-        let stateUpdated = false;
+
+        // Se não tiver GPS, centralizar na primeira entrega
+        if (!userCoords && sortedDeliveries.length > 0) {
+            const first = sortedDeliveries.find(d => d.pickup_lat);
+            if (first) {
+                mapRef.current.setView([first.pickup_lat!, first.pickup_lng!], 12);
+            }
+        }
 
         for (const delivery of sortedDeliveries) {
             if (!mapRef.current) return;
@@ -177,18 +202,11 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
             const pickupPos = delivery.pickup_lat && delivery.pickup_lng ? { lat: delivery.pickup_lat, lng: delivery.pickup_lng } : null;
             const deliveryPos = delivery.delivery_lat && delivery.delivery_lng ? { lat: delivery.delivery_lat, lng: delivery.delivery_lng } : null;
 
-            const pickupId = `pickup-${delivery.order_id}`;
-            const deliveryId = `delivery-${delivery.order_id}`;
+            if (pickupPos) {
+                // Se não tiver GPS, mostrar todas as entregas (bypass 30km)
+                const dist = userCoords ? calculateDistance(userCoords.lat, userCoords.lng, pickupPos.lat, pickupPos.lng) : 0;
 
-            if (pickupPos && !newPassed.has(pickupId)) {
-                const dist = calculateDistance(userCoords.lat, userCoords.lng, pickupPos.lat, pickupPos.lng);
-                if (dist < 50) {
-                    if (!newReached.has(pickupId)) { newReached.add(pickupId); stateUpdated = true; }
-                } else if (dist > 70 && newReached.has(pickupId)) {
-                    newPassed.add(pickupId); stateUpdated = true;
-                }
-
-                if (dist <= 30000 && !newPassed.has(pickupId)) {
+                if (!userCoords || dist <= 30000) {
                     const m = L.marker([pickupPos.lat, pickupPos.lng], { icon: pickupIcon, zIndexOffset: 1000 })
                         .addTo(mapRef.current!)
                         .on('click', () => setSelectedDelivery(delivery));
@@ -196,15 +214,10 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                 }
             }
 
-            if (deliveryPos && !newPassed.has(deliveryId)) {
-                const dist = calculateDistance(userCoords.lat, userCoords.lng, deliveryPos.lat, deliveryPos.lng);
-                if (dist < 50) {
-                    if (!newReached.has(deliveryId)) { newReached.add(deliveryId); stateUpdated = true; }
-                } else if (dist > 70 && newReached.has(deliveryId)) {
-                    newPassed.add(deliveryId); stateUpdated = true;
-                }
+            if (deliveryPos) {
+                const dist = userCoords ? calculateDistance(userCoords.lat, userCoords.lng, deliveryPos.lat, deliveryPos.lng) : 0;
 
-                if (dist <= 30000 && !newPassed.has(deliveryId)) {
+                if (!userCoords || dist <= 30000) {
                     const m = L.marker([deliveryPos.lat, deliveryPos.lng], { icon: deliveryIcon })
                         .addTo(mapRef.current!)
                         .on('click', () => setSelectedDelivery(delivery));
@@ -212,12 +225,7 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                 }
             }
         }
-
-        if (stateUpdated) {
-            setReachedMarkers(newReached);
-            setPassedMarkers(newPassed);
-        }
-    }, [deliveries, userCoords]);
+    }, [deliveries, userCoords, bypassGPS]);
 
     const routeLayerRef = useRef<L.Polyline | null>(null);
 
@@ -266,8 +274,11 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
         }
     };
 
-    const formatCurrency = (value: number) => {
-        return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const formatCurrency = (value: number | string | null | undefined) => {
+        if (value === null || value === undefined) return 'R$ 0,00';
+        const num = typeof value === 'string' ? parseFloat(value) : value;
+        if (isNaN(num)) return 'R$ 0,00';
+        return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     };
 
     return (
@@ -322,17 +333,28 @@ export const AvailableDeliveriesMap: React.FC<AvailableDeliveriesMapProps> = ({
                     </div>
                 </div>
 
-                {!userCoords ? (
+                {!userCoords && !bypassGPS ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/80 backdrop-blur-md z-[500]">
                         <div className="text-center space-y-4 p-6">
                             <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto relative">
                                 <Navigation2 className="text-blue-500 animate-bounce" size={40} />
                                 <div className="absolute inset-0 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
                             </div>
-                            <h3 className="text-white font-black text-xl uppercase tracking-tighter">Sintonizando Satélites...</h3>
+                            <h3 className="text-white font-black text-xl uppercase tracking-tighter">
+                                {locationError ? 'Erro de GPS' : 'Sintonizando Satélites...'}
+                            </h3>
                             <p className="text-zinc-500 text-sm max-w-xs mx-auto font-bold leading-relaxed">
-                                Precisamos da sua localização precisa para mostrar as entregas num raio de <span className="text-blue-400">30km</span>.
+                                {locationError || 'Precisamos da sua localização precisa para mostrar as entregas num raio de 30km.'}
                             </p>
+
+                            {showSkipButton && (
+                                <button
+                                    onClick={() => setBypassGPS(true)}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white font-black text-[10px] px-6 py-3 rounded-xl uppercase transition-all flex items-center gap-2 mx-auto border border-zinc-700 mt-4 active:scale-95 shadow-lg"
+                                >
+                                    Entrar no Mapa sem GPS <ArrowRight size={14} />
+                                </button>
+                            )}
                         </div>
                     </div>
                 ) : deliveries.length === 0 && (

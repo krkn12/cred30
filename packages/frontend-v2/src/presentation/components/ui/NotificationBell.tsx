@@ -118,8 +118,13 @@ export const NotificationBell: React.FC = () => {
         setHasUnread(false);
         setUnreadCount(0);
         localStorage.removeItem('user_notifications');
-        // Opcional: Marcar todas como lidas no back ao limpar
-        apiService.markNotificationRead('all').catch(console.error);
+
+        // Deletar permanentemente do banco
+        apiService.deleteNotification('all').then(() => {
+            console.info('[🔔 Sino] Lixeira esvaziada no servidor.');
+        }).catch(err => {
+            console.error('[🔔 Sino] Falha ao limpar notificações:', err);
+        });
     };
 
     const markAsRead = (id: string) => {

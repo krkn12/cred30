@@ -99,6 +99,7 @@ adminRoutes.post('/rewards/inventory', adminMiddleware, auditMiddleware('ADD_REW
 adminRoutes.get('/rewards/redemptions', adminMiddleware, AdminRewardsController.getRedemptions);
 
 // --- COMPLIANCE E BLINDAGEM JURÍDICA ---
+adminRoutes.get('/compliance/pending-kyc', adminMiddleware, AdminComplianceController.listPendingKyc);
 adminRoutes.get('/compliance/terms-acceptances', adminMiddleware, AdminComplianceController.listTermsAcceptances);
 adminRoutes.get('/compliance/stats', adminMiddleware, AdminComplianceController.getComplianceStats);
 

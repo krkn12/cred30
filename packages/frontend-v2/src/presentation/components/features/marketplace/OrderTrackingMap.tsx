@@ -100,7 +100,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
                 }
 
                 try {
-                    await apiService.post(`/logistics/location/${orderId}`, { lat: newPos.lat, lng: newPos.lng });
+                    await apiService.post(`/marketplace/logistic/mission/${orderId}/location`, { lat: newPos.lat, lng: newPos.lng });
                 } catch (e) {
                     console.error('Erro ao atualizar posição manual', e);
                 }
@@ -259,7 +259,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
                     updateCourierMarker(latitude, longitude, accuracy);
                     try {
                         // Usa rota específica de logística que aceita status 'ACCEPTED' e 'IN_TRANSIT'
-                        await apiService.post(`/logistics/location/${orderId}`, { lat: latitude, lng: longitude });
+                        await apiService.post(`/marketplace/logistic/mission/${orderId}/location`, { lat: latitude, lng: longitude });
                     } catch (e) {
                         console.error('Location update error:', e);
                     }
@@ -355,8 +355,8 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({ orderId, onC
                 )}
             </div>
 
-            {!embedded && !isLoading && trackingData && (
-                <div className="p-6 bg-zinc-950 border-t border-zinc-800 space-y-4">
+            {(!embedded || userRole === 'courier') && !isLoading && trackingData && (
+                <div className={`${embedded ? 'absolute bottom-0 left-0 right-0 z-[1000] p-4 bg-zinc-950/90' : 'p-6 bg-zinc-950'} border-t border-zinc-800 space-y-4`}>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 bg-zinc-900 rounded-2xl flex items-center justify-center border border-zinc-800"><Truck className="text-indigo-400" size={24} /></div>

@@ -14,7 +14,7 @@ interface AddressData {
 /**
  * Calcula a distância em metros entre dois pontos (Haversine simplified for small distances)
  */
-function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+export function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
     const R = 6371e3;
     const φ1 = lat1 * Math.PI / 180;
     const φ2 = lat2 * Math.PI / 180;
@@ -68,6 +68,13 @@ export function applyLocationCorrection(lat: number, lng: number, currentAddress
 }
 
 export function correctStoredAddress(lat: number | null, lng: number | null, address: string): string {
+    const fallbackText = "Endereço informado pelo chat vendedor";
+
+    // Se o endereço for nulo, vazio ou genérico
+    if (!address || address.trim().length < 3 || address.toLowerCase() === 'a definir') {
+        return fallbackText;
+    }
+
     if (lat === null || lng === null) return address;
 
     for (const rule of CORRECTION_RULES) {
@@ -75,10 +82,13 @@ export function correctStoredAddress(lat: number | null, lng: number | null, add
 
         if (dist <= rule.radius) {
             const hasTrigger = rule.triggers.some(t => address.toLowerCase().includes(t.toLowerCase()));
+            const isGeneric = address.toLowerCase().includes('vendedor') ||
+                address.toLowerCase().includes('chat') ||
+                address.toLowerCase().includes('definir');
 
-            // Se o endereço original contém os termos errados OU se for uma string curta/vazia
-            if (hasTrigger || address.length < 5) {
-                console.log(`[GEO-FIX] Substituindo endereço armazenado equivocado por: ${rule.correction.neighborhood}`);
+            // Se o endereço original contém os termos errados OU se for genérico OU se for curto
+            if (hasTrigger || isGeneric || address.length < 10) {
+                console.log(`[GEO-FIX] Substituindo endereço [${address}] por: ${rule.correction.neighborhood}`);
                 return `${rule.correction.neighborhood}, ${rule.correction.city} - ${rule.correction.state}`;
             }
         }

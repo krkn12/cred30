@@ -21,7 +21,10 @@ export class NotificationsController {
         const allowedOrigins = [
             'https://cred30.site',
             'https://www.cred30.site',
-            'https://cred30-prod-app-2025.web.app'
+            'https://cred30-prod-app-2025.web.app',
+            'http://localhost:3000',
+            'http://localhost:3001',
+            'http://localhost:5173'
         ];
         const origin = c.req.header('Origin') || allowedOrigins[0];
 
@@ -143,6 +146,33 @@ export class NotificationsController {
             return c.json({ success: true, message: 'Notificação marcada como lida' });
         } catch (error) {
             return c.json({ success: false, message: 'Erro ao atualizar notificação' }, 500);
+        }
+    }
+    /**
+     * Excluir notificação (Esvaziar lixeira)
+     */
+    static async deleteNotification(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const id = c.req.param('id');
+            const pool = getDbPool(c);
+
+            if (id === 'all') {
+                await pool.query(
+                    'DELETE FROM notifications WHERE user_id = $1',
+                    [user.id]
+                );
+            } else {
+                await pool.query(
+                    'DELETE FROM notifications WHERE id = $1 AND user_id = $2',
+                    [id, user.id]
+                );
+            }
+
+            return c.json({ success: true, message: 'Notificação excluída permanentemente' });
+        } catch (error) {
+            console.error('Erro ao excluir notificação:', error);
+            return c.json({ success: false, message: 'Erro ao excluir notificação' }, 500);
         }
     }
 }

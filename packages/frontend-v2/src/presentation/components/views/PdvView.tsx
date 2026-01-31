@@ -400,8 +400,8 @@ export const PdvView = ({ onRefresh, onSuccess, onError }: PdvViewProps) => {
                         <div className="bg-blue-900/20 border border-blue-500/30 rounded-xl p-3 flex items-start gap-2">
                             <Percent size={16} className="text-blue-400 flex-shrink-0 mt-0.5" />
                             <div className="text-xs">
-                                <p className="text-blue-400 font-bold">Limite do cliente: {formatCurrency(creditSimulation.remainingLimit)}</p>
-                                <p className="text-zinc-400">Taxa de Manutenção de 10% (100% garantia em cotas)</p>
+                                <p className="text-blue-400 font-bold uppercase tracking-tighter">Limite Disponível: {formatCurrency(creditSimulation.remainingLimit)}</p>
+                                <p className="text-zinc-400 font-medium">Juros mensal: {creditSimulation.installmentOptions?.[0]?.interestRate.toFixed(1)}% (100% GFC)</p>
                             </div>
                         </div>
                     </div>
@@ -434,21 +434,30 @@ export const PdvView = ({ onRefresh, onSuccess, onError }: PdvViewProps) => {
                             <span className="text-white font-bold">{formatCurrency(parseFloat(amount))}</span>
                         </div>
 
-                        {/* Se parcelado, mostrar juros */}
+                        {/* Se parcelado, mostrar juros conforme simulação do backend */}
                         {installments > 1 && creditSimulation?.installmentOptions && (
                             <>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-zinc-500">Taxa de Manutenção ({creditSimulation.installmentOptions.find((o: any) => o.installments === installments)?.interestRate.toFixed(0)}%):</span>
-                                    <span className="text-amber-400 font-bold">
-                                        +{formatCurrency(parseFloat(amount) * 0.10)}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-zinc-500">Cliente paga:</span>
-                                    <span className="text-white font-bold">
-                                        {installments}x de {formatCurrency((parseFloat(amount) * 1.10) / installments)}
-                                    </span>
-                                </div>
+                                {(() => {
+                                    const option = creditSimulation.installmentOptions.find((o: any) => o.installments === installments);
+                                    if (!option) return null;
+                                    const interestAmount = option.total - parseFloat(amount);
+                                    return (
+                                        <>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-zinc-500">Taxa de Manutenção ({option.interestRate.toFixed(1)}% ao mês):</span>
+                                                <span className="text-emerald-400 font-bold">
+                                                    +{formatCurrency(interestAmount)}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-zinc-500">Cliente paga:</span>
+                                                <span className="text-white font-bold">
+                                                    {installments}x de {formatCurrency(option.installmentValue)}
+                                                </span>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
                             </>
                         )}
 

@@ -15,6 +15,7 @@ export const createCostSchema = z.object({
     description: z.string().min(3),
     amount: z.number().positive(),
     isRecurring: z.boolean().default(true),
+    category: z.enum(['FISCAL', 'OPERATIONAL', 'MIXED']).default('MIXED'),
 });
 
 // Schema simulateMpSchema removido (gateway desativado)
@@ -40,12 +41,12 @@ export class AdminFinanceController {
     static async addCost(c: Context) {
         try {
             const body = await c.req.json();
-            const { description, amount, isRecurring } = createCostSchema.parse(body);
+            const { description, amount, isRecurring, category } = createCostSchema.parse(body);
             const pool = getDbPool(c);
 
             await pool.query(
-                'INSERT INTO system_costs (description, amount, is_recurring) VALUES ($1, $2, $3)',
-                [description, amount, isRecurring]
+                'INSERT INTO system_costs (description, amount, is_recurring, category) VALUES ($1, $2, $3, $4)',
+                [description, amount, isRecurring, category]
             );
 
             return c.json({ success: true, message: 'Custo adicionado com sucesso' });
@@ -84,41 +85,61 @@ export class AdminFinanceController {
 
             const result = await executeInTransaction(pool, async (client) => {
                 // 1. Buscar o custo
-                const costRes = await client.query('SELECT description, amount FROM system_costs WHERE id = $1', [id]);
+                const costRes = await client.query('SELECT description, amount, category FROM system_costs WHERE id = $1', [id]);
                 if (costRes.rows.length === 0) {
                     throw new Error('Custo não encontrado');
                 }
                 const cost = costRes.rows[0];
                 const amount = parseFloat(cost.amount);
+                const category = cost.category || 'MIXED';
 
-                // 2. Subtrair do saldo do sistema e das reservas (Modelo Lucro Líquido)
-                const configRes = await client.query('SELECT system_balance FROM system_config LIMIT 1');
-                const currentBalance = parseFloat(configRes.rows[0].system_balance);
+                // 2. Buscar configurações e reservas
+                const configRes = await client.query('SELECT system_balance, total_tax_reserve, total_operational_reserve FROM system_config LIMIT 1');
+                const config = configRes.rows[0];
+                const currentBalance = parseFloat(config.system_balance);
+                const taxReserve = parseFloat(config.total_tax_reserve);
+                const operationalReserve = parseFloat(config.total_operational_reserve);
 
                 if (currentBalance < amount) {
-                    throw new Error('Saldo do sistema insuficiente para realizar este pagamento.');
+                    throw new Error('Saldo GLOBAL do sistema insuficiente para realizar este pagamento.');
+                }
+
+                // 3. Calcular a dedução por categoria e VALIDAR SALDO DO POTE
+                let taxShare = 0;
+                let operationalShare = 0;
+
+                if (category === 'FISCAL') {
+                    if (taxReserve < amount) {
+                        throw new Error(`SALDO INSUFICIENTE: O pote de IMPOSTOS (R$ ${taxReserve.toFixed(2)}) não tem saldo para cobrir este custo de R$ ${amount.toFixed(2)}. Arrecade mais taxas antes de pagar.`);
+                    }
+                    taxShare = amount;
+                } else if (category === 'OPERATIONAL') {
+                    if (operationalReserve < amount) {
+                        throw new Error(`SALDO INSUFICIENTE: O pote OPERACIONAL (R$ ${operationalReserve.toFixed(2)}) não tem saldo para cobrir este custo de R$ ${amount.toFixed(2)}. O sistema precisa gerar mais receita operacional.`);
+                    }
+                    operationalShare = amount;
+                } else {
+                    // MIXED (50/50)
+                    taxShare = amount * 0.50;
+                    operationalShare = amount - taxShare;
+
+                    if (taxReserve < taxShare || operationalReserve < operationalShare) {
+                        throw new Error(`SALDO INSUFICIENTE: Os potes (Fiscal: R$ ${taxReserve.toFixed(2)} | Operacional: R$ ${operationalReserve.toFixed(2)}) não possuem saldo para a divisão 50/50 deste custo.`);
+                    }
                 }
 
                 // --- PROTEÇÃO DO CAPITAL SOCIAL (LASTRO) ---
                 const activeQuotasResult = await client.query(`SELECT COUNT(*) as count FROM quotas WHERE status = 'ACTIVE'`);
                 const activeQuotasCount = parseInt(activeQuotasResult.rows[0].count);
-                const capitalSocialExigivel = activeQuotasCount * QUOTA_SHARE_VALUE; // R$ 42,00 por cota
+                const capitalSocialExigivel = activeQuotasCount * QUOTA_SHARE_VALUE;
 
                 const saldoPosPagamento = currentBalance - amount;
 
                 if (saldoPosPagamento < capitalSocialExigivel) {
-                    throw new Error(`PAGAMENTO BLOQUEADO: Risco de Insolvência. Saldo restante (R$ ${saldoPosPagamento.toFixed(2)}) seria menor que o Capital Social dos Cotistas (R$ ${capitalSocialExigivel.toFixed(2)}). Aumente a receita antes de gastar.`);
+                    throw new Error(`Risco de Insolvência. Saldo restante (R$ ${saldoPosPagamento.toFixed(2)}) seria menor que o Capital Social (R$ ${capitalSocialExigivel.toFixed(2)}).`);
                 }
-                // -------------------------------------------
 
-                // 2. Subtrair do saldo do sistema e das reservas (Taxa e Operacional)
-                // Ajuste solicitado: NÃO mexer no lucro dos cotistas (profit_pool) nem do dono (total_owner_profit)
-                // Vamos tirar 50% da reserva de impostos e 50% da reserva operacional
-
-                const taxShare = amount * 0.50;
-                const operationalShare = amount - taxShare; // Garante que soma 100% mesmo com arredondamento
-
-                // Deduz do balanço geral E das reservas de CUSTO (Imposto e Operacional)
+                // 4. Executar o desconto nos potes específicos
                 await client.query(
                     'UPDATE system_config SET system_balance = system_balance - $1, total_tax_reserve = total_tax_reserve - $2, total_operational_reserve = total_operational_reserve - $3',
                     [amount, taxShare, operationalShare]
@@ -624,15 +645,15 @@ export class AdminFinanceController {
 
             // 6. Lucro Logístico (Faturamento)
             const logisticsProfitRes = await pool.query(`
-                SELECT COALESCE(SUM(delivery_fee * $1), 0) as logistics_profit
+                SELECT COALESCE(SUM(delivery_fee * ${LOGISTICS_SUSTAINABILITY_FEE_RATE}), 0) as logistics_profit
                 FROM marketplace_orders
                 WHERE delivery_status = 'DELIVERED'
                 ${dateFilter}
-            `, [...params, LOGISTICS_SUSTAINABILITY_FEE_RATE]); // Adiciona share constante aos params
+            `, params);
 
             // 8. Taxas de Cotas (SVA - Metadata serviceFee)
             const quotaFeesRes = await pool.query(`
-                SELECT COALESCE(SUM(CAST(metadata->>'serviceFee' AS NUMERIC)), 0) as quota_fees
+                SELECT COALESCE(SUM(CAST(metadata ->> 'serviceFee' AS NUMERIC)), 0) as quota_fees
                 FROM transactions
                 WHERE type = 'BUY_QUOTA'
                 AND status = 'APPROVED'
@@ -641,12 +662,42 @@ export class AdminFinanceController {
 
             // 9. Receita de Juros de Empréstimos (Metadata interestAmount)
             const loanInterestRes = await pool.query(`
-                SELECT COALESCE(SUM(CAST(metadata->>'interestAmount' AS NUMERIC)), 0) as loan_revenue
-                FROM transactions
-                WHERE type = 'LOAN_PAYMENT'
-                AND status IN ('COMPLETED', 'APPROVED')
-                ${dateFilter}
-            `, params);
+            SELECT COALESCE(SUM(CAST(metadata ->> 'interestAmount' AS NUMERIC)), 0) as loan_revenue
+            FROM transactions
+            WHERE type = 'LOAN_PAYMENT'
+            AND status IN('COMPLETED', 'APPROVED')
+            ${dateFilter}
+        `, params);
+
+            // 10. Receita de Educação (Faturamento - 10% de comissão)
+            const educationRevenueRes = await pool.query(`
+            SELECT COALESCE(SUM(amount_paid * 0.10), 0) as education_revenue
+            FROM course_purchases
+            WHERE 1=1
+            ${dateFilter}
+        `, params);
+
+            // 11. Receita de Vídeos Promocionais (Faturamento - 65% de taxa de serviço)
+            const promoVideosRevenueRes = await pool.query(`
+            SELECT COALESCE(SUM(ABS(amount) * 0.65), 0) as promo_revenue
+            FROM transactions
+            WHERE type = 'PROMO_VIDEO_BUDGET'
+            AND status = 'COMPLETED'
+            ${dateFilter}
+        `, params);
+
+            // 12. Receita de Monetização (PRO, Badges, etc. - 20% de taxa)
+            const monetizationRevenueRes = await pool.query(`
+            SELECT COALESCE(SUM(ABS(amount) * 0.20), 0) as monetization_revenue
+            FROM transactions
+            WHERE type IN ('MEMBERSHIP_UPGRADE', 'PREMIUM_PURCHASE', 'REPUTATION_CONSULT', 'PROTECTION_PURCHASE')
+            AND status = 'APPROVED'
+            ${dateFilter}
+        `, params);
+
+            // 13. Caixa de Terceiros Real (Soma de todos os saldos de usuários)
+            const custodyRes = await pool.query(`SELECT COALESCE(SUM(balance), 0) as total_custody FROM users`);
+            const totalCustody = parseFloat(custodyRes.rows[0].total_custody);
 
             // 7. Configurações Gerais
             const configResult = await pool.query('SELECT profit_pool, total_owner_profit, system_balance FROM system_config LIMIT 1');
@@ -662,8 +713,11 @@ export class AdminFinanceController {
             const revenueFromLogistics = parseFloat(logisticsProfitRes.rows[0].logistics_profit);
             const revenueFromQuotas = parseFloat(quotaFeesRes.rows[0].quota_fees);
             const revenueFromLoans = parseFloat(loanInterestRes.rows[0].loan_revenue);
+            const revenueFromEducation = parseFloat(educationRevenueRes.rows[0].education_revenue);
+            const revenueFromPromoVideos = parseFloat(promoVideosRevenueRes.rows[0].promo_revenue);
+            const revenueFromMonetization = parseFloat(monetizationRevenueRes.rows[0].monetization_revenue);
 
-            const grossRevenue = revenueFromMarketplace + revenueFromFees + revenueFromLogistics + revenueFromQuotas + revenueFromLoans;
+            const grossRevenue = revenueFromMarketplace + revenueFromFees + revenueFromLogistics + revenueFromQuotas + revenueFromLoans + revenueFromEducation + revenueFromPromoVideos + revenueFromMonetization;
             const netProfit = grossRevenue - totalDividends;
 
             const fiscalSummary = {
@@ -685,9 +739,12 @@ export class AdminFinanceController {
                     withdrawal_fees: revenueFromFees,
                     quota_maintenance_fees: revenueFromQuotas,
                     loan_interest_revenue: revenueFromLoans,
+                    education_revenue: revenueFromEducation,
+                    promo_videos_revenue: revenueFromPromoVideos,
+                    monetization_revenue: revenueFromMonetization,
                     total_owner_profit: parseFloat(config.total_owner_profit || 0),
                     system_balance: parseFloat(config.system_balance || 0),
-                    volume_transitory: totalInflow - grossRevenue
+                    volume_transitory: totalCustody // Sincronizado com os saldos REAIS
                 },
 
                 legal_notice: "Relatório de intermediação de negócios e gestão de custódia de terceiros (Não tributável sobre o capital social)."

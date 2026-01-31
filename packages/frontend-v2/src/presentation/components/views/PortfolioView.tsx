@@ -4,14 +4,17 @@ import { useNavigate } from 'react-router-dom';
 import { Quota } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 
+import { User } from '../../../domain/types/common.types';
+
 interface PortfolioViewProps {
     quotas: Quota[];
     hasLoans: boolean;
     onSell: (id: string) => void;
     onSellAll: () => void;
+    user: User | null;
 }
 
-export const PortfolioView = ({ quotas, hasLoans, onSell, onSellAll }: PortfolioViewProps) => {
+export const PortfolioView = ({ quotas, hasLoans, onSell, onSellAll, user }: PortfolioViewProps) => {
     const [selectedQuotaId, setSelectedQuotaId] = useState<string | null>(null);
     const [isSellAll, setIsSellAll] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
@@ -69,8 +72,7 @@ export const PortfolioView = ({ quotas, hasLoans, onSell, onSellAll }: Portfolio
         return acc + q.currentValue;
     }, 0);
 
-    const totalEarnings = totalCurrentValue - totalValue;
-    const earningsPercentage = totalValue > 0 ? (totalEarnings / totalValue) * 100 : 0;
+
 
     const initiateSell = (id: string) => {
         setSelectedQuotaId(id);
@@ -150,10 +152,8 @@ export const PortfolioView = ({ quotas, hasLoans, onSell, onSellAll }: Portfolio
                     <div className="bg-white/20 rounded-xl p-4">
                         <p className="text-sm opacity-80 mb-1">Sobras Distribuídas</p>
                         <p className="text-xl font-bold flex items-center gap-1">
-                            {totalEarnings >= 0 ? '+' : ''}{totalEarnings.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            <span className="text-xs bg-black/20 px-1.5 py-0.5 rounded-full">
-                                {earningsPercentage.toFixed(1)}%
-                            </span>
+                            {/* Mostrar apenas dividendos reais recebidos, não a variação negativa da taxa */}
+                            {(user?.total_dividends_earned || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </p>
                     </div>
                     <div className="bg-white/20 rounded-xl p-4">

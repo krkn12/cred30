@@ -1,4 +1,4 @@
-import { LogOut, Home, PieChart, DollarSign, Settings, TrendingUp, ArrowUpFromLine, ShoppingBag, HelpCircle, Play, ShieldCheck, Gift } from 'lucide-react';
+import { LogOut, Home, PieChart, DollarSign, Settings, ArrowUpFromLine, ShoppingBag, HelpCircle, Play, ShieldCheck, Gift } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../../../domain/types/common.types';
 import { CookieBanner } from '../ui/CookieBanner';
@@ -26,7 +26,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
     { id: 'deposit', label: 'Aportar', icon: DollarSign },
     { id: 'marketplace', label: 'Clube', icon: ShoppingBag },
     { id: 'promo-videos', label: 'Views', icon: Play },
-    { id: 'invest', label: 'Ativação', icon: TrendingUp },
+    // { id: 'invest', label: 'Ativação', icon: TrendingUp },
     { id: 'portfolio', label: 'Participações', icon: PieChart },
     { id: 'loans', label: 'Apoio', icon: DollarSign },
     { id: 'withdraw', label: 'Resgatar', icon: ArrowUpFromLine },
@@ -148,7 +148,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onC
         <div className="bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[2.8rem] flex justify-between items-center px-2 py-2.5 shadow-[0_25px_60px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
           {[
             { id: 'dashboard', label: 'Início', icon: Home },
-            { id: 'invest', label: 'Investir', icon: TrendingUp },
+            { id: 'deposit', label: 'Aportar', icon: DollarSign },
             { id: 'marketplace', label: 'Clube', icon: ShoppingBag },
             { id: 'rewards-shop', label: 'Prêmios', icon: Gift },
             { id: 'withdraw', label: 'Saque', icon: ArrowUpFromLine },

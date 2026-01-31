@@ -11,6 +11,8 @@ const poolConfig: any = {
   idleTimeoutMillis: 30000,      // Tempo para fechar conexões ociosas
   connectionTimeoutMillis: 5000,  // Timeout para tentar conectar
   maxUses: 7500, // Prevenir memory leaks do driver pg reciclagem periódica
+  keepAlive: true, // <-- IMPORTANTE: Mantém conexão ativa com Neon
+  keepAliveInitialDelayMillis: 10000, // Ping a cada 10 segundos
 };
 
 if (process.env.DATABASE_URL) {
@@ -27,6 +29,16 @@ if (process.env.DATABASE_URL) {
 
 // Criar o pool de conexões
 export const pool = new Pool(poolConfig);
+
+// 🛡️ BLINDAGEM: Handler de erro para evitar crash do servidor
+pool.on('error', (err, client) => {
+  console.error('[POOL ERROR] Conexão perdida com o banco de dados:', err.message);
+  // Não faz nada aqui, o pg-pool reconecta automaticamente
+});
+
+pool.on('connect', () => {
+  console.log('[POOL] Nova conexão estabelecida com o banco');
+});
 
 /**
  * Helper para queries SQL usando Tagged Template Literals.
@@ -271,6 +283,15 @@ export const initializeDatabase = async () => {
           await client.query('ALTER TABLE users ADD COLUMN pending_balance DECIMAL(10,2) DEFAULT 0');
         }
 
+        const avatarUrlColumn = await client.query(`
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'avatar_url'
+        `);
+        if (avatarUrlColumn.rows.length === 0) {
+          console.log('Adicionando coluna avatar_url à tabela users...');
+          await client.query('ALTER TABLE users ADD COLUMN avatar_url TEXT');
+        }
+
         console.log('Tabela users verificada e atualizada com sucesso');
       }
     }
@@ -286,6 +307,7 @@ export const initializeDatabase = async () => {
         pix_key VARCHAR(255),
         balance DECIMAL(10,2) DEFAULT 0,
         pending_balance DECIMAL(10,2) DEFAULT 0,
+        avatar_url TEXT,
         referral_code VARCHAR(10) UNIQUE,
         referred_by VARCHAR(10),
         is_admin BOOLEAN DEFAULT FALSE,
@@ -347,6 +369,41 @@ export const initializeDatabase = async () => {
       
       -- Coluna de timestamp de atualização
       ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+      
+      -- DELIVERY PREMIUM: Pausa manual da loja
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_paused BOOLEAN DEFAULT FALSE;
+
+      -- LOGÍSTICA & ENTREGADORES
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_courier BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_status VARCHAR(20) DEFAULT 'none';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_vehicle VARCHAR(20);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_phone VARCHAR(20);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_cpf VARCHAR(20);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_city VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_state VARCHAR(50);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_price_per_km DECIMAL(10,2) DEFAULT 2.00;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_id_photo TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_vehicle_photo TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_doc_photo TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_created_at TIMESTAMP;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_penalty_until TIMESTAMP;
+
+      -- KYC & PERFIL
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS membership_type VARCHAR(20) DEFAULT 'FREE';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_status VARCHAR(20) DEFAULT 'NONE';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_document_path TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_notes TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS safe_contact_phone VARCHAR(20);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_protected BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS protection_expires_at TIMESTAMP;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS panic_phrase VARCHAR(255);
+
+      -- FINANÇAS & RECOMPENSAS
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS total_dividends_earned DECIMAL(15,2) DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS security_lock_until TIMESTAMP;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS ad_points INTEGER DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_ad_points INTEGER DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS total_ad_points INTEGER DEFAULT 0;
     `);
 
     // Verificar o tipo da coluna id da tabela users para garantir integridade das chaves estrangeiras
@@ -722,17 +779,7 @@ export const initializeDatabase = async () => {
       console.log('Coluna updated_at adicionada à tabela system_config');
     }
 
-    // Criar tabela de auditoria (audit_logs - Fintech Compliance)
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS audit_logs (
-        id SERIAL PRIMARY KEY,
-        user_id VARCHAR(50),
-        action_type VARCHAR(50) NOT NULL,
-        metadata JSONB,
-        ip_address TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    // Criar tabela de auditoria (audit_logs - Fintech Compliance) - Unificada abaixo no bloco de auditoria
 
     // Criar tabela de auditoria administrativa (admin_logs)
     await client.query(`
@@ -818,6 +865,10 @@ export const initializeDatabase = async () => {
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS free_shipping BOOLEAN DEFAULT FALSE;
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS shipping_price DECIMAL(10,2) DEFAULT 0;
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS delivery_fee_final DECIMAL(10,2) DEFAULT 0; -- Cache do frete calculado
+      
+      -- DELIVERY PREMIUM: Opcionais de Cardápio
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS food_options JSONB DEFAULT '[]';
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS seller_phone VARCHAR(20);
     `);
 
     // Tabela de Pedidos / Escrow (Garantia Cred30)
@@ -928,6 +979,11 @@ export const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS listing_ids INTEGER[];
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS is_lote BOOLEAN DEFAULT FALSE;
+      
+      -- DELIVERY PREMIUM: Opcionais selecionados e Rastreio GPS
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS selected_options JSONB DEFAULT '[]';
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS courier_lat DECIMAL(10, 8);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS courier_lng DECIMAL(11, 8);
     `);
 
     // --- SISTEMA DE PROMOÇÃO DE VÍDEOS (VIEW-TO-EARN) ---
@@ -1038,6 +1094,55 @@ export const initializeDatabase = async () => {
 
     console.log('Tabelas de suporte criadas/verificadas com sucesso!');
 
+    // --- SISTEMA DE SEGURO DE ENTREGAS ---
+    console.log('Criando tabelas do sistema de seguro de entregas...');
+    await client.query(`
+      -- Fundo de Seguro: Reserva de cada entrega para cobrir incidentes
+      CREATE TABLE IF NOT EXISTS delivery_insurance_fund (
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER REFERENCES marketplace_orders(id) ON DELETE CASCADE,
+        courier_contribution DECIMAL(10,2) NOT NULL DEFAULT 0,
+        platform_contribution DECIMAL(10,2) NOT NULL DEFAULT 0,
+        total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+        status VARCHAR(20) DEFAULT 'RESERVED',
+        released_at TIMESTAMP,
+        used_for_claim_id INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Claims: Registro de incidentes reportados
+      CREATE TABLE IF NOT EXISTS delivery_claims (
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER REFERENCES marketplace_orders(id) ON DELETE SET NULL,
+        courier_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        reported_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        claim_type VARCHAR(30) NOT NULL,
+        description TEXT,
+        evidence_urls TEXT[],
+        seller_refund DECIMAL(10,2) DEFAULT 0,
+        buyer_refund DECIMAL(10,2) DEFAULT 0,
+        courier_penalty DECIMAL(10,2) DEFAULT 0,
+        status VARCHAR(20) DEFAULT 'PENDING',
+        admin_notes TEXT,
+        resolved_by INTEGER REFERENCES users(id),
+        resolved_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Colunas de aceite de termos e saldo de seguro do entregador
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_terms_accepted_at TIMESTAMP;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_terms_accepted_at TIMESTAMP;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS courier_insurance_balance DECIMAL(10,2) DEFAULT 0;
+
+      -- Índices para performance
+      CREATE INDEX IF NOT EXISTS idx_insurance_fund_order ON delivery_insurance_fund(order_id);
+      CREATE INDEX IF NOT EXISTS idx_insurance_fund_status ON delivery_insurance_fund(status);
+      CREATE INDEX IF NOT EXISTS idx_claims_status ON delivery_claims(status);
+      CREATE INDEX IF NOT EXISTS idx_claims_courier ON delivery_claims(courier_id);
+    `);
+    console.log('Tabelas de seguro de entregas criadas/verificadas com sucesso!');
+
+
     console.log('Tabelas criadas/verificadas com sucesso!');
 
     // Criar índices de performance
@@ -1110,6 +1215,9 @@ export const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_chests_opened INTEGER DEFAULT 0;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_chest_date VARCHAR(10);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_status VARCHAR(20) DEFAULT 'NONE'; --NONE, PENDING, APPROVED, REJECTED
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_document_path TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_notes TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS cpf VARCHAR(14);
 `);
 
@@ -1118,7 +1226,7 @@ export const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS audit_logs(
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id),
-  action VARCHAR(100) NOT NULL,
+  action_type VARCHAR(100),
   entity_type VARCHAR(50),
   entity_id VARCHAR(100),
   old_values JSONB,
@@ -1127,6 +1235,15 @@ export const initializeDatabase = async () => {
   user_agent TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+      -- Garantir que colunas existam em tabelas legadas
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS action_type VARCHAR(100);
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_type VARCHAR(50);
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_id VARCHAR(100);
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS old_values JSONB;
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS new_values JSONB;
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS user_agent TEXT;
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS metadata JSONB;
 
       CREATE TABLE IF NOT EXISTS webhook_logs(
   id SERIAL PRIMARY KEY,
@@ -1209,6 +1326,7 @@ export const initializeDatabase = async () => {
   description VARCHAR(255) NOT NULL,
   amount DECIMAL(10, 2) NOT NULL,
   is_recurring BOOLEAN DEFAULT TRUE,
+  category VARCHAR(20) DEFAULT 'MIXED',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -1248,6 +1366,11 @@ export const initializeDatabase = async () => {
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+      -- Garantir que colunas críticas existam antes de criar índices
+      ALTER TABLE bug_reports ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'open';
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'UNREAD';
+      ALTER TABLE transaction_reviews ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT FALSE;
 
       CREATE INDEX IF NOT EXISTS idx_bug_reports_user_id ON bug_reports(user_id);
       CREATE INDEX IF NOT EXISTS idx_bug_reports_status ON bug_reports(status);
@@ -1311,9 +1434,15 @@ export const initializeDatabase = async () => {
       CREATE INDEX IF NOT EXISTS idx_promo_video_views_viewer_video ON promo_video_views(viewer_id, video_id, completed);
       CREATE INDEX IF NOT EXISTS idx_promo_video_views_video_completed ON promo_video_views(video_id) WHERE completed = TRUE;
 
---Otimização geral de transações
       CREATE INDEX IF NOT EXISTS idx_transactions_user_type ON transactions(user_id, type);
       CREATE INDEX IF NOT EXISTS idx_users_balance ON users(balance DESC);
+      
+      -- Logística / Marketplace Indexes
+      CREATE INDEX IF NOT EXISTS idx_marketplace_orders_delivery_status ON marketplace_orders(delivery_status);
+      CREATE INDEX IF NOT EXISTS idx_marketplace_orders_status ON marketplace_orders(status);
+
+      -- Blindagem de Custos
+      ALTER TABLE system_costs ADD COLUMN IF NOT EXISTS category VARCHAR(20) DEFAULT 'MIXED';
 `);
     console.log('Índices de otimização aplicados!');
 
@@ -1329,6 +1458,23 @@ export const initializeDatabase = async () => {
     // await createIndexes(pool);
 
     // --- CONSORTIUM UPDATES (LATEST) ---
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS consortium_groups (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        admin_id INTEGER REFERENCES users(id),
+        status VARCHAR(20) DEFAULT 'ACTIVE',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS consortium_members (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER REFERENCES consortium_groups(id),
+        user_id INTEGER REFERENCES users(id),
+        status VARCHAR(20) DEFAULT 'ACTIVE',
+        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
     await client.query(`
       ALTER TABLE consortium_members ADD COLUMN IF NOT EXISTS invoice_url TEXT;
       ALTER TABLE consortium_members ADD COLUMN IF NOT EXISTS credit_limit_released DECIMAL(15, 2);

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, TrendingUp, Search, Crown, Check, Loader2 } from 'lucide-react';
+import { ShieldCheck, TrendingUp, Search, Crown, Check, Loader2, Store } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 import { ConfirmModal } from '../ui/ConfirmModal';
 
@@ -246,6 +246,28 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ userBalance, isVerif
                                 }`}
                         >
                             {loadingMap['pro'] ? <Loader2 size={16} className="animate-spin" /> : (isPro ? 'Já é PRO' : 'Assinar')}
+                        </button>
+                    </div>
+                </div>
+
+                {/* 4. Sistema PDV (Vendas) */}
+                <div className="relative overflow-hidden rounded-3xl p-6 bg-zinc-900/50 border border-white/5 hover:border-indigo-500/30 transition-all group">
+                    <div className="flex items-start justify-between mb-4">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+                            <Store size={24} />
+                        </div>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-white mb-1">Sistema PDV</h3>
+                    <p className="text-xs text-zinc-500 h-10 mb-4">Venda produtos ou serviços e receba à vista, mesmo que o cliente parcele.</p>
+
+                    <div className="flex items-center justify-between mt-auto">
+                        <p className="text-xl font-black text-white">3,5% <span className="text-[10px] text-zinc-500 font-normal ml-1">por venda</span></p>
+                        <button
+                            onClick={() => window.location.hash = '/app/pdv'}
+                            className="px-5 py-2.5 bg-indigo-600 text-white hover:bg-indigo-500 rounded-xl text-xs font-black uppercase tracking-wider transition-all hover:scale-105 active:scale-95"
+                        >
+                            Usar PDV
                         </button>
                     </div>
                 </div>

@@ -3,7 +3,7 @@ import { getDbPool } from '../../../infrastructure/database/postgresql/connectio
 import { executeInTransaction, createTransaction } from '../../../domain/services/transaction.service';
 import { UserContext } from '../../../shared/types/hono.types';
 import { PoolClient } from 'pg';
-import { getCreditAnalysis, calculateInterestRate, calculateUserLoanLimit } from '../../../application/services/credit-analysis.service';
+import { getCreditAnalysis, calculateMonthlyInterestRate, calculateUserLoanLimit } from '../../../application/services/credit-analysis.service';
 import {
     ONE_MONTH_MS,
     PENALTY_RATE,
@@ -85,14 +85,8 @@ export class PdvController {
                     }, 400);
                 }
 
-                // Verificar se o valor está dentro do limite
-                const activeLoansRes = await pool.query(
-                    `SELECT COALESCE(SUM(amount), 0) as total FROM loans 
-                     WHERE user_id = $1 AND status IN ('APPROVED', 'PAYMENT_PENDING', 'PENDING')`,
-                    [customerId]
-                );
-                const activeDebt = parseFloat(activeLoansRes.rows[0].total);
-                const remainingLimit = Math.max(0, creditAnalysis.limit - activeDebt);
+                // Verificar se o valor está dentro do limite UNIFICADO
+                const remainingLimit = await calculateUserLoanLimit(pool, customerId);
 
                 if (parsedAmount > remainingLimit) {
                     return c.json({
@@ -101,9 +95,10 @@ export class PdvController {
                     }, 400);
                 }
 
-                // Calcular juros baseado na garantia
-                interestRate = calculateInterestRate(guaranteePercentage);
-                totalWithInterest = parsedAmount * (1 + interestRate);
+                // Calcular juros MENSAL baseado na garantia
+                const monthlyRate = calculateMonthlyInterestRate(guaranteePercentage);
+                interestRate = monthlyRate;
+                totalWithInterest = parsedAmount * (1 + (interestRate * parsedInstallments));
 
                 creditInfo = {
                     limit: creditAnalysis.limit,
@@ -299,7 +294,8 @@ export class PdvController {
             // Lógica de Fallback (Saldo -> Cotas)
             const creditAnalysis = await getCreditAnalysis(pool, customerId);
             const canPayWithBalance = customerBalance >= amount;
-            const canPayWithCredit = creditAnalysis.eligible && creditAnalysis.limit >= amount;
+            const availableLimit = await calculateUserLoanLimit(pool, customerId);
+            const canPayWithCredit = creditAnalysis.eligible && availableLimit >= amount;
 
             return c.json({
                 success: true,
@@ -314,6 +310,7 @@ export class PdvController {
                     canPayWithBalance,
                     canPayWithCredit,
                     creditLimit: creditAnalysis.limit,
+                    availableLimit,
                     suggestInstallments: !canPayWithBalance && canPayWithCredit,
                     instruction: 'Confirme os dados acima e digite sua senha. Aperte 0 para Confirma.'
                 }
@@ -405,12 +402,6 @@ export class PdvController {
                     // POREM, o calculo de limite depende de queries em loans.
                     // MELHOR: Fazer a query de activeDebt aqui usando o CLIENT transacionado.
 
-                    const activeLoansRes = await client.query(
-                        `SELECT COALESCE(SUM(amount), 0) as total FROM loans 
-                         WHERE user_id = $1 AND status IN ('APPROVED', 'PAYMENT_PENDING', 'PENDING')`,
-                        [customerId]
-                    );
-                    const activeDebt = parseFloat(activeLoansRes.rows[0].total);
                     const limit = await calculateUserLoanLimit(pool, customerId);
                     // Para simplificar e evitar importar muita coisa, vamos confiar no LOCK do usuário.
                     // Se lockamos o usuário, ele não consegue mudar o saldo (garantia), logo o limite base não muda.
@@ -428,6 +419,8 @@ export class PdvController {
 
                     // 1. Criar empréstimo automático
                     const dueDate = new Date(Date.now() + (installments * ONE_MONTH_MS));
+                    const totalWithInterest = parseFloat(charge.amount) * (1 + interestRate);
+                    const standardInstallmentValue = Math.floor((totalWithInterest / installments) * 100) / 100;
 
                     const loanRes = await client.query(`
                         INSERT INTO loans (user_id, amount, total_repayment, installments, interest_rate, penalty_rate, status, due_date, term_days, metadata)
@@ -447,8 +440,8 @@ export class PdvController {
                             pdvChargeId: charge.id,
                             merchantId: charge.merchant_id,
                             merchantName: charge.merchant_name,
-                            guaranteePercentage,
-                            type: 'PDV_CREDIT',
+                            installmentAmount: standardInstallmentValue,
+                            installments,
                             description: charge.description
                         })
                     ]);
@@ -456,13 +449,20 @@ export class PdvController {
                     loanId = loanRes.rows[0].id;
 
                     // 2. Criar parcelas do empréstimo
-                    const installmentValue = totalWithInterest / installments;
+                    let remainingPdvTotal = totalWithInterest;
+
                     for (let i = 1; i <= installments; i++) {
                         const installmentDueDate = new Date(Date.now() + (i * ONE_MONTH_MS));
+                        const currentPdvInstallmentAmount = (i === installments)
+                            ? Math.round(remainingPdvTotal * 100) / 100
+                            : standardInstallmentValue;
+
                         await client.query(`
-                            INSERT INTO loan_installments (loan_id, installment_number, expected_amount, due_date, status)
-                            VALUES ($1, $2, $3, $4, 'PENDING')
-                        `, [loanId, i, installmentValue, installmentDueDate]);
+                            INSERT INTO loan_installments (loan_id, installment_number, amount, expected_amount, due_date, status)
+                            VALUES ($1, $2, $3, $3, $4, 'PENDING')
+                        `, [loanId, i, currentPdvInstallmentAmount, installmentDueDate]);
+
+                        remainingPdvTotal -= currentPdvInstallmentAmount;
                     }
 
                     // 3. Creditar comerciante à vista (valor líquido)
@@ -494,7 +494,7 @@ export class PdvController {
                         customerId.toString(),
                         'PDV_CREDIT',
                         -parseFloat(charge.amount),
-                        `Compra PDV Parcelada ${installments}x de R$ ${installmentValue.toFixed(2)} em ${charge.merchant_name}`,
+                        `Compra PDV Parcelada ${installments}x de R$ ${standardInstallmentValue.toFixed(2)} em ${charge.merchant_name}`,
                         'APPROVED',
                         { chargeId: charge.id, merchantId: charge.merchant_id, loanId, totalWithInterest }
                     );
@@ -755,14 +755,8 @@ export class PdvController {
                 }, 400);
             }
 
-            // Verificar limite disponível
-            const activeLoansRes = await pool.query(
-                `SELECT COALESCE(SUM(amount), 0) as total FROM loans 
-                 WHERE user_id = $1 AND status IN ('APPROVED', 'PAYMENT_PENDING', 'PENDING')`,
-                [customerId]
-            );
-            const activeDebt = parseFloat(activeLoansRes.rows[0].total);
-            const remainingLimit = Math.max(0, creditAnalysis.limit - activeDebt);
+            const remainingLimit = await calculateUserLoanLimit(pool, customerId);
+            const activeDebt = creditAnalysis.limit - remainingLimit; // Calculate activeDebt
 
             if (parsedAmount > remainingLimit) {
                 return c.json({
@@ -771,7 +765,6 @@ export class PdvController {
                     data: {
                         eligible: false,
                         limit: creditAnalysis.limit,
-                        activeDebt,
                         remainingLimit,
                         requestedAmount: parsedAmount
                     }
@@ -784,13 +777,13 @@ export class PdvController {
 
             for (let installments = 1; installments <= 12; installments++) {
                 // Para cada número de parcelas, calcular com garantia de 100% (menor juros)
-                const interestRate = calculateInterestRate(100);
-                const total = parsedAmount * (1 + interestRate);
+                const monthlyRate = calculateMonthlyInterestRate(100);
+                const total = parsedAmount * (1 + (monthlyRate * installments));
                 const installmentValue = total / installments;
 
                 installmentOptions.push({
                     installments,
-                    interestRate: interestRate * 100, // em %
+                    interestRate: monthlyRate * 100, // em %
                     total,
                     installmentValue,
                     guaranteePercentage: 100
@@ -798,24 +791,34 @@ export class PdvController {
             }
 
             // Taxa do comerciante
-            const pdvFee = parsedAmount * PDV_FEE_RATE;
-            const merchantReceives = parsedAmount - pdvFee;
+            const merchantFeeRate = 0.15; // 15% taxa do comerciante Cred30
+            const merchantFee = parsedAmount * merchantFeeRate;
+            const netAmount = parsedAmount - merchantFee;
 
             return c.json({
                 success: true,
                 data: {
+                    customer: {
+                        id: customerId,
+                        name: creditAnalysis.details.quotasCount > 0 ? 'Cliente com Garantia' : 'Cliente'
+                    },
                     eligible: true,
                     limit: creditAnalysis.limit,
                     activeDebt,
                     remainingLimit,
                     requestedAmount: parsedAmount,
-                    pdvFee,
-                    merchantReceives,
+                    pdvFee: parsedAmount * PDV_FEE_RATE, // Assuming PDV_FEE_RATE is the correct fee for simulation
+                    merchantReceives: parsedAmount - (parsedAmount * PDV_FEE_RATE), // Assuming PDV_FEE_RATE is the correct fee for simulation
                     installmentOptions,
                     guaranteeOptions: validGuarantees.map(g => ({
                         percentage: g,
-                        interestRate: calculateInterestRate(g) * 100
-                    }))
+                        interestRate: calculateMonthlyInterestRate(g) * 100
+                    })),
+                    merchantInfo: {
+                        feeRate: merchantFeeRate * 100,
+                        feeAmount: merchantFee,
+                        netAmount
+                    }
                 }
             });
         } catch (error: any) {

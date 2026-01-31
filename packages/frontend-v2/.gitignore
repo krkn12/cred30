@@ -1,5 +1,45 @@
+# ============================================
+# FRONTEND-V2 - .gitignore Organizacional
+# Atualizado: 2026-01-31
+# ============================================
+
+# 🔐 SEGURANÇA
+.env*
+!.env.example
+
+# 📦 DEPENDÊNCIAS
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+
+# 🏗️ BUILD
 dist/
-.env
-.env.*
+build/
+.vite/
+*.tsbuildinfo
+
+# 📝 LOGS E TEMPORÁRIOS
 *.log
+tmp/
+temp/
+
+# 🧪 TESTES
+coverage/
+test-results/
+playwright-report/
+
+# 💻 IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 🖥️ SISTEMA OPERACIONAL
+.DS_Store
+Thumbs.db
+
+# ✅ EXCEÇÕES
+!.env.example
+!tsconfig*.json
+!vite.config.ts

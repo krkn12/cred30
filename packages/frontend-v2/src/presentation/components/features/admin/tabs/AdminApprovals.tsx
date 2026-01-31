@@ -29,16 +29,22 @@ export const AdminApprovals: React.FC<AdminApprovalsProps> = ({ onSuccess, onErr
     }, [fetchPending]);
 
     const handleAction = async (id: any, type: 'TRANSACTION' | 'LOAN', action: 'APPROVE' | 'REJECT') => {
+        console.log('[DEBUG] handleAction iniciado:', { id, type, action });
         try {
+            console.log('[DEBUG] Chamando apiService.processAction...');
             const res = await apiService.processAction(id, type, action);
+            console.log('[DEBUG] Resultado da API:', res);
+
             if (res.success) {
                 onSuccess('Sucesso', `Transação ${action === 'APPROVE' ? 'aprovada' : 'rejeitada'} com sucesso!`);
                 fetchPending();
                 onRefresh();
             } else {
+                console.error('[DEBUG] API retornou erro:', res);
                 onError('Erro', res.message || 'Falha ao processar ação.');
             }
         } catch (e: any) {
+            console.error('[DEBUG] Exceção no handleAction:', e);
             onError('Erro', e.message || 'Falha ao processar ação.');
         }
     };

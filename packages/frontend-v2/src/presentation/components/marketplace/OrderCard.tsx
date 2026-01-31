@@ -2,6 +2,7 @@ import React from 'react';
 import { Zap, Navigation2, Truck, Phone, Download, ExternalLink, Scan } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { QRScannerModal } from '../ui/QRScannerModal';
+import { correctStoredAddress } from '../../../application/utils/location_corrections';
 
 interface OrderCardProps {
     order: any;
@@ -128,7 +129,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                                 <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">LOCAL DE RETIRADA</span>
                             </div>
                             <p className="text-xs text-white font-medium">
-                                {order.pickup_address || order.seller_address || 'Endereço não informado'}
+                                {correctStoredAddress(order.pickup_lat || null, order.pickup_lng || null, order.pickup_address || order.seller_address || '')}
                             </p>
                             {order.seller_phone && (
                                 <div className="flex items-center gap-1 mt-2 text-[10px] text-zinc-400">

@@ -7,11 +7,9 @@ import { MarketplaceEnhancementsController } from '../controllers/marketplace.en
 
 const marketplaceRoutes = new Hono();
 
-// Aplicar trava de segurança para ações sensíveis de mercado
+// Aplicar trava de segurança para ações sensíveis de mercado (Apenas criação na nova política)
 marketplaceRoutes.use('/create', securityLockMiddleware);
-marketplaceRoutes.use('/buy', securityLockMiddleware);
-marketplaceRoutes.use('/buy-on-credit', securityLockMiddleware);
-marketplaceRoutes.use('/boost', securityLockMiddleware);
+// 'buy', 'buy-on-credit' e 'boost' agora são permitidos mesmo com trava de segurança (gastos internos)
 
 /**
  * LISTINGS (Anúncios)
@@ -28,6 +26,7 @@ marketplaceRoutes.get('/contact/:listingId', authMiddleware, MarketplaceListings
  * ORDERS (Pedidos)
  */
 marketplaceRoutes.get('/my-orders', authMiddleware, MarketplaceOrdersController.getMyOrders);
+marketplaceRoutes.get('/my-sales', authMiddleware, MarketplaceOrdersController.getMySales);
 marketplaceRoutes.post('/buy', authMiddleware, MarketplaceOrdersController.buyListing);
 marketplaceRoutes.post('/buy-on-credit', authMiddleware, MarketplaceOrdersController.buyOnCredit);
 marketplaceRoutes.post('/order/:id/cancel', authMiddleware, MarketplaceOrdersController.cancelOrder);
@@ -37,6 +36,7 @@ marketplaceRoutes.post('/order/:id/receive', authMiddleware, MarketplaceOrdersCo
 marketplaceRoutes.post('/order/:id/tracking', authMiddleware, MarketplaceOrdersController.updateTrackingCode);
 marketplaceRoutes.get('/order/:id/tracking', authMiddleware, MarketplaceOrdersController.getOrderTracking);
 marketplaceRoutes.post('/order/:id/return', authMiddleware, MarketplaceOrdersController.requestReturn);
+marketplaceRoutes.post('/order/:orderId/food-status', authMiddleware, MarketplaceOrdersController.updateFoodOrderStatus);
 
 /**
  * LOGISTICS & FINANCE (Logística e Financeiro)
@@ -50,6 +50,10 @@ marketplaceRoutes.post('/logistic/mission/:id/delivered', authMiddleware, Market
 marketplaceRoutes.post('/logistic/settlement', authMiddleware, MarketplaceController.processSettlement);
 marketplaceRoutes.post('/order/:id/anticipate', authMiddleware, MarketplaceController.anticipate);
 marketplaceRoutes.post('/offline/sync', authMiddleware, MarketplaceController.syncOffline);
+marketplaceRoutes.get('/delivery/venues', authMiddleware, MarketplaceController.getDeliveryVenues);
+marketplaceRoutes.get('/delivery/categories', authMiddleware, MarketplaceController.getFoodCategories);
+marketplaceRoutes.post('/delivery/profile', authMiddleware, MarketplaceController.updateStoreProfile);
+marketplaceRoutes.post('/delivery/pause', authMiddleware, MarketplaceController.toggleMerchantPause);
 
 /**
  * ENHANCEMENTS - Mercado Livre Features (Favoritos, Perguntas, Avaliações)

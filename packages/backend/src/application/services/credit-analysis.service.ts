@@ -40,7 +40,23 @@ const INTEREST_RATES: { [key: number]: number } = {
 const VALID_GUARANTEE_PERCENTAGES = [50, 60, 70, 80, 90, 100];
 
 /**
- * Calcula a taxa de juros baseada na garantia oferecida
+ * Calcula a taxa de juros baseada na garantia oferecida.
+ * Retorna taxa mensal (ex: 0.015 = 1.5% ao mês).
+ */
+export const calculateMonthlyInterestRate = (guaranteePercentage: number): number => {
+    // Tabela de juros MENSAIS baseada na garantia
+    // 50% garantia → 3.5% ao mês
+    // 100% garantia → 1.5% ao mês (Mínimo histórico)
+    if (guaranteePercentage <= 50) return 0.035;
+    if (guaranteePercentage <= 60) return 0.030;
+    if (guaranteePercentage <= 70) return 0.025;
+    if (guaranteePercentage <= 80) return 0.022;
+    if (guaranteePercentage <= 90) return 0.018;
+    return 0.015; // 1.5% ao mês para 100% de garantia
+};
+
+/**
+ * Calcula a taxa de juros FLAT baseada na garantia oferecida (LEGADO - USADO EM APOIO MÚTUO)
  */
 export const calculateInterestRate = (guaranteePercentage: number): number => {
     if (guaranteePercentage <= 50) return INTEREST_RATES[50];
@@ -66,6 +82,8 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         hasOverdue: boolean;
         totalSpent: number;
         maxLoanAmount: number;
+        activeDebt: number;
+        availableLimit: number;
     }
 }> => {
     try {
@@ -94,7 +112,7 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         `, [userId]);
 
         if (userDataRes.rows.length === 0) {
-            return { eligible: false, reason: 'Usuário não encontrado', details: { score: 0, quotasCount: 0, quotasValue: 0, marketplaceTransactions: 0, accountAgeDays: 0, hasOverdue: false, totalSpent: 0, maxLoanAmount: 0 } };
+            return { eligible: false, reason: 'Usuário não encontrado', details: { score: 0, quotasCount: 0, quotasValue: 0, marketplaceTransactions: 0, accountAgeDays: 0, hasOverdue: false, totalSpent: 0, maxLoanAmount: 0, activeDebt: 0, availableLimit: 0 } };
         }
 
         const userData = userDataRes.rows[0];
@@ -167,11 +185,15 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         const isGuarantorResult = await pool.query(`
             SELECT COUNT(*) FROM loans 
             WHERE status IN ('APPROVED', 'PAYMENT_PENDING') 
-            AND (metadata->>'guarantorId' = $1 OR metadata->>'guarantor_id' = $1)
+            AND (metadata->>'guarantorId' = $1::text OR metadata->>'guarantor_id' = $1::text)
         `, [userId]);
         const isCurrentlyGuarantor = parseInt(isGuarantorResult.rows[0].count) > 0;
 
-        const details = { score, quotasCount, quotasValue, marketplaceTransactions, accountAgeDays, hasOverdue, totalSpent, maxLoanAmount, isCurrentlyGuarantor };
+        // CÁLCULO DE DÍVIDA ATIVA (NOVO: UNIFICADO)
+        const activeDebt = await getUserActiveDebt(pool, userId);
+        const availableLimit = Math.max(0, maxLoanAmount - activeDebt);
+
+        const details = { score, quotasCount, quotasValue, marketplaceTransactions, accountAgeDays, hasOverdue, totalSpent, maxLoanAmount, activeDebt, availableLimit, isCurrentlyGuarantor };
 
         console.log(`[DEBUG_CREDIT] User ${userId}: Score=${score}, Quotas=${quotasCount} (R$ ${quotasValue}), Spent=R$ ${totalSpent}, Limit=R$ ${maxLoanAmount}, Eligible=${!hasOverdue}`);
         if (hasOverdue) {
@@ -202,7 +224,7 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         return { eligible: true, details };
     } catch (error: any) {
         console.error('Erro ao verificar elegibilidade:', error);
-        return { eligible: false, reason: `Erro técnico na análise: ${error.message}`, details: { score: 0, quotasCount: 0, quotasValue: 0, marketplaceTransactions: 0, accountAgeDays: 0, hasOverdue: false, totalSpent: 0, maxLoanAmount: 0 } };
+        return { eligible: false, reason: `Erro técnico na análise: ${error.message}`, details: { score: 0, quotasCount: 0, quotasValue: 0, marketplaceTransactions: 0, accountAgeDays: 0, hasOverdue: false, totalSpent: 0, maxLoanAmount: 0, activeDebt: 0, availableLimit: 0 } };
     }
 };
 
@@ -368,13 +390,41 @@ export const getCreditAnalysis = async (pool: Pool | PoolClient, userId: string)
             interestRates: VALID_GUARANTEE_PERCENTAGES.map(pct => ({
                 guaranteePercentage: pct,
                 interestRate: INTEREST_RATES[pct] * 100 // em %
+            })),
+            monthlyInterestRates: VALID_GUARANTEE_PERCENTAGES.map(pct => ({
+                guaranteePercentage: pct,
+                interestRate: calculateMonthlyInterestRate(pct) * 100 // em %
             }))
         }
     };
 };
 
+/**
+ * Calcula a dívida ativa real do usuário (Soma dos saldos devedores de empréstimos ativos)
+ */
+export const getUserActiveDebt = async (pool: Pool | PoolClient, userId: string): Promise<number> => {
+    // Dívida = Valor Total a Repagar - Parcelas já pagas
+    const res = await pool.query(`
+        SELECT 
+            COALESCE(SUM(l.total_repayment), 0) as total_owed,
+            COALESCE((
+                SELECT SUM(li.amount) 
+                FROM loan_installments li 
+                JOIN loans l2 ON li.loan_id = l2.id 
+                WHERE (l2.user_id = $1::integer OR l2.metadata->>'guarantorId' = $1::text OR l2.metadata->>'guarantor_id' = $1::text) AND l2.status IN ('APPROVED', 'PAYMENT_PENDING') AND li.status = 'PAID'
+            ), 0) as total_paid
+        FROM loans l
+        WHERE (l.user_id = $1::integer OR l.metadata->>'guarantorId' = $1::text OR l.metadata->>'guarantor_id' = $1::text) AND l.status IN ('APPROVED', 'PAYMENT_PENDING')
+    `, [userId]);
+
+    const owed = parseFloat(res.rows[0].total_owed || 0);
+    const paid = parseFloat(res.rows[0].total_paid || 0);
+
+    return Math.max(0, owed - paid);
+};
+
 // Manter compatibilidade com código existente
 export const calculateUserLoanLimit = async (pool: Pool | PoolClient, userId: string): Promise<number> => {
     const eligibility = await checkLoanEligibility(pool, userId);
-    return eligibility.details.maxLoanAmount;
+    return eligibility.details.availableLimit; // RETORNA O DISPONÍVEL (Unificando comportamento)
 };

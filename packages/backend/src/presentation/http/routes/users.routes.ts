@@ -23,6 +23,8 @@ userRoutes.get('/sync', authMiddleware, UsersController.syncData);
 // Obter extrato de transações
 userRoutes.get('/transactions', authMiddleware, UsersController.getTransactions);
 
+
+
 // Excluir conta
 userRoutes.delete('/me', authMiddleware, UsersController.deleteAccount);
 

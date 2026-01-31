@@ -212,6 +212,10 @@ export class AuthController {
             );
 
             const newUser = newUserResult.rows[0];
+
+            // BLINDAGEM: Registrar aceite de termos
+            await AuthController.recordTermsAcceptance(c, newUser.id);
+
             const token = sign({ userId: newUser.id, email: newUser.email, isAdmin: newUser.is_admin }, process.env.JWT_SECRET!);
 
             return c.json({
@@ -318,6 +322,9 @@ export class AuthController {
 
             await pool.query('UPDATE users SET accepted_terms_at = NOW() WHERE id = $1', [user.id]);
 
+            // BLINDAGEM: Registrar na auditoria
+            await AuthController.recordTermsAcceptance(c, user.id);
+
             return c.json({ success: true, message: 'Termos aceitos com sucesso' });
         } catch (error: any) {
             if (error instanceof z.ZodError) return c.json({ success: false, message: 'Você deve aceitar os termos' }, 400);
@@ -357,6 +364,9 @@ export class AuthController {
                 );
                 user = newUserRes.rows[0];
                 isNewUser = true;
+
+                // BLINDAGEM: Registrar aceite de termos para novos usuários Google
+                await AuthController.recordTermsAcceptance(c, user.id);
             }
 
             // Verificar se é o Admin do Sistema definido no .env
@@ -627,6 +637,28 @@ export class AuthController {
         } catch (error: any) {
             console.error('[APPLY REFERRAL ERROR]:', error);
             return c.json({ success: false, message: 'Erro ao aplicar indicação' }, 500);
+        }
+    }
+
+    /**
+     * Helper para registrar aceite de termos na tabela de auditoria (Blindagem)
+     */
+    private static async recordTermsAcceptance(c: Context, userId: number) {
+        try {
+            const pool = getDbPool(c);
+            const ip = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || '127.0.0.1';
+            const userAgent = c.req.header('user-agent') || 'Unknown';
+
+            await pool.query(
+                `INSERT INTO terms_acceptance 
+                (user_id, terms_version, privacy_version, ip_address, user_agent) 
+                VALUES ($1, '2.0', '1.0', $2, $3)
+                ON CONFLICT (user_id, terms_version, privacy_version) DO NOTHING`,
+                [userId, ip, userAgent]
+            );
+        } catch (error) {
+            console.error('[COMPLIANCE ERROR] Falha ao registrar aceite de termos:', error);
+            // Não bloqueia o fluxo principal, mas loga o erro
         }
     }
 }

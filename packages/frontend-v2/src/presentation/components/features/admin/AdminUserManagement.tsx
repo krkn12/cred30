@@ -15,6 +15,7 @@ interface User {
     quotas_count: number;
     quotas_value: number;
     referrer_name?: string;
+    kyc_status?: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
 }
 
 export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title: string, message: string) => void, onError: (title: string, message: string) => void }) => {
@@ -38,7 +39,11 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title:
         pixKey: ''
     });
 
-    const fetchUsers = useCallback(async (isLoadMore = false) => {
+    // Ref para garantir estabilidade do onError sem incluí-lo na dependência do useCallback
+    const onErrorRef = React.useRef(onError);
+    React.useEffect(() => { onErrorRef.current = onError; }, [onError]);
+
+    const fetchUsers = useCallback(async (targetOffset: number, isLoadMore: boolean) => {
         if (!isLoadMore) {
             setLoading(true);
             setOffset(0);
@@ -47,31 +52,30 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title:
         }
 
         try {
-            const currentOffset = isLoadMore ? offset + LIMIT : 0;
             const res = await apiService.adminGetUsers({
                 search,
                 role: roleFilter,
                 status: statusFilter,
                 limit: LIMIT,
-                offset: currentOffset
+                offset: targetOffset
             });
             if (res.success) {
                 const newUsers = res.data || [];
                 setUsers(prev => isLoadMore ? [...prev, ...newUsers] : newUsers);
                 setHasMore(res.pagination?.hasMore || false);
                 setTotal(res.pagination?.total || 0);
-                if (isLoadMore) setOffset(currentOffset);
+                if (isLoadMore) setOffset(targetOffset);
             }
         } catch (error: any) {
-            onError('Erro', 'Falha ao buscar membros');
+            onErrorRef.current('Erro', 'Falha ao buscar membros');
         } finally {
             setLoading(false);
             setIsLoadingMore(false);
         }
-    }, [search, roleFilter, statusFilter, offset, onError]);
+    }, [search, roleFilter, statusFilter]);
 
     useEffect(() => {
-        fetchUsers();
+        fetchUsers(0, false);
     }, [fetchUsers]);
 
     const handleUpdateAccess = async (userId: number, role?: string, status?: string) => {
@@ -79,7 +83,7 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title:
             const res = await apiService.adminUpdateUserAccess({ userId, role, status });
             if (res.success) {
                 onSuccess('Sucesso', 'Permissões atualizadas!');
-                fetchUsers();
+                fetchUsers(0, false);
             }
         } catch (error: any) {
             onError('Erro', error.message);
@@ -94,7 +98,20 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title:
                 onSuccess('Sucesso', 'Atendente criado com sucesso!');
                 setShowCreateModal(false);
                 setNewAttendant({ name: '', email: '', password: '', secretPhrase: '', pixKey: '' });
-                fetchUsers();
+                fetchUsers(0, false);
+            }
+        } catch (error: any) {
+            onError('Erro', error.message);
+        }
+    };
+
+    const handleApproveKyc = async (userId: number) => {
+        if (!window.confirm('Tem certeza que deseja APROVAR manualmente o KYC deste usuário?')) return;
+        try {
+            const res = await apiService.adminUpdateKycStatus(userId, 'APPROVED');
+            if (res.success) {
+                onSuccess('Sucesso', 'KYC Aprovado Manualmente!');
+                fetchUsers(0, false);
             }
         } catch (error: any) {
             onError('Erro', error.message);
@@ -119,7 +136,7 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title:
                         placeholder="Pesquisar por nome ou email..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && fetchUsers()}
+                        onKeyDown={(e) => e.key === 'Enter' && fetchUsers(0, false)}
                         className="w-full bg-black/40 border border-zinc-800 rounded-2xl pl-12 pr-4 py-3.5 text-sm text-white focus:outline-none focus:border-primary-500/50 transition-all font-medium"
                     />
                 </div>
@@ -166,6 +183,7 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title:
                                 <th className="px-6 py-5 text-[10px] font-black text-zinc-500 uppercase tracking-widest w-16">ID</th>
                                 <th className="px-6 py-5 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Membro</th>
                                 <th className="px-6 py-5 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Status/Cargo</th>
+                                <th className="px-6 py-5 text-[10px] font-black text-zinc-500 uppercase tracking-widest text-center">KYC</th>
                                 <th className="px-6 py-5 text-[10px] font-black text-zinc-500 uppercase tracking-widest text-right">Saldo/Score</th>
                                 <th className="px-6 py-5 text-[10px] font-black text-zinc-500 uppercase tracking-widest text-center">Ações</th>
                             </tr>
@@ -205,6 +223,16 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title:
                                             </div>
                                             <p className="text-[10px] text-zinc-600 flex items-center gap-1 font-bold uppercase"><Calendar size={10} /> Desde {new Date(user.created_at).toLocaleDateString('pt-BR')}</p>
                                         </div>
+                                    </td>
+                                    <td className="px-6 py-5 text-center">
+                                        <span className={`text-[10px] font-black px-2 py-1 rounded-full border ${user.kyc_status === 'APPROVED'
+                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                            : user.kyc_status === 'REJECTED'
+                                                ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                                : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                                            }`}>
+                                            {user.kyc_status || 'NONE'}
+                                        </span>
                                     </td>
                                     <td className="px-6 py-5 text-right">
                                         <div className="space-y-1">
@@ -254,6 +282,16 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title:
                                                     className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white transition-all flex items-center justify-center border border-amber-500/20"
                                                 >
                                                     <Shield size={18} className="rotate-180" />
+                                                </button>
+                                            )}
+
+                                            {user.kyc_status !== 'APPROVED' && (
+                                                <button
+                                                    title="Aprovar KYC Manualmente"
+                                                    onClick={() => handleApproveKyc(user.id)}
+                                                    className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 hover:bg-purple-500 hover:text-white transition-all flex items-center justify-center border border-purple-500/20"
+                                                >
+                                                    <ShieldCheck size={18} />
                                                 </button>
                                             )}
                                         </div>
@@ -344,7 +382,7 @@ export const AdminUserManagement = ({ onSuccess, onError }: { onSuccess: (title:
             {hasMore && (
                 <div className="p-8 flex flex-col items-center gap-4 bg-black/20 border-t border-zinc-800/50">
                     <button
-                        onClick={() => fetchUsers(true)}
+                        onClick={() => fetchUsers(offset + LIMIT, true)}
                         disabled={isLoadingMore}
                         className="bg-zinc-800 hover:bg-zinc-700 text-white px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-3 border border-zinc-700 shadow-xl group disabled:opacity-50"
                     >

@@ -88,6 +88,9 @@ export class PromoVideosController {
                     platform: v.platform,
                     tag: v.tag || 'OUTROS',
                     pricePerView: parseFloat(v.price_per_view),
+                    durationSeconds: v.duration_seconds || 60,
+                    totalViews: parseInt(v.total_views) || 0,
+                    completedViews: parseInt(v.completed_views) || 0,
                     minWatchSeconds: v.min_watch_seconds || 20,
                     viewerEarningPoints: Math.floor(parseFloat(v.price_per_view) * VIEWER_SHARE * POINTS_PER_REAL),
                     promoterName: v.promoter_name,
@@ -147,6 +150,8 @@ export class PromoVideosController {
                     platform: v.platform,
                     tag: v.tag || 'OUTROS',
                     pricePerView: parseFloat(v.price_per_view),
+                    durationSeconds: v.duration_seconds || 60,
+                    totalViews: parseInt(v.total_views) || 0,
                     minWatchSeconds: v.min_watch_seconds || 20,
                     viewerEarningPoints: Math.floor(parseFloat(v.price_per_view) * VIEWER_SHARE * POINTS_PER_REAL),
                     promoterName: v.promoter_name,
@@ -409,13 +414,17 @@ export class PromoVideosController {
                     return { videoId: videoResult.rows[0].id };
                 });
 
+                if (!result.success) {
+                    return c.json({ success: false, message: result.error || 'Erro ao processar criação da campanha.' }, 500);
+                }
+
                 return c.json({
                     success: true,
                     message: `Campanha ativa! Alcance: ${targetViews} views.`,
                     data: {
                         targetViews,
                         viewerEarningPoints: Math.floor(grossPPV * VIEWER_SHARE * POINTS_PER_REAL),
-                        id: result.data?.videoId || result.videoId // Handle both transaction wrapper types
+                        id: result.data?.videoId
                     }
                 });
             }
