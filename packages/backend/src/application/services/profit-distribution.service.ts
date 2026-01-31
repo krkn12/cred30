@@ -203,7 +203,7 @@ export const distributeProfits = async (pool: Pool | PoolClient): Promise<any> =
                     WHERE u.id = dd.u_id
                 )
                 INSERT INTO transactions (user_id, type, amount, description, status)
-                SELECT u_id, 'DEPOSIT', u_amount, u_desc, 'APPROVED'
+                SELECT u_id, 'DIVIDEND', u_amount, u_desc, 'APPROVED'
                 FROM distribution_data
                 WHERE u_amount > 0;
             `, [userIds, userAmounts, userDescriptions]);

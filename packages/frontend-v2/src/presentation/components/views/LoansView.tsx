@@ -49,7 +49,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
     const [creditLimit, setCreditLimit] = useState<{
         totalLimit: number;
         activeDebt: number;
-        remainingLimit: number;
+        availableLimit: number;
         analysis?: { eligible: boolean; reason: string; details: any }
     } | null>(null);
 
@@ -67,14 +67,12 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
         fetchLimit();
     }, [loans, userBalance]);
 
-    // Tabela de taxas baseada na garantia (Conforme Backend)
+    // Tabela de taxas baseada na garantia (Conforme Backend Unificado)
     const getInterestRate = (pct: number) => {
-        if (pct <= 50) return 0.35;
-        if (pct <= 60) return 0.28;
-        if (pct <= 70) return 0.22;
-        if (pct <= 80) return 0.18;
-        if (pct <= 90) return 0.14;
-        return 0.10;
+        // Fórmula Unificada: Base 5% + (35% * (1 - pct/100))
+        // Se 100% Garantia -> 5% juros
+        // Se 0% Garantia -> 40% juros
+        return 0.05 + (0.35 * (1 - pct / 100));
     };
 
     const effectiveInterestRate = guarantorId ? 0.10 : getInterestRate(guaranteePercentage);
@@ -152,13 +150,20 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                 <div className="relative z-10">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
                         <div>
-                            <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1 block">Saldo Devedor Atual</span>
-                            <h3 className="text-2xl sm:text-3xl font-black text-white">R$ {activeLoans.length > 0 ? formatNumber(Math.max(0, (activeLoans[0].remainingAmount ?? activeLoans[0].totalRepayment) < 0.05 ? 0 : (activeLoans[0].remainingAmount ?? activeLoans[0].totalRepayment))) : '0,00'}</h3>
+                            <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1 block">Saldo Devedor Total</span>
+                            <h3 className="text-2xl sm:text-3xl font-black text-white">
+                                {formatBRL(activeLoans.reduce((acc, l) => acc + (l.remainingAmount ?? l.totalRepayment), 0))}
+                            </h3>
+                            {activeLoans.length > 1 && (
+                                <p className="text-[10px] text-zinc-500 mt-1 font-bold italic">
+                                    * Somatória de {activeLoans.length} compromissos ativos
+                                </p>
+                            )}
                         </div>
                         <div className="bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 rounded-lg flex items-center gap-2 self-start sm:self-auto uppercase">
                             <Clock size={14} className="text-yellow-500" />
                             <span className="text-yellow-500 text-[10px] font-black">
-                                Próx. Vencimento: {activeLoans.length > 0 ? (getNextDueDate(activeLoans[0]) ? new Date(getNextDueDate(activeLoans[0])!).toLocaleDateString('pt-BR') : 'N/A') : 'N/A'}
+                                Próx. Vencimento: {activeLoans.length > 0 ? (getNextDueDate(activeLoans.sort((a, b) => new Date(getNextDueDate(a) || 0).getTime() - new Date(getNextDueDate(b) || 0).getTime())[0]) ? new Date(getNextDueDate(activeLoans[0])!).toLocaleDateString('pt-BR') : 'N/A') : 'N/A'}
                                 {activeLoans.length > 0 && (
                                     <span className="ml-1 opacity-60">({getDaysRemaining(getNextDueDate(activeLoans[0]))} dias)</span>
                                 )}
@@ -170,28 +175,22 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                         <div className="w-full bg-zinc-900 rounded-full h-3 overflow-hidden border border-white/5">
                             <div
                                 className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400"
-                                style={{ width: `${activeLoans.length > 0 ? ((activeLoans[0].totalPaid || 0) / activeLoans[0].totalRepayment) * 100 : 0}%` }}
+                                style={{
+                                    width: `${activeLoans.length > 0
+                                        ? (activeLoans.reduce((acc, l) => acc + (l.totalPaid || 0), 0) / activeLoans.reduce((acc, l) => acc + l.totalRepayment, 0)) * 100
+                                        : 0}%`
+                                }}
                             />
                         </div>
                         <div className="flex justify-between text-xs font-medium text-zinc-500">
-                            <span>Pago: R$ {activeLoans.length > 0 ? formatNumber(activeLoans[0].totalPaid) : '0,00'}</span>
-                            <span>Total: R$ {activeLoans.length > 0 ? formatNumber(activeLoans[0].totalRepayment) : '0,00'}</span>
+                            <span>Total Pago: {formatBRL(activeLoans.reduce((acc, l) => acc + (l.totalPaid || 0), 0))}</span>
+                            <span>Total a Pagar: {formatBRL(activeLoans.reduce((acc, l) => acc + l.totalRepayment, 0))}</span>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
-                        <button
-                            onClick={() => activeLoans.length > 0 && setInstallmentModalData({ loanId: activeLoans[0].id, installmentAmount: getInstallmentValue(activeLoans[0]) })}
-                            className="bg-emerald-500 hover:bg-emerald-400 text-black py-4 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
-                        >
-                            Repor Parcela
-                        </button>
-                        <button
-                            onClick={() => activeLoans.length > 0 && setPayModalId(activeLoans[0].id)}
-                            className="bg-zinc-800 hover:bg-zinc-700 text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-                        >
-                            Finalizar
-                        </button>
+                    <div className="mt-6 text-center">
+                        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-2">Gerencie seus compromissos individuais abaixo</p>
+                        <div className="w-full h-px bg-white/5"></div>
                     </div>
                 </div>
             </div>
@@ -234,13 +233,13 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                             ) : (
                                 <>
                                     <div className="flex justify-between items-center mb-2">
-                                        <span className="text-2xl font-bold text-white">{formatBRL(creditLimit.remainingLimit)}</span>
+                                        <span className="text-2xl font-bold text-white">{formatBRL(creditLimit.availableLimit)}</span>
                                         <span className="text-xs text-zinc-400">de {formatBRL(creditLimit.totalLimit)}</span>
                                     </div>
                                     <div className="w-full h-2 bg-background rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-gradient-to-r from-emerald-500 to-primary-500 transition-all"
-                                            style={{ width: `${Math.max(0, Math.min(100, (creditLimit.remainingLimit / (creditLimit.totalLimit || 1)) * 100))}%` }}
+                                            style={{ width: `${Math.max(0, Math.min(100, (creditLimit.availableLimit / (creditLimit.totalLimit || 1)) * 100))}%` }}
                                         />
                                     </div>
                                     {creditLimit.activeDebt > 0 && (

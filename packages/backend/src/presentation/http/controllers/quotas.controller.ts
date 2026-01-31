@@ -113,11 +113,27 @@ export class QuotasController {
             // 2. Bloquear se exceder o limite individual (EXCETO ADMIN)
             if (!user.isAdmin) {
                 // VERIFICAÇÃO KYC (NOVA)
-                const userVerificationRes = await pool.query('SELECT is_verified FROM users WHERE id = $1', [user.id]);
-                if (!userVerificationRes.rows[0]?.is_verified) {
+                const userRes = await pool.query('SELECT is_verified, kyc_status, kyc_notes FROM users WHERE id = $1', [user.id]);
+                const userData = userRes.rows[0];
+
+                if (!userData?.is_verified) {
+                    if (userData?.kyc_status === 'PENDING') {
+                        return c.json({
+                            success: false,
+                            message: 'Sua verificação de identidade (KYC) está em análise. Aguarde a aprovação administrativa para realizar esta operação.'
+                        }, 403);
+                    }
+
+                    if (userData?.kyc_status === 'REJECTED') {
+                        return c.json({
+                            success: false,
+                            message: `Sua verificação (KYC) foi rejeitada. Motivo: ${userData.kyc_notes}. Por favor, contate o suporte.`
+                        }, 403);
+                    }
+
                     return c.json({
                         success: false,
-                        message: 'Esta operação exige validação de segurança (KYC). Por favor, complete seu perfil e aguarde a liberação administrativa.'
+                        message: 'Esta operação exige validação de segurança (KYC). Por favor, envie seus documentos no menu lateral.'
                     }, 403);
                 }
 
@@ -159,7 +175,9 @@ export class QuotasController {
                 console.log(`[QUOTAS] Initiating transaction for user ${user.id}, paymentMethod: ${paymentMethod}`);
 
                 if (useBalance) {
-                    const balanceCheck = await lockUserBalance(client, user.id, totalWithServiceFee);
+                    // BYPASS DE SEGURANÇA: Permitir compra de cotas mesmo com trava de saque (Lock 48h), 
+                    // pois investir trava o dinheiro no sistema (Vesting) e é seguro.
+                    const balanceCheck = await lockUserBalance(client, user.id, totalWithServiceFee, { skipLockCheck: true });
                     if (!balanceCheck.success) {
                         throw new Error(balanceCheck.error);
                     }

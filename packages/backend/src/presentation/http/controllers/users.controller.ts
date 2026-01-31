@@ -257,10 +257,10 @@ export class UsersController {
 
             const result = await pool.query(`
                 WITH user_stats AS (
-                    SELECT u.balance, u.score, u.membership_type, u.is_verified, u.is_seller, u.security_lock_until, u.ad_points, u.pending_ad_points, u.phone, u.cpf, u.pix_key, u.address, u.referred_by, COALESCE(u.total_dividends_earned, 0) as total_dividends_earned, u.last_login_at, u.safe_contact_phone, u.is_protected, u.protection_expires_at,
+                    SELECT u.balance, u.score, u.membership_type, u.is_verified, u.kyc_status, u.kyc_document_path, u.kyc_notes, u.is_seller, u.security_lock_until, u.ad_points, u.pending_ad_points, u.phone, u.cpf, u.pix_key, u.address, u.referred_by, COALESCE(u.total_dividends_earned, 0) as total_dividends_earned, u.last_login_at, u.safe_contact_phone, u.is_protected, u.protection_expires_at, (u.password_hash IS NOT NULL) as has_password,
                     (SELECT COUNT(*) FROM quotas WHERE user_id = u.id AND status = 'ACTIVE') as quota_count,
-                    (SELECT COALESCE(SUM(total_repayment), 0) FROM loans WHERE user_id = u.id AND status IN ('APPROVED', 'PAYMENT_PENDING')) as debt_total
-                    FROM users u WHERE u.id = $1
+                    (SELECT COALESCE(SUM(total_repayment), 0) FROM loans WHERE (user_id = u.id OR metadata->>'guarantorId' = $1::text OR metadata->>'guarantor_id' = $1::text) AND status IN ('APPROVED', 'PAYMENT_PENDING')) as debt_total
+                    FROM users u WHERE u.id = $1::integer
                 ),
                 system_stats AS (
                     SELECT mutual_reserve FROM system_config LIMIT 1
@@ -269,10 +269,10 @@ export class UsersController {
                     SELECT COUNT(*) as count FROM users WHERE is_protected = TRUE
                 ),
                 recent_tx AS (
-                    SELECT COALESCE(json_agg(t), '[]'::json) FROM (SELECT id, user_id as "userId", type, amount, created_at as date, description, status, metadata FROM transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20) t
+                    SELECT COALESCE(json_agg(t), '[]'::json) FROM (SELECT id, user_id as "userId", type, amount, created_at as date, description, status, metadata FROM transactions WHERE user_id = $1::integer ORDER BY created_at DESC LIMIT 20) t
                 ),
                 active_quotas AS (
-                    SELECT COALESCE(json_agg(q), '[]'::json) FROM (SELECT id, user_id as "userId", purchase_price as "purchasePrice", current_value as "currentValue", purchase_date as "purchaseDate", status, yield_rate as "yieldRate" FROM quotas WHERE user_id = $1 ORDER BY purchase_date DESC) q
+                    SELECT COALESCE(json_agg(q), '[]'::json) FROM (SELECT id, user_id as "userId", purchase_price as "purchasePrice", current_value as "currentValue", purchase_date as "purchaseDate", status, yield_rate as "yieldRate" FROM quotas WHERE user_id = $1::integer ORDER BY purchase_date DESC) q
                 ),
                 active_loans AS (
                     SELECT COALESCE(json_agg(l), '[]'::json) FROM (
@@ -280,6 +280,7 @@ export class UsersController {
                         COALESCE((SELECT SUM(COALESCE(li.amount, li.expected_amount)::float) FROM loan_installments li WHERE li.loan_id = ln.id AND li.status = 'PAID'), 0) as "totalPaid",
                         ln.total_repayment::float - COALESCE((SELECT SUM(COALESCE(li.amount, li.expected_amount)::float) FROM loan_installments li WHERE li.loan_id = ln.id AND li.status = 'PAID'), 0) as "remainingAmount",
                         (SELECT COUNT(*) FROM loan_installments li WHERE li.loan_id = ln.id AND li.status = 'PAID')::int as "paidInstallmentsCount",
+                        CASE WHEN (ln.metadata->>'guarantorId' = $1::text OR ln.metadata->>'guarantor_id' = $1::text) THEN true ELSE false END as "isGuarantor",
                         CASE WHEN COALESCE((SELECT SUM(COALESCE(li.amount, li.expected_amount)::float) FROM loan_installments li WHERE li.loan_id = ln.id AND li.status = 'PAID'), 0) >= ln.total_repayment::float - 0.01 THEN true ELSE false END as "isFullyPaid",
                         COALESCE((
                           SELECT json_agg(json_build_object(
@@ -294,7 +295,7 @@ export class UsersController {
                           FROM loan_installments li
                           WHERE li.loan_id = ln.id
                         ), '[]'::json) as "installmentsList"
-                        FROM loans ln WHERE ln.user_id = $1 ORDER BY ln.created_at DESC
+                        FROM loans ln WHERE (ln.user_id = $1::integer OR ln.metadata->>'guarantorId' = $1::text OR ln.metadata->>'guarantor_id' = $1::text) ORDER BY ln.created_at DESC
                     ) l
                 )
                 SELECT 
@@ -331,11 +332,15 @@ export class UsersController {
                         pixKey: stats.pix_key || null,
                         address: stats.address || null,
                         referred_by: stats.referred_by || null,
-                        safeContactPhone: stats.safe_contact_phone || null,
                         total_dividends_earned: parseFloat(stats.total_dividends_earned || '0'),
                         last_login_at: stats.last_login_at,
+                        has_password: Boolean(stats.has_password),
+                        safeContactPhone: stats.safe_contact_phone || null,
                         is_protected: stats.is_protected || false,
-                        protection_expires_at: stats.protection_expires_at || null
+                        protection_expires_at: stats.protection_expires_at || null,
+                        kyc_status: stats.kyc_status || 'NONE',
+                        kyc_notes: stats.kyc_notes || null,
+                        kyc_document_path: stats.kyc_document_path || null
                     },
                     system: {
                         mutualProtectionFund: parseFloat(data.system_stats?.mutual_reserve || '0'),
@@ -363,6 +368,7 @@ export class UsersController {
                 }
             });
         } catch (error: any) {
+            console.error('[SYNC_DATA_ERROR]:', error, error.stack);
             return c.json({ success: false, message: 'Erro ao sincronizar' }, 500);
         }
     }
@@ -373,8 +379,12 @@ export class UsersController {
      */
     static async changePassword(c: Context) {
         try {
-            const { oldPassword, newPassword } = await c.req.json();
+            const body = await c.req.json();
+            const { oldPassword, newPassword } = body;
             const user = c.get('user') as UserContext;
+
+            console.log(`[ChangePassword] User ${user.email} attempting change. hasPassword context: ${user.hasPassword}`);
+            console.log(`[ChangePassword] oldPassword received: ${oldPassword === 'google-user' ? 'GOOGLE_USER_PLACEHOLDER' : (oldPassword ? 'REAL_PASSWORD_PROVIDED' : 'NO_PASSWORD_PROVIDED')}`);
             const pool = getDbPool(c);
 
             const result = await pool.query('SELECT password_hash FROM users WHERE id = $1', [user.id]);

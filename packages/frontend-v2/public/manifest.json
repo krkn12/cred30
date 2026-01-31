@@ -1,0 +1,70 @@
+{
+    "id": "/",
+    "name": "Cred30 Associativo",
+    "short_name": "Cred30",
+    "description": "Plataforma de Apoio Mútuo e Participação Social",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "display_override": [
+        "standalone",
+        "window-controls-overlay"
+    ],
+    "background_color": "#09090b",
+    "theme_color": "#09090b",
+    "orientation": "portrait",
+    "categories": [
+        "finance",
+        "productivity",
+        "social"
+    ],
+    "lang": "pt-BR",
+    "dir": "ltr",
+    "prefer_related_applications": false,
+    "related_applications": [],
+    "icons": [
+        {
+            "src": "pwa-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "pwa-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "ad-banner.png",
+            "sizes": "1280x720",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Homescreen do App"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Investir",
+            "url": "/?view=invest",
+            "icons": [
+                {
+                    "src": "pwa-192x192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "Academy",
+            "url": "/?view=education",
+            "icons": [
+                {
+                    "src": "pwa-192x192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        }
+    ]
+}

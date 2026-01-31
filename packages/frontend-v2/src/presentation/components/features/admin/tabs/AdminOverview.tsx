@@ -34,8 +34,8 @@ const MetricCard = memo(({ title, value, subtitle, icon: Icon, color }: MetricCa
                 </div>
                 <span className="text-xs font-bold uppercase tracking-wider opacity-80">{title}</span>
             </div>
-            <p className="text-3xl font-bold tracking-tight">{value}</p>
-            <p className="text-[10px] opacity-90 mt-1 font-medium uppercase">{subtitle}</p>
+            <p className="text-3xl font-bold tracking-tight truncate" title={String(value)}>{value}</p>
+            <p className="text-[10px] opacity-90 mt-1 font-medium uppercase truncate">{subtitle}</p>
         </div>
     );
 });
@@ -65,59 +65,79 @@ export const AdminOverview = ({ state }: AdminOverviewProps) => {
             </div>
 
             {/* Dashboard de Potes (Divisão dos 12%) */}
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-[2.5rem] p-8">
-                <div className="flex items-center gap-3 mb-8">
-                    <div className="p-3 bg-primary-500/10 rounded-2xl">
-                        <TrendingUp className="text-primary-500" size={24} />
+            <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-[2.5rem] p-8 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-10">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-primary-500/10 rounded-2xl border border-primary-500/20">
+                            <TrendingUp className="text-primary-500" size={24} />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-white uppercase tracking-widest leading-none mb-1">Engrenagem Financeira</h3>
+                            <p className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em] italic">Transparência da Taxa de 12% do Marketplace</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="text-xl font-black text-white uppercase tracking-widest">Dashboard de Potes</h3>
-                        <p className="text-xs text-zinc-500 font-bold">Transparência da Taxa de 12% do Marketplace</p>
+                    <div className="hidden md:flex items-center gap-2 bg-zinc-800/50 px-4 py-2 rounded-2xl border border-zinc-700/50">
+                        <Activity className="text-zinc-600" size={14} />
+                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Tempo Real</span>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-6 gap-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <MetricCard
-                        title="Cotistas (6%)"
-                        value={formatCurrency(state.stats?.systemConfig?.profit_pool || 0)}
-                        subtitle="Distribuição de Sobras"
-                        icon={Users}
+                        title="Saldo Sistema"
+                        value={formatCurrency(state.stats?.systemConfig?.system_balance || 0)}
+                        subtitle="Custódia e Reserva Central"
+                        icon={DollarSign}
                         color="blue"
                     />
                     <MetricCard
-                        title="Impostos (1.2%)"
+                        title="Pool Cotistas"
+                        value={formatCurrency(state.stats?.systemConfig?.profit_pool || 0)}
+                        subtitle="Fundo de Distribuição (6%)"
+                        icon={Users}
+                        color="emerald"
+                    />
+                    <MetricCard
+                        title="Tax Reserve"
                         value={formatCurrency(state.stats?.systemConfig?.total_tax_reserve || 0)}
-                        subtitle="Reserva Fiscal"
+                        subtitle="Compromisso Fiscal (1.2%)"
                         icon={ShieldCheck}
                         color="red"
                     />
                     <MetricCard
-                        title="Operacional (1.2%)"
+                        title="Infraestrutura"
                         value={formatCurrency(state.stats?.systemConfig?.total_operational_reserve || 0)}
-                        subtitle="Servidores e APIs"
+                        subtitle="Custos de Escala (1.2%)"
                         icon={Activity}
                         color="orange"
                     />
                     <MetricCard
-                        title="Pró-Labore (1.2%)"
+                        title="Pró-Labore"
                         value={formatCurrency(state.stats?.systemConfig?.total_owner_profit || 0)}
-                        subtitle="Excedente do Fundador"
+                        subtitle="Remuneração Owner (1.2%)"
                         icon={DollarSign}
-                        color="emerald"
+                        color="purple"
                     />
                     <MetricCard
-                        title="Estabilidade (1.2%)"
+                        title="Fundo Social"
                         value={formatCurrency(state.stats?.systemConfig?.investment_reserve || 0)}
-                        subtitle="Fundo de Reserva"
+                        subtitle="Reserva de Impacto (1.2%)"
                         icon={ShieldCheck}
+                        color="indigo"
+                    />
+                    <MetricCard
+                        title="Growth Reserve"
+                        value={formatCurrency(state.stats?.systemConfig?.total_corporate_investment_reserve || 0)}
+                        subtitle="Expansão e Venture (1.2%)"
+                        icon={TrendingUp}
                         color="cyan"
                     />
                     <MetricCard
-                        title="Empresas (1.2%)"
-                        value={formatCurrency(state.stats?.systemConfig?.total_corporate_investment_reserve || 0)}
-                        subtitle="Venture Capital / Equity"
-                        icon={TrendingUp}
-                        color="indigo"
+                        title="Total Ativo"
+                        value={formatCurrency((state.stats?.systemConfig?.system_balance || 0) + (state.stats?.systemConfig?.profit_pool || 0))}
+                        subtitle="Liquidez de Plataforma"
+                        icon={Activity}
+                        color="yellow"
                     />
                 </div>
             </div>

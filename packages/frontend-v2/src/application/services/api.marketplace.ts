@@ -52,8 +52,9 @@ export class MarketplaceApi extends ApiBase {
     }
 
     // --- LOGISTICS ---
-    async getAvailableDeliveries(): Promise<ApiResponse<any>> {
-        return await this.request<any>('/marketplace/logistic/missions');
+    async getAvailableDeliveries(lat?: number, lng?: number): Promise<ApiResponse<any>> {
+        const query = (lat && lng) ? `?lat=${lat}&lng=${lng}` : '';
+        return await this.request<any>(`/marketplace/logistic/missions${query}`);
     }
 
     async acceptDelivery(orderId: number): Promise<ApiResponse<any>> {
@@ -75,6 +76,10 @@ export class MarketplaceApi extends ApiBase {
 
     async cancelDelivery(orderId: number): Promise<ApiResponse<any>> {
         return await this.post<any>(`/logistics/cancel/${orderId}`, {});
+    }
+
+    async getShippingQuote(listingId: number | string, cep: string): Promise<ApiResponse<any>> {
+        return await this.request<any>(`/marketplace/logistic/quote?listingId=${listingId}&destCep=${cep}`);
     }
 
     // --- AI ---
@@ -142,6 +147,77 @@ export class MarketplaceApi extends ApiBase {
 
     async registerSeller(data: any): Promise<ApiResponse<any>> {
         return await this.post<any>('/seller/register', data);
+    }
+
+    // --- FOOD DELIVERY ---
+    async getFoodCategories(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/marketplace/delivery/categories');
+    }
+
+    async getVenues(category?: string, city?: string, state?: string): Promise<ApiResponse<any>> {
+        let query = '';
+        if (category || city || state) {
+            const params = new URLSearchParams();
+            if (category) params.append('category', category);
+            if (city) params.append('city', city);
+            if (state) params.append('state', state);
+            query = `?${params.toString()}`;
+        }
+        return await this.request<any>(`/marketplace/delivery/venues${query}`);
+    }
+
+    async updateFoodOrderStatus(orderId: number, status: 'PREPARING' | 'READY_FOR_PICKUP'): Promise<ApiResponse<any>> {
+        return await this.post<any>(`/marketplace/order/${orderId}/food-status`, { status });
+    }
+
+    async updateStoreProfile(data: { merchantName: string, category: string, openingHours: any }): Promise<ApiResponse<any>> {
+        return await this.post<any>('/marketplace/delivery/profile', data);
+    }
+
+    async toggleStorePause(isPaused: boolean): Promise<ApiResponse<any>> {
+        return await this.post<any>('/marketplace/delivery/pause', { isPaused });
+    }
+
+    async updateMissionLocation(orderId: number, lat: number, lng: number): Promise<ApiResponse<any>> {
+        return await this.post<any>(`/logistics/location/${orderId}`, { lat, lng });
+    }
+
+    // --- TERMOS DE USO ---
+    async getSellerTermsText(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/terms/seller/text');
+    }
+
+    async getCourierTermsText(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/terms/courier/text');
+    }
+
+    async getTermsStatus(): Promise<ApiResponse<any>> {
+        return await this.request<any>('/terms/status');
+    }
+
+    async acceptSellerTerms(): Promise<ApiResponse<any>> {
+        return await this.post<any>('/terms/seller/accept', {});
+    }
+
+    async acceptCourierTerms(): Promise<ApiResponse<any>> {
+        return await this.post<any>('/terms/courier/accept', {});
+    }
+
+    // --- CLAIMS / INCIDENTES ---
+    async createClaim(orderId: number, claimType: string, description: string, evidenceUrls?: string[]): Promise<ApiResponse<any>> {
+        return await this.post<any>('/claims/create', { orderId, claimType, description, evidenceUrls });
+    }
+
+    async listClaims(status: string = 'PENDING'): Promise<ApiResponse<any>> {
+        return await this.request<any>(`/claims/list?status=${status}`);
+    }
+
+    async getClaimDetails(claimId: number): Promise<ApiResponse<any>> {
+        return await this.request<any>(`/claims/${claimId}`);
+    }
+
+    async resolveClaim(claimId: number, data: { status: 'APPROVED' | 'REJECTED', sellerRefund?: number, buyerRefund?: number, courierPenalty?: number, adminNotes?: string }): Promise<ApiResponse<any>> {
+        return await this.post<any>(`/claims/${claimId}/resolve`, data);
     }
 }
 

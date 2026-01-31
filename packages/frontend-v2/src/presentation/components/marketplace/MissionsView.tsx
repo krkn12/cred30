@@ -1,6 +1,7 @@
 import React from 'react';
 import { Truck, MapPin, Phone } from 'lucide-react';
 import { VEHICLE_ICONS } from './marketplace.constants';
+import { correctStoredAddress } from '../../../application/utils/location_corrections';
 
 interface MissionsViewProps {
     missions: any[];
@@ -83,41 +84,41 @@ export const MissionsView = ({ missions, currentUserId, formatCurrency, onAccept
                     {missions.map(mission => (
                         <div key={mission.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex flex-col md:flex-row gap-5 items-start md:items-center group hover:border-indigo-500/40 transition-all">
                             <div className="w-16 h-16 bg-zinc-950 rounded-xl overflow-hidden shrink-0 border border-zinc-800">
-                                <img src={mission.image_url} alt={mission.item_title} className="w-full h-full object-cover" />
+                                <img src={mission.imageUrl} alt={mission.itemTitle} className="w-full h-full object-cover" />
                             </div>
                             <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="text-[10px] font-black bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded uppercase tracking-widest">TRANSPORTE</span>
                                     {(() => {
-                                        const VehicleIcon = VEHICLE_ICONS[mission.required_vehicle] || Truck;
+                                        const VehicleIcon = VEHICLE_ICONS[mission.requiredVehicle] || Truck;
                                         return (
                                             <div className="flex items-center gap-1 bg-zinc-800 px-2 py-0.5 rounded border border-zinc-700">
                                                 <VehicleIcon size={10} className="text-primary-400" />
-                                                <span className="text-[9px] text-zinc-400 font-bold uppercase">{mission.required_vehicle || 'MOTO'}</span>
+                                                <span className="text-[9px] text-zinc-400 font-bold uppercase">{mission.requiredVehicle || 'MOTO'}</span>
                                             </div>
                                         );
                                     })()}
                                     {mission.invited_courier_id === currentUserId && (
                                         <span className="text-[10px] font-black bg-amber-500 text-black px-2 py-0.5 rounded uppercase tracking-widest animate-pulse">CONVITE</span>
                                     )}
-                                    <span className="text-[10px] text-zinc-500 font-bold uppercase">• {new Date(mission.created_at).toLocaleDateString()}</span>
+                                    <span className="text-[10px] text-zinc-500 font-bold uppercase">• {new Date(mission.createdAt).toLocaleDateString()}</span>
                                 </div>
-                                <h4 className="font-bold text-white text-base">{mission.item_title}</h4>
+                                <h4 className="font-bold text-white text-base">{mission.itemTitle}</h4>
                                 <div className="text-xs text-zinc-400 mt-2 flex flex-col gap-2">
                                     <div className="flex flex-col gap-0.5">
-                                        <div className="flex items-center gap-2"><MapPin size={12} className="text-amber-500" /> <span className="text-zinc-500">Coleta:</span> <strong>{mission.pickup_address}</strong> ({mission.seller_name.split(' ')[0]})</div>
-                                        <div className="flex items-center gap-2 pl-5 text-[10px] text-zinc-500 font-mono"><Phone size={10} /> {mission.seller_phone}</div>
+                                        <div className="flex items-center gap-2"><MapPin size={12} className="text-amber-500" /> <span className="text-zinc-500">Coleta:</span> <strong>{correctStoredAddress(mission.pickupLat || null, mission.pickupLng || null, mission.pickupAddress)}</strong> ({mission.sellerName.split(' ')[0]})</div>
+                                        <div className="flex items-center gap-2 pl-5 text-[10px] text-zinc-500 font-mono"><Phone size={10} /> {mission.sellerPhone}</div>
                                     </div>
                                     <div className="flex flex-col gap-0.5">
-                                        <div className="flex items-center gap-2"><MapPin size={12} className="text-primary-500" /> <span className="text-zinc-500">Entrega:</span> <strong>{mission.delivery_address}</strong> ({mission.buyer_name.split(' ')[0]})</div>
-                                        <div className="flex items-center gap-2 pl-5 text-[10px] text-zinc-500 font-mono"><Phone size={10} /> {mission.buyer_phone}</div>
+                                        <div className="flex items-center gap-2"><MapPin size={12} className="text-primary-500" /> <span className="text-zinc-500">Entrega:</span> <strong>{correctStoredAddress(mission.deliveryLat || null, mission.deliveryLng || null, mission.deliveryAddress)}</strong> ({mission.buyerName.split(' ')[0]})</div>
+                                        <div className="flex items-center gap-2 pl-5 text-[10px] text-zinc-500 font-mono"><Phone size={10} /> {mission.buyerPhone}</div>
                                     </div>
                                 </div>
                             </div>
                             <div className="flex flex-col items-end gap-2 w-full md:w-auto mt-2 md:mt-0 pt-4 md:pt-0 border-t md:border-0 border-zinc-800">
                                 <div className="text-right">
                                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Recompensa</p>
-                                    <p className="text-xl font-black text-emerald-400">{formatCurrency(parseFloat(mission.delivery_fee))}</p>
+                                    <p className="text-xl font-black text-emerald-400">{formatCurrency(parseFloat(mission.deliveryFee))}</p>
                                 </div>
                                 <button
                                     onClick={() => onAccept(mission)}

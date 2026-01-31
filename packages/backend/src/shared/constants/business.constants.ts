@@ -1,7 +1,7 @@
 // Estrutura de preço da cota (Total R$ 50,00)
 export const QUOTA_PRICE = 50.00; // Preço de aquisição total (R$ 50)
-export const QUOTA_SHARE_VALUE = 42.00; // Valor que vai para o Capital Social (Resgatável)
-export const QUOTA_ADM_FEE = 8.00;   // Taxa de Manutenção Administrativa (Não resgatável)
+export const QUOTA_SHARE_VALUE = 50.00; // Valor CHEIO vai para o Capital Social (Spread gera o lucro)
+export const QUOTA_ADM_FEE = 0.00;   // Taxa de Manutenção removida (Lucro via Spread)
 
 // Distribuição da Taxa Administrativa (Soma = 100%) - Aplicado em Cotas e Taxas Fixas
 export const QUOTA_FEE_TAX_SHARE = 0.20;         // 20% = R$ 1,60 → Impostos
@@ -64,7 +64,7 @@ export const SELLER_MONTHLY_LIMIT_NON_VERIFIED = 2000.00; // Limite de vendas me
 // Taxas para Entregadores (Logística)
 export const COURIER_VERIFIED_FEE_RATE = 0.10; // 10% para entregadores com selo
 export const COURIER_NON_VERIFIED_FEE_RATE = 0.275; // 27.5% para entregadores sem selo
-export const LOGISTICS_SUSTAINABILITY_FEE_RATE = 0.10; // DEPRECATED: Usar as taxas acima (Mantendo compatibilidade temporária)
+export const LOGISTICS_SUSTAINABILITY_FEE_RATE = 0.10; // Base rate for calculations
 export const MARKET_BOOST_PRICE = 5.00; // Taxa de impulsionamento de anúncio (7 dias)
 export const MARKET_CREDIT_INTEREST_RATE = 0.015; // 1.5% ao mês (Mais barato que o apoio mútuo padrão)
 export const MARKET_CREDIT_MAX_INSTALLMENTS = 24; // Até 24x para facilitar compras grandes
@@ -135,3 +135,18 @@ export const WAITLIST_ENABLED = true;
 // Limite máximo de cotas que um único CPF pode deter.
 // R$ 50.000,00 (1000 cotas) para evitar domínio econômico e PLD (Prevenção Lavagem Dinheiro).
 export const MAX_QUOTAS_PER_USER = 1000;
+
+// --- SISTEMA DE SEGURO DE ENTREGAS ---
+// Taxa total do seguro (5% do ganho do entregador + 5% da taxa de sustentabilidade)
+export const DELIVERY_INSURANCE_RATE = 0.05; // 5% de cada parte
+export const DELIVERY_INSURANCE_COURIER_SHARE = 0.50; // 50% vem do entregador
+export const DELIVERY_INSURANCE_PLATFORM_SHARE = 0.50; // 50% vem da Cred30
+
+// Tipos de Incidentes de Entrega
+export const DELIVERY_CLAIM_TYPES = {
+    LOST: 'LOST',           // Produto perdido
+    DAMAGED: 'DAMAGED',     // Produto danificado
+    ACCIDENT: 'ACCIDENT',   // Acidente com entregador
+    THEFT: 'THEFT',         // Roubo/Assalto
+    OTHER: 'OTHER'          // Outro
+};

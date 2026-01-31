@@ -516,7 +516,7 @@ export default function App() {
                     />
                   </Suspense>
                 } />
-                <Route path="invest" element={<Suspense fallback={null}><InvestView onBuy={(qty, acceptedTerms) => requireCompleteProfile(() => handleBuyQuota(qty, 'BALANCE', acceptedTerms))} isPro={state.currentUser?.membership_type === 'PRO'} userBalance={state.currentUser?.balance} /></Suspense>} />
+                <Route path="invest" element={<Suspense fallback={null}><InvestView onBuy={(qty, acceptedTerms) => requireCompleteProfile(() => handleBuyQuota(qty, 'BALANCE', acceptedTerms))} isPro={state.currentUser?.membership_type === 'PRO'} userBalance={state.currentUser?.balance} isVerified={state.currentUser?.is_verified} kycStatus={state.currentUser?.kyc_status} /></Suspense>} />
                 <Route path="portfolio" element={
                   <Suspense fallback={null}>
                     <PortfolioView
@@ -524,6 +524,7 @@ export default function App() {
                       hasLoans={state.loans.some(l => l.userId === state.currentUser?.id && l.status === 'APPROVED' && !l.isFullyPaid)}
                       onSell={handleSellQuota}
                       onSellAll={handleSellAll}
+                      user={state.currentUser}
                     />
                   </Suspense>
                 } />

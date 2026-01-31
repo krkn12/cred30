@@ -3,29 +3,65 @@ import { ShieldCheck, Calendar, User, Info, FileText, Activity } from 'lucide-re
 import { apiService } from '../../../../../application/services/api.service';
 
 export const AdminCompliance = () => {
+    const [pendingKyc, setPendingKyc] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
     const [logs, setLogs] = useState<any[]>([]);
     const [stats, setStats] = useState<any>(null);
-    const [isLoading, setIsLoading] = useState(true);
+
+    const loadData = async () => {
+        setIsLoading(true);
+        try {
+            const [logsRes, statsRes, kycRes] = await Promise.all([
+                apiService.get<any>('/admin/compliance/terms-acceptances'),
+                apiService.get<any>('/admin/compliance/stats'),
+                apiService.get<any>('/admin/compliance/pending-kyc')
+            ]);
+
+            if (logsRes.success) setLogs(logsRes.data);
+            if (statsRes.success) setStats(statsRes.data);
+            if (kycRes.success) setPendingKyc(kycRes.data);
+        } catch (error) {
+            console.error('Error fetching compliance data:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [logsRes, statsRes] = await Promise.all([
-                    apiService.get<any>('/admin/compliance/terms-acceptances'),
-                    apiService.get<any>('/admin/compliance/stats')
-                ]);
-
-                if (logsRes.success) setLogs(logsRes.data);
-                if (statsRes.success) setStats(statsRes.data);
-            } catch (error) {
-                console.error('Error fetching compliance data:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchData();
+        loadData();
     }, []);
+
+    const handleReviewKyc = async (userId: number, status: 'APPROVED' | 'REJECTED') => {
+        if (!confirm(`Tem certeza que deseja ${status === 'APPROVED' ? 'APROVAR' : 'REJEITAR'} este usuário?`)) return;
+
+        try {
+            const notes = status === 'REJECTED' ? prompt('Motivo da rejeição:') || 'Documento ilegível' : 'Aprovado via Admin';
+
+            // Usando API service direto se api.kyc não estiver importada
+            // Mas melhor importar api.kyc se possível. Vou usar apiService genérico para manter consistência com o arquivo
+            await apiService.post('/kyc/review', { userId, status, notes });
+
+            alert(`Usuário ${status === 'APPROVED' ? 'aprovado' : 'rejeitado'} com sucesso!`);
+            loadData();
+        } catch (error) {
+            alert('Erro ao processar.');
+        }
+    };
+
+    const handleViewDoc = async (userId: number, docPath: string) => {
+        // Se já tem URL completa (ex: cloudinary), abre. Se não, usa endpoint seguro
+        if (docPath.startsWith('http')) {
+            window.open(docPath, '_blank');
+        } else {
+            const blob = await apiService.kyc.viewDocument(userId);
+            if (blob) {
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank');
+            } else {
+                alert('Erro ao abrir documento.');
+            }
+        }
+    };
 
     if (isLoading) {
         return (
@@ -86,6 +122,77 @@ export const AdminCompliance = () => {
                     </div>
                 </div>
             </div>
+
+            {/* KYC Pending Section */}
+            {pendingKyc.length > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-3xl overflow-hidden mb-6">
+                    <div className="p-6 border-b border-amber-500/20 flex items-center justify-between">
+                        <div>
+                            <h2 className="text-lg font-bold text-amber-500 flex items-center gap-2">
+                                <ShieldCheck size={20} /> Pendências de Identidade (KYC)
+                            </h2>
+                            <p className="text-xs text-amber-400/70 mt-1">Usuários aguardando aprovação manual de documentos.</p>
+                        </div>
+                        <span className="bg-amber-500 text-black font-bold px-3 py-1 rounded-full text-xs animate-pulse">
+                            {pendingKyc.length} PENDENTES
+                        </span>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="bg-amber-500/5">
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-amber-500">Usuário</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-amber-500">Documento</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-amber-500">Data Envio</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-amber-500 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-amber-500/10">
+                                {pendingKyc.map((user: any) => (
+                                    <tr key={user.id} className="hover:bg-amber-500/5 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <p className="text-sm font-bold text-white mb-0.5">{user.name}</p>
+                                            <p className="text-[10px] text-zinc-400">{user.email}</p>
+                                            <p className="text-[10px] text-zinc-500">{user.cpf || 'Sem CPF'}</p>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <button
+                                                onClick={() => handleViewDoc(user.id, user.kyc_document_path)}
+                                                className="flex items-center gap-2 text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors border border-zinc-700"
+                                            >
+                                                <FileText size={14} className="text-blue-400" />
+                                                Ver Documento
+                                            </button>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2 text-zinc-400">
+                                                <Calendar size={14} />
+                                                <span className="text-xs">{new Date(user.created_at).toLocaleDateString('pt-BR')}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button
+                                                    onClick={() => handleReviewKyc(user.id, 'APPROVED')}
+                                                    className="bg-emerald-500 text-black text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-emerald-400 transition-colors"
+                                                >
+                                                    APROVAR
+                                                </button>
+                                                <button
+                                                    onClick={() => handleReviewKyc(user.id, 'REJECTED')}
+                                                    className="bg-red-500/10 text-red-500 border border-red-500/20 text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-red-500/20 transition-colors"
+                                                >
+                                                    REJEITAR
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
 
             {/* Logs Table */}
             <div className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">

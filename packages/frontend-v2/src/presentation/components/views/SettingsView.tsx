@@ -1,6 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, Copy, Lock, ChevronRight, LogOut, Trash2, X as XIcon, ShieldCheck, QrCode, AlertCircle, Check, Bug, FileText, Phone, Store, Truck, RefreshCw } from 'lucide-react';
+import { Star, Copy, Lock, ChevronRight, LogOut, Trash2, X as XIcon, ShieldCheck, QrCode, AlertCircle, Check, Bug, FileText, Phone, Store, Truck, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { User } from '../../../domain/types/common.types';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { get2FASetup, verify2FA } from '../../../application/services/storage.service';
@@ -334,6 +334,66 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                     </div>
                 </button>
             )}
+
+            {/* KYC Status Section */}
+            <div className="bg-surface border border-surfaceHighlight rounded-2xl p-6 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        <ShieldCheck size={20} className="text-primary-500" />
+                        Verificação de Identidade
+                    </h3>
+                    <span className={`text-[10px] px-2 py-1 rounded-full font-black uppercase tracking-wider border ${user.kyc_status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                        user.kyc_status === 'PENDING' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                            user.kyc_status === 'REJECTED' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                'bg-zinc-500/10 text-zinc-500 border-zinc-500/20'
+                        }`}>
+                        {user.kyc_status === 'APPROVED' ? 'Verificado' :
+                            user.kyc_status === 'PENDING' ? 'Em Análise' :
+                                user.kyc_status === 'REJECTED' ? 'Recusado' : 'Não Verificado'}
+                    </span>
+                </div>
+
+                <div className="bg-black/20 rounded-xl p-4 border border-white/5">
+                    {user.kyc_status === 'APPROVED' ? (
+                        <div className="flex items-center gap-3 text-emerald-400">
+                            <CheckCircle2 size={20} />
+                            <p className="text-sm">Sua conta está totalmente verificada e sem limites.</p>
+                        </div>
+                    ) : user.kyc_status === 'PENDING' ? (
+                        <div className="flex items-center gap-3 text-amber-500">
+                            <RefreshCw size={20} className="animate-spin" />
+                            <p className="text-sm">Seus documentos estão sendo analisados. Aguarde até 24h.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <p className="text-zinc-400 text-xs leading-relaxed">
+                                {user.kyc_status === 'REJECTED'
+                                    ? 'Seus documentos anteriores foram recusados. Por favor, envie uma nova foto legível do seu RG ou CNH.'
+                                    : 'Para sua segurança e conformidade legal, precisamos validar sua identidade antes de liberar investimentos e saques.'}
+                            </p>
+
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const res = await apiService.requestKycReview();
+                                        if (res.success) {
+                                            if (onRefresh) onRefresh();
+                                            window.location.reload(); // Forçar refresh para atualizar status
+                                        } else {
+                                            alert(res.message);
+                                        }
+                                    } catch (e) {
+                                        alert('Erro ao solicitar verificação');
+                                    }
+                                }}
+                                className="w-full py-3 bg-primary-500 hover:bg-primary-400 text-black font-bold rounded-xl text-xs uppercase tracking-widest transition-all"
+                            >
+                                {user.kyc_status === 'REJECTED' ? 'Tentar Novamente' : 'Iniciar Verificação'}
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
 
             <div className="bg-surface border border-surfaceHighlight rounded-2xl p-6">
                 <h3 className="text-lg font-bold text-white mb-4">Perfil</h3>

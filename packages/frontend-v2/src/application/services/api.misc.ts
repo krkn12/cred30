@@ -59,4 +59,29 @@ export class MiscApi extends ApiBase {
     async dailyCheckin(): Promise<any> {
         return this.post<any>('/monetization/daily-checkin', {});
     }
+
+    // --- LOCATION HELPER ---
+    async getAddressByCep(cep: string): Promise<{ street: string; neighborhood: string; city: string; state: string; } | null> {
+        try {
+            const cleanCep = cep.replace(/\D/g, '');
+            if (cleanCep.length !== 8) return null;
+
+            const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, {
+                mode: 'cors'
+            });
+            const data = await res.json();
+
+            if (data.erro) return null;
+
+            return {
+                street: data.logradouro,
+                neighborhood: data.bairro,
+                city: data.localidade,
+                state: data.uf
+            };
+        } catch (error) {
+            console.error('Erro ao buscar CEP:', error);
+            return null;
+        }
+    }
 }

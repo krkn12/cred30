@@ -1,5 +1,5 @@
 
-import { ApiBase } from './api.base';
+import { ApiBase, API_BASE_URL } from './api.base';
 
 export class KycApi extends ApiBase {
     /**
@@ -12,10 +12,10 @@ export class KycApi extends ApiBase {
         formData.append('document', file);
         formData.append('docType', docType);
 
-        const token = localStorage.getItem('token');
+        const token = this.token;
 
         // Upload manual com fetch pois ApiBase geralmente espera JSON
-        const response = await fetch(`${this.baseUrl}/kyc/upload`, {
+        const response = await fetch(`${API_BASE_URL}/kyc/upload`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -25,6 +25,14 @@ export class KycApi extends ApiBase {
         });
 
         return await response.json();
+    }
+
+
+    /**
+     * Solicita revisão simplificada (status PENDING)
+     */
+    async requestReview() {
+        return this.post('/kyc/request', {});
     }
 
     /**
@@ -37,9 +45,9 @@ export class KycApi extends ApiBase {
     /**
      * Admin: Ver Documento (Retorna Blob para criar URL local)
      */
-    async viewDocument(userId: string | number): Promise<Blob | null> {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${this.baseUrl}/kyc/doc/${userId}`, {
+    async viewDocument(userId: string | number, docType: string = 'ID'): Promise<Blob | null> {
+        const token = this.token;
+        const res = await fetch(`${API_BASE_URL}/kyc/doc/${userId}?type=${docType}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 

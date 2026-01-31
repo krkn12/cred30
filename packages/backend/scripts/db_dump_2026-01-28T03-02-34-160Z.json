@@ -1,0 +1,747 @@
+{
+  "admin_logs": [
+    {
+      "id": 1,
+      "admin_id": 2,
+      "action": "PROCESS_ACTION",
+      "entity_type": "TRANSACTION_LOAN",
+      "entity_id": "1",
+      "old_values": null,
+      "new_values": {
+        "id": 1,
+        "type": "TRANSACTION",
+        "action": "APPROVE"
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+      "created_at": "2026-01-27T07:32:31.584Z"
+    },
+    {
+      "id": 2,
+      "admin_id": 2,
+      "action": "PROCESS_ACTION",
+      "entity_type": "TRANSACTION_LOAN",
+      "entity_id": "1",
+      "old_values": null,
+      "new_values": {
+        "id": 1,
+        "type": "TRANSACTION",
+        "action": "APPROVE"
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+      "created_at": "2026-01-27T07:32:50.553Z"
+    },
+    {
+      "id": 3,
+      "admin_id": 2,
+      "action": "PROCESS_ACTION",
+      "entity_type": "TRANSACTION_LOAN",
+      "entity_id": "1",
+      "old_values": null,
+      "new_values": {
+        "id": 1,
+        "type": "TRANSACTION",
+        "action": "APPROVE"
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+      "created_at": "2026-01-27T07:36:14.714Z"
+    },
+    {
+      "id": 4,
+      "admin_id": 2,
+      "action": "PROCESS_ACTION",
+      "entity_type": "TRANSACTION_LOAN",
+      "entity_id": "1",
+      "old_values": null,
+      "new_values": {
+        "id": 1,
+        "type": "TRANSACTION",
+        "action": "APPROVE"
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+      "created_at": "2026-01-27T07:38:04.507Z"
+    },
+    {
+      "id": 5,
+      "admin_id": 2,
+      "action": "PROCESS_ACTION",
+      "entity_type": "TRANSACTION_LOAN",
+      "entity_id": "1",
+      "old_values": null,
+      "new_values": {
+        "id": 1,
+        "type": "TRANSACTION",
+        "action": "APPROVE"
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+      "created_at": "2026-01-27T07:40:21.007Z"
+    },
+    {
+      "id": 6,
+      "admin_id": 2,
+      "action": "PROCESS_ACTION",
+      "entity_type": "TRANSACTION_LOAN",
+      "entity_id": "1",
+      "old_values": null,
+      "new_values": {
+        "id": 1,
+        "type": "TRANSACTION",
+        "action": "APPROVE"
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+      "created_at": "2026-01-27T07:43:58.378Z"
+    },
+    {
+      "id": 7,
+      "admin_id": 2,
+      "action": "PROCESS_ACTION",
+      "entity_type": "TRANSACTION_LOAN",
+      "entity_id": "1",
+      "old_values": null,
+      "new_values": {
+        "id": 1,
+        "type": "TRANSACTION",
+        "action": "APPROVE"
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+      "created_at": "2026-01-27T07:46:21.593Z"
+    },
+    {
+      "id": 8,
+      "admin_id": 2,
+      "action": "PROCESS_ACTION",
+      "entity_type": "TRANSACTION_LOAN",
+      "entity_id": "1",
+      "old_values": null,
+      "new_values": {
+        "id": 1,
+        "type": "TRANSACTION",
+        "action": "APPROVE"
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+      "created_at": "2026-01-27T07:48:24.133Z"
+    },
+    {
+      "id": 9,
+      "admin_id": 2,
+      "action": "PROCESS_ACTION",
+      "entity_type": "TRANSACTION_LOAN",
+      "entity_id": "1",
+      "old_values": null,
+      "new_values": {
+        "id": 1,
+        "type": "TRANSACTION",
+        "action": "APPROVE"
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+      "created_at": "2026-01-27T07:48:43.017Z"
+    },
+    {
+      "id": 10,
+      "admin_id": 2,
+      "action": "PROCESS_ACTION",
+      "entity_type": "TRANSACTION_LOAN",
+      "entity_id": "1",
+      "old_values": null,
+      "new_values": {
+        "id": 1,
+        "type": "TRANSACTION",
+        "action": "APPROVE"
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+      "created_at": "2026-01-27T07:51:10.733Z"
+    },
+    {
+      "id": 11,
+      "admin_id": 2,
+      "action": "PROCESS_ACTION",
+      "entity_type": "TRANSACTION_LOAN",
+      "entity_id": "1",
+      "old_values": null,
+      "new_values": {
+        "id": 1,
+        "type": "TRANSACTION",
+        "action": "APPROVE"
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+      "created_at": "2026-01-27T07:55:31.909Z"
+    },
+    {
+      "id": 12,
+      "admin_id": 2,
+      "action": "PROCESS_ACTION",
+      "entity_type": "TRANSACTION_LOAN",
+      "entity_id": "1",
+      "old_values": null,
+      "new_values": {
+        "id": 1,
+        "type": "TRANSACTION",
+        "action": "APPROVE"
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+      "created_at": "2026-01-27T08:01:54.074Z"
+    },
+    {
+      "id": 13,
+      "admin_id": 2,
+      "action": "PROCESS_ACTION",
+      "entity_type": "TRANSACTION_LOAN",
+      "entity_id": "1",
+      "old_values": null,
+      "new_values": {
+        "id": 1,
+        "type": "TRANSACTION",
+        "action": "APPROVE"
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+      "created_at": "2026-01-27T08:06:08.291Z"
+    },
+    {
+      "id": 14,
+      "admin_id": 2,
+      "action": "PROCESS_ACTION",
+      "entity_type": "TRANSACTION_LOAN",
+      "entity_id": "1",
+      "old_values": null,
+      "new_values": {
+        "id": 1,
+        "type": "TRANSACTION",
+        "action": "APPROVE"
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+      "created_at": "2026-01-27T08:06:24.521Z"
+    },
+    {
+      "id": 15,
+      "admin_id": 2,
+      "action": "PROCESS_ACTION",
+      "entity_type": "TRANSACTION_LOAN",
+      "entity_id": "1",
+      "old_values": null,
+      "new_values": {
+        "id": 1,
+        "type": "TRANSACTION",
+        "action": "APPROVE"
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+      "created_at": "2026-01-27T08:07:14.750Z"
+    },
+    {
+      "id": 16,
+      "admin_id": 2,
+      "action": "UPDATE_USER_ACCESS",
+      "entity_type": "USER",
+      "entity_id": null,
+      "old_values": null,
+      "new_values": {
+        "userId": 2,
+        "kycStatus": "APPROVED"
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+      "created_at": "2026-01-27T18:55:04.871Z"
+    },
+    {
+      "id": 17,
+      "admin_id": 2,
+      "action": "MANUAL_PROFIT_ADD",
+      "entity_type": "SYSTEM_CONFIG",
+      "entity_id": null,
+      "old_values": null,
+      "new_values": {
+        "addedAmount": 30
+      },
+      "ip_address": null,
+      "user_agent": null,
+      "created_at": "2026-01-28T02:38:50.127Z"
+    },
+    {
+      "id": 18,
+      "admin_id": 2,
+      "action": "MANUAL_PROFIT_ADD",
+      "entity_type": "SYSTEM_CONFIG",
+      "entity_id": null,
+      "old_values": null,
+      "new_values": {
+        "amountToAdd": 30
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+      "created_at": "2026-01-28T05:38:51.176Z"
+    },
+    {
+      "id": 19,
+      "admin_id": 2,
+      "action": "DISTRIBUTE_DIVIDENDS",
+      "entity_type": "SYSTEM_CONFIG",
+      "entity_id": null,
+      "old_values": null,
+      "new_values": {},
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+      "created_at": "2026-01-28T05:39:46.342Z"
+    }
+  ],
+  "audit_logs": [
+    {
+      "id": 1,
+      "user_id": 2,
+      "action": "TRANSACTION_APPROVED",
+      "entity_type": "transaction",
+      "entity_id": "1",
+      "old_values": {
+        "status": "PENDING"
+      },
+      "new_values": {
+        "type": "DEPOSIT",
+        "status": "APPROVED"
+      },
+      "ip_address": "unknown",
+      "user_agent": null,
+      "created_at": "2026-01-27T05:07:13.127Z"
+    },
+    {
+      "id": 2,
+      "user_id": 2,
+      "action": "BUY_QUOTA",
+      "entity_type": null,
+      "entity_id": null,
+      "old_values": {
+        "quantity": 1,
+        "totalCost": 50,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+        "useBalance": true
+      },
+      "new_values": {
+        "quantity": 1,
+        "totalCost": 50,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+        "useBalance": true
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": null,
+      "created_at": "2026-01-28T02:37:06.378Z"
+    },
+    {
+      "id": 3,
+      "user_id": 2,
+      "action": "BUY_QUOTA",
+      "entity_type": null,
+      "entity_id": null,
+      "old_values": {
+        "quantity": 1,
+        "totalCost": 50,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+        "useBalance": true
+      },
+      "new_values": {
+        "quantity": 1,
+        "totalCost": 50,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+        "useBalance": true
+      },
+      "ip_address": "127.0.0.1",
+      "user_agent": null,
+      "created_at": "2026-01-28T02:40:58.683Z"
+    }
+  ],
+  "bug_reports": [],
+  "consortium_groups": [],
+  "consortium_members": [],
+  "education_sessions": [],
+  "governance_proposals": [],
+  "governance_votes": [],
+  "investments": [],
+  "loan_installments": [],
+  "loans": [],
+  "marketplace_listing_images": [],
+  "marketplace_listing_variants": [],
+  "marketplace_listings": [],
+  "marketplace_orders": [],
+  "notifications": [
+    {
+      "id": 1,
+      "user_id": 2,
+      "title": "Status da Transação",
+      "message": "Sua transação de DEPOSIT foi APROVADA!",
+      "type": "INFO",
+      "status": "UNREAD",
+      "metadata": null,
+      "created_at": "2026-01-27T07:32:32.661Z"
+    },
+    {
+      "id": 2,
+      "user_id": 2,
+      "title": "Status da Transação",
+      "message": "Sua transação de DEPOSIT foi APROVADA!",
+      "type": "INFO",
+      "status": "UNREAD",
+      "metadata": null,
+      "created_at": "2026-01-27T07:32:51.445Z"
+    },
+    {
+      "id": 3,
+      "user_id": 2,
+      "title": "Status da Transação",
+      "message": "Sua transação de DEPOSIT foi APROVADA!",
+      "type": "INFO",
+      "status": "UNREAD",
+      "metadata": null,
+      "created_at": "2026-01-27T07:36:15.727Z"
+    },
+    {
+      "id": 4,
+      "user_id": 2,
+      "title": "Status da Transação",
+      "message": "Sua transação de DEPOSIT foi APROVADA!",
+      "type": "INFO",
+      "status": "UNREAD",
+      "metadata": null,
+      "created_at": "2026-01-27T07:38:05.411Z"
+    },
+    {
+      "id": 5,
+      "user_id": 2,
+      "title": "Status da Transação",
+      "message": "Sua transação de DEPOSIT foi APROVADA!",
+      "type": "INFO",
+      "status": "UNREAD",
+      "metadata": null,
+      "created_at": "2026-01-27T07:40:21.958Z"
+    },
+    {
+      "id": 6,
+      "user_id": 2,
+      "title": "Status da Transação",
+      "message": "Sua transação de DEPOSIT foi APROVADA!",
+      "type": "INFO",
+      "status": "UNREAD",
+      "metadata": null,
+      "created_at": "2026-01-27T07:43:59.352Z"
+    },
+    {
+      "id": 7,
+      "user_id": 2,
+      "title": "Status da Transação",
+      "message": "Sua transação de DEPOSIT foi APROVADA!",
+      "type": "INFO",
+      "status": "UNREAD",
+      "metadata": null,
+      "created_at": "2026-01-27T07:46:23.078Z"
+    },
+    {
+      "id": 8,
+      "user_id": 2,
+      "title": "Status da Transação",
+      "message": "Sua transação de DEPOSIT foi APROVADA!",
+      "type": "INFO",
+      "status": "UNREAD",
+      "metadata": null,
+      "created_at": "2026-01-27T07:48:25.110Z"
+    },
+    {
+      "id": 9,
+      "user_id": 2,
+      "title": "Status da Transação",
+      "message": "Sua transação de DEPOSIT foi APROVADA!",
+      "type": "INFO",
+      "status": "UNREAD",
+      "metadata": null,
+      "created_at": "2026-01-27T07:48:43.957Z"
+    },
+    {
+      "id": 10,
+      "user_id": 2,
+      "title": "Status da Transação",
+      "message": "Sua transação de DEPOSIT foi APROVADA!",
+      "type": "INFO",
+      "status": "UNREAD",
+      "metadata": null,
+      "created_at": "2026-01-27T07:51:11.802Z"
+    },
+    {
+      "id": 11,
+      "user_id": 2,
+      "title": "Status da Transação",
+      "message": "Sua transação de DEPOSIT foi APROVADA!",
+      "type": "INFO",
+      "status": "UNREAD",
+      "metadata": null,
+      "created_at": "2026-01-27T07:55:34.474Z"
+    },
+    {
+      "id": 12,
+      "user_id": 2,
+      "title": "Status da Transação",
+      "message": "Sua transação de DEPOSIT foi APROVADA!",
+      "type": "INFO",
+      "status": "UNREAD",
+      "metadata": null,
+      "created_at": "2026-01-27T08:01:55.184Z"
+    },
+    {
+      "id": 13,
+      "user_id": 2,
+      "title": "Status da Transação",
+      "message": "Sua transação de DEPOSIT foi APROVADA!",
+      "type": "INFO",
+      "status": "UNREAD",
+      "metadata": null,
+      "created_at": "2026-01-27T08:06:09.478Z"
+    },
+    {
+      "id": 14,
+      "user_id": 2,
+      "title": "Status da Transação",
+      "message": "Sua transação de DEPOSIT foi APROVADA!",
+      "type": "INFO",
+      "status": "UNREAD",
+      "metadata": null,
+      "created_at": "2026-01-27T08:06:25.640Z"
+    },
+    {
+      "id": 15,
+      "user_id": 2,
+      "title": "Status da Transação",
+      "message": "Sua transação de DEPOSIT foi APROVADA!",
+      "type": "INFO",
+      "status": "UNREAD",
+      "metadata": null,
+      "created_at": "2026-01-27T08:07:17.176Z"
+    },
+    {
+      "id": 16,
+      "user_id": 2,
+      "title": "💰 Excedente Social Recebido!",
+      "message": "Você recebeu R$ 25.50 de excedentes das suas 1 cotas!",
+      "type": "INFO",
+      "status": "UNREAD",
+      "metadata": null,
+      "created_at": "2026-01-28T05:39:47.554Z"
+    }
+  ],
+  "pdv_charges": [],
+  "products": [],
+  "promo_video_views": [],
+  "promo_videos": [],
+  "quotas": [
+    {
+      "id": 1,
+      "user_id": 2,
+      "purchase_price": "50.00",
+      "current_value": "50.00",
+      "purchase_date": "2026-01-28T02:37:06.313Z",
+      "status": "ACTIVE",
+      "yield_rate": "0.50"
+    },
+    {
+      "id": 2,
+      "user_id": 2,
+      "purchase_price": "50.00",
+      "current_value": "50.00",
+      "purchase_date": "2026-01-28T02:40:58.525Z",
+      "status": "ACTIVE",
+      "yield_rate": "0.50"
+    }
+  ],
+  "rate_limit_logs": [],
+  "referral_codes": [],
+  "support_chats": [],
+  "support_messages": [],
+  "system_config": [
+    {
+      "id": 1,
+      "system_balance": "234.50",
+      "profit_pool": "0.00",
+      "investment_reserve": "100.90",
+      "total_gateway_costs": "0.00",
+      "total_tax_reserve": "4.10",
+      "total_operational_reserve": "4.10",
+      "total_owner_profit": "4.10",
+      "quota_price": "50.00",
+      "loan_interest_rate": "0.20",
+      "penalty_rate": "0.40",
+      "vesting_period_ms": "31536000000",
+      "total_manual_costs": "0.00",
+      "courier_price_per_km": "2.50",
+      "updated_at": "2026-01-27T07:29:29.364Z",
+      "mutual_protection_fund": "0.00",
+      "mutual_reserve": "3.20",
+      "total_corporate_investment_reserve": "4.10",
+      "credit_guarantee_fund": "0.00"
+    }
+  ],
+  "system_costs": [],
+  "transaction_reviews": [],
+  "transactions": [
+    {
+      "id": 1,
+      "user_id": 2,
+      "type": "DEPOSIT",
+      "amount": "100.00",
+      "gateway_cost": "0.00",
+      "description": "Depósito manual pendente (Depositante: Não informado)",
+      "status": "APPROVED",
+      "metadata": {
+        "method": "MANUAL_PIX"
+      },
+      "payout_status": "NONE",
+      "created_at": "2026-01-27T07:32:16.841Z",
+      "processed_at": "2026-01-27T05:07:13.852Z"
+    },
+    {
+      "id": 2,
+      "user_id": 2,
+      "type": "BUY_QUOTA",
+      "amount": "50.00",
+      "gateway_cost": "0.00",
+      "description": "Aquisição de 1 participação(ões) (+ R$ 8.00 manutenção) - APROVADA",
+      "status": "APPROVED",
+      "metadata": {
+        "quantity": 1,
+        "serviceFee": 8,
+        "useBalance": true,
+        "legal_context": {
+          "ip_address": "127.0.0.1",
+          "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+          "accepted_at": "2026-01-28T02:37:06.501Z",
+          "accepted_terms": true,
+          "contract_version": "QUOTA_AGREEMENT_V1"
+        },
+        "paymentMethod": "balance"
+      },
+      "payout_status": "NONE",
+      "created_at": "2026-01-28T05:37:06.378Z",
+      "processed_at": null
+    },
+    {
+      "id": 3,
+      "user_id": 2,
+      "type": "DIVIDEND",
+      "amount": "25.50",
+      "gateway_cost": "0.00",
+      "description": "Excedente Social (1 cotas + 3% bônus de reciprocidade)",
+      "status": "APPROVED",
+      "metadata": null,
+      "payout_status": "NONE",
+      "created_at": "2026-01-28T05:39:45.974Z",
+      "processed_at": null
+    },
+    {
+      "id": 4,
+      "user_id": 2,
+      "type": "BUY_QUOTA",
+      "amount": "50.00",
+      "gateway_cost": "0.00",
+      "description": "Aquisição de 1 participação(ões) (+ R$ 8.00 manutenção) - APROVADA",
+      "status": "APPROVED",
+      "metadata": {
+        "quantity": 1,
+        "serviceFee": 8,
+        "useBalance": true,
+        "legal_context": {
+          "ip_address": "127.0.0.1",
+          "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+          "accepted_at": "2026-01-28T02:40:58.707Z",
+          "accepted_terms": true,
+          "contract_version": "QUOTA_AGREEMENT_V1"
+        },
+        "paymentMethod": "balance"
+      },
+      "payout_status": "NONE",
+      "created_at": "2026-01-28T05:40:58.683Z",
+      "processed_at": null
+    }
+  ],
+  "users": [
+    {
+      "id": 2,
+      "name": "Josias Silva",
+      "email": "josiassm701@gmail.com",
+      "password_hash": "$2b$10$gih4BumwS0.KEIosJ9TIFuZSObbxcCllxhhoxFPm86MzSabba4OiW",
+      "secret_phrase": "passeiola",
+      "pix_key": "01558516247",
+      "balance": "25.50",
+      "referral_code": "ATFUAT",
+      "referred_by": null,
+      "is_admin": true,
+      "score": 20,
+      "is_email_verified": true,
+      "verification_code": null,
+      "reset_password_token": null,
+      "two_factor_secret": null,
+      "two_factor_enabled": false,
+      "accepted_terms_at": null,
+      "title_downloaded": false,
+      "title_downloaded_at": null,
+      "role": "ADMIN",
+      "status": "ACTIVE",
+      "address": null,
+      "phone": "91980177874",
+      "is_seller": false,
+      "seller_status": "none",
+      "asaas_account_id": null,
+      "asaas_wallet_id": null,
+      "seller_company_name": null,
+      "seller_cpf_cnpj": null,
+      "seller_phone": null,
+      "seller_address_street": null,
+      "seller_address_number": null,
+      "seller_address_neighborhood": null,
+      "seller_address_city": null,
+      "seller_address_state": null,
+      "seller_address_postal_code": null,
+      "seller_created_at": null,
+      "last_ip": null,
+      "last_login_at": null,
+      "created_at": "2026-01-22T02:11:02.845Z",
+      "is_verified": false,
+      "membership_type": "FREE",
+      "last_reward_at": "2026-01-27T18:30:57.374Z",
+      "total_dividends_earned": "0.00",
+      "security_lock_until": "2026-01-29T15:36:58.562Z",
+      "panic_phrase": null,
+      "is_under_duress": false,
+      "safe_contact_phone": null,
+      "welcome_benefit_uses": 0,
+      "video_points": 0,
+      "ad_points": 201,
+      "last_checkin_at": null,
+      "cpf": "01558516247",
+      "last_video_reward_at": null,
+      "pending_ad_points": 0,
+      "total_ad_points": 201,
+      "is_protected": false,
+      "protection_expires_at": null,
+      "daily_chests_opened": 1,
+      "last_chest_date": "2026-01-27",
+      "is_merchant": false,
+      "merchant_name": null,
+      "merchant_since": null,
+      "business_license_path": null,
+      "is_verified_seller": false,
+      "is_verified_courier": false,
+      "pending_balance": "0.00",
+      "seller_address_cep": null,
+      "updated_at": "2026-01-27T07:07:40.146Z",
+      "kyc_status": "APPROVED",
+      "kyc_document_path": null,
+      "kyc_notes": null
+    }
+  ],
+  "webhook_logs": []
+}

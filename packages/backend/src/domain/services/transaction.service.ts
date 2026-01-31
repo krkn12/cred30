@@ -74,7 +74,8 @@ export async function executeInTransaction<T>(
 export async function lockUserBalance(
   client: Pool | PoolClient,
   userId: string,
-  amount: number
+  amount: number,
+  options?: { skipLockCheck?: boolean }
 ): Promise<{ success: boolean; currentBalance?: number; error?: string }> {
   try {
     const result = await client.query(
@@ -92,10 +93,16 @@ export async function lockUserBalance(
 
     // Trava de Segurança Global (Anti-Gasto de Saldo Suspeito / Lavagem Interna)
     if (lockUntil && new Date(lockUntil) > new Date()) {
-      return {
-        success: false,
-        error: `Seu saldo está sob proteção temporária e não pode ser usado no momento. Liberado em: ${new Date(lockUntil).toLocaleString('pt-BR')}`
-      };
+      // Se a opção de pular a verificação de trava estiver ativa (ex: Compra de Cotas, Pagamento de Empréstimo)
+      if (options?.skipLockCheck) {
+        // Logar que a trava foi ignorada por ser uma operação permitida
+        // console.log(`[SECURITY_BYPASS] Operação permitida durante trava de segurança para user ${userId}`);
+      } else {
+        return {
+          success: false,
+          error: `Seu saldo está sob proteção temporária e não pode ser usado no momento. Liberado em: ${new Date(lockUntil).toLocaleString('pt-BR')}`
+        };
+      }
     }
 
     if (currentBalance < amount) {
@@ -240,6 +247,7 @@ export async function updateTransactionStatus(
  * Processa a aprovação ou rejeição de uma transação (BUY_QUOTA, WITHDRAWAL, etc)
  */
 export const processTransactionApproval = async (client: PoolClient, id: string, action: 'APPROVE' | 'REJECT') => {
+  console.log(`[DEBUG] processTransactionApproval CHAMADO! ID: ${id}, Action: ${action}`);
   // 1. Buscar transação com bloqueio (aceita PENDING ou PENDING_CONFIRMATION para saques)
   const transactionResult = await client.query(
     'SELECT * FROM transactions WHERE id = $1 AND status IN ($2, $3) FOR UPDATE',
@@ -811,10 +819,14 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
     console.log(`[DEPOSIT_APPROVED] R$ ${depositAmount} creditados ao usuário ${transaction.user_id}`);
   }
 
+  console.log(`[DEBUG] Finalizando aprovação da transação ${id}. Atualizando status...`);
+
   await client.query(
     'UPDATE transactions SET status = $1, processed_at = $2, payout_status = $3 WHERE id = $4',
     ['APPROVED', new Date(), transaction.type === 'WITHDRAWAL' ? 'PENDING_PAYMENT' : 'NONE', id]
   );
+
+  console.log(`[DEBUG] Status atualizado no banco para APPROVED (ID: ${id})`);
 
   // Audit Log
   await logAudit(client, {
@@ -829,6 +841,7 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
   // Notificar usuário em tempo real
   notificationService.notifyUser(transaction.user_id, 'Status da Transação', `Sua transação de ${transaction.type} foi APROVADA!`);
 
+  console.log(`[DEBUG] Transação ${id} aprovada com sucesso. Retornando.`);
   return { success: true, status: 'APPROVED' };
 };
 
@@ -936,19 +949,26 @@ export const processLoanApproval = async (client: PoolClient, id: string, action
   // === GERAÇÃO DO CRONOGRAMA DE PARCELAS ===
   const loanTotalRepayment = parseFloat(loan.total_repayment);
   const numInstallments = loan.installments;
-  const installmentAmount = loanTotalRepayment / numInstallments;
+  const standardInstallment = Math.floor((loanTotalRepayment / numInstallments) * 100) / 100;
+  let remainingTotal = loanTotalRepayment;
 
   for (let i = 1; i <= numInstallments; i++) {
     const dueDate = new Date();
     dueDate.setTime(dueDate.getTime() + (i * ONE_MONTH_MS));
 
+    const currentInstallmentAmount = (i === numInstallments)
+      ? Math.round(remainingTotal * 100) / 100
+      : standardInstallment;
+
     await client.query(
-      `INSERT INTO loan_installments (loan_id, installment_number, expected_amount, due_date, status, created_at)
-       VALUES ($1, $2, $3, $4, 'PENDING', NOW())`,
-      [id, i, installmentAmount, dueDate]
+      `INSERT INTO loan_installments (loan_id, installment_number, amount, expected_amount, due_date, status, created_at)
+       VALUES ($1, $2, $3, $3, $4, 'PENDING', NOW())`,
+      [id, i, currentInstallmentAmount, dueDate]
     );
+
+    remainingTotal -= currentInstallmentAmount;
   }
-  console.log(`[LOAN_APPROVED] ${numInstallments} parcelas geradas para o empréstimo ${id}`);
+  console.log(`[LOAN_APPROVED] ${numInstallments} parcelas geradas para o empréstimo ${id} (Soma total garantida: R$ ${loanTotalRepayment.toFixed(2)})`);
 
   await createTransaction(
     client,

@@ -76,126 +76,155 @@ export const AdminFiscal = () => {
                 </div>
             ) : report ? (
                 <>
-                    {/* FLUXO DE CAIXA */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] relative overflow-hidden group hover:border-emerald-500/30 transition-all">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                            <div className="flex items-center justify-between mb-6">
-                                <div className="p-4 bg-emerald-500/10 rounded-2xl">
-                                    <TrendingUp className="text-emerald-500" size={24} />
+                    {/* FLUXO DE CAIXA E PERFORMANCE */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-zinc-900/50 border border-zinc-800/50 p-6 rounded-[2rem] relative overflow-hidden group hover:border-emerald-500/30 transition-all duration-500">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -mr-12 -mt-12 group-hover:bg-emerald-500/10 transition-colors"></div>
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2.5 bg-emerald-500/10 rounded-xl">
+                                    <TrendingUp className="text-emerald-500" size={20} />
                                 </div>
-                                <span className="text-xs font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full">Entradas Totais</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500/80">Entradas</span>
                             </div>
-                            <h3 className="text-3xl font-black text-white mb-1">{formatCurrency(report.total_inflow)}</h3>
-                            <p className="text-xs text-zinc-500">Depósitos, Vendas, Aportes</p>
+                            <h3 className="text-2xl font-black text-white">{formatCurrency(report.total_inflow)}</h3>
+                            <p className="text-[9px] text-zinc-500 mt-1 uppercase font-bold tracking-tighter">Volume Total Bruto</p>
                         </div>
 
-                        <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] relative overflow-hidden group hover:border-red-500/30 transition-all">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                            <div className="flex items-center justify-between mb-6">
-                                <div className="p-4 bg-red-500/10 rounded-2xl">
-                                    <TrendingDown className="text-red-500" size={24} />
+                        <div className="bg-zinc-900/50 border border-zinc-800/50 p-6 rounded-[2rem] relative overflow-hidden group hover:border-red-500/30 transition-all duration-500">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full blur-2xl -mr-12 -mt-12 group-hover:bg-red-500/10 transition-colors"></div>
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2.5 bg-red-500/10 rounded-xl">
+                                    <TrendingDown className="text-red-500" size={20} />
                                 </div>
-                                <span className="text-xs font-black uppercase tracking-widest text-red-500 bg-red-500/10 px-3 py-1 rounded-full">Saídas Totais</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-red-500/80">Saídas</span>
                             </div>
-                            <h3 className="text-3xl font-black text-white mb-1">{formatCurrency(report.total_outflow)}</h3>
-                            <p className="text-xs text-zinc-500">Saques, Pagamentos a Terceiros</p>
+                            <h3 className="text-2xl font-black text-white">{formatCurrency(report.total_outflow)}</h3>
+                            <p className="text-[9px] text-zinc-500 mt-1 uppercase font-bold tracking-tighter">Resgates e Operação</p>
+                        </div>
+
+                        <div className="bg-zinc-900/50 border border-zinc-800/50 p-6 rounded-[2rem] relative overflow-hidden group hover:border-blue-500/30 transition-all duration-500">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl -mr-12 -mt-12 group-hover:bg-blue-500/10 transition-colors"></div>
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2.5 bg-blue-500/10 rounded-xl">
+                                    <Activity className="text-blue-500" size={20} />
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-500/80">Lucro Operacional</span>
+                            </div>
+                            <h3 className="text-2xl font-black text-white">{formatCurrency(report.gross_revenue)}</h3>
+                            <p className="text-[9px] text-zinc-500 mt-1 uppercase font-bold tracking-tighter">Margem de Serviços</p>
+                        </div>
+
+                        <div className="bg-primary-500/5 border border-primary-500/20 p-6 rounded-[2rem] relative overflow-hidden group hover:border-primary-500/40 transition-all duration-500">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-primary-500/10 rounded-full blur-2xl -mr-12 -mt-12 group-hover:bg-primary-500/20 transition-colors"></div>
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2.5 bg-primary-500/20 rounded-xl">
+                                    <DollarSign className="text-primary-400" size={20} />
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-primary-400">Resultado Líquido</span>
+                            </div>
+                            <h3 className="text-2xl font-black text-white">{formatCurrency(report.net_profit)}</h3>
+                            <p className="text-[9px] text-primary-400/60 mt-1 uppercase font-bold tracking-tighter">Excedente Retido</p>
                         </div>
                     </div>
 
-                    {/* DRE SIMPLIFICADO */}
-                    <div className="bg-black/40 border border-zinc-800 rounded-[2.5rem] overflow-hidden backdrop-blur-sm">
-                        <div className="p-8 border-b border-zinc-800 bg-zinc-900/50">
-                            <h3 className="font-black text-white uppercase text-xs tracking-[0.2em] flex items-center gap-2">
-                                <PieChart size={16} className="text-primary-500" />
-                                Demonstração do Resultado
+                    {/* DRE DETALHADA */}
+                    <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-[2.5rem] overflow-hidden backdrop-blur-xl">
+                        <div className="p-8 border-b border-zinc-800/50 bg-zinc-900/40 flex items-center justify-between">
+                            <h3 className="font-black text-white uppercase text-[10px] tracking-[0.25em] flex items-center gap-3">
+                                <PieChart size={18} className="text-primary-500" />
+                                Demonstração do Resultado Detalhada
                             </h3>
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-zinc-800">
-                            {/* Receita Operacional */}
-                            <div className="p-8 space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
-                                        <Wallet size={20} className="text-blue-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Faturamento Bruto</p>
-                                        <p className="text-2xl font-black text-white">{formatCurrency(report.gross_revenue)}</p>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-800/50">
-                                    <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
-                                        <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Comissões Marketplace</p>
-                                        <p className="text-xl font-black text-white">{formatCurrency(report.details.marketplace_commissions)}</p>
-                                    </div>
-                                    <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
-                                        <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Margem Logística (27.5%)</p>
-                                        <p className="text-xl font-black text-white">{formatCurrency(report.details.logistics_margin)}</p>
-                                    </div>
-                                    <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
-                                        <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Taxas de Manutenção</p>
-                                        <p className="text-xl font-black text-white">{formatCurrency(report.details.quota_maintenance_fees)}</p>
-                                    </div>
-                                    <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
-                                        <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Taxa de Manutenção de Apoios</p>
-                                        <p className="text-xl font-black text-white">{formatCurrency(report.details.loan_interest_revenue)}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Distribuição */}
-                            <div className="p-8 space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
-                                        <ArrowUpRight size={20} className="text-orange-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Distribuição (Div. Passivo)</p>
-                                        <p className="text-2xl font-black text-white">{formatCurrency(report.total_dividends)}</p>
-                                    </div>
-                                </div>
-                                <p className="text-xs text-zinc-500 leading-relaxed mt-4">
-                                    Valor total repassado aos cotistas como excedentes. Isso é custo de capital e reduz o excedente retido do sistema.
-                                </p>
-                            </div>
-
-                            {/* Resultado Líquido */}
-                            <div className="p-8 space-y-4 bg-primary-500/5 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
-                                <div className="flex items-center gap-3 relative z-10">
-                                    <div className="w-10 h-10 rounded-full bg-primary-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
-                                        <DollarSign size={20} className="text-black" />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] text-primary-300 font-black uppercase tracking-widest">Excedente Operacional Líquido</p>
-                                        <p className="text-2xl font-black text-white">{formatCurrency(report.net_profit)}</p>
-                                    </div>
-                                </div>
-                                <p className="text-xs text-primary-200/60 leading-relaxed mt-4 relative z-10">
-                                    Resultado final após pagamento de todas as obrigações e distribuições. Este valor compõe o fundo de reserva e proteção.
-                                </p>
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 bg-black/30 px-3 py-1.5 rounded-full border border-zinc-800">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Dados em tempo real
                             </div>
                         </div>
-                    </div>
 
-                    {/* Footer Legal */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl flex items-center gap-4">
-                            <FileText className="text-zinc-600 shrink-0" size={24} />
-                            <div>
-                                <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1">Nota Legal</p>
-                                <p className="text-[10px] text-zinc-600 leading-relaxed max-w-sm">
+                        <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-12">
+                            {/* Coluna 1: Origem das Receitas */}
+                            <div className="space-y-6">
+                                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div> Origem das Receitas
+                                </p>
+                                <div className="space-y-3">
+                                    {[
+                                        { label: 'Comissões Marketplace', val: report.details.marketplace_commissions, color: 'text-blue-400' },
+                                        { label: 'Margem Logística', val: report.details.logistics_margin, color: 'text-emerald-400' },
+                                        { label: 'Taxas de Manutenção', val: report.details.quota_maintenance_fees, color: 'text-orange-400' },
+                                        { label: 'Juros de Apoios', val: report.details.loan_interest_revenue, color: 'text-purple-400' },
+                                        { label: 'Educação / Cursos', val: report.details.education_revenue, color: 'text-indigo-400' },
+                                        { label: 'Vídeos e Patrocínios', val: report.details.promo_videos_revenue, color: 'text-pink-400' },
+                                        { label: 'Monetização e Selos', val: report.details.monetization_revenue, color: 'text-primary-400' },
+                                    ].map((item, idx) => (
+                                        <div key={idx} className="flex items-center justify-between p-4 bg-zinc-800/20 hover:bg-zinc-800/40 border border-zinc-800/50 rounded-2xl transition-all group">
+                                            <span className="text-xs font-bold text-zinc-400 group-hover:text-zinc-300 transition-colors">{item.label}</span>
+                                            <span className={`text-sm font-black ${item.color}`}>{formatCurrency(item.val)}</span>
+                                        </div>
+                                    ))}
+                                    <div className="flex items-center justify-between p-5 bg-blue-500/5 border border-blue-500/20 rounded-2xl mt-4">
+                                        <span className="text-xs font-black text-blue-400 uppercase tracking-widest">Receita Operacional Bruta</span>
+                                        <span className="text-lg font-black text-white">{formatCurrency(report.gross_revenue)}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Coluna 2: Destinação e Resultado */}
+                            <div className="space-y-6">
+                                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 bg-orange-500 rounded-full"></div> Distribuições e Reservas
+                                </p>
+                                <div className="space-y-4">
+                                    <div className="p-6 bg-orange-500/5 border border-orange-500/20 rounded-3xl group transition-all">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest">Dividendos Pagos</span>
+                                            <ArrowUpRight size={16} className="text-orange-500" />
+                                        </div>
+                                        <h4 className="text-xl font-black text-white mb-2">{formatCurrency(report.total_dividends)}</h4>
+                                        <p className="text-[10px] text-zinc-500 leading-relaxed font-medium">
+                                            Valor total repassado aos cotistas como recompensa pela liquidez fornecida ao sistema.
+                                        </p>
+                                    </div>
+
+                                    <div className="p-6 bg-primary-500/5 border border-primary-500/20 rounded-3xl group transition-all">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-[10px] font-black text-primary-400 uppercase tracking-widest">Excedente Retido</span>
+                                            <DollarSign size={16} className="text-primary-500" />
+                                        </div>
+                                        <h4 className="text-xl font-black text-white mb-2">{formatCurrency(report.net_profit)}</h4>
+                                        <p className="text-[10px] text-zinc-500 leading-relaxed font-medium">
+                                            Capital reinvestido no fundo de reserva para garantir a segurança e o crescimento da plataforma.
+                                        </p>
+                                    </div>
+
+                                    <div className="mt-8 p-6 bg-zinc-800/20 border border-zinc-800 rounded-3xl flex items-center justify-between gap-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-3 bg-zinc-800 rounded-xl">
+                                                <Wallet className="text-zinc-500" size={20} />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Custódia de Terceiros</p>
+                                                <p className="text-[9px] text-zinc-600 font-bold uppercase mt-0.5">Dinheiro em Trânsito</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-lg font-black text-zinc-400">{formatCurrency(report.details.volume_transitory)}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Banner de Rodapé Legal */}
+                        <div className="px-8 py-6 bg-black/40 border-t border-zinc-800/50 flex flex-col md:flex-row items-center gap-6 justify-between">
+                            <div className="flex items-center gap-4 max-w-2xl">
+                                <FileText className="text-zinc-700 shrink-0" size={20} />
+                                <p className="text-[9px] text-zinc-600 font-bold leading-relaxed uppercase tracking-tight">
                                     {report.legal_notice}
                                 </p>
                             </div>
-                        </div>
-                        <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl flex items-center justify-between gap-4">
-                            <div>
-                                <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1">Caixa de Terceiros (Transiente)</p>
-                                <p className="text-[10px] text-zinc-600">Custódia temporária</p>
+                            <div className="flex items-center gap-2">
+                                <div className="text-right">
+                                    <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Geração de Relatório</p>
+                                    <p className="text-[10px] font-black text-zinc-500">{new Date().toLocaleDateString('pt-BR')} {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                                </div>
                             </div>
-                            <p className="text-xl font-bold text-zinc-500">{formatCurrency(report.details.volume_transitory)}</p>
                         </div>
                     </div>
                 </>

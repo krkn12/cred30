@@ -262,17 +262,26 @@ export class EducationController {
 
                 const instructorShare = price * INSTRUCTOR_SHARE;
                 const investorsShare = price * INVESTORS_SHARE;
-                const platformShare = price * PLATFORM_SHARE;
+                const platformBucketShare = (price * PLATFORM_SHARE) / 5; // Divide os 10% em 5 potes (2% cada)
 
                 await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [price, user.id]);
                 await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [instructorShare, course.instructor_id]);
-                await client.query('UPDATE system_config SET profit_pool = profit_pool + $1', [investorsShare]);
-                await client.query('UPDATE system_config SET system_balance = system_balance + $1', [platformShare]);
+
+                // BLINDAGEM FINANCEIRA: Distribuir taxas nos potes corretos
+                await client.query(`
+                    UPDATE system_config SET 
+                        profit_pool = profit_pool + $1,
+                        total_tax_reserve = total_tax_reserve + $2,
+                        total_operational_reserve = total_operational_reserve + $2,
+                        total_owner_profit = total_owner_profit + $2,
+                        investment_reserve = investment_reserve + $2,
+                        total_corporate_investment_reserve = total_corporate_investment_reserve + $2
+                `, [investorsShare, platformBucketShare]);
 
                 await client.query(`
                     INSERT INTO course_purchases (user_id, course_id, amount_paid, instructor_share, platform_share)
                     VALUES ($1, $2, $3, $4, $5)
-                `, [user.id, courseId, price, instructorShare, investorsShare + platformShare]);
+                `, [user.id, courseId, price, instructorShare, investorsShare + (platformBucketShare * 5)]);
 
                 await client.query(`
                     UPDATE courses SET total_students = total_students + 1, total_revenue = total_revenue + $1 WHERE id = $2

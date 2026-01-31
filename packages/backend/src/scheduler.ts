@@ -14,8 +14,8 @@ import { processDisbursementQueue } from './application/services/disbursement-qu
 export const initializeScheduler = (pool: Pool) => {
     console.log('Inicializando agendador de tarefas...');
 
-    // 1. Distribuir lucros MENSALMENTE no dia 1 às 00:00 
-    cron.schedule('0 0 1 * *', async () => {
+    // 1. Distribuir lucros DIARIAMENTE à meia-noite
+    cron.schedule('0 0 * * *', async () => {
         console.log('🕒 [CRON] Iniciando distribuição diária de lucros...');
         try {
             const result = await distributeProfits(pool);

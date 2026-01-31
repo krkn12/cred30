@@ -3,9 +3,9 @@ import { useState, useMemo, useEffect, useCallback, memo } from 'react';
 import {
     Users, TrendingUp, ArrowUpFromLine, BookOpen,
     Crown, Clock, ArrowDownLeft, ArrowUpRight,
-    PieChart, Star, Zap,
+    PieChart, Star, Zap, Store,
     ShieldCheck, ChevronRight, Wallet, Settings, BarChart3, Gift, Sparkles, Eye, EyeOff,
-    RefreshCw
+    RefreshCw, ArrowRight
 } from 'lucide-react';
 import { AppState, Transaction, Quota, Loan } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
@@ -43,11 +43,11 @@ const TransactionRow = memo(({ t, formatCurrency, isPositive, showValues }: Tran
         <div className="flex items-center gap-6">
             <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-2xl shadow-black transition-transform group-hover:scale-110 duration-500 ${isPositive(t.type) ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
                 }`}>
-                {isPositive(t.type) ? <ArrowDownLeft size={28} /> : <ArrowUpRight size={28} />}
+                {t.type === 'DIVIDEND' ? <TrendingUp size={28} /> : (isPositive(t.type) ? <ArrowDownLeft size={28} /> : <ArrowUpRight size={28} />)}
             </div>
             <div>
                 <h4 className="text-sm sm:text-base font-black text-white uppercase tracking-tight mb-1 group-hover:text-primary-400 transition-colors">
-                    {t.description || t.type}
+                    {t.type === 'DIVIDEND' ? 'Rendimento Diário' : (t.description || t.type)}
                 </h4>
                 <div className="flex items-center gap-2">
                     <Clock size={10} className="text-zinc-500" />
@@ -79,12 +79,12 @@ const TransactionRow = memo(({ t, formatCurrency, isPositive, showValues }: Tran
     </div>
 ));
 TransactionRow.displayName = 'TransactionRow';
-export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, onRefer, onSuccess, onError, onEducation, onVoting, onRefresh }: DashboardProps) => {
+export const Dashboard = ({ state, onLoans, onBuyQuota, onWithdraw, onDeposit, onRefer, onSuccess, onError, onEducation, onVoting, onRefresh }: DashboardProps) => {
     const user = state?.currentUser;
     const navigate = useNavigate();
 
-    const { userQuotas, totalInvested, totalCurrentValue, totalEarnings, earningsPercentage } = useMemo(() => {
-        if (!state?.quotas || !user) return { userQuotas: [], totalInvested: 0, totalCurrentValue: 0, totalEarnings: 0, earningsPercentage: 0 };
+    const { userQuotas, totalCurrentValue, totalEarnings, earningsPercentage, earningsToday } = useMemo(() => {
+        if (!state?.quotas || !user) return { userQuotas: [], totalCurrentValue: 0, totalEarnings: 0, earningsPercentage: 0, earningsToday: 0 };
         const quotas = state.quotas.filter((q: Quota) =>
             q.userId === user.id && (q.status === 'ACTIVE' || !q.status)
         );
@@ -93,18 +93,26 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
 
         // Valorização de Capital = (Valor Atual - 42) * Qtd
         // Se current_value for null/undefined, assume 42 (sem valorização)
-        const capitalGains = quotas.reduce((acc: number, q: Quota) => acc + ((q.currentValue || 42) - 42), 0);
+        // const capitalGains = quotas.reduce((acc: number, q: Quota) => acc + ((q.currentValue || 42) - 42), 0); // Removed unused
 
-        // Excedentes reais = Dividendos Pagos + Valorização da Cota (Sobras Retidas na Cota)
-        // O cliente pediu "ambos a valorização", ou seja, soma tudo.
+        // Excedentes reais = Apenas Dividendos Pagos (Solicitação: remover valorização não realizada)
         const dividendsEarned = user.total_dividends_earned || 0;
-        const totalGains = dividendsEarned + capitalGains;
+        const totalGains = dividendsEarned;
 
-        const current = invested + capitalGains;
+        // O valor atual do aporte é fixo (R$ 42 resgatável * cotas), pois não estamos computando valorização de cota
+        const current = invested;
+        // Porcentagem de retorno sobre o investido (baseado no que já ganhou de dividendos)
         const percentage = invested > 0 ? (totalGains / invested) * 100 : 0;
 
-        return { userQuotas: quotas, totalInvested: invested, totalCurrentValue: current, totalEarnings: totalGains, earningsPercentage: percentage };
-    }, [state?.quotas, user?.id, user?.total_dividends_earned]);
+        // Calculate earnings today from transactions
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const todayEarnings = state.transactions
+            .filter(t => t.type === 'DIVIDEND' && new Date(t.created_at || t.date).getTime() >= startOfDay)
+            .reduce((acc, t) => acc + t.amount, 0);
+
+        return { userQuotas: quotas, totalCurrentValue: current, totalEarnings: totalGains, earningsPercentage: percentage, earningsToday: todayEarnings };
+    }, [state?.quotas, user?.id, user?.total_dividends_earned, state?.transactions]);
 
     const { userLoans, totalDebt } = useMemo(() => {
         if (!state?.loans || !user) return { userLoans: [], totalDebt: 0 };
@@ -504,7 +512,7 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                     <div className="relative z-10">
                         <div className="flex items-center gap-3 mb-2 sm:mb-3">
                             <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                            <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80">Saldo Corrente Líquido</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80">Saldo da Carteira</span>
                             <button onClick={() => setShowValues(!showValues)} className="ml-auto text-white/50 hover:text-white transition-colors p-2 -m-2">
                                 {showValues ? <Eye size={16} /> : <EyeOff size={16} />}
                             </button>
@@ -533,13 +541,13 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                                 <span className="opacity-60 group-hover:opacity-100 transition-opacity whitespace-nowrap">SACAR</span>
                             </button>
                             <button
-                                onClick={onBuyQuota}
-                                className="col-span-2 sm:col-span-1 bg-white/5 hover:bg-white/10 text-white text-[9px] font-black uppercase tracking-[0.25em] py-4 rounded-2xl backdrop-blur-md transition-all duration-500 flex flex-col items-center justify-center gap-2 border border-white/5 active:scale-95 group"
+                                onClick={() => navigate('/app/services')}
+                                className="col-span-2 sm:col-span-1 bg-white text-black hover:scale-[1.02] transition-all duration-500 text-[9px] font-black uppercase tracking-[0.25em] py-4 rounded-2xl shadow-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border border-white/20 group"
                             >
-                                <div className="p-1.5 bg-primary-500/10 rounded-xl group-hover:scale-110 transition-transform">
-                                    <TrendingUp size={20} className="text-primary-400" />
+                                <div className="p-1.5 bg-primary-500/10 rounded-xl group-hover:rotate-12 transition-transform">
+                                    <Sparkles size={20} className="text-primary-600" />
                                 </div>
-                                <span className="opacity-60 group-hover:opacity-100 transition-opacity whitespace-nowrap">LICENÇAS</span>
+                                <span className="opacity-80">PAGAR</span>
                             </button>
                         </div>
                     </div>
@@ -553,8 +561,24 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                         <span className="glass px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest text-primary-400">{userQuotas.length} ATIVAS</span>
                     </div>
                     <div>
-                        <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-2">Capital Social Integralizado</p>
-                        <h3 className="text-3xl font-black text-white tracking-tight">{formatCurrency(totalInvested)}</h3>
+                        <div className="flex justify-between items-end mb-2">
+                            <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Dinheiro Disponível</p>
+                            <button
+                                onClick={onBuyQuota}
+                                className="text-[9px] font-black text-primary-400 uppercase tracking-wider hover:text-primary-300 transition-colors flex items-center gap-1"
+                            >
+                                Comprar Mais <ArrowRight size={10} />
+                            </button>
+                        </div>
+                        <h3 className="text-3xl font-black text-white tracking-tight">{formatCurrency(user.balance)}</h3>
+                        {earningsToday > 0 && (
+                            <div className="flex items-center gap-1.5 mt-2 animate-bounce-slow">
+                                <TrendingUp size={12} className="text-emerald-400" />
+                                <span className="text-[10px] font-bold text-emerald-400 tracking-wide">
+                                    Rendeu {formatCurrency(earningsToday)} hoje 🚀
+                                </span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -568,14 +592,14 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                             <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400">
                                 <ArrowUpRight size={24} />
                             </div>
-                            <span className="glass px-3 py-1 rounded-full text-[10px] font-black tracking-widest text-emerald-400" title="Retorno sobre Investimento (ROI)">
-                                ROI: +{earningsPercentage.toFixed(1)}%
+                            <span className="glass px-3 py-1 rounded-full text-[10px] font-black tracking-widest text-emerald-400" title="Retorno sobre Saldo">
+                                RETORNO: +{earningsPercentage.toFixed(1)}%
                             </span>
                         </div>
 
                         <div>
-                            <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Excedentes & Valorização</p>
-                            <h3 className="text-2xl font-black text-emerald-400 tracking-tight mb-3">{formatCurrency(totalEarnings)}</h3>
+                            <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Crescimento do Saldo</p>
+                            <h3 className="text-2xl font-black text-emerald-400 tracking-tight mb-3">+{formatCurrency(totalEarnings)}</h3>
 
                             {/* Sobras Pendentes Integradas (Cálculo Ajustado com Multiplicadores) */}
                             {state.profitPool > 0 && userQuotas.length > 0 && state.stats?.quotasCount && (
@@ -603,7 +627,7 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                                     <div className="ml-auto group/tooltip relative">
                                         <div className="w-4 h-4 rounded-full bg-zinc-800 flex items-center justify-center text-[8px] text-zinc-500 font-bold cursor-help">?</div>
                                         <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-black/90 border border-white/10 rounded-lg text-[9px] text-zinc-400 hidden group-hover/tooltip:block z-50">
-                                            Estimativa conservadora baseada no seu nível de engajamento (Score, PRO, 2FA). O valor real depende do desempenho coletivo.
+                                            Rendimento estimado baseado na sua participação no clube. O valor final depende do lucro diário das operações.
                                         </div>
                                     </div>
                                 </div>
@@ -647,7 +671,8 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                             { icon: BookOpen, label: 'Aprender', sub: 'Academy', act: onEducation, color: 'text-blue-400', bg: 'bg-blue-500/10' },
                             { icon: Users, label: 'Indicar', sub: 'Invite', act: onRefer, color: 'text-primary-400', bg: 'bg-primary-500/10' },
                             { icon: BarChart3, label: 'Votar', sub: 'Club', act: onVoting, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-                            { icon: Users, label: 'Consórcio', sub: 'Grupo', act: () => navigate('/app/consortium'), color: 'text-teal-400', bg: 'bg-teal-500/10' }
+                            { icon: Users, label: 'Consórcio', sub: 'Grupo', act: () => navigate('/app/consortium'), color: 'text-teal-400', bg: 'bg-teal-500/10' },
+                            { icon: Store, label: 'PDV', sub: 'Vendas', act: () => navigate('/app/pdv'), color: 'text-indigo-400', bg: 'bg-indigo-500/10' }
                         ].map((item, idx) => (
                             <button
                                 key={idx}
@@ -674,25 +699,30 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                     >
                         <div className="flex items-center gap-4 sm:gap-6">
                             {/* Ícone do Baú */}
-                            <div className="relative shrink-0">
-                                <Gift size={48} className={chestCountdown > 0 ? 'text-zinc-600' : 'text-amber-500'} strokeWidth={1.5} />
+                            {/* Ícone do Baú */}
+                            <div className="relative shrink-0 group-hover:scale-110 transition-transform duration-500">
+                                <Gift
+                                    size={48}
+                                    className={`${chestCountdown > 0 ? 'text-zinc-600' : 'text-amber-500 animate-bounce'} transition-colors`}
+                                    strokeWidth={1.5}
+                                />
                                 {chestCountdown === 0 && chestsRemaining > 0 && (
-                                    <div className="absolute inset-0 bg-amber-500 blur-xl opacity-30 animate-pulse" />
+                                    <div className="absolute inset-0 bg-amber-500 blur-2xl opacity-40 animate-pulse rounded-full" />
                                 )}
                             </div>
 
                             {/* Conteúdo */}
                             <div className="flex-1 min-w-0">
-                                <h4 className="text-base sm:text-lg font-bold text-white mb-1">Baú de Pontos Diários</h4>
-                                <p className="text-xs text-zinc-400 mb-3">Ganhe pontos Farm para trocar por prêmios</p>
+                                <h4 className="text-base sm:text-lg font-bold text-white mb-1 group-hover:text-amber-400 transition-colors">Baú de Pontos Diários</h4>
+                                <p className="text-xs text-zinc-400 mb-3 font-medium">Ganhe pontos Farm para trocar por prêmios reais</p>
 
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <span className="px-3 py-1.5 bg-black/50 rounded-lg border border-white/5 text-[10px] font-bold text-zinc-400 uppercase">
-                                        {chestCountdown > 0 ? `Aguarde: ${formatCountdown(chestCountdown)}` : `${chestsRemaining}/3 Baús`}
+                                    <span className="px-3 py-1.5 bg-black/60 rounded-lg border border-white/5 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                                        {chestCountdown > 0 ? `Aguarde: ${formatCountdown(chestCountdown)}` : `${chestsRemaining}/3 Baús Disponíveis`}
                                     </span>
                                     {chestCountdown === 0 && chestsRemaining > 0 && (
-                                        <span className="px-3 py-1.5 bg-amber-500 text-black rounded-lg text-[10px] font-bold uppercase flex items-center gap-1">
-                                            Abrir <ChevronRight size={14} />
+                                        <span className="px-4 py-1.5 bg-amber-500 text-black rounded-lg text-[10px] font-black uppercase flex items-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 transition-all">
+                                            ABRIR AGORA <ChevronRight size={14} />
                                         </span>
                                     )}
                                 </div>
@@ -701,28 +731,28 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
 
                         {/* Loading or Video Overlay */}
                         {(isOpeningChest || viewFarmVideo) && (
-                            <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-20 rounded-2xl overflow-hidden animate-in fade-in duration-300">
+                            <div className="absolute inset-0 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center z-20 rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-500">
                                 {viewFarmVideo ? (
-                                    <div className="w-full h-full relative cursor-default" onClick={(e) => e.stopPropagation()}>
+                                    <div className="w-full h-full relative" onClick={(e) => e.stopPropagation()}>
                                         {viewFarmVideo.isFallback ? (
-                                            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-zinc-900 to-black">
-                                                <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 mb-4 animate-bounce">
-                                                    <TrendingUp size={32} />
+                                            <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-gradient-to-t from-black via-zinc-900 to-zinc-950">
+                                                <div className="w-20 h-20 bg-amber-500/20 rounded-3xl flex items-center justify-center text-amber-500 mb-6 animate-pulse shadow-2xl shadow-amber-500/10">
+                                                    <Sparkles size={40} />
                                                 </div>
-                                                <h4 className="text-white font-black text-lg mb-2 uppercase tracking-tighter">Oferta Especial</h4>
-                                                <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-6 leading-relaxed">
-                                                    Confira esta oferta dos nossos parceiros para liberar seu baú!
+                                                <h4 className="text-white font-black text-2xl mb-2 tracking-tighter uppercase">BAÚ BLOQUEADO</h4>
+                                                <p className="text-zinc-500 text-[11px] font-bold uppercase tracking-widest mb-8 leading-relaxed max-w-[200px] mx-auto">
+                                                    Visite o site do nosso parceiro para desbloquear seus pontos!
                                                 </p>
                                                 <a
                                                     href={viewFarmVideo.external_link}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-4 rounded-xl transition-all text-[11px] uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(245,158,11,0.3)] text-center"
+                                                    className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-5 rounded-2xl transition-all text-xs uppercase tracking-[0.25em] shadow-[0_0_40px_rgba(245,158,11,0.4)] text-center flex items-center justify-center gap-3 active:scale-95"
                                                     onClick={() => {
                                                         if (adTimer > 2) setAdTimer(0);
                                                     }}
                                                 >
-                                                    🚀 VER AGORA
+                                                    <Zap size={18} /> DESBLOQUEAR PONTOS
                                                 </a>
                                             </div>
                                         ) : (
@@ -730,19 +760,19 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                                                 src={viewFarmVideo.video_url}
                                                 autoPlay
                                                 muted
-                                                className="w-full h-full object-cover"
+                                                className="w-full h-full object-cover opacity-80"
                                             />
                                         )}
 
-                                        <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
-                                            <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
+                                        <div className="absolute top-6 left-6 right-6 flex justify-between items-center z-30">
+                                            <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
                                                 <p className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2">
-                                                    <TrendingUp size={12} className="text-primary-400" /> Patrocinado
+                                                    <Sparkles size={14} className="text-amber-400" /> RECOMPENSA FARM
                                                 </p>
                                             </div>
                                             {adTimer > 0 ? (
-                                                <div className="bg-primary-500 text-black px-3 py-1.5 rounded-lg font-black text-[10px] uppercase shadow-lg">
-                                                    {adTimer}s
+                                                <div className="bg-amber-500 text-black px-4 py-2 rounded-xl font-black text-xs uppercase shadow-xl flex items-center gap-2">
+                                                    <Clock size={14} /> {adTimer}s
                                                 </div>
                                             ) : (
                                                 <button
@@ -750,31 +780,18 @@ export const Dashboard = ({ state, onBuyQuota, onLoans, onWithdraw, onDeposit, o
                                                         e.stopPropagation();
                                                         handleCompleteChestReward();
                                                     }}
-                                                    className="bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.4)] animate-bounce"
+                                                    className="bg-emerald-500 hover:bg-emerald-400 text-black px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest shadow-[0_0_30px_rgba(16,185,129,0.5)] animate-bounce flex items-center gap-2"
                                                 >
-                                                    RESGATAR AGORA
+                                                    <Gift size={16} /> RESGATAR AGORA
                                                 </button>
                                             )}
                                         </div>
-
-                                        {!viewFarmVideo.isFallback && (
-                                            <div className="absolute bottom-4 left-4 right-4">
-                                                <a
-                                                    href={viewFarmVideo.external_link}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="block w-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white text-[9px] font-bold py-2 rounded-lg text-center uppercase tracking-widest border border-white/10 transition-colors"
-                                                >
-                                                    Ver Detalhes do Anunciante
-                                                </a>
-                                            </div>
-                                        )}
                                     </div>
                                 ) : (
-                                    <>
-                                        <div className="w-10 h-10 border-3 border-amber-500 border-t-transparent rounded-full animate-spin mb-3" />
-                                        <p className="text-xs font-bold text-amber-500 uppercase tracking-wider">Preparando recompensa...</p>
-                                    </>
+                                    <div className="flex flex-col items-center gap-4">
+                                        <div className="w-12 h-12 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin shadow-xl shadow-amber-500/10" />
+                                        <p className="text-[11px] font-black text-amber-500 uppercase tracking-[0.3em] animate-pulse">Sincronizando prêmio...</p>
+                                    </div>
                                 )}
                             </div>
                         )}

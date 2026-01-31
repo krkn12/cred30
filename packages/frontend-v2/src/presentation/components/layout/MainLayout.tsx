@@ -9,7 +9,8 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  Store
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -36,6 +37,7 @@ export const Layout: React.FC<LayoutProps> = ({
     { id: 'portfolio', label: 'Carteira', Icon: Briefcase },
     { id: 'loans', label: 'Ajuda', Icon: HandCoins },
     { id: 'withdraw', label: 'Resgates', Icon: Wallet },
+    { id: 'pdv', label: 'Vendas (PDV)', Icon: Store },
     ...(isAdmin ? [{ id: 'admin', label: 'Gestão', Icon: ShieldCheck }] : []),
     { id: 'settings', label: 'Ajustes', Icon: Settings },
   ];

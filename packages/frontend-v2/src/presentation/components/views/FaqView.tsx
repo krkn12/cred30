@@ -43,7 +43,7 @@ export const FaqView: React.FC = () => {
         {
             icon: <TrendingUp size={18} />,
             question: "Como funcionam as cotas de R$ 50,00?",
-            answer: "Ao adquirir uma participação (licença), você aporta R$ 42,00 no Capital Social (valor que gera bônus e é resgatável) e R$ 8,00 em uma Taxa Administrativa única para manutenção e tecnologia da plataforma. Esse modelo garante a sustentabilidade do clube a longo prazo."
+            answer: "Ao adquirir uma participação (licença), você aporta R$ 50,00 integralmente no Capital Social (valor que gera bônus e é resgatável). Não cobramos taxa de adesão; a sustentabilidade da plataforma provém do Spread (diferença de juros) nas operações de crédito interno."
         },
         {
             icon: <DollarSign size={18} />,

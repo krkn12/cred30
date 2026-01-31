@@ -7,6 +7,7 @@ interface SystemCost {
     id: number;
     description: string;
     amount: string | number;
+    category: 'FISCAL' | 'OPERATIONAL' | 'MIXED';
 }
 
 interface FinanceLog {
@@ -28,6 +29,7 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
     const [systemCosts, setSystemCosts] = useState<SystemCost[]>([]);
     const [newCostDescription, setNewCostDescription] = useState('');
     const [newCostAmount, setNewCostAmount] = useState('');
+    const [newCostCategory, setNewCostCategory] = useState<'FISCAL' | 'OPERATIONAL' | 'MIXED'>('MIXED');
     const [financeHistory, setFinanceHistory] = useState<FinanceLog[]>([]);
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
     const [historyOffset, setHistoryOffset] = useState(0);
@@ -74,7 +76,8 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
         try {
             const res = await apiService.post<any>('/admin/costs', {
                 description: newCostDescription,
-                amount: parseFloat(newCostAmount)
+                amount: parseFloat(newCostAmount),
+                category: newCostCategory
             });
             if (res.success) {
                 onSuccess('Sucesso', 'Custo adicionado!');
@@ -138,61 +141,88 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Gestão de Custos Fixos */}
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
-                    <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
-                        <div className="p-2 bg-primary-500/10 rounded-lg"><TrendingUp className="text-primary-400" size={20} /></div>
-                        Custos Fixos Mensais
+                <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-[2.5rem] p-8 backdrop-blur-xl">
+                    <h3 className="text-xl font-black text-white mb-8 flex items-center gap-3">
+                        <TrendingUp className="text-primary-500" size={20} />
+                        Compromissos Mensais
                     </h3>
                     <div className="space-y-6">
-                        <div className="bg-black/20 p-6 rounded-2xl border border-zinc-800">
-                            <p className="text-[10px] text-zinc-500 font-black uppercase mb-1">Total de Despesas/Mês</p>
-                            <p className="text-4xl font-black text-red-400 tracking-tighter">
-                                -{formatCurrency(state.stats?.systemConfig?.monthly_fixed_costs || 0)}
+                        <div className="bg-zinc-800/30 p-6 rounded-3xl border border-zinc-800 hover:border-red-500/20 transition-all group">
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Previsão de Gastos/Mês</p>
+                                <span className="p-2 bg-red-500/10 rounded-lg group-hover:bg-red-500/20 transition-colors"><DollarSign className="text-red-400" size={14} /></span>
+                            </div>
+                            <p className="text-4xl font-black text-white tracking-tighter">
+                                {formatCurrency(state.stats?.systemConfig?.monthly_fixed_costs || 0)}
                             </p>
                         </div>
 
-                        <div className="space-y-3">
-                            <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Adicionar Nova Despesa</p>
-                            <div className="flex gap-2">
+                        <div className="space-y-3 p-6 bg-zinc-900/40 border border-zinc-800/50 rounded-3xl">
+                            <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 bg-primary-500 rounded-full"></div> Lançar Nova Despesa
+                            </p>
+                            <div className="flex flex-col gap-3">
                                 <input
                                     type="text"
-                                    placeholder="Descrição (ex: MEI)"
+                                    placeholder="Descrição (ex: Servidor AWS)"
                                     value={newCostDescription}
                                     onChange={(e) => setNewCostDescription(e.target.value)}
-                                    className="flex-1 bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary-500/50"
+                                    className="w-full bg-black/40 border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary-500/50 transition-all font-bold"
                                 />
-                                <input
-                                    type="text"
-                                    placeholder="Valor"
-                                    value={newCostAmount}
-                                    onChange={(e) => setNewCostAmount(e.target.value)}
-                                    className="w-24 bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary-500/50"
-                                />
-                                <button
-                                    onClick={handleAddCost}
-                                    className="bg-primary-500 hover:bg-primary-400 p-3 rounded-xl text-black transition-all"
-                                >
-                                    <Check size={20} />
-                                </button>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600">R$</span>
+                                        <input
+                                            type="text"
+                                            placeholder="0,00"
+                                            value={newCostAmount}
+                                            onChange={(e) => setNewCostAmount(e.target.value)}
+                                            className="w-full bg-black/40 border border-zinc-800 rounded-xl pl-9 pr-4 py-3 text-sm text-white outline-none focus:border-primary-500/50 transition-all font-black"
+                                        />
+                                    </div>
+                                    <select
+                                        value={newCostCategory}
+                                        onChange={(e) => setNewCostCategory(e.target.value as any)}
+                                        className="bg-black/40 border border-zinc-800 rounded-xl px-3 py-3 text-[10px] font-black text-zinc-400 outline-none focus:border-primary-500/50 uppercase appearance-none cursor-pointer"
+                                    >
+                                        <option value="MIXED">⚖️ MISTO</option>
+                                        <option value="FISCAL">🏛️ FISCAL</option>
+                                        <option value="OPERATIONAL">🏢 INFRA</option>
+                                    </select>
+                                    <button
+                                        onClick={handleAddCost}
+                                        className="bg-primary-500 hover:bg-primary-400 p-3 rounded-xl text-black transition-all shadow-lg shadow-primary-500/20 active:scale-90"
+                                    >
+                                        <Check size={20} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="space-y-2 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                             {systemCosts.map((cost) => (
-                                <div key={cost.id} className="group bg-black/40 border border-zinc-800/50 p-4 rounded-2xl flex justify-between items-center transition-all hover:border-zinc-700">
+                                <div key={cost.id} className="group bg-zinc-800/10 border border-zinc-800/40 p-5 rounded-2xl flex justify-between items-center transition-all hover:bg-zinc-800/20 hover:border-zinc-700">
                                     <div className="flex-1">
-                                        <p className="text-xs font-bold text-zinc-300">{cost.description}</p>
-                                        <p className="text-sm font-black text-white">{formatCurrency(parseFloat(String(cost.amount)))}</p>
+                                        <div className="flex items-center gap-2 mb-1.5">
+                                            <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-black border ${cost.category === 'FISCAL' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                                cost.category === 'OPERATIONAL' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
+                                                    'bg-zinc-800 text-zinc-500 border-zinc-700'
+                                                }`}>
+                                                {cost.category === 'FISCAL' ? 'FISCAL' : cost.category === 'OPERATIONAL' ? 'INFRA' : 'DIVIDIDO'}
+                                            </span>
+                                            <p className="text-[11px] font-bold text-zinc-300">{cost.description}</p>
+                                        </div>
+                                        <p className="text-base font-black text-white">{formatCurrency(parseFloat(String(cost.amount)))}</p>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-3">
                                         <button
-                                            onClick={() => handlePayCost(cost.id, cost.description)}
-                                            className="bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all"
+                                            onClick={() => { handlePayCost(cost.id, cost.description); }}
+                                            className="bg-zinc-800 hover:bg-emerald-500 text-zinc-400 hover:text-black px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all shadow-sm active:scale-95"
                                         >
-                                            PAGAR
+                                            BAIXAR
                                         </button>
                                         <button
-                                            onClick={() => handleDeleteCost(cost.id)}
+                                            onClick={() => { handleDeleteCost(cost.id); }}
                                             className="p-2 text-zinc-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
                                         >
                                             <Trash2 size={16} />
@@ -201,73 +231,75 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
                                 </div>
                             ))}
                             {systemCosts.length === 0 && (
-                                <p className="text-center py-4 text-xs text-zinc-600 font-bold uppercase">Nenhum custo fixo lançado.</p>
+                                <div className="text-center py-10 opacity-20">
+                                    <Activity size={32} className="mx-auto mb-2" />
+                                    <p className="text-[9px] font-black uppercase tracking-widest">Sem custos pendentes</p>
+                                </div>
                             )}
                         </div>
                     </div>
                 </div>
 
-                {/* Distribuição de Reservas Internas */}
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
-                    <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
-                        <div className="p-2 bg-primary-500/10 rounded-lg"><Activity className="text-primary-400" size={20} /></div>
-                        Reservas de Crescimento (25/25/25/25)
-                    </h3>
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div className="bg-black/40 border border-zinc-800/50 p-4 rounded-2xl">
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Impostos (Receita)</p>
-                            <p className="text-lg font-black text-white">{formatCurrency(state.stats?.systemConfig?.total_tax_reserve || 0)}</p>
-                        </div>
-                        <div className="bg-black/40 border border-zinc-800/50 p-4 rounded-2xl">
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Operacional (Infra)</p>
-                            <p className="text-lg font-black text-white">{formatCurrency(state.stats?.systemConfig?.total_operational_reserve || 0)}</p>
-                        </div>
-                        <div className="bg-black/40 border border-zinc-800/50 p-4 rounded-2xl">
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Owner Profit (Salário)</p>
-                            <p className="text-lg font-black text-white">{formatCurrency(state.stats?.systemConfig?.total_owner_profit || 0)}</p>
-                        </div>
-                        <div className="bg-black/40 border border-zinc-800/50 p-4 rounded-2xl">
-                            <p className="text-[10px] text-emerald-500/80 font-bold uppercase mb-1">Crescimento (Mutual)</p>
-                            <p className="text-lg font-black text-emerald-400">{formatCurrency(state.stats?.systemConfig?.mutual_reserve || 0)}</p>
-                        </div>
-                        <div className="bg-black/40 border border-zinc-800/50 p-4 rounded-2xl col-span-2 lg:col-span-1">
-                            <p className="text-[10px] text-primary-500/80 font-bold uppercase mb-1">Reserva Social (Social)</p>
-                            <p className="text-lg font-black text-primary-400">{formatCurrency(state.stats?.systemConfig?.investment_reserve || 0)}</p>
-                        </div>
-                        <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl col-span-2 lg:col-span-1">
-                            <p className="text-[10px] text-emerald-400 font-bold uppercase mb-1">Fundo Proteção Mútua</p>
-                            <p className="text-lg font-black text-white">{formatCurrency(state.stats?.systemConfig?.mutual_protection_fund || 0)}</p>
-                        </div>
-                        <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl col-span-2 lg:col-span-1">
-                            <p className="text-[10px] text-blue-400 font-bold uppercase mb-1">Usuários Protegidos</p>
-                            <p className="text-lg font-black text-white">{state.system?.protectedUsersCount || state.stats?.systemConfig?.protected_users_count || 0}</p>
+                {/* Distribuição de Reservas Internas (Potes) */}
+                <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-[2.5rem] p-8 backdrop-blur-xl">
+                    <div className="flex items-center justify-between mb-8">
+                        <h3 className="text-xl font-black text-white flex items-center gap-3">
+                            <Activity className="text-primary-500" size={20} />
+                            Reservas e Sustentabilidade
+                        </h3>
+                        <div className="flex items-center gap-2 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
+                            <span className="text-[10px] font-black tracking-widest text-emerald-500 uppercase">Sistema Ativo</span>
                         </div>
                     </div>
-                    <div className="mt-6 pt-6 border-t border-zinc-800">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-xs text-zinc-500 font-bold uppercase">Reward Pool (Cotistas)</span>
-                            <span className="text-xs text-emerald-400 font-black tracking-tight">{formatCurrency(state.profitPool)}</span>
-                        </div>
-                        <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-emerald-500 h-full" style={{ width: '100%' }}></div>
-                        </div>
-                        {state.stats?.quotasCount ? (
-                            <div className="flex justify-between items-center mt-2">
-                                <span className="text-[10px] text-zinc-500 font-bold uppercase">
-                                    {state.stats.quotasCount} Cotas Ativas
-                                </span>
-                                <span className="text-[10px] text-emerald-400 font-bold">
-                                    ~ {formatCurrency(state.profitPool / state.stats.quotasCount)} / cota
-                                </span>
-                            </div>
-                        ) : (
-                            <p className="text-[9px] text-zinc-600 mt-2 text-right">Sem cotas ativas para divisão.</p>
-                        )}
 
-                        {/* Botão Distribuir Excedentes Agora */}
-                        {state.profitPool > 0 && (
-                            <button
-                                onClick={async () => {
+                    <div className="grid grid-cols-2 lg:grid-cols-2 gap-3 mb-8">
+                        {[
+                            { label: 'Impostos', val: state.stats?.systemConfig?.total_tax_reserve, icon: '🏛️', color: 'text-zinc-400' },
+                            { label: 'Infraestrutura', val: state.stats?.systemConfig?.total_operational_reserve, icon: '🏢', color: 'text-zinc-400' },
+                            { label: 'Owner Profit', val: state.stats?.systemConfig?.total_owner_profit, icon: '💎', color: 'text-primary-400' },
+                            { label: 'Mutual Reserve', val: state.stats?.systemConfig?.mutual_reserve, icon: '📈', color: 'text-emerald-400' },
+                            { label: 'Fundo Social', val: state.stats?.systemConfig?.investment_reserve, icon: '🤝', color: 'text-indigo-400' },
+                            { label: 'Proteção Mútua', val: state.stats?.systemConfig?.mutual_protection_fund, icon: '🛡️', color: 'text-emerald-500' },
+                        ].map((pote, idx) => (
+                            <div key={idx} className="bg-black/20 border border-zinc-800/50 p-5 rounded-2xl group hover:border-zinc-700/80 transition-all">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{pote.label}</span>
+                                    <span className="text-base">{pote.icon}</span>
+                                </div>
+                                <p className={`text-xl font-black ${pote.color}`}>{formatCurrency(pote.val || 0)}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="bg-zinc-900/50 border border-zinc-800/80 p-8 rounded-3xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                        <div className="relative z-10">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">Pool de Recompensa (Cotistas)</span>
+                                <span className="text-lg font-black text-white">{formatCurrency(state.profitPool)}</span>
+                            </div>
+                            <div className="w-full bg-zinc-800/50 h-2 rounded-full overflow-hidden mb-4">
+                                <div className="bg-gradient-to-r from-emerald-500 to-primary-500 h-full shadow-[0_0_15px_rgba(16,185,129,0.3)]" style={{ width: '100%' }}></div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase italic">
+                                    {state.stats?.quotasCount || 0} Cotistas aguardando bonificação
+                                </p>
+                                {state.stats?.quotasCount > 0 && (
+                                    <p className="text-[10px] font-black text-emerald-400 uppercase tracking-tight">
+                                        Expectativa: {formatCurrency(state.profitPool / state.stats.quotasCount)} / cota
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Botão Distribuir Excedentes Agora */}
+                    {state.profitPool > 0 && (
+                        <button
+                            onClick={() => {
+                                const handleDistribute = async () => {
                                     if (!window.confirm(`Deseja distribuir R$ ${state.profitPool.toFixed(2)} de excedentes para os cotistas agora?\n\n• 85% (R$ ${(state.profitPool * 0.85).toFixed(2)}) será distribuído proporcionalmente\n• 15% (R$ ${(state.profitPool * 0.15).toFixed(2)}) vai para manutenção`)) return;
 
                                     setIsDistributing(true);
@@ -285,50 +317,53 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
                                     } finally {
                                         setIsDistributing(false);
                                     }
-                                }}
-                                disabled={isDistributing}
-                                className="w-full mt-6 bg-gradient-to-r from-primary-500 to-emerald-500 hover:from-primary-400 hover:to-emerald-400 disabled:from-zinc-700 disabled:to-zinc-800 text-black disabled:text-zinc-500 font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 shadow-xl shadow-primary-500/20 active:scale-95"
-                            >
-                                {isDistributing ? (
-                                    <>
-                                        <RefreshCw size={18} className="animate-spin" />
-                                        DISTRIBUINDO...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Send size={18} />
-                                        DISTRIBUIR EXCEDENTES AGORA
-                                    </>
-                                )}
-                            </button>
-                        )}
-                    </div>
+                                };
+                                handleDistribute();
+                            }}
+                            disabled={isDistributing}
+                            className="w-full mt-6 bg-gradient-to-r from-primary-500 to-emerald-500 hover:from-primary-400 hover:to-emerald-400 disabled:from-zinc-700 disabled:to-zinc-800 text-black disabled:text-zinc-500 font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 shadow-xl shadow-primary-500/20 active:scale-95"
+                        >
+                            {isDistributing ? (
+                                <>
+                                    <RefreshCw size={18} className="animate-spin" />
+                                    DISTRIBUINDO...
+                                </>
+                            ) : (
+                                <>
+                                    <Send size={18} />
+                                    DISTRIBUIR EXCEDENTES AGORA
+                                </>
+                            )}
+                        </button>
+                    )}
                 </div>
+            </div>
 
-                {/* Injeção de Lucro Manual (Receita Externa) */}
-                <div className="bg-gradient-to-br from-emerald-600/20 to-emerald-900/10 border border-emerald-500/20 rounded-3xl p-8 shadow-2xl col-span-1 md:col-span-2">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-                        <div className="flex-1">
-                            <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
-                                <div className="p-2 bg-emerald-500/20 rounded-lg"><DollarSign className="text-emerald-400" size={20} /></div>
-                                Injetar Receita Externa
-                            </h3>
-                            <p className="text-sm text-zinc-400 leading-relaxed max-w-xl">
-                                Recebeu excedente fora do App (ex: taxas, serviços externos)? Injete aqui para aumentar o saldo do sistema e o pool de participação dos membros.
-                            </p>
+            {/* Injeção de Lucro Manual (Receita Externa) */}
+            <div className="bg-gradient-to-br from-emerald-600/20 to-emerald-900/10 border border-emerald-500/20 rounded-3xl p-8 shadow-2xl col-span-1 md:col-span-2">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                    <div className="flex-1">
+                        <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
+                            <div className="p-2 bg-emerald-500/20 rounded-lg"><DollarSign className="text-emerald-400" size={20} /></div>
+                            Injetar Receita Externa
+                        </h3>
+                        <p className="text-sm text-zinc-400 leading-relaxed max-w-xl">
+                            Recebeu excedente fora do App (ex: taxas, serviços externos)? Injete aqui para aumentar o saldo do sistema e o pool de participação dos membros.
+                        </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-bold">R$</span>
+                            <input
+                                type="number"
+                                placeholder="0,00"
+                                id="manual-profit-input"
+                                className="w-full sm:w-48 bg-black/40 border border-emerald-500/20 rounded-2xl pl-10 pr-4 py-4 text-white font-black outline-none focus:border-emerald-500/50 transition-all placeholder:text-zinc-700"
+                            />
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                            <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-bold">R$</span>
-                                <input
-                                    type="number"
-                                    placeholder="0,00"
-                                    id="manual-profit-input"
-                                    className="w-full sm:w-48 bg-black/40 border border-emerald-500/20 rounded-2xl pl-10 pr-4 py-4 text-white font-black outline-none focus:border-emerald-500/50 transition-all placeholder:text-zinc-700"
-                                />
-                            </div>
-                            <button
-                                onClick={async () => {
+                        <button
+                            onClick={() => {
+                                const handleInject = async () => {
                                     const input = document.getElementById('manual-profit-input') as HTMLInputElement;
                                     const val = parseFloat(input.value);
                                     if (!val || val <= 0) return onError("Erro", "Insira um valor válido.");
@@ -346,65 +381,85 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
                                     } catch (e: any) {
                                         onError("Erro", e.message);
                                     }
-                                }}
-                                className="bg-emerald-500 hover:bg-emerald-400 text-black font-black px-8 py-4 rounded-2xl transition-all uppercase tracking-widest text-xs shadow-xl shadow-emerald-500/20 active:scale-95"
-                            >
-                                Confirmar Injeção
-                            </button>
-                        </div>
+                                };
+                                handleInject();
+                            }}
+                            className="bg-emerald-500 hover:bg-emerald-400 text-black font-black px-8 py-4 rounded-2xl transition-all uppercase tracking-widest text-xs shadow-xl shadow-emerald-500/20 active:scale-95"
+                        >
+                            Confirmar Injeção
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Extrato Financeiro Administrativo Modernizado */}
+            <div className="col-span-1 md:col-span-2 bg-zinc-900/30 border border-zinc-800/80 rounded-[2.5rem] p-8 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-xl font-black text-white flex items-center gap-3">
+                        <Activity className="text-primary-500" size={20} />
+                        Log de Movimentações (Ledger)
+                    </h3>
+                    <div className="p-2 bg-zinc-800/50 rounded-xl">
+                        <SettingsIcon className="text-zinc-600" size={16} />
                     </div>
                 </div>
 
-                {/* Extrato Financeiro Administrativo */}
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl col-span-1 md:col-span-2">
-                    <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
-                        <div className="p-2 bg-primary-500/10 rounded-lg"><Activity className="text-primary-400" size={20} /></div>
-                        Extrato de Movimentações Administrativas
-                    </h3>
-
-                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-3 custom-scrollbar">
-                        {isHistoryLoading && <div className="text-center py-10 text-zinc-500 text-xs font-bold uppercase animate-pulse">Carregando extrato...</div>}
+                <div className="bg-black/20 rounded-3xl border border-zinc-800/50 overflow-hidden">
+                    <div className="grid grid-cols-1 divide-y divide-zinc-800/50 max-h-[500px] overflow-y-auto custom-scrollbar">
+                        {isHistoryLoading && financeHistory.length === 0 && (
+                            <div className="text-center py-20 flex flex-col items-center gap-4">
+                                <div className="w-10 h-10 border-2 border-primary-500/20 border-t-primary-500 rounded-full animate-spin"></div>
+                                <p className="text-xs font-black text-zinc-600 uppercase tracking-widest">Sincronizando Ledger...</p>
+                            </div>
+                        )}
 
                         {financeHistory.map((log) => (
-                            <div key={log.id} className="bg-black/30 border border-zinc-800/50 p-4 rounded-2xl flex items-center justify-between gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div className={`p-3 rounded-xl ${log.action === 'PAY_COST' ? 'bg-red-500/10 text-red-400' :
-                                        log.action === 'MANUAL_PROFIT_ADD' ? 'bg-emerald-500/10 text-emerald-400' :
-                                            'bg-zinc-800 text-zinc-400'
+                            <div key={log.id} className="p-5 flex items-center justify-between hover:bg-zinc-800/20 transition-all group">
+                                <div className="flex items-center gap-5">
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${log.action === 'PAY_COST' ? 'bg-red-500/5 text-red-500 group-hover:bg-red-500/10' :
+                                        log.action === 'MANUAL_PROFIT_ADD' ? 'bg-emerald-500/5 text-emerald-500 group-hover:bg-emerald-500/10' :
+                                            'bg-zinc-800/50 text-zinc-500'
                                         }`}>
-                                        {log.action === 'PAY_COST' ? <ArrowUpRight size={18} /> :
-                                            log.action === 'MANUAL_PROFIT_ADD' ? <ArrowDownLeft size={18} /> :
-                                                <SettingsIcon size={18} />}
+                                        {log.action === 'PAY_COST' ? <ArrowUpRight size={20} /> :
+                                            log.action === 'MANUAL_PROFIT_ADD' ? <ArrowDownLeft size={20} /> :
+                                                <Activity size={20} />}
                                     </div>
                                     <div>
-                                        <p className="text-xs font-black text-white uppercase tracking-tight">
-                                            {log.action === 'PAY_COST' ? 'PAGAMENTO REALIZADO' :
-                                                log.action === 'MANUAL_PROFIT_ADD' ? 'EXCEDENTE ADICIONADO' :
-                                                    log.action.replace('_', ' ')}
+                                        <div className="flex items-center gap-2 mb-0.5">
+                                            <p className="text-[11px] font-black text-white uppercase tracking-tight">
+                                                {log.action === 'PAY_COST' ? 'BAIXA DE CUSTO' :
+                                                    log.action === 'MANUAL_PROFIT_ADD' ? 'INJEÇÃO DE RECEITA' :
+                                                        log.action.replace('_', ' ')}
+                                            </p>
+                                            <span className="text-[9px] font-bold text-zinc-600 bg-zinc-800 px-2 py-0.5 rounded-full uppercase">@{log.admin_name}</span>
+                                        </div>
+                                        <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-tighter">
+                                            {new Date(log.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                         </p>
-                                        <p className="text-[10px] text-zinc-500 font-bold uppercase">{new Date(log.created_at).toLocaleString('pt-BR')}</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className={`text-sm font-black ${log.action === 'PAY_COST' ? 'text-red-400' :
-                                        log.action === 'MANUAL_PROFIT_ADD' ? 'text-emerald-400' :
+                                    <p className={`text-lg font-black tracking-tight ${log.action === 'PAY_COST' ? 'text-red-500' :
+                                        log.action === 'MANUAL_PROFIT_ADD' ? 'text-emerald-500' :
                                             'text-white'
                                         }`}>
                                         {log.action === 'PAY_COST' ? '-' : '+'}{formatCurrency(log.new_values?.amount || log.new_values?.amountToAdd || log.new_values?.addedAmount || 0)}
                                     </p>
-                                    <p className="text-[9px] text-zinc-600 font-bold uppercase">POR: {log.admin_name}</p>
+                                    <p className="text-[9px] text-zinc-600 font-black uppercase mt-0.5 max-w-[150px] truncate group-hover:text-zinc-500">
+                                        {log.new_values?.description?.substring(0, 30) || 'SEM DETALHES'}
+                                    </p>
                                 </div>
                             </div>
                         ))}
 
                         {hasMoreHistory && (
-                            <div className="pt-4 flex justify-center">
+                            <div className="p-6 flex justify-center border-t border-zinc-800/50 bg-black/40">
                                 <button
                                     onClick={() => fetchFinanceHistory(true)}
                                     disabled={isHistoryLoading}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-[10px] font-black uppercase text-zinc-400 px-6 py-2.5 rounded-xl border border-zinc-700 transition-all flex items-center gap-2 disabled:opacity-50"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-[10px] font-black uppercase text-zinc-400 px-8 py-3 rounded-2xl border border-zinc-700 transition-all flex items-center gap-2 disabled:opacity-50 active:scale-95"
                                 >
-                                    {isHistoryLoading ? 'Carregando...' : 'Carregar mais movimentações'}
+                                    {isHistoryLoading ? 'Carregando...' : 'Ver mais movimentações'}
                                 </button>
                             </div>
                         )}
@@ -417,24 +472,26 @@ export const AdminSystem = ({ state, onRefresh, onSuccess, onError }: AdminSyste
                         )}
                     </div>
                 </div>
+            </div>
 
-                {/* Varredura de Inadimplência */}
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 shadow-2xl col-span-1 md:col-span-2">
-                    <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
-                        <div className="p-2 bg-red-500/10 rounded-lg"><AlertTriangle className="text-red-400" size={20} /></div>
-                        Varredura de Atraso de Reposição
-                    </h3>
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                        <p className="text-sm text-zinc-400 leading-relaxed max-w-xl">
-                            Clique abaixo para executar manualmente a proteção de lastro. Membros com atraso superior a 5 dias terão suas licenças executadas para cobrir o compromisso social.
+            {/* Varredura de Inadimplência */}
+            <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-[2.5rem] p-8 backdrop-blur-xl">
+                <h3 className="text-xl font-black text-white mb-8 flex items-center gap-3">
+                    <AlertTriangle className="text-red-500" size={20} />
+                    Gestão de Inadimplência
+                </h3>
+                <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                    <div className="flex-1">
+                        <p className="text-xs text-zinc-500 font-medium leading-relaxed max-w-xl">
+                            A varredura manual executa o lastro de proteção para apoios com atraso superior a 5 dias. As licenças (cotas) dos devedores são liquidadas para cobrir o compromisso social e manter a saúde do fundo mútuo.
                         </p>
-                        <button
-                            onClick={handleRunLiquidation}
-                            className="bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-black border border-red-500/30 font-black px-8 py-5 rounded-2xl transition-all uppercase tracking-widest text-xs whitespace-nowrap"
-                        >
-                            Iniciar Varredura de Garantias
-                        </button>
                     </div>
+                    <button
+                        onClick={() => { handleRunLiquidation(); }}
+                        className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-black border border-red-500/30 font-black px-10 py-5 rounded-[2rem] transition-all uppercase tracking-widest text-[10px] whitespace-nowrap shadow-lg shadow-red-500/5 active:scale-95"
+                    >
+                        Executar Varredura Flash
+                    </button>
                 </div>
             </div>
         </div>

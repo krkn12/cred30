@@ -1,4 +1,4 @@
-import { MapPin, Navigation2, CheckCircle2, Truck, Image as ImageIcon, Tag, FileText, DollarSign, Archive, Plus } from 'lucide-react';
+import { MapPin, Navigation2, CheckCircle2, Truck, Image as ImageIcon, Tag, FileText, DollarSign, Archive, Plus, Target } from 'lucide-react';
 import { VEHICLE_ICONS, MARKETPLACE_CATEGORIES } from './marketplace.constants';
 import { LoadingButton } from '../ui/LoadingButton';
 
@@ -29,85 +29,138 @@ export const CreateListingView = ({
                 O que você quer vender?
             </h3>
 
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6 flex gap-3 text-left">
-                <MapPin size={20} className="text-blue-400 shrink-0 mt-0.5" />
-                <div className="flex-1">
-                    <p className="text-sm font-bold text-blue-100">Localização do Anúncio</p>
-                    <p className="text-xs text-blue-200/70 mt-1 leading-relaxed">
-                        Defina onde seu produto está para aparecer para compradores próximos.
-                    </p>
 
-                    <button
-                        type="button"
-                        onClick={onGetGPS}
-                        className={`mt-3 w-full sm:w-auto ${gpsLocation ? 'bg-emerald-500 text-white' : 'bg-blue-500 hover:bg-blue-400 text-white'} px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition shadow-lg`}
-                    >
-                        {gpsLocation ? <CheckCircle2 size={14} /> : <Navigation2 size={14} />}
-                        {gpsLocation ? 'LOCALIZAÇÃO DEFINIDA' : 'USAR LOCALIZAÇÃO ATUAL (GPS)'}
-                    </button>
 
-                    {gpsLocation ? (
-                        <div className="mt-4 space-y-3 p-3 bg-zinc-950/50 rounded-xl border border-blue-500/20">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Confirme o Endereço</span>
-                                {gpsLocation.accuracy && (
-                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${gpsLocation.accuracy > 100 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                                        Precisão: {Math.round(gpsLocation.accuracy)}m
-                                    </span>
-                                )}
-                            </div>
-
-                            <div className="grid grid-cols-1 gap-2">
-                                <div className="space-y-1">
-                                    <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">Bairro / Rua</label>
-                                    <input
-                                        type="text"
-                                        value={gpsLocation.neighborhood}
-                                        onChange={(e) => setGpsLocation({ ...gpsLocation, neighborhood: e.target.value })}
-                                        className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:border-blue-500/50 outline-none"
-                                        placeholder="Ex: Tapanã / Passagem Dois Amigos"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="space-y-1">
-                                        <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">CEP / Postal Code</label>
-                                        <input
-                                            type="text"
-                                            value={gpsLocation.postalCode || ''}
-                                            onChange={(e) => setGpsLocation({ ...gpsLocation, postalCode: e.target.value })}
-                                            placeholder="00000-000"
-                                            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:border-blue-500/50 outline-none"
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="space-y-1">
-                                            <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">UF</label>
-                                            <input
-                                                type="text"
-                                                value={gpsLocation.state}
-                                                onChange={(e) => setGpsLocation({ ...gpsLocation, state: e.target.value.toUpperCase().slice(0, 2) })}
-                                                className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:border-blue-500/50 outline-none uppercase"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {gpsLocation.accuracy > 100 && (
-                                <p className="text-[9px] text-amber-500/70 italic leading-tight">
-                                    ⚠️ O GPS está oscilando. Se o nome da rua estiver errado (ex: Rua Lula), apague e digite o correto acima.
-                                </p>
-                            )}
-                        </div>
-                    ) : (
-                        <p className="text-[10px] text-blue-200/50 mt-2">
-                            *Isso atualizará a localização do seu perfil de vendedor.
-                        </p>
-                    )}
-                </div>
-            </div>
 
             <form onSubmit={onSubmit} className="space-y-4">
+                {/* LOCALIZAÇÃO (NOVO MÓDULO DE CEP) */}
+                <div className="bg-zinc-800/30 border border-zinc-700/50 rounded-2xl p-4 space-y-3">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
+                        <MapPin size={12} className="text-primary-400" /> Local do Anúncio
+                    </label>
+                    <div className="grid grid-cols-12 gap-2">
+                        <div className="col-span-4">
+                            <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">CEP</label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={gpsLocation?.postalCode || ''}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, '').slice(0, 8);
+                                        const fmt = val.replace(/^(\d{5})(\d)/, '$1-$2');
+                                        setGpsLocation({
+                                            ...gpsLocation,
+                                            postalCode: fmt,
+                                            // Ensure other fields are strings to avoid controlled/uncontrolled switches elsewhere if object changes shape
+                                            neighborhood: gpsLocation?.neighborhood || '',
+                                            houseNumber: gpsLocation?.houseNumber || '',
+                                            city: gpsLocation?.city || '',
+                                            state: gpsLocation?.state || '',
+                                            contactPhone: gpsLocation?.contactPhone || ''
+                                        });
+                                        if (val.length === 8) {
+                                            // Auto-busca CEP
+                                            // Nota: Idealmente mover isso para um useEffect ou função dedicada, mas para MVP inline funciona se tiver acesso ao apiService ou prop
+                                            // Como não temos apiService aqui direto (é componente puro), vamos simular ou depender que o pai passe a função.
+                                            // O componente original recebe 'onGetGPS'. Vamos usar um novo handler 'onCepChange' se possível, ou inferir. 
+                                            // Vendo as props: setGpsLocation está disponível.
+                                            // Vou injetar a lógica de busca aqui mesmo usando um fetch direto ou precisaria passar apiService.
+                                            // Para manter limpo, vou assumir que o usuário digita e clica em buscar ou auto-busca.
+
+                                            // Hack Rápido: Fetch direto aqui para agilizar, já que não quero mudar a interface de props agora se não for estritamente necessário.
+                                            // Mas o correto é usar o serviço. Vou tentar importar o apiService.
+                                            import('../../../application/services/api.service').then(({ apiService }) => {
+                                                apiService.getAddressByCep(val).then((addr) => {
+                                                    if (addr) {
+                                                        setGpsLocation({
+                                                            ...gpsLocation,
+                                                            postalCode: fmt,
+
+                                                            state: addr.state,
+                                                            // Se rua vier vazia, mantém o que tá ou deixa vazio
+                                                            street: addr.street, // Precisamos ver onde armazenar a rua. O original usava 'neighborhood' meio genérico.
+                                                            // O original tinha: neighborhood, houseNumber, state, contactPhone.
+                                                            // Vou concatenar Rua e Bairro no campo 'neighborhood' se não tiver campo separado,
+                                                            // ou melhor, adicionar campo Rua se não tiver.
+                                                            // O original tinha:
+                                                            // gpsLocation.neighborhood
+                                                            // gpsLocation.houseNumber
+                                                            // gpsLocation.state
+                                                            // gpsLocation.postalCode
+
+                                                            // Vou usar o campo 'neighborhood' para "Rua, Bairro" para simplificar ou manter compatibilidade.
+                                                            neighborhood: `${addr.street}, ${addr.neighborhood}`,
+                                                            city: addr.city
+                                                        });
+                                                    }
+                                                });
+                                            });
+                                        }
+                                    }}
+                                    placeholder="00000-000"
+                                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500/50"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={onGetGPS}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-primary-400 hover:text-white"
+                                    title="Usar GPS Atual"
+                                >
+                                    <Target size={14} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="col-span-8">
+                            <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">Bairro / Rua</label>
+                            <input
+                                type="text"
+                                value={gpsLocation?.neighborhood || ''}
+                                onChange={(e) => setGpsLocation({ ...gpsLocation, neighborhood: e.target.value })}
+                                placeholder="Preenchido automaticamente..."
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500/50"
+                            />
+                        </div>
+                        <div className="col-span-4">
+                            <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">Número</label>
+                            <input
+                                type="text"
+                                value={gpsLocation?.houseNumber || ''}
+                                onChange={(e) => setGpsLocation({ ...gpsLocation, houseNumber: e.target.value })}
+                                placeholder="Nº 123"
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500/50"
+                            />
+                        </div>
+                        <div className="col-span-4">
+                            <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">Cidade</label>
+                            <input
+                                type="text"
+                                value={gpsLocation?.city || ''}
+                                onChange={(e) => setGpsLocation({ ...gpsLocation, city: e.target.value })}
+                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500/50"
+                            />
+                        </div>
+                        <div className="col-span-4">
+                            <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">Estado</label>
+                            <input
+                                type="text"
+                                value={gpsLocation?.state || ''}
+                                onChange={(e) => setGpsLocation({ ...gpsLocation, state: e.target.value })}
+                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500/50"
+                            />
+                        </div>
+                        <div className="col-span-4">
+                            <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">Telefone</label>
+                            <input
+                                type="tel"
+                                value={gpsLocation?.contactPhone || ''}
+                                onChange={(e) => setGpsLocation({ ...gpsLocation, contactPhone: e.target.value })}
+                                placeholder="(99) 99999-9999"
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500/50"
+                            />
+                        </div>
+                    </div>
+                </div>
+
                 <div>
                     <div className="flex justify-between items-center mb-1">
                         <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Título do Anúncio</label>
@@ -124,6 +177,7 @@ export const CreateListingView = ({
                         />
                     </div>
                 </div>
+
 
                 <div>
                     <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1 mb-1 block">Descrição Detalhada</label>
@@ -171,7 +225,7 @@ export const CreateListingView = ({
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                     <div className="col-span-1">
                         <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1 mb-1 block">Categoria</label>
                         <div className="relative">
@@ -183,19 +237,6 @@ export const CreateListingView = ({
                             >
                                 {MARKETPLACE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
-                        </div>
-                    </div>
-                    <div className="col-span-1">
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1 mb-1 block">Local de Retirada (Opcional)</label>
-                        <div className="relative">
-                            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
-                            <input
-                                type="text"
-                                value={newListing.pickupAddress}
-                                onChange={(e) => setNewListing({ ...newListing, pickupAddress: e.target.value })}
-                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-12 pr-4 py-3 text-sm text-white focus:outline-none focus:border-primary-500/50"
-                                placeholder="Rua, número, etc"
-                            />
                         </div>
                     </div>
                 </div>
@@ -421,6 +462,87 @@ export const CreateListingView = ({
                         </div>
                     )}
                 </div>
+
+                {/* MENU OPTIONS SECTION - Only for Food/Drinks */}
+                {(newListing.category === 'COMIDA' || newListing.category === 'BEBIDAS') && (
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 space-y-3">
+                        <label className="text-[10px] font-black text-primary-400 uppercase flex items-center justify-between">
+                            <span>Opcionais de Cardápio (Ex: Borda, Molhos)</span>
+                            <span className="bg-primary-500/10 px-2 py-0.5 rounded text-[9px]">{newListing.foodOptions?.length || 0} Opcionais</span>
+                        </label>
+
+                        {(!newListing.foodOptions || newListing.foodOptions.length === 0) ? (
+                            <div className="text-center py-6 border border-dashed border-zinc-800 rounded-xl bg-zinc-950/30">
+                                <Plus size={24} className="text-zinc-800 mx-auto mb-2" />
+                                <p className="text-[10px] text-zinc-600 mb-2">Deseja adicionar opcionais pagos ao seu item?</p>
+                                <button
+                                    type="button"
+                                    onClick={() => setNewListing({ ...newListing, foodOptions: [{ name: '', price: 0 }] })}
+                                    className="text-primary-400 text-xs font-black uppercase hover:scale-105 transition-transform"
+                                >
+                                    + Ativar Opcionais
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {newListing.foodOptions.map((opt: any, idx: number) => (
+                                    <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-zinc-950 p-2 rounded-xl border border-zinc-800 group">
+                                        <div className="col-span-7">
+                                            <input
+                                                type="text"
+                                                placeholder="Nome (Ex: Borda Recheada)"
+                                                value={opt.name}
+                                                onChange={(e) => {
+                                                    const newOpts = [...newListing.foodOptions];
+                                                    newOpts[idx].name = e.target.value;
+                                                    setNewListing({ ...newListing, foodOptions: newOpts });
+                                                }}
+                                                className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-white"
+                                            />
+                                        </div>
+                                        <div className="col-span-3">
+                                            <input
+                                                type="number"
+                                                placeholder="Preço"
+                                                value={opt.price}
+                                                onChange={(e) => {
+                                                    const newOpts = [...newListing.foodOptions];
+                                                    newOpts[idx].price = parseFloat(e.target.value) || 0;
+                                                    setNewListing({ ...newListing, foodOptions: newOpts });
+                                                }}
+                                                className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-white text-center"
+                                            />
+                                        </div>
+                                        <div className="col-span-2 flex justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const newOpts = newListing.foodOptions.filter((_: any, i: number) => i !== idx);
+                                                    setNewListing({ ...newListing, foodOptions: newOpts });
+                                                }}
+                                                className="p-1.5 text-zinc-500 hover:text-red-400 transition"
+                                            >
+                                                <Archive size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setNewListing({ ...newListing, foodOptions: [...newListing.foodOptions, { name: '', price: 0 }] });
+                                    }}
+                                    className="w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-[10px] font-bold uppercase rounded-xl transition"
+                                >
+                                    + Adicionar Outro Opcional
+                                </button>
+                            </div>
+                        )}
+                        <p className="text-[9px] text-zinc-500 italic mt-1 leading-tight">
+                            Os clientes poderão selecionar múltiplos opcionais e o valor será somado ao total.
+                        </p>
+                    </div>
+                )}
 
                 <div className="pt-4 flex gap-3">
                     <button

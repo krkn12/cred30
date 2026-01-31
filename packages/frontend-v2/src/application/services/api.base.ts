@@ -82,6 +82,7 @@ export class ApiBase {
         options: RequestInit = {}
     ): Promise<ApiResponse<T>> {
         const url = `${API_BASE_URL}${endpoint}`;
+        console.log(`[API REQUEST] ${options.method || 'GET'} ${url}`);
 
         // Timeout de 15 segundos para evitar loading infinito
         const controller = new AbortController();
@@ -122,6 +123,7 @@ export class ApiBase {
                 throw error;
             }
 
+            console.log(`[API RESPONSE] ${endpoint} ->`, data);
             return data;
         } catch (error: any) {
             if (error.name === 'AbortError') {

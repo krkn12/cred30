@@ -28,6 +28,7 @@ export interface User {
   referred_by?: string | null;
   is_protected?: boolean;
   protection_expires_at?: string | null;
+  kyc_status?: 'NONE' | 'PENDING' | 'REJECTED' | 'APPROVED';
 }
 
 export interface Quota {

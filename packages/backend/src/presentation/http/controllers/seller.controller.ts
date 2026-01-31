@@ -12,7 +12,8 @@ export class SellerController {
             const pool = getDbPool(c);
 
             const result = await pool.query(
-                `SELECT is_seller, seller_status, seller_company_name 
+                `SELECT is_seller, seller_status, seller_company_name,
+                 merchant_name, restaurant_category, opening_hours, is_restaurant, is_liquor_store, is_paused 
                  FROM users WHERE id = $1`,
                 [user.id]
             );
@@ -26,6 +27,12 @@ export class SellerController {
                 // hasWallet agora é derivado de is_seller + seller_status approved
                 hasWallet: userData?.is_seller && userData?.seller_status === 'approved',
                 companyName: userData?.seller_company_name || null,
+                merchantName: userData?.merchant_name || null,
+                restaurantCategory: userData?.restaurant_category || null,
+                openingHours: userData?.opening_hours || null,
+                isRestaurant: userData?.is_restaurant || false,
+                isLiquorStore: userData?.is_liquor_store || false,
+                isPaused: userData?.is_paused || false
             });
         } catch (error: any) {
             console.error('[SELLER] Erro ao buscar status:', error);

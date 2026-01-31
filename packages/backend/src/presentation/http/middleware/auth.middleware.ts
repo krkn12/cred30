@@ -56,7 +56,7 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
       `SELECT id, name, email, balance, referral_code, referred_by, is_admin, role, status, score, 
        created_at, pix_key, two_factor_enabled, cpf, phone, security_lock_until, membership_type,
        is_verified, is_seller, video_points, COALESCE(ad_points, 0) as ad_points, address,
-       total_dividends_earned, last_login_at
+       total_dividends_earned, last_login_at, (password_hash IS NOT NULL) as has_password
        FROM users WHERE id = $1`,
       [decoded.userId]
     );
@@ -105,38 +105,22 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
       ad_points: parseInt(user.ad_points || '0'),
       address: user.address || undefined,
       total_dividends_earned: parseFloat(user.total_dividends_earned || '0'),
-      last_login_at: user.last_login_at || undefined
+      last_login_at: user.last_login_at || undefined,
+      hasPassword: Boolean(user.has_password)
     };
 
-    // Log para depuração
-    console.log('Usuário autenticado:', {
-      id: userContext.id,
-      name: userContext.name,
-      isAdmin: userContext.isAdmin,
-      role: userContext.role,
-      status: userContext.status,
-      lockUntil: user.security_lock_until
-    });
-
     c.set('user', userContext);
-
-    // Verificar se foi setado corretamente
-    const userAfterSet = c.get('user');
-    console.log('Usuário após set:', {
-      exists: !!userAfterSet,
-      id: userAfterSet?.id,
-      isAdmin: userAfterSet?.isAdmin,
-      role: userAfterSet?.role
-    });
-
-    await next();
   } catch (error) {
-    if (error instanceof Error) {
+    console.error('authMiddleware - Erro de autenticação:', error);
+    if (error instanceof Error && (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError' || error.message === 'Token não fornecido' || error.message === 'Token inválido')) {
       return c.json({ success: false, message: 'Token inválido ou expirado' }, 401);
     }
-
-    return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
+    // Repassa outros erros (ex: banco) para o handler global
+    throw error;
   }
+
+  // Chamar o próximo middleware/rota fora do try-catch de auth
+  await next();
 };
 
 // Middleware para bloquear ações sensíveis se houver trava de segurança ativa

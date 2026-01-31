@@ -8,7 +8,7 @@ export const votingRoutes = new Hono();
 votingRoutes.use('*', authMiddleware);
 
 // Criar Proposta (Membros Engajados ou Admin)
-votingRoutes.post('/proposal', VotingController.createProposal);
+votingRoutes.post('/proposals', VotingController.createProposal);
 
 // Listar Propostas Democráticas
 votingRoutes.get('/proposals', VotingController.listProposals);
@@ -17,4 +17,4 @@ votingRoutes.get('/proposals', VotingController.listProposals);
 votingRoutes.post('/vote', VotingController.vote);
 
 // Encerrar Votação e Computar Resultados (Admin Only)
-votingRoutes.post('/proposal/:id/close', adminMiddleware, VotingController.closeProposal);
+votingRoutes.post('/proposals/:id/close', adminMiddleware, VotingController.closeProposal);

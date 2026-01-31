@@ -41,6 +41,8 @@ interface ApiUser {
   safeContactPhone?: string;
   safe_contact_phone?: string;
   referred_by?: string | null;
+  kyc_status?: string;
+  has_password?: boolean;
 }
 
 interface ApiQuota {
@@ -72,6 +74,7 @@ interface ApiLoan {
   remainingAmount?: string | number;
   paidInstallmentsCount?: number;
   isFullyPaid?: boolean;
+  isGuarantor?: boolean;
   installmentsList?: any[];
 }
 
@@ -139,12 +142,14 @@ const convertApiUserToUser = (apiUser: ApiUser): User => {
     ad_points: apiUser.ad_points || 0,
     role: (apiUser.role as "ADMIN" | "MEMBER" | "ATTENDANT") || 'MEMBER',
     status: (apiUser.status as "ACTIVE" | "BLOCKED") || 'ACTIVE',
+    passwordHash: apiUser.has_password ? 'placeholder' : (apiUser.passwordHash || apiUser.password_hash || null),
     securityLockUntil: apiUser.security_lock_until ? new Date(apiUser.security_lock_until).getTime() : undefined,
     is_seller: apiUser.is_seller || false,
     total_dividends_earned: apiUser.total_dividends_earned || 0,
     last_login_at: apiUser.last_login_at,
     safeContactPhone: apiUser.safeContactPhone || apiUser.safe_contact_phone || null,
     referred_by: apiUser.referred_by || null,
+    kyc_status: (apiUser.kyc_status as 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED') || 'NONE',
   };
 };
 
@@ -206,6 +211,7 @@ const convertApiLoanToLoan = (apiLoan: ApiLoan): Loan => {
     remainingAmount: remainingAmount,
     paidInstallmentsCount: apiLoan.paidInstallmentsCount || 0,
     isFullyPaid: apiLoan.isFullyPaid || false,
+    isGuarantor: apiLoan.isGuarantor || false,
     installmentsList: Array.isArray(apiLoan.installmentsList) ? apiLoan.installmentsList : [],
   };
 };
@@ -254,14 +260,26 @@ export const loadState = async (): Promise<AppState> => {
     // Obter dados consolidados (Otimização Máxima)
     // Cache busting adicionado para forçar atualização em tempo real
     const syncResponse = await apiService.get<SyncResponseData>(`/users/sync?t=${Date.now()}`);
+
+    // Verificação robusta da resposta
+    if (!syncResponse || !syncResponse.success || !syncResponse.data) {
+      console.warn('Resposta de sincronização incompleta ou sem sucesso');
+      throw new Error('Falha na sincronização: Dados ausentes');
+    }
+
     const syncData = syncResponse.data;
 
+    // Garantir que os campos básicos existam antes de mapear
+    if (!syncData.user) {
+      throw new Error('Usuário não encontrado na resposta de sincronização');
+    }
+
     const currentUser = convertApiUserToUser(syncData.user);
-    const transactions = syncData.transactions.map(convertApiTransactionToTransaction);
-    const quotas = syncData.quotas.map(convertApiQuotaToQuota);
-    const loans = syncData.loans.map(convertApiLoanToLoan);
+    const transactions = Array.isArray(syncData.transactions) ? syncData.transactions.map(convertApiTransactionToTransaction) : [];
+    const quotas = Array.isArray(syncData.quotas) ? syncData.quotas.map(convertApiQuotaToQuota) : [];
+    const loans = Array.isArray(syncData.loans) ? syncData.loans.map(convertApiLoanToLoan) : [];
     const welcomeBenefit = syncData.welcomeBenefit;
-    let stats = syncData.stats;
+    let stats = syncData.stats || {};
 
     // Se for administrador, obter dados do dashboard
     let systemBalance = 0;
@@ -285,29 +303,32 @@ export const loadState = async (): Promise<AppState> => {
           // Log removido para evitar erro de circularidade em objetos grandes
           console.log('Dados do dashboard administrativo carregados.');
 
-          // Acessar dados aninhados corretamente
-          systemBalance = dashboard.data?.systemConfig?.system_balance || dashboard.systemConfig?.system_balance || 0;
-          profitPool = dashboard.data?.systemConfig?.profit_pool || dashboard.systemConfig?.profit_pool || 0;
-          stats = dashboard.data?.stats || dashboard.stats || null;
+          // Acessar dados aninhados corretamente (Backend retorna dashboard.data.systemConfig e dashboard.data.stats)
+          const configRoot = dashboard.data?.systemConfig || dashboard.systemConfig;
+          const statsRoot = dashboard.data?.stats || dashboard.stats;
 
-          if (stats) {
-            stats.totalGatewayCosts = dashboard.data?.systemConfig?.total_gateway_costs || dashboard.systemConfig?.total_gateway_costs || 0;
-            stats.totalManualCosts = dashboard.data?.systemConfig?.total_manual_costs || dashboard.systemConfig?.total_manual_costs || 0;
-            stats.totalTaxReserve = dashboard.data?.systemConfig?.total_tax_reserve || dashboard.systemConfig?.total_tax_reserve || 0;
-            stats.totalOperationalReserve = dashboard.data?.systemConfig?.total_operational_reserve || dashboard.systemConfig?.total_operational_reserve || 0;
-            stats.totalOwnerProfit = dashboard.data?.systemConfig?.total_owner_profit || dashboard.systemConfig?.total_owner_profit || 0;
-            stats.realLiquidity = dashboard.data?.systemConfig?.real_liquidity || dashboard.systemConfig?.real_liquidity || 0;
-            stats.totalReserves = dashboard.data?.systemConfig?.total_reserves || dashboard.systemConfig?.total_reserves || 0;
-            stats.theoreticalCash = dashboard.data?.systemConfig?.theoretical_cash || dashboard.systemConfig?.theoretical_cash || 0;
-            stats.monthlyFixedCosts = dashboard.data?.systemConfig?.monthly_fixed_costs || dashboard.systemConfig?.monthly_fixed_costs || 0;
-            stats.systemConfig = dashboard.data?.systemConfig || dashboard.systemConfig || null;
-            if (dashboard.data?.stats?.users_count !== undefined) {
-              stats.usersCount = parseInt(dashboard.data.stats.users_count);
+          systemBalance = configRoot?.system_balance || 0;
+          profitPool = configRoot?.profit_pool || 0;
+          stats = { ...(stats || {}), ...(statsRoot || {}) };
+
+          if (stats && configRoot) {
+            stats.totalGatewayCosts = configRoot.total_gateway_costs || 0;
+            stats.totalManualCosts = configRoot.total_manual_costs || 0;
+            stats.totalTaxReserve = configRoot.total_tax_reserve || 0;
+            stats.totalOperationalReserve = configRoot.total_operational_reserve || 0;
+            stats.totalOwnerProfit = configRoot.total_owner_profit || 0;
+            stats.realLiquidity = configRoot.real_liquidity || 0;
+            stats.totalReserves = configRoot.total_reserves || 0;
+            stats.theoreticalCash = configRoot.theoretical_cash || 0;
+            stats.monthlyFixedCosts = configRoot.monthly_fixed_costs || 0;
+            stats.systemConfig = configRoot;
+
+            // Corrige usersCount se estiver vindo como users_count (snake_case do DB)
+            if (statsRoot?.users_count !== undefined) {
+              stats.usersCount = parseInt(statsRoot.users_count);
             }
           }
 
-          // DEBUG: Verificar valores extraídos
-          // DEBUG: Valores extraídos com sucesso
           console.log('Valores do dashboard extraídos com sucesso.');
 
           // Atualizar cache do dashboard

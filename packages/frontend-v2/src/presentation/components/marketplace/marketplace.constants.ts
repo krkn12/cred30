@@ -9,6 +9,8 @@ import {
     Wrench,
     Shirt,
     Package,
+    Utensils,
+    GlassWater,
     Zap // Usado como fallback para motor de busca de ícones se necessário
 } from 'lucide-react';
 
@@ -34,10 +36,14 @@ export const CATEGORY_ICONS: Record<string, any> = {
     'IMÓVEIS': Home,
     'SERVIÇOS': Wrench,
     'MODA': Shirt,
+    'COMIDA': Utensils,
+    'BEBIDAS': GlassWater,
     'OUTROS': Package
 };
 
 export const MARKETPLACE_CATEGORIES = [
+    'COMIDA',
+    'BEBIDAS',
     'PARTICIPAÇÕES',
     'ELETRÔNICOS',
     'VEÍCULOS',

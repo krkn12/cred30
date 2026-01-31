@@ -117,10 +117,7 @@ export class TransactionsController {
             );
             const totalQuotaValue = parseFloat(quotasResult.rows[0].total_quota_value);
 
-            let fee = 0;
-            if (totalQuotaValue < amount) {
-                fee = Math.max(5, amount * 0.02);
-            }
+            let fee = 3.50;
             const netAmount = amount - fee;
 
             const result = await executeInTransaction(pool, async (client) => {

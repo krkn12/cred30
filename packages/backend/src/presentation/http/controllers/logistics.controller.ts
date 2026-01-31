@@ -1,6 +1,9 @@
 import { Context } from 'hono';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { LOGISTICS_SUSTAINABILITY_FEE_RATE } from '../../../shared/constants/business.constants';
+import {
+    LOGISTICS_SUSTAINABILITY_FEE_RATE,
+    DELIVERY_INSURANCE_RATE
+} from '../../../shared/constants/business.constants';
 import { UserContext } from '../../../shared/types/hono.types';
 
 export class LogisticsController {
@@ -26,7 +29,7 @@ export class LogisticsController {
                     ml.title as item_title,
                     ml.price as item_price,
                     ml.image_url,
-                    seller.name as seller_name,
+                    COALESCE(seller.seller_company_name, seller.name) as seller_name,
                     seller.id as seller_id,
                     buyer.name as buyer_name,
                     buyer.id as buyer_id
@@ -126,6 +129,30 @@ export class LogisticsController {
                 [user.id, orderId]
             );
 
+            // --- RESERVAR SEGURO ---
+            // --- RESERVAR SEGURO & CALCULAR GANHOS ---
+            // Buscar dados atualizados do entregador para taxa correta
+            const courierData = await pool.query('SELECT is_verified FROM users WHERE id = $1', [user.id]);
+            const isVerified = courierData.rows[0]?.is_verified || false;
+
+            // TAXA DINÂMICA: 10% (Selo) vs 27.5% (Sem Selo)
+            const feeRate = isVerified ? 0.10 : 0.275;
+
+            const deliveryFee = parseFloat(order.delivery_fee || '0');
+            const platformFee = deliveryFee * feeRate;
+            const courierEarnings = deliveryFee - platformFee;
+
+            // 5% de cada parte vai pro fundo de seguro
+            const courierContribution = courierEarnings * DELIVERY_INSURANCE_RATE;
+            const platformContribution = platformFee * DELIVERY_INSURANCE_RATE;
+            const totalInsurance = courierContribution + platformContribution;
+
+            await pool.query(`
+                INSERT INTO delivery_insurance_fund (order_id, courier_contribution, platform_contribution, total_amount)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (order_id) DO NOTHING
+            `, [orderId, courierContribution, platformContribution, totalInsurance]);
+
             const listingResult = await pool.query(
                 'SELECT title FROM marketplace_listings WHERE id = $1',
                 [order.listing_id]
@@ -141,6 +168,7 @@ export class LogisticsController {
                     deliveryAddress: order.delivery_address,
                     contactPhone: order.contact_phone,
                     deliveryFee: parseFloat(order.delivery_fee),
+                    insuranceReserved: totalInsurance.toFixed(2)
                 }
             });
         } catch (error) {
@@ -264,7 +292,11 @@ export class LogisticsController {
             await pool.query(
                 `UPDATE marketplace_orders 
                  SET courier_id = NULL, 
-                     delivery_status = 'AVAILABLE', 
+                     delivery_status = 'AVAILABLE',
+                     status = CASE 
+                         WHEN status IN ('PREPARING', 'READY_FOR_PICKUP') THEN 'WAITING_SHIPPING'
+                         ELSE status
+                     END,
                      previous_couriers = array_append(COALESCE(previous_couriers, '{}'), courier_id),
                      updated_at = NOW()
                  WHERE id = $1`,
@@ -320,7 +352,7 @@ export class LogisticsController {
                     mo.delivered_at,
                     ml.title as item_title,
                     ml.image_url,
-                    seller.name as seller_name,
+                    COALESCE(seller.seller_company_name, seller.name) as seller_name,
                     seller.phone as seller_phone,
                     buyer.name as buyer_name,
                     buyer.phone as buyer_phone
@@ -459,10 +491,11 @@ export class LogisticsController {
 
             const { cpf, phone, city, state, vehicle, idPhoto, vehiclePhoto, docPhoto } = body;
 
-            if (!cpf || !phone || !city || !state || !vehicle || !idPhoto || !vehiclePhoto || !docPhoto) {
+            // Verificação simplificada: não exige mais fotos no body pois já foram enviadas via /kyc/upload
+            if (!cpf || !phone || !city || !state || !vehicle) {
                 return c.json({
                     success: false,
-                    message: 'Preencha todos os campos e anexe todas as fotos obrigatórias.'
+                    message: 'Preencha todos os campos obrigatórios (CPF, telefone, cidade, estado e veículo).'
                 }, 400);
             }
 
@@ -474,7 +507,7 @@ export class LogisticsController {
                 }, 400);
             }
 
-            const existingCheck = await pool.query(`SELECT is_courier, score FROM users WHERE id = $1`, [user.id]);
+            const existingCheck = await pool.query(`SELECT is_courier, score, courier_id_photo, courier_vehicle_photo, courier_doc_photo FROM users WHERE id = $1`, [user.id]);
             if (existingCheck.rows[0]?.is_courier) {
                 return c.json({ success: false, message: 'Você já é um entregador registrado' }, 400);
             }
@@ -486,6 +519,19 @@ export class LogisticsController {
                 }, 403);
             }
 
+            // Verificar se as fotos já foram carregadas via /kyc/upload
+            const hasPhotos = existingCheck.rows[0]?.courier_id_photo &&
+                existingCheck.rows[0]?.courier_vehicle_photo &&
+                existingCheck.rows[0]?.courier_doc_photo;
+
+            if (!hasPhotos) {
+                return c.json({
+                    success: false,
+                    message: 'Por favor, envie todas as fotos obrigatórias antes de finalizar o cadastro.'
+                }, 400);
+            }
+
+            // Atualizar apenas os campos de texto, as fotos já foram salvas pelo endpoint /kyc/upload
             await pool.query(
                 `UPDATE users SET 
                     is_courier = TRUE,
@@ -496,12 +542,9 @@ export class LogisticsController {
                     courier_city = $4,
                     courier_state = $5,
                     courier_price_per_km = $6,
-                    courier_id_photo = $7,
-                    courier_vehicle_photo = $8,
-                    courier_doc_photo = $9,
                     courier_created_at = CURRENT_TIMESTAMP
-                 WHERE id = $10`,
-                [vehicle, phone, cpf, city, state, body.pricePerKm || 2.00, idPhoto, vehiclePhoto, docPhoto, user.id]
+                 WHERE id = $7`,
+                [vehicle, phone, cpf, city, state, body.pricePerKm || 2.00, user.id]
             );
 
             return c.json({

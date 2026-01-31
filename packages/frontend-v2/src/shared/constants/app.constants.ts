@@ -1,7 +1,7 @@
 export const MP_PUBLIC_KEY = (import.meta as any).env.VITE_MP_PUBLIC_KEY || 'TEST-2c2e7204-2706-4caa-8c8d-9241534bd123';
 export const QUOTA_PRICE = 50;
-export const QUOTA_SHARE_VALUE = 42;
-export const QUOTA_ADM_FEE = 8;
+export const QUOTA_SHARE_VALUE = 50;
+export const QUOTA_ADM_FEE = 0;
 export const VESTING_PERIOD_MS = 365 * 24 * 60 * 60 * 1000;
 export const ADMIN_PIX_KEY = (import.meta as any).env.VITE_ADMIN_PIX_KEY || 'pix@cred30.com.br';
 

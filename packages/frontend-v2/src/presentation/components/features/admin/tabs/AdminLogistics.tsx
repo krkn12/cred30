@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Truck, Package, Clock, Search, User, Store, Check, X, Eye, UserCheck, Bike, Car } from 'lucide-react';
+import { Truck, Package, Clock, Search, User, Store, Check, X, Eye, UserCheck, Bike, Car, FileText } from 'lucide-react';
 import { Motorcycle } from '@phosphor-icons/react';
 import { apiService } from '../../../../../application/services/api.service';
 
@@ -112,6 +112,23 @@ export const AdminLogistics = ({ state, onRefresh, onSuccess, onError }: AdminLo
             onError("Erro ao salvar", e.message);
         } finally {
             setIsUpdatingConfig(false);
+        }
+    };
+
+    const handleViewSecurePhoto = async (userId: number, title: string, docType: string) => {
+        setProcessingId(userId);
+        try {
+            const blob = await apiService.kyc.viewDocument(userId, docType);
+            if (blob) {
+                const url = URL.createObjectURL(blob);
+                setSelectedPhotos({ title, url });
+            } else {
+                onError("Erro", "Não foi possível carregar a imagem segura.");
+            }
+        } catch (e: any) {
+            onError("Erro", "Falha ao buscar documento seguro.");
+        } finally {
+            setProcessingId(null);
         }
     };
 
@@ -342,37 +359,55 @@ export const AdminLogistics = ({ state, onRefresh, onSuccess, onError }: AdminLo
                                                     <div className="space-y-2">
                                                         <p className="text-[9px] text-zinc-600 font-black uppercase tracking-widest">RG / CNH</p>
                                                         <div
-                                                            className="aspect-square bg-black rounded-xl border border-zinc-800 overflow-hidden cursor-pointer group relative"
-                                                            onClick={() => setSelectedPhotos({ title: 'RG / CNH', url: courier.idPhoto })}
+                                                            className="aspect-square bg-black rounded-xl border border-zinc-800 overflow-hidden cursor-pointer group relative flex items-center justify-center"
+                                                            onClick={() => handleViewSecurePhoto(courier.id, 'RG / CNH', 'ID')}
                                                         >
-                                                            <img src={courier.idPhoto} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                                <Eye size={20} className="text-white" />
-                                                            </div>
+                                                            {processingId === courier.id ? (
+                                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-500"></div>
+                                                            ) : (
+                                                                <>
+                                                                    <User size={24} className="text-zinc-700" />
+                                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                                        <Eye size={20} className="text-white" />
+                                                                    </div>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <div className="space-y-2">
                                                         <p className="text-[9px] text-zinc-600 font-black uppercase tracking-widest">Veículo</p>
                                                         <div
-                                                            className="aspect-square bg-black rounded-xl border border-zinc-800 overflow-hidden cursor-pointer group relative"
-                                                            onClick={() => setSelectedPhotos({ title: 'Veículo', url: courier.vehiclePhoto })}
+                                                            className="aspect-square bg-black rounded-xl border border-zinc-800 overflow-hidden cursor-pointer group relative flex items-center justify-center"
+                                                            onClick={() => handleViewSecurePhoto(courier.id, 'Veículo', 'VEHICLE')}
                                                         >
-                                                            <img src={courier.vehiclePhoto} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                                <Eye size={20} className="text-white" />
-                                                            </div>
+                                                            {processingId === courier.id ? (
+                                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-500"></div>
+                                                            ) : (
+                                                                <>
+                                                                    {courier.vehicle === 'BIKE' ? <Bike size={24} className="text-zinc-700" /> : courier.vehicle === 'MOTO' ? <Motorcycle size={24} className="text-zinc-700" /> : <Car size={24} className="text-zinc-700" />}
+                                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                                        <Eye size={20} className="text-white" />
+                                                                    </div>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <div className="space-y-2">
                                                         <p className="text-[9px] text-zinc-600 font-black uppercase tracking-widest">Documento</p>
                                                         <div
-                                                            className="aspect-square bg-black rounded-xl border border-zinc-800 overflow-hidden cursor-pointer group relative"
-                                                            onClick={() => setSelectedPhotos({ title: 'Documento', url: courier.docPhoto })}
+                                                            className="aspect-square bg-black rounded-xl border border-zinc-800 overflow-hidden cursor-pointer group relative flex items-center justify-center"
+                                                            onClick={() => handleViewSecurePhoto(courier.id, 'Documento', 'DOC_VEHICLE')}
                                                         >
-                                                            <img src={courier.docPhoto} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                                <Eye size={20} className="text-white" />
-                                                            </div>
+                                                            {processingId === courier.id ? (
+                                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-500"></div>
+                                                            ) : (
+                                                                <>
+                                                                    <FileText size={24} className="text-zinc-700" />
+                                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                                        <Eye size={20} className="text-white" />
+                                                                    </div>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>

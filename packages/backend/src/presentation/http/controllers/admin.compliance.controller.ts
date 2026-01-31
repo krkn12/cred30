@@ -56,4 +56,23 @@ export class AdminComplianceController {
             return c.json({ success: false, message: 'Erro ao gerar estatísticas de compliance' }, 500);
         }
     }
+
+    /**
+     * Lista usuários pendentes de KYC
+     */
+    static async listPendingKyc(c: Context) {
+        try {
+            const pool = getDbPool(c);
+            const result = await pool.query(`
+                SELECT id, name, email, cpf, phone, kyc_status, kyc_document_path, created_at, kyc_notes
+                FROM users 
+                WHERE kyc_status = 'PENDING'
+                ORDER BY created_at ASC
+            `);
+            return c.json({ success: true, data: result.rows });
+        } catch (error: any) {
+            console.error('Erro ao listar pendências KYC:', error);
+            return c.json({ success: false, message: 'Erro ao buscar pendências' }, 500);
+        }
+    }
 }

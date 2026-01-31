@@ -7,6 +7,8 @@ const kycRoutes = new Hono();
 
 // Upload pelo usuário
 kycRoutes.post('/upload', authMiddleware, KycController.uploadDocument);
+// Solicitação Simplificada
+kycRoutes.post('/request', authMiddleware, KycController.requestReview);
 
 // Visualização Segura (Admin ou Próprio)
 kycRoutes.get('/doc/:userId', authMiddleware, KycController.viewDocument);

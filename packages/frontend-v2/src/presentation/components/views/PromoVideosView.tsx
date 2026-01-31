@@ -1296,7 +1296,7 @@ const VideoCard = memo(({ video, onWatch }: { video: PromoVideo; onWatch: (v: Pr
                     <img src={getThumbnail(video)} alt={video.title} className="w-full h-full object-cover" loading="lazy" />
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Play size={24} className="text-white" /></div>
                     <div className="absolute bottom-1 right-1 bg-black/80 text-[10px] text-white px-1 rounded">
-                        {Math.floor(video.durationSeconds / 60)}:{String(video.durationSeconds % 60).padStart(2, '0')}
+                        {Math.floor((video.durationSeconds || 0) / 60)}:{String((video.durationSeconds || 0) % 60).padStart(2, '0')}
                     </div>
                     <div className="absolute top-1 left-1 flex flex-col gap-1">
                         {video.isOwner && <div className="bg-primary-500 text-black text-[8px] px-1.5 py-0.5 rounded font-bold">SEU VÍDEO</div>}

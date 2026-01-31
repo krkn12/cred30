@@ -143,26 +143,71 @@ export class MarketplaceController {
         try {
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
+            const { lat, lng, radius } = c.req.query();
+            console.log(`[DEBUG] getLogisticMissions - User: ${user.id}, Lat: ${lat}, Lng: ${lng}, Radius: ${radius}`);
 
-            const result = await pool.query(`
-                SELECT o.id, o.delivery_fee, o.delivery_address, o.pickup_address, 
+            const hasAdminVision = user.isAdmin === true || user.role === 'ADMIN';
+
+            // Taxas para cálculo de ganhos estimados
+            const FEE_VERIFIED = 0.10;
+            const FEE_UNVERIFIED = 0.275;
+
+            // Buscar status de verificação do usuário atual
+            const userCheck = await pool.query('SELECT is_verified_courier FROM users WHERE id = $1', [user.id]);
+            const isVerified = userCheck.rows[0]?.is_verified_courier || false;
+            const feeRate = isVerified ? FEE_VERIFIED : FEE_UNVERIFIED;
+
+            let query = `
+                SELECT o.id as "orderId", o.delivery_fee as "deliveryFee", 
+                       o.delivery_address as "deliveryAddress", o.pickup_address as "pickupAddress", 
                        o.pickup_lat, o.pickup_lng, o.delivery_lat, o.delivery_lng,
-                       o.created_at, o.contact_phone as buyer_phone,
-                       COALESCE(u_seller.phone, u_seller.pix_key) as seller_phone,
-                       l.title as item_title, l.image_url,
-                       u_seller.name as seller_name, u_buyer.name as buyer_name
+                       o.created_at as "createdAt", o.contact_phone as "buyerPhone",
+                       COALESCE(u_seller.phone, u_seller.pix_key) as "sellerPhone",
+                       l.title as "itemTitle", l.image_url as "imageUrl",
+                       COALESCE(u_seller.seller_company_name, u_seller.name) as "sellerName", u_buyer.name as "buyerName",
+                       (o.delivery_fee * (1 - ${feeRate})) as "courierEarnings"
                 FROM marketplace_orders o
                 JOIN marketplace_listings l ON o.listing_id = l.id
                 JOIN users u_seller ON o.seller_id = u_seller.id
                 JOIN users u_buyer ON o.buyer_id = u_buyer.id
                 WHERE o.delivery_status = 'AVAILABLE'
-                AND o.seller_id != $1 AND o.buyer_id != $1
-                AND (o.invited_courier_id IS NULL OR o.invited_courier_id = $1)
-                ORDER BY o.delivery_fee DESC
-            `, [user.id]);
+                  AND o.status IN ('WAITING_SHIPPING', 'PREPARING', 'READY_FOR_PICKUP')
+                  AND ($2 = TRUE OR (o.seller_id::text != $1::text AND o.buyer_id::text != $1::text))
+                  AND (o.invited_courier_id IS NULL OR o.invited_courier_id::text = $1::text)
+            `;
+
+            const params: any[] = [user.id, hasAdminVision];
+            let pIndex = 3;
+
+            // Filtro Geográfico Otimizado (SQL) - Raio em KM (Padrão 30km)
+            if (lat && lng) {
+                const searchLat = parseFloat(lat);
+                const searchLng = parseFloat(lng);
+                const r = parseFloat(radius || '30');
+
+                if (!isNaN(searchLat) && !isNaN(searchLng)) {
+                    query += ` AND (
+                        o.pickup_lat IS NULL OR
+                        (6371 * acos(
+                            LEAST(1, GREATEST(-1, 
+                                cos(radians($${pIndex})) * cos(radians(o.pickup_lat)) *
+                                cos(radians(o.pickup_lng) - radians($${pIndex + 1})) +
+                                sin(radians($${pIndex})) * sin(radians(o.pickup_lat))
+                            ))
+                        )) <= $${pIndex + 2}
+                    )`;
+                    params.push(searchLat, searchLng, r);
+                    pIndex += 3;
+                }
+            }
+
+            query += ` ORDER BY o.delivery_fee DESC LIMIT 50`;
+
+            const result = await pool.query(query, params);
+            console.log(`[DEBUG] getLogisticMissions - Found ${result.rows.length} missions`);
 
             return c.json({ success: true, data: result.rows });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error listing missions:', error);
             return c.json({ success: false, message: 'Erro ao buscar missões' }, 500);
         }
@@ -362,7 +407,7 @@ export class MarketplaceController {
 
                 try {
                     await executeInTransaction(pool, async (client: any) => {
-                        const balanceCheck = await lockUserBalance(client, tx.buyerId, tx.amount);
+                        const balanceCheck = await lockUserBalance(client, tx.buyerId, tx.amount, { skipLockCheck: true });
                         if (!balanceCheck.success) throw new Error(`Saldo insuficiente no comprador ${tx.buyerId}`);
 
                         const sellerResult = await client.query('SELECT asaas_wallet_id, is_verified_seller, seller_cpf_cnpj FROM users WHERE id = $1', [tx.sellerId]);
@@ -429,6 +474,128 @@ export class MarketplaceController {
         } catch (error) {
             console.error('Offline Sync Error:', error);
             return c.json({ success: false, message: 'Erro na sincronização' }, 500);
+        }
+    }
+
+    /**
+     * Listar estabelecimentos de delivery (Restaurantes/Lojas de Bebida)
+     */
+    static async getDeliveryVenues(c: Context) {
+        try {
+            const pool = getDbPool(c);
+            const { category, city, state } = c.req.query();
+
+            let query = `
+                SELECT id, name, merchant_name, is_restaurant, is_liquor_store, 
+                restaurant_category, seller_address_city as city, seller_address_state as state,
+                seller_address_neighborhood as neighborhood, seller_address_street as street,
+                COALESCE(avatar_url, NULL) as avatar_url, COALESCE(seller_rating, 0) as rating, opening_hours
+                FROM users 
+                WHERE (is_restaurant = TRUE OR is_liquor_store = TRUE)
+            `;
+            const params: any[] = [];
+            let pIndex = 1;
+
+            if (category && category !== 'TODOS') {
+                query += ` AND restaurant_category = $${pIndex++}`;
+                params.push(category);
+            }
+
+            if (city) {
+                query += ` AND seller_address_city = $${pIndex++}`;
+                params.push(city);
+            }
+
+            if (state) {
+                query += ` AND seller_address_state = $${pIndex++}`;
+                params.push(state);
+            }
+
+            query += ` ORDER BY seller_rating DESC NULLS LAST, created_at DESC LIMIT 50`;
+
+            const result = await pool.query(query, params);
+            return c.json({ success: true, data: result.rows });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
+     * Listar categorias de comida (Para o Carrossel)
+     */
+    static async getFoodCategories(c: Context) {
+        try {
+            const pool = getDbPool(c);
+            const result = await pool.query(
+                `SELECT * FROM marketplace_food_categories WHERE is_active = TRUE ORDER BY display_order ASC`
+            );
+            return c.json({ success: true, data: result.rows });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
+     * Atualizar perfil da loja (Nome Comercial, Categoria, Horários)
+     */
+    static async updateStoreProfile(c: Context) {
+        try {
+            const user = c.get('user') as any;
+            const pool = getDbPool(c);
+            const { merchantName, category, openingHours } = await c.req.json();
+
+            // Validar se é vendedor
+            const sellerRes = await pool.query('SELECT is_restaurant, is_liquor_store FROM users WHERE id = $1', [user.id]);
+            const seller = sellerRes.rows[0];
+
+            if (!user.isAdmin && (!seller || (!seller.is_restaurant && !seller.is_liquor_store))) {
+                return c.json({ success: false, message: 'Apenas administradores ou vendedores de delivery podem configurar este perfil.' }, 403);
+            }
+
+            await pool.query(
+                `UPDATE users SET 
+                merchant_name = $1, 
+                restaurant_category = $2, 
+                opening_hours = $3 
+                WHERE id = $4`,
+                [merchantName, category, JSON.stringify(openingHours), user.id]
+            );
+
+            return c.json({ success: true, message: 'Perfil da loja atualizado com sucesso!' });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
+     * Alternar pausa manual da loja
+     */
+    static async toggleMerchantPause(c: Context) {
+        try {
+            const user = c.get('user') as any;
+            const pool = getDbPool(c);
+            const { isPaused } = await c.req.json();
+
+            // Validar se é vendedor
+            const sellerRes = await pool.query('SELECT is_restaurant, is_liquor_store FROM users WHERE id = $1', [user.id]);
+            const seller = sellerRes.rows[0];
+
+            if (!user.isAdmin && (!seller || (!seller.is_restaurant && !seller.is_liquor_store))) {
+                return c.json({ success: false, message: 'Apenas administradores ou vendedores de delivery podem pausar a loja.' }, 403);
+            }
+
+            await pool.query(
+                `UPDATE users SET is_paused = $1 WHERE id = $2`,
+                [isPaused, user.id]
+            );
+
+            return c.json({
+                success: true,
+                isPaused,
+                message: isPaused ? 'Loja pausada com sucesso!' : 'Loja aberta com sucesso!'
+            });
+        } catch (error: any) {
+            return c.json({ success: false, message: error.message }, 500);
         }
     }
 }

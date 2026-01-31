@@ -10,7 +10,8 @@ import { QUOTA_PRICE, QUOTA_SHARE_VALUE } from '../../../shared/constants/busine
 const updateUserRoleStatusSchema = z.object({
     userId: z.number(),
     role: z.enum(['MEMBER', 'ATTENDANT', 'ADMIN']).optional(),
-    status: z.enum(['ACTIVE', 'BLOCKED']).optional()
+    status: z.enum(['ACTIVE', 'BLOCKED']).optional(),
+    kycStatus: z.enum(['NONE', 'PENDING', 'APPROVED', 'REJECTED']).optional()
 });
 
 const createAttendantSchema = z.object({
@@ -77,7 +78,7 @@ export class AdminUsersController {
             // Buscar dados paginados com contagem e valor de cotas
             const dataQuery = `
         SELECT 
-            u.id, u.name, u.email, u.role, u.status, u.balance, u.score, u.created_at, u.pix_key, u.membership_type,
+            u.id, u.name, u.email, u.role, u.status, u.balance, u.score, u.created_at, u.pix_key, u.membership_type, u.kyc_status,
             u.referred_by, r.name as referrer_name,
             (SELECT COUNT(*) FROM quotas q WHERE q.user_id = u.id AND (q.status = 'ACTIVE' OR q.status IS NULL)) as quotas_count,
             (SELECT COALESCE(SUM(q.current_value), 0) FROM quotas q WHERE q.user_id = u.id AND (q.status = 'ACTIVE' OR q.status IS NULL)) as quotas_value
@@ -126,6 +127,10 @@ export class AdminUsersController {
             if (status) {
                 updateFields.push(`status = $${index++}`);
                 params.push(status);
+            }
+            if (body.kycStatus) {
+                updateFields.push(`kyc_status = $${index++}`);
+                params.push(body.kycStatus);
             }
 
             if (updateFields.length === 0) {
@@ -576,8 +581,8 @@ export class AdminUsersController {
                 dueDate.setDate(dueDate.getDate() + 30); // Primeira parcela em 30 dias
 
                 const loanResult = await client.query(`
-                    INSERT INTO loans (user_id, amount, interest_rate, total_repayment, installments, remaining_installments, status, due_date, metadata, created_at)
-                    VALUES ($1, $2, $3, $4, $5, $5, 'APPROVED', $6, $7, NOW())
+                    INSERT INTO loans (user_id, amount, interest_rate, total_repayment, installments, status, due_date, metadata, created_at)
+                    VALUES ($1, $2, $3, $4, $5, 'APPROVED', $6, $7, NOW())
                     RETURNING id
                 `, [
                     userId,
@@ -613,7 +618,7 @@ export class AdminUsersController {
                     VALUES ($1, 'LOAN_DISBURSEMENT', $2, 'APPROVED', $3, $4, NOW())
                 `, [
                     userId,
-                    -amount,
+                    amount,
                     `Empréstimo Especial Liberado pelo Admin`,
                     JSON.stringify({ loanId: loanResult.rows[0].id })
                 ]);

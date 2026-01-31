@@ -103,6 +103,7 @@ class ApiService extends ApiBase {
   // Aliases required by AdminUserManagement.tsx
   adminGetUsers = this.admin.getUsers.bind(this.admin);
   adminUpdateUserAccess = this.admin.updateUserAccess.bind(this.admin);
+  adminUpdateKycStatus = (userId: number, kycStatus: string) => this.admin.updateUserAccess({ userId, kycStatus });
   adminCreateAttendant = this.admin.createAttendant.bind(this.admin);
 
   // Auth & Account
@@ -136,6 +137,9 @@ class ApiService extends ApiBase {
   createProposal = this.misc.createProposal.bind(this.misc);
   closeProposal = this.misc.closeProposal.bind(this.misc);
 
+  // KYC
+  requestKycReview = this.kyc.requestReview.bind(this.kyc);
+
   getDeliveryStats = async () => {
     return await this.get<any>('/logistics/stats');
   };
@@ -144,12 +148,24 @@ class ApiService extends ApiBase {
   getSellerStatus = this.marketplace.getSellerStatus.bind(this.marketplace);
   registerSeller = this.marketplace.registerSeller.bind(this.marketplace);
 
+  // Terms & Claims
+  getSellerTermsText = this.marketplace.getSellerTermsText.bind(this.marketplace);
+  getCourierTermsText = this.marketplace.getCourierTermsText.bind(this.marketplace);
+  getTermsStatus = this.marketplace.getTermsStatus.bind(this.marketplace);
+  acceptSellerTerms = this.marketplace.acceptSellerTerms.bind(this.marketplace);
+  acceptCourierTerms = this.marketplace.acceptCourierTerms.bind(this.marketplace);
+  createClaim = this.marketplace.createClaim.bind(this.marketplace);
+  listClaims = this.marketplace.listClaims.bind(this.marketplace);
+  getClaimDetails = this.marketplace.getClaimDetails.bind(this.marketplace);
+  resolveClaim = this.marketplace.resolveClaim.bind(this.marketplace);
+
   // Bug Reports
   getMyBugReports = this.misc.getMyBugReports.bind(this.misc);
 
   // Notifications (Persistentes)
   getNotifications = this.notifs.getHistory.bind(this.notifs);
   markNotificationRead = this.notifs.markAsRead.bind(this.notifs);
+  deleteNotification = this.notifs.deleteNotification.bind(this.notifs);
 
   checkTitleEligibility = async () => {
     return await this.get<any>('/users/title-eligibility');
@@ -181,6 +197,8 @@ class ApiService extends ApiBase {
   }
 
   // --- UTILS ---
+  getAddressByCep = this.misc.getAddressByCep.bind(this.misc);
+
   downloadTitle = async () => {
     return await this.post<any>('/users/title-download', {});
   };
@@ -256,7 +274,10 @@ class ApiService extends ApiBase {
 
         eventSource.onerror = (error) => {
           console.warn('[Notifications] Conexão SSE perdida, tentando reconectar...', error);
-          eventSource?.close();
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
 
           // Tenta reconectar após 5 segundos
           if (!isClosing) {
