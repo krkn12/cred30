@@ -62,6 +62,12 @@ test-results/
 playwright-report/
 test-results.xml
 *.lcov
+**/test*/
+**/spec*/
+**/__tests__/
+**/__mocks__/
+**/test-data/
+**/fixtures/
 **/testing/
 **/debug*/
 *debug*.js
@@ -71,10 +77,8 @@ test-results.xml
 *hack*.js
 *hack*.ts
 
-# Scripts de debug soltos (backend)
-packages/backend/check_db.js
-packages/backend/diag_orders.js
-packages/backend/fix_db.js
+# Scripts de debug soltos (Manteve-se apenas as pastas raiz)
+# Regras globais abaixo cuidam do resto
 
 # ===========================================
 # 💻 IDE & SISTEMA OPERACIONAL
@@ -133,10 +137,17 @@ jspm_packages/
 .eslintcache
 
 # ===========================================
-# 🚫 SCRIPTS DE DESENVOLVIMENTO (Não Produção)
+# 🚫 SCRIPTS E PASTAS PRIVADAS (Segurança Total)
 # ===========================================
-scripts/debug/
-scripts/development/
+scripts/
+**/scripts/
+scripts/**
+temp*/
+*.test.*
+*.spec.*
+*.log
+*.tmp
+*.temp
 
 # ===========================================
 # ✅ EXCEÇÕES (ARQUIVOS QUE DEVEM SER COMMITADOS)
@@ -150,22 +161,4 @@ scripts/development/
 !vitest.config.ts
 !README.md
 !.env.example
-
-# Manter testes oficiais
-!packages/backend/src/tests/
-!packages/backend/src/tests/**/*.test.ts
-!packages/backend/src/tests/**/*.test.js
-
-# Manter scripts de operações e migração
-!scripts/ops/
-!scripts/ops/*.ts
-!scripts/ops/*.js
-!scripts/migrations/
-!scripts/migrations/*.ts
-!scripts/migrations/*.js
-!scripts/maintenance/
-!scripts/maintenance/*.ts
-!scripts/maintenance/*.js
-!scripts/maintenance/*.sql
-!scripts/database/
-!scripts/database/*.sql
+.aider*
