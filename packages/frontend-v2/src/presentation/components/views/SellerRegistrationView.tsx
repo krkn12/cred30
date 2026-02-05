@@ -3,6 +3,7 @@ import { Store, Phone, MapPin, Building2, CheckCircle, AlertCircle, Loader2, Arr
 import { apiService } from '../../../application/services/api.service';
 import { useNavigate } from 'react-router-dom';
 import { useLocation } from '../../hooks/use-location';
+import { SellerTermsModal } from '../ui/SellerTermsModal'; // Modal de termos CDC
 
 interface SellerStatus {
     isSeller: boolean;
@@ -20,6 +21,8 @@ export const SellerRegistrationView = () => {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [showTermsModal, setShowTermsModal] = useState(false); // Modal de termos do vendedor
+    const [termsAccepted, setTermsAccepted] = useState(false); // Flag de aceite
 
     // Formulário
     const [formData, setFormData] = useState({
@@ -100,10 +103,22 @@ export const SellerRegistrationView = () => {
         e.preventDefault();
         setError(null);
         setSuccess(null);
+
+        // COMPLIANCE CDC: Exigir aceite dos termos do vendedor
+        if (!termsAccepted) {
+            setShowTermsModal(true);
+            return;
+        }
+
         setSubmitting(true);
 
         try {
-            const response = await apiService.registerSeller(formData);
+            const payload = {
+                ...formData,
+                type: formData.companyType === 'INDIVIDUAL' ? 'PF' : 'PJ'
+            };
+
+            const response = await apiService.registerSeller(payload);
             if (response.success) {
                 setSuccess('Conta de vendedor criada com sucesso! Agora você pode receber pagamentos diretamente.');
                 fetchSellerStatus();
@@ -115,6 +130,17 @@ export const SellerRegistrationView = () => {
         } finally {
             setSubmitting(false);
         }
+    };
+
+    // Callback quando o usuário aceita os termos
+    const handleTermsAccept = () => {
+        setTermsAccepted(true);
+        setShowTermsModal(false);
+        // Submeter automaticamente após aceitar
+        setTimeout(() => {
+            const form = document.querySelector('form');
+            if (form) form.requestSubmit();
+        }, 100);
     };
 
     const updateField = (field: string, value: string) => {
@@ -150,7 +176,7 @@ export const SellerRegistrationView = () => {
                         <p className="text-zinc-500 text-xs">por venda (vs 27.5% sem verificação)</p>
                     </div>
                     <button
-                        onClick={() => navigate(-1)}
+                        onClick={() => navigate('/app/marketplace')}
                         className="mt-6 bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 px-8 rounded-xl transition-all"
                     >
                         Ir para o Marketplace
@@ -494,6 +520,13 @@ export const SellerRegistrationView = () => {
                     Ao criar sua conta, você concorda com os termos de uso do Asaas para subconta digital.
                 </p>
             </form>
+
+            {/* Modal de Termos do Vendedor (CDC Compliance) */}
+            <SellerTermsModal
+                isOpen={showTermsModal}
+                onClose={() => setShowTermsModal(false)}
+                onAccept={handleTermsAccept}
+            />
         </div>
     );
 };

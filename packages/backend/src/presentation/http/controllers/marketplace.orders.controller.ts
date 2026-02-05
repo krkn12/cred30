@@ -23,7 +23,10 @@ import {
     PLATFORM_FEE_INVESTMENT_SHARE,
     PLATFORM_FEE_CORPORATE_SHARE,
     DELIVERY_MIN_FEES,
-    LOAN_GFC_FEE_RATE
+    LOAN_GFC_FEE_RATE,
+    SELLER_MONTHLY_LIMIT_CPF,
+    SELLER_MONTHLY_LIMIT_MEI,
+    SELLER_MONTHLY_LIMIT_CNPJ
 } from '../../../shared/constants/business.constants';
 import {
     calculateLoanOffer,
@@ -145,6 +148,52 @@ export class MarketplaceOrdersController {
                 const sellerId = listings[0].seller_id;
                 const finalQuantity = quantity || 1;
 
+                // ==================================================
+                // VERIFICAÇÃO DE LIMITE MENSAL DE VENDAS (COMPLIANCE FISCAL)
+                // CPF: R$ 2.000/mês | MEI: R$ 6.750/mês | Outros: Sem limite
+                // ==================================================
+                const sellerInfoRes = await client.query(
+                    `SELECT seller_cpf_cnpj, seller_company_type, is_verified FROM users WHERE id = $1`,
+                    [sellerId]
+                );
+                const sellerInfo = sellerInfoRes.rows[0];
+
+                // Calcular vendas do mês atual do vendedor
+                const monthlySalesRes = await client.query(`
+                    SELECT COALESCE(SUM(total_price), 0)::numeric as total_sales
+                    FROM marketplace_orders
+                    WHERE seller_id = $1
+                    AND status NOT IN ('CANCELLED', 'REFUNDED')
+                    AND created_at >= DATE_TRUNC('month', CURRENT_TIMESTAMP)
+                `, [sellerId]);
+
+                const currentMonthlySales = parseFloat(monthlySalesRes.rows[0]?.total_sales || 0);
+
+                // Determinar limite baseado no tipo de empresa
+                const companyType = sellerInfo?.seller_company_type || 'INDIVIDUAL';
+                let monthlyLimit = SELLER_MONTHLY_LIMIT_CPF; // Default: CPF = R$ 2.000
+
+                if (companyType === 'MEI') {
+                    monthlyLimit = SELLER_MONTHLY_LIMIT_MEI; // MEI = R$ 6.750 (81k/ano)
+                } else if (['ME', 'LTDA', 'SA', 'EIRELI'].includes(companyType)) {
+                    monthlyLimit = SELLER_MONTHLY_LIMIT_CNPJ; // 0 = Sem limite
+                }
+
+                // Calcular quanto seria o total após esta venda
+                const saleTotal = listings.reduce((sum: number, l: any) => sum + parseFloat(l.price) * finalQuantity, 0);
+                const projectedTotal = currentMonthlySales + saleTotal;
+
+                // Verificar se ultrapassaria o limite (0 = sem limite)
+                if (monthlyLimit > 0 && projectedTotal > monthlyLimit) {
+                    const remaining = Math.max(0, monthlyLimit - currentMonthlySales);
+                    const companyTypeName = companyType === 'INDIVIDUAL' ? 'CPF' : companyType;
+                    throw new Error(
+                        `O vendedor atingiu o limite mensal de vendas para ${companyTypeName} (R$ ${monthlyLimit.toFixed(2)}). ` +
+                        `Vendas este mês: R$ ${currentMonthlySales.toFixed(2)}. ` +
+                        `Disponível: R$ ${remaining.toFixed(2)}.`
+                    );
+                }
+
                 // VALIDAR HORÁRIO DE FUNCIONAMENTO (Se for comida/delivery)
                 const isAnyFood = listings.some((l: any) => l.is_food);
                 if (isAnyFood) {
@@ -242,37 +291,7 @@ export class MarketplaceOrdersController {
                     return acc + (price * (listings.length === 1 ? quantity : 1));
                 }, 0);
 
-                // --- TRAVA DE VENDAS & TIPO DE PESSOA ---
-                const SELLER_MONTHLY_LIMIT_CPF = 2000.00;
-
-                const sellerDoc = sellerData?.seller_cpf_cnpj;
-                const docClean = sellerDoc ? sellerDoc.replace(/\D/g, '') : '';
-                const isCnpj = docClean.length === 14;
-                const isCpf = !isCnpj; // Se não é CNPJ, tratamos como CPF (limite mais restrito)
-
-                // Calcular vendas do mês
-                const startOfMonth = new Date();
-                startOfMonth.setDate(1);
-                startOfMonth.setHours(0, 0, 0, 0);
-
-                const salesRes = await client.query(`
-                    SELECT COALESCE(SUM(amount), 0) as total 
-                    FROM marketplace_orders 
-                    WHERE seller_id = $1 
-                    AND created_at >= $2 
-                    AND status != 'CANCELLED'
-                `, [sellerId, startOfMonth]);
-
-                const currentMonthlySales = parseFloat(salesRes.rows[0].total);
-                const estimatedNewTotal = currentMonthlySales + baseAmount;
-
-                // REGRA DE OURO: CPF tem trava rígida de R$ 2.000,00
-                // Para vender mais que isso, TEM QUE SER CNPJ.
-                if (isCpf) {
-                    if (estimatedNewTotal > SELLER_MONTHLY_LIMIT_CPF) {
-                        throw new Error(`Limite mensal de vendas para CPF atingido (R$ ${SELLER_MONTHLY_LIMIT_CPF.toFixed(2)}). Para continuar vendendo, você deve atualizar sua conta para CNPJ (MEI ou Empresa).`);
-                    }
-                }
+                // NOTA: Verificação de limite mensal foi movida para o início da transação (linhas 151-195)
                 // --------------------------------------------------
 
                 // Somar opcionais (SE FOR COMIDA)
@@ -552,6 +571,80 @@ export class MarketplaceOrdersController {
 
                 const listings = listingsResult.rows;
                 const sellerId = listings[0].seller_id;
+                const finalQuantity = quantity || 1;
+
+                // ==================================================
+                // RESTRIÇÃO DE CREDIÁRIO: COTAS + KYC OBRIGATÓRIOS
+                // Usuário precisa ter cotas ativas E ser verificado
+                // ==================================================
+                const buyerDataRes = await client.query(
+                    'SELECT is_verified FROM users WHERE id = $1',
+                    [user.id]
+                );
+                const buyerData = buyerDataRes.rows[0];
+
+                // Verificar se usuário é verificado (KYC)
+                if (!buyerData?.is_verified) {
+                    throw new Error('Você precisa completar a verificação de identidade (KYC) para comprar no crediário. Acesse Configurações > Verificação.');
+                }
+
+                // Verificar se usuário tem cotas ativas
+                const quotasRes = await client.query(
+                    'SELECT COUNT(*) as total FROM quotas WHERE user_id = $1 AND status = $2',
+                    [user.id, 'ACTIVE']
+                );
+                const userQuotas = parseInt(quotasRes.rows[0].total);
+
+                if (userQuotas < MARKET_CREDIT_MIN_QUOTAS) {
+                    throw new Error(`Você precisa ter pelo menos ${MARKET_CREDIT_MIN_QUOTAS} cota(s) ativa(s) para comprar no crediário. Adquira cotas para liberar o crédito.`);
+                }
+
+                // ==================================================
+                // VERIFICAÇÃO DE LIMITE MENSAL DE VENDAS (COMPLIANCE FISCAL)
+                // CPF: R$ 2.000/mês | MEI: R$ 6.750/mês | Outros: Sem limite
+
+                // ==================================================
+                const sellerInfoRes = await client.query(
+                    `SELECT seller_cpf_cnpj, seller_company_type, is_verified FROM users WHERE id = $1`,
+                    [sellerId]
+                );
+                const sellerInfo = sellerInfoRes.rows[0];
+
+                // Calcular vendas do mês atual do vendedor
+                const monthlySalesRes = await client.query(`
+                    SELECT COALESCE(SUM(total_price), 0)::numeric as total_sales
+                    FROM marketplace_orders
+                    WHERE seller_id = $1
+                    AND status NOT IN ('CANCELLED', 'REFUNDED')
+                    AND created_at >= DATE_TRUNC('month', CURRENT_TIMESTAMP)
+                `, [sellerId]);
+
+                const currentMonthlySales = parseFloat(monthlySalesRes.rows[0]?.total_sales || 0);
+
+                // Determinar limite baseado no tipo de empresa
+                const companyType = sellerInfo?.seller_company_type || 'INDIVIDUAL';
+                let monthlyLimit = SELLER_MONTHLY_LIMIT_CPF; // Default: CPF = R$ 2.000
+
+                if (companyType === 'MEI') {
+                    monthlyLimit = SELLER_MONTHLY_LIMIT_MEI; // MEI = R$ 6.750 (81k/ano)
+                } else if (['ME', 'LTDA', 'SA', 'EIRELI'].includes(companyType)) {
+                    monthlyLimit = SELLER_MONTHLY_LIMIT_CNPJ; // 0 = Sem limite
+                }
+
+                // Calcular quanto seria o total após esta venda
+                const saleTotal = listings.reduce((sum: number, l: any) => sum + parseFloat(l.price) * finalQuantity, 0);
+                const projectedTotal = currentMonthlySales + saleTotal;
+
+                // Verificar se ultrapassaria o limite (0 = sem limite)
+                if (monthlyLimit > 0 && projectedTotal > monthlyLimit) {
+                    const remaining = Math.max(0, monthlyLimit - currentMonthlySales);
+                    const companyTypeName = companyType === 'INDIVIDUAL' ? 'CPF' : companyType;
+                    throw new Error(
+                        `O vendedor atingiu o limite mensal de vendas para ${companyTypeName} (R$ ${monthlyLimit.toFixed(2)}). ` +
+                        `Vendas este mês: R$ ${currentMonthlySales.toFixed(2)}. ` +
+                        `Disponível: R$ ${remaining.toFixed(2)}.`
+                    );
+                }
 
                 // VALIDAR HORÁRIO DE FUNCIONAMENTO (Se for comida/delivery)
                 const isAnyFood = listings.some((l: any) => l.is_food);
@@ -675,44 +768,13 @@ export class MarketplaceOrdersController {
 
                 const totalPrice = baseAmount + optionsTotal;
 
+                // NOTA: Verificação de limite mensal foi movida para o início da transação (linhas 604-648)
 
-
-                // --- TRAVA DE VENDAS & DADOS DO VENDEDOR ---
+                // Buscar dados do vendedor para verificação de selo
                 const sellerFullRes = await client.query('SELECT address, asaas_wallet_id, is_verified_seller, seller_cpf_cnpj FROM users WHERE id = $1', [sellerId]);
                 const sellerFullData = sellerFullRes.rows[0];
-                const sellerDoc = sellerFullData?.seller_cpf_cnpj;
                 const isVerified = !!sellerFullData?.is_verified_seller;
-
-                const docClean = sellerDoc ? sellerDoc.replace(/\D/g, '') : '';
-                const isCnpj = docClean.length === 14;
-                const isCpf = !isCnpj;
-
-                const SELLER_MONTHLY_LIMIT_CPF = 2000.00;
-
-                // Calcular vendas do mês
-                const startOfMonth = new Date();
-                startOfMonth.setDate(1);
-                startOfMonth.setHours(0, 0, 0, 0);
-
-                const salesRes = await client.query(`
-                    SELECT COALESCE(SUM(amount), 0) as total 
-                    FROM marketplace_orders 
-                    WHERE seller_id = $1 
-                    AND created_at >= $2 
-                    AND status != 'CANCELLED'
-                `, [sellerId, startOfMonth]);
-
-                const currentMonthlySales = parseFloat(salesRes.rows[0].total);
-                const estimatedNewTotal = currentMonthlySales + totalPrice;
-
-                // REGRA CPF: Trava Rígida de 2k
-                if (isCpf) {
-                    if (estimatedNewTotal > SELLER_MONTHLY_LIMIT_CPF) {
-                        throw new Error(`Limite mensal de vendas para CPF atingido (R$ ${SELLER_MONTHLY_LIMIT_CPF.toFixed(2)}). Para continuar vendendo, você deve atualizar sua conta para CNPJ (MEI ou Empresa).`);
-                    }
-                }
                 // --------------------------------------------------
-
 
                 if (totalPrice > availableLimit) throw new Error(`O valor do lote (R$ ${totalPrice.toFixed(2)}) excede seu limite de crédito (R$ ${availableLimit.toFixed(2)}).`);
 

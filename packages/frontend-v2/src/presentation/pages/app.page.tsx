@@ -468,6 +468,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
         <Route path="/auth" element={<Navigate to="/app/dashboard" replace />} />
+        <Route path="/marketplace" element={<Navigate to="/app/marketplace" replace />} />
         <Route path="/app/*" element={
           <PWAEnforcer isAdmin={state.currentUser?.isAdmin || state.currentUser?.role?.toUpperCase() === 'ADMIN' || state.currentUser?.role?.toUpperCase() === 'ATTENDANT'}>
             <Layout user={state.currentUser} currentView={currentView} onChangeView={(v) => navigate(`/app/${v}`)} onLogout={handleLogout}>

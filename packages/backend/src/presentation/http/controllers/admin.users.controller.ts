@@ -83,7 +83,7 @@ export class AdminUsersController {
             (SELECT COUNT(*) FROM quotas q WHERE q.user_id = u.id AND (q.status = 'ACTIVE' OR q.status IS NULL)) as quotas_count,
             (SELECT COALESCE(SUM(q.current_value), 0) FROM quotas q WHERE q.user_id = u.id AND (q.status = 'ACTIVE' OR q.status IS NULL)) as quotas_value
         FROM users u
-        LEFT JOIN users r ON (u.referred_by ~ '^[0-9]+$' AND CAST(u.referred_by AS INTEGER) = r.id)
+        LEFT JOIN users r ON (u.referred_by ~ '^[0-9]+$' AND u.referred_by = CAST(r.id AS TEXT))
         ${baseQuery.substring(baseQuery.indexOf('WHERE'))}
         ORDER BY u.created_at DESC 
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}

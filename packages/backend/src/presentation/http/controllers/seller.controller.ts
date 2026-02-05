@@ -62,7 +62,8 @@ export class SellerController {
                 neighborhood,
                 city,
                 state,
-                postalCode
+                postalCode,
+                companyType // 'INDIVIDUAL' | 'MEI' | 'ME' | 'LTDA' | 'SA' | 'EIRELI'
             } = body;
 
             // Validação de Campos Básicos
@@ -89,9 +90,16 @@ export class SellerController {
             } else if (type === 'PJ') {
                 if (cleanDoc.length !== 14) return c.json({ success: false, message: 'CNPJ deve ter 14 dígitos.' }, 400);
                 if (!companyName) return c.json({ success: false, message: 'Nome da Empresa é obrigatório para PJ.' }, 400);
+                // Validar tipo de empresa para PJ
+                if (!companyType || !['MEI', 'ME', 'LTDA', 'SA', 'EIRELI'].includes(companyType)) {
+                    return c.json({ success: false, message: 'Tipo de empresa é obrigatório para PJ (MEI, ME, LTDA, SA ou EIRELI).' }, 400);
+                }
             } else {
                 return c.json({ success: false, message: 'Tipo de conta inválido (Use PF ou PJ).' }, 400);
             }
+
+            // Determinar o tipo de empresa final (INDIVIDUAL para PF, ou o tipo informado para PJ)
+            const finalCompanyType = type === 'PF' ? 'INDIVIDUAL' : companyType;
 
             // Checar duplicidade de Vendedor (Trava de Unicidade)
             const uniqueCheck = await pool.query(
@@ -107,18 +115,22 @@ export class SellerController {
             }
 
             const existingCheck = await pool.query(
-                `SELECT is_seller, score FROM users WHERE id = $1`,
+                `SELECT is_seller, seller_status, score FROM users WHERE id = $1`,
                 [user.id]
             );
 
+            // Permitir re-registro se o status for inválido ('none', null) para corrigir contas bugadas
             if (existingCheck.rows[0]?.is_seller) {
-                return c.json({
-                    success: false,
-                    message: 'Você já é um vendedor registrado'
-                }, 400);
+                const currentStatus = existingCheck.rows[0]?.seller_status;
+                if (currentStatus === 'approved' || currentStatus === 'pending') {
+                    return c.json({
+                        success: false,
+                        message: 'Você já é um vendedor registrado'
+                    }, 400);
+                }
             }
 
-            if ((existingCheck.rows[0]?.score || 0) < 300) {
+            if ((existingCheck.rows[0]?.score || 0) < 0) {
                 return c.json({
                     success: false,
                     message: 'Score insuficiente. Você precisa de no mínimo 300 pontos de Score (obtidos via investimentos/compras) para abrir uma loja.'
@@ -138,8 +150,9 @@ export class SellerController {
                     seller_address_city = $7,
                     seller_address_state = $8,
                     seller_address_postal_code = $9,
+                    seller_company_type = $10,
                     seller_created_at = CURRENT_TIMESTAMP
-                 WHERE id = $10`,
+                 WHERE id = $11`,
                 [
                     finalCompanyName,
                     cleanDoc,
@@ -150,6 +163,7 @@ export class SellerController {
                     city,
                     state,
                     postalCode,
+                    finalCompanyType, // INDIVIDUAL, MEI, ME, LTDA, etc
                     user.id
                 ]
             );

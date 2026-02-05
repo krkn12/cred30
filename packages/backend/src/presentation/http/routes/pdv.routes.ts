@@ -1,22 +1,60 @@
 import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth.middleware';
 import { PdvController } from '../controllers/pdv.controller';
+import { authMiddleware } from '../middleware/auth.middleware';
 
-export const pdvRoutes = new Hono();
 
-// Rotas do Comerciante (precisa estar logado)
-pdvRoutes.post('/create-charge', authMiddleware, PdvController.createCharge);
-pdvRoutes.get('/search-customer', authMiddleware, PdvController.searchCustomer);
-pdvRoutes.get('/my-sales', authMiddleware, PdvController.getMySales);
-pdvRoutes.post('/cancel/:id', authMiddleware, PdvController.cancelCharge);
-pdvRoutes.post('/become-merchant', authMiddleware, PdvController.becomeMerchant);
+const pdvRoutes = new Hono();
 
-// Simulação de parcelamento (comerciante simula antes de cobrar)
-pdvRoutes.get('/simulate-credit', authMiddleware, PdvController.simulateCredit);
+// Todas as rotas requerem autenticação
+pdvRoutes.use('*', authMiddleware);
 
-// Rotas Públicas (Cliente acessa via QR Code)
-// Detalhes da cobrança para confirmação remota
-pdvRoutes.get('/charge/:id', PdvController.getChargeDetails);
+// ========================================
+// PLANOS E ASSINATURAS
+// ========================================
 
-// Rota de Confirmação (Cliente digita no PDV do comerciante ou confirma remotamente)
-pdvRoutes.post('/confirm-charge', PdvController.confirmCharge);
+// Listar planos disponíveis
+pdvRoutes.get('/plans', PdvController.getPlans);
+
+// Status da assinatura do usuário
+pdvRoutes.get('/subscription', PdvController.getSubscriptionStatus);
+
+// Assinar plano PDV
+pdvRoutes.post('/subscribe', PdvController.subscribe);
+
+// Cancelar assinatura
+pdvRoutes.post('/subscription/cancel', PdvController.cancelSubscription);
+
+// ========================================
+// DISPOSITIVOS/MÁQUINAS
+// ========================================
+
+// Listar dispositivos
+pdvRoutes.get('/devices', PdvController.getDevices);
+
+// Registrar novo dispositivo
+pdvRoutes.post('/devices', PdvController.registerDevice);
+
+// Desativar dispositivo
+pdvRoutes.delete('/devices/:deviceId', PdvController.deactivateDevice);
+
+// ========================================
+// PRODUTOS (CATÁLOGO LOCAL)
+// ========================================
+
+// Listar produtos
+pdvRoutes.get('/products', PdvController.getProducts);
+
+// Criar produto
+pdvRoutes.post('/products', PdvController.createProduct);
+
+// ========================================
+// VENDAS
+// ========================================
+
+// Listar vendas
+pdvRoutes.get('/sales', PdvController.getSales);
+
+// Registrar venda
+pdvRoutes.post('/sales', PdvController.createSale);
+
+export { pdvRoutes };

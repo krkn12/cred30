@@ -59,7 +59,15 @@ export const WITHDRAWAL_FIXED_FEE = 3.50; // Taxa fixa de R$ 3,50 por saque (se 
 export const MIN_WITHDRAWAL_AMOUNT = 1.00; // Valor mínimo para saque = R$ 1,00
 export const MARKETPLACE_ESCROW_FEE_RATE = 0.12; // 12% de taxa para vendedores verificados (Com Selo)
 export const MARKETPLACE_NON_VERIFIED_FEE_RATE = 0.275; // 27.5% de taxa para vendedores sem selo
-export const SELLER_MONTHLY_LIMIT_NON_VERIFIED = 2000.00; // Limite de vendas mensal para CPF sem selo
+
+// === LIMITES DE VENDAS MENSAIS (COMPLIANCE FISCAL) ===
+// CPF: Limite de R$ 2.000/mês (evitar caracterização de atividade comercial habitual)
+// MEI: R$ 81.000/ano = R$ 6.750/mês (limite legal do MEI)
+// ME/LTDA: Sem limite (empresa regularizada com contador)
+export const SELLER_MONTHLY_LIMIT_CPF = 2000.00; // Limite mensal para QUALQUER CPF (com ou sem selo)
+export const SELLER_MONTHLY_LIMIT_MEI = 6750.00; // Limite mensal para MEI (R$ 81.000/ano ÷ 12)
+export const SELLER_MONTHLY_LIMIT_CNPJ = 0; // 0 = Sem limite (ME, LTDA, SA, etc)
+export const SELLER_MONTHLY_LIMIT_NON_VERIFIED = 2000.00; // Legado (manter compatibilidade)
 
 // Taxas para Entregadores (Logística)
 export const COURIER_VERIFIED_FEE_RATE = 0.10; // 10% para entregadores com selo
@@ -150,3 +158,40 @@ export const DELIVERY_CLAIM_TYPES = {
     THEFT: 'THEFT',         // Roubo/Assalto
     OTHER: 'OTHER'          // Outro
 };
+
+// ===================================================================
+// SISTEMA PDV (Ponto de Venda) - ASSINATURAS PARA COMERCIANTES
+// ===================================================================
+
+// Planos de Assinatura PDV
+export const PDV_PLANS = {
+    BASIC: {
+        code: 'PDV_BASIC',
+        price: 29.90,
+        maxDevices: 1,
+        name: 'Básico',
+        description: 'PDV + Relatórios básicos'
+    },
+    PRO: {
+        code: 'PDV_PRO',
+        price: 59.90,
+        maxDevices: 3,
+        name: 'Profissional',
+        description: 'Sincronização + Suporte prioritário'
+    },
+    ENTERPRISE: {
+        code: 'PDV_ENTERPRISE',
+        price: 99.90,
+        maxDevices: 999,
+        name: 'Enterprise',
+        description: 'Multi-loja + API + Suporte dedicado'
+    }
+};
+
+// Distribuição da Receita de Assinatura PDV (Total = 100%)
+export const PDV_FEE_TAX_SHARE = 0.20;         // 20% Impostos
+export const PDV_FEE_OPERATIONAL_SHARE = 0.20; // 20% Operacional (servidores, etc)
+export const PDV_FEE_OWNER_SHARE = 0.20;       // 20% Pró-labore
+export const PDV_FEE_STABILITY_SHARE = 0.15;   // 15% Fundo de Estabilidade
+export const PDV_FEE_COTISTA_SHARE = 0.05;     // 5% Para cotistas (profit_pool)
+export const PDV_FEE_CORPORATE_SHARE = 0.20;   // 20% Venture Capital/Empresas

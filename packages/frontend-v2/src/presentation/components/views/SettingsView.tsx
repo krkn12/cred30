@@ -997,6 +997,50 @@ export const SettingsView = ({ user, onLogout, onDeleteAccount, onChangePassword
                 </div>
             )}
 
+            {/* =================================================== */}
+            {/* ZONA DE PERIGO - LGPD Compliance */}
+            {/* =================================================== */}
+            <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6 mt-8">
+                <h3 className="text-lg font-bold text-red-500 mb-4 flex items-center gap-2">
+                    <AlertCircle size={20} />
+                    Zona de Perigo
+                </h3>
+
+                <div className="space-y-4">
+                    {/* Link para Política de Privacidade */}
+                    <div className="flex items-center justify-between bg-zinc-900/50 p-4 rounded-xl">
+                        <div>
+                            <p className="text-white font-medium text-sm">Política de Privacidade</p>
+                            <p className="text-zinc-500 text-xs">Saiba como tratamos seus dados (LGPD)</p>
+                        </div>
+                        <button
+                            onClick={() => navigate('/app/privacidade')}
+                            className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition"
+                        >
+                            Ver
+                        </button>
+                    </div>
+
+                    {/* Botão de Exclusão de Conta */}
+                    <div className="flex items-center justify-between bg-zinc-900/50 p-4 rounded-xl">
+                        <div>
+                            <p className="text-white font-medium text-sm">Excluir Minha Conta</p>
+                            <p className="text-zinc-500 text-xs">Remove todos os seus dados permanentemente</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                if (confirm('⚠️ ATENÇÃO: Esta ação é IRREVERSÍVEL!\n\nTodos os seus dados, saldo, licenças e histórico serão apagados permanentemente.\n\nDeseja realmente excluir sua conta?')) {
+                                    onDeleteAccount();
+                                }
+                            }}
+                            className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition"
+                        >
+                            Excluir
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div className="pt-8 pb-12 text-center opacity-30">
                 <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.4em]">Versão 2.5.0 • Cred30</p>
             </div>
