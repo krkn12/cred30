@@ -3,12 +3,12 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
 // Configurações do Firebase fornecidas pelo usuário
 const firebaseConfig = {
-  apiKey: "AIzaSyCo3TL8CiflDjqodLj9bzIv_T0ISeJomlc",
-  authDomain: "cred30-prod-app-2025.firebaseapp.com",
-  projectId: "cred30-prod-app-2025",
-  storageBucket: "cred30-prod-app-2025.firebasestorage.app",
-  messagingSenderId: "1033233821400",
-  appId: "1:1033233821400:web:9bf8aa4011950a940371ad"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Inicializa o Firebase
