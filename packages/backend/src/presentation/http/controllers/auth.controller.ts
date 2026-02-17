@@ -61,7 +61,7 @@ export class AuthController {
                 [userEmail]
             );
 
-            let user = result.rows[0];
+            const user = result.rows[0];
             const isAdmin = user?.is_admin || false;
 
             // Detectar Panic Mode

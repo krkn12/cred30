@@ -234,15 +234,17 @@ export class ProductsController {
                             }
                         }
                     }
-                } catch (e) { }
+                } catch (e) {
+                    // Ignora erros de parsing de JSON-LD silenciosamente para não quebrar a busca
+                }
 
                 return null;
             };
 
-            let title = getMeta('og:title') || getMeta('twitter:title') || getTitle();
-            let description = getMeta('og:description') || getMeta('description') || getMeta('twitter:description');
-            let image = getMeta('og:image') || getMeta('twitter:image');
-            let price = getPrice();
+            const title = getMeta('og:title') || getMeta('twitter:title') || getTitle();
+            const description = getMeta('og:description') || getMeta('description') || getMeta('twitter:description');
+            const image = getMeta('og:image') || getMeta('twitter:image');
+            const price = getPrice();
 
             return c.json({
                 success: true,

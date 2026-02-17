@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { Pool, PoolClient } from 'pg';
 import {
   QUOTA_PRICE,
@@ -48,8 +50,6 @@ export async function executeInTransaction<T>(
 
     const logMessage = `\n[${new Date().toISOString()}] Erro na transação:\n${error.stack || error}\n`;
     try {
-      const fs = require('fs');
-      const path = require('path');
       const logDir = path.join(process.cwd(), 'logs');
       if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
       fs.appendFileSync(path.join(logDir, 'sql-error.log'), logMessage);

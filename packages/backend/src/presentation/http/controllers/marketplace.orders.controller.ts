@@ -282,7 +282,7 @@ export class MarketplaceOrdersController {
                 const isVerified = !!sellerData?.is_verified_seller; // Agora baseado no Selo
 
                 // Usar pickup_address do anúncio se for retirada e o vendedor informou
-                let finalPickupAddress = pickupAddress || listings[0].pickup_address || 'Endereço informado pelo vendedor no chat';
+                const finalPickupAddress = pickupAddress || listings[0].pickup_address || 'Endereço informado pelo vendedor no chat';
 
                 // Cálculos Agregados
                 const baseAmount = listings.reduce((acc: number, item: any) => {

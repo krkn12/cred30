@@ -67,7 +67,8 @@ export class NotificationsController {
             });
 
             // Loop principal mantendo a conexão aberta
-            while (true) {
+            const active = true;
+            while (active) {
                 await stream.sleep(1000);
             }
         });

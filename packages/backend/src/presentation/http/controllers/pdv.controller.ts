@@ -546,7 +546,7 @@ export class PdvController {
                 const changeAmount = data.receivedAmount ? Math.max(0, data.receivedAmount - total) : 0;
 
                 // Buscar device_id se estiver autenticado via token de dispositivo
-                let deviceId = null;
+                const deviceId = null;
                 // TODO: Implementar autenticação por device token
 
                 // Obter próximo número de venda
