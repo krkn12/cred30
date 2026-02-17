@@ -8,8 +8,8 @@
     "build": "echo 'No build needed for tsx'",
     "start": "tsx src/index.ts",
     "start:prod": "tsx src/index.ts",
-    "lint": "bunx eslint . --ext .ts",
-    "format": "bunx prettier --write .",
+    "lint": "npx eslint . --ext .ts",
+    "format": "npx prettier --write .",
     "test": "vitest",
     "release": "cd ../.. && npm run release"
   },
