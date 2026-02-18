@@ -658,10 +658,10 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
       // 2. Distribuir a taxa (85% para cotistas / 15% Operacional)
       // Se for pagamento externo, considerar o gateway fee
       const boostFee = Math.abs(parseFloat(transaction.amount));
-      let gatewayCost = 0;
+      const gatewayCost = 0;
 
-      // Gateway externo removido - processamento interno apenas
-      if (false) { // Bloco desativado - era: metadata.asaas_id || metadata.external_reference
+      /* Gateway externo removido - processamento interno apenas
+      if (metadata.asaas_id || metadata.external_reference) { 
         const paymentMethod = metadata.paymentMethod || 'pix';
         gatewayCost = calculateGatewayCost(boostFee, paymentMethod as any);
 
@@ -675,6 +675,7 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
           [gatewayCost]
         );
       }
+      */
 
       // Valor líquido para distribuição (depois do gateway cost)
       const netBoostFee = boostFee - gatewayCost;

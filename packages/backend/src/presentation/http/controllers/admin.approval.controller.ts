@@ -7,12 +7,9 @@ import { runAutoLiquidation } from '../../../application/services/auto-liquidati
 // Schemas
 export const actionSchema = z.object({
     id: z.union([z.string(), z.number()]).transform((val) => {
-        if (typeof val === 'string') {
-            return val;
-        }
-        return val.toString();
-    }).refine((val) => typeof val === 'string', {
-        message: "ID deve ser uma string (UUID) válida"
+        if (typeof val === 'number') return val;
+        const parsed = parseInt(val, 10);
+        return isNaN(parsed) ? val : parsed;
     }),
     type: z.enum(['TRANSACTION', 'LOAN']),
     action: z.enum(['APPROVE', 'REJECT']),
@@ -37,15 +34,20 @@ export class AdminApprovalController {
 
             // Executar dentro de transação para garantir consistência
             const result = await executeInTransaction(pool, async (client) => {
+                let processResult;
                 if (type === 'TRANSACTION') {
-                    console.log(`[DEBUG_CTRL] Chamando processTransactionApproval para ID: ${id}`);
-                    return await processTransactionApproval(client, id, action);
+                    console.log(`[DEBUG_CTRL] Processando TRANSAÇÃO ID: ${id} | Ação: ${action}`);
+                    processResult = await processTransactionApproval(client, id as any, action);
                 } else if (type === 'LOAN') {
-                    // Importamos a função de processamento de loan
+                    console.log(`[DEBUG_CTRL] Processando EMPRÉSTIMO ID: ${id} | Ação: ${action}`);
                     const { processLoanApproval } = await import('../../../domain/services/transaction.service');
-                    return await processLoanApproval(client, id, action);
+                    processResult = await processLoanApproval(client, id as any, action);
+                } else {
+                    throw new Error('Tipo de ação não reconhecido');
                 }
-                throw new Error('Tipo de ação não reconhecido');
+
+                console.log(`[DEBUG_CTRL] Resultado do processamento:`, JSON.stringify(processResult));
+                return processResult;
             });
 
             if (!result.success) {

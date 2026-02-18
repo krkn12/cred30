@@ -93,16 +93,12 @@ export const getDbPool = (c?: any): Pool => {
 const originalQuery = pool.query;
 pool.query = async function (this: any, text: any, params: any) {
   const start = Date.now();
-  try {
-    const res = await (originalQuery.apply(this, [text, params] as any) as any);
-    const duration = Date.now() - start;
-    if (duration > 1000) {
-      console.warn(`[SLOW DATABASE QUERY] ${duration}ms - ${typeof text === 'string' ? text : text.text}`);
-    }
-    return res;
-  } catch (err) {
-    throw err;
+  const res = await (originalQuery.apply(this, [text, params] as any) as any);
+  const duration = Date.now() - start;
+  if (duration > 1000) {
+    console.warn(`[SLOW DATABASE QUERY] ${duration}ms - ${typeof text === 'string' ? text : text.text}`);
   }
+  return res;
 } as any;
 
 export const setDbPool = (pool: Pool) => {
@@ -1053,6 +1049,18 @@ export const initializeDatabase = async () => {
     );
       CREATE INDEX IF NOT EXISTS idx_edu_sessions_user ON education_sessions(user_id);
 
+      -- ACADEMY: Compras de Cursos (Necessária para Relatório Fiscal)
+      CREATE TABLE IF NOT EXISTS course_purchases (
+        id SERIAL PRIMARY KEY,
+        user_id ${userIdType} NOT NULL REFERENCES users(id),
+        course_id INTEGER NOT NULL,
+        amount_paid DECIMAL(10,2) NOT NULL,
+        instructor_share DECIMAL(10,2) NOT NULL,
+        platform_share DECIMAL(10,2) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, course_id)
+      );
+
       ALTER TABLE promo_videos ADD COLUMN IF NOT EXISTS budget_gross DECIMAL(10, 2) DEFAULT 0;
       ALTER TABLE promo_videos ADD COLUMN IF NOT EXISTS tag VARCHAR(30) DEFAULT 'OUTROS';
       ALTER TABLE promo_videos ADD COLUMN IF NOT EXISTS payment_id VARCHAR(255);
@@ -1319,131 +1327,67 @@ export const initializeDatabase = async () => {
 `);
     console.log('Índices de performance verificados!');
 
-    console.log('--- [DB] Initializing Audit and Logs ---');
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS system_costs(
-  id SERIAL PRIMARY KEY,
-  description VARCHAR(255) NOT NULL,
-  amount DECIMAL(10, 2) NOT NULL,
-  is_recurring BOOLEAN DEFAULT TRUE,
-  category VARCHAR(20) DEFAULT 'MIXED',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    // --- TABELAS CRÍTICAS DE ADMIN (GARANTIR CRIAÇÃO) ---
+    const criticalTables = [
+      {
+        name: 'course_purchases',
+        query: `CREATE TABLE IF NOT EXISTS course_purchases (
+          id SERIAL PRIMARY KEY,
+          user_id ${userIdType} NOT NULL REFERENCES users(id),
+          course_id INTEGER NOT NULL,
+          amount_paid DECIMAL(10,2) NOT NULL,
+          instructor_share DECIMAL(10,2) NOT NULL,
+          platform_share DECIMAL(10,2) NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, course_id)
+        )`
+      },
+      {
+        name: 'transaction_reviews',
+        query: `CREATE TABLE IF NOT EXISTS transaction_reviews(
+          id SERIAL PRIMARY KEY,
+          transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+          user_id ${userIdType} NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+          comment TEXT,
+          is_public BOOLEAN DEFAULT FALSE,
+          is_approved BOOLEAN DEFAULT FALSE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(transaction_id)
+        )`
+      },
+      {
+        name: 'bug_reports',
+        query: `CREATE TABLE IF NOT EXISTS bug_reports(
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          user_email VARCHAR(255),
+          user_name VARCHAR(255),
+          title VARCHAR(255) NOT NULL,
+          description TEXT NOT NULL,
+          category VARCHAR(50) DEFAULT 'general',
+          severity VARCHAR(20) DEFAULT 'low',
+          status VARCHAR(20) DEFAULT 'open',
+          screenshot_url TEXT,
+          device_info TEXT,
+          admin_notes TEXT,
+          resolved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          resolved_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`
+      }
+    ];
 
---Tabela de avaliações de transações(saques, etc.)
-      CREATE TABLE IF NOT EXISTS transaction_reviews(
-  id SERIAL PRIMARY KEY,
-  transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
-  user_id ${userIdType} NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
-  comment TEXT,
-  is_public BOOLEAN DEFAULT FALSE,
-  is_approved BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(transaction_id)
-);
+    for (const table of criticalTables) {
+      try {
+        await client.query(table.query);
+        console.log(`✅ [DB] Tabela verificada/criada: ${table.name}`);
+      } catch (err: any) {
+        console.error(`❌ [DB] Erro ao criar tabela ${table.name}:`, err.message);
+      }
+    }
 
-      CREATE INDEX IF NOT EXISTS idx_reviews_user ON transaction_reviews(user_id);
-      CREATE INDEX IF NOT EXISTS idx_reviews_approved ON transaction_reviews(is_approved, is_public);
-
---Tabela de Reportes de Bug
---Tabela de Reportes de Bug
-      CREATE TABLE IF NOT EXISTS bug_reports(
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  user_email VARCHAR(255),
-  user_name VARCHAR(255),
-  title VARCHAR(255) NOT NULL,
-  description TEXT NOT NULL,
-  category VARCHAR(50) DEFAULT 'general',
-  severity VARCHAR(20) DEFAULT 'low',
-  status VARCHAR(20) DEFAULT 'open',
-  screenshot_url TEXT,
-  device_info TEXT,
-  admin_notes TEXT,
-  resolved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  resolved_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-      -- Garantir que colunas críticas existam antes de criar índices
-      ALTER TABLE bug_reports ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'open';
-      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'UNREAD';
-      ALTER TABLE transaction_reviews ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT FALSE;
-
-      CREATE INDEX IF NOT EXISTS idx_bug_reports_user_id ON bug_reports(user_id);
-      CREATE INDEX IF NOT EXISTS idx_bug_reports_status ON bug_reports(status);
-      CREATE INDEX IF NOT EXISTS idx_bug_reports_severity ON bug_reports(severity);
-      CREATE INDEX IF NOT EXISTS idx_bug_reports_created_at ON bug_reports(created_at DESC);
-
---Tabela de Notificações Persistentes
-      CREATE TABLE IF NOT EXISTS notifications(
-  id SERIAL PRIMARY KEY,
-  user_id ${userIdType} REFERENCES users(id) ON DELETE CASCADE,
-  title VARCHAR(255) NOT NULL,
-  message TEXT NOT NULL,
-  type VARCHAR(50),
-  status VARCHAR(20) DEFAULT 'UNREAD',
-  metadata JSONB,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-      CREATE INDEX IF NOT EXISTS idx_notifications_user_status ON notifications(user_id, status);
-      CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
-`);
-
-    // Tabela de Investimentos
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS investments(
-  id SERIAL PRIMARY KEY,
-  asset_name VARCHAR(100) NOT NULL,
-  asset_type VARCHAR(50) NOT NULL,
-  quantity DECIMAL(15, 6) DEFAULT 0,
-  unit_price DECIMAL(15, 2) NOT NULL,
-  total_invested DECIMAL(15, 2) NOT NULL,
-  current_value DECIMAL(15, 2) DEFAULT 0,
-  dividends_received DECIMAL(15, 2) DEFAULT 0,
-  broker VARCHAR(100),
-  notes TEXT,
-  status VARCHAR(20) DEFAULT 'ACTIVE',
-  sale_value DECIMAL(15, 2),
-  invested_at TIMESTAMP DEFAULT NOW(),
-  sold_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
-      ALTER TABLE investments ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'ACTIVE';
-      ALTER TABLE investments ADD COLUMN IF NOT EXISTS sale_value DECIMAL(15, 2);
-      ALTER TABLE investments ADD COLUMN IF NOT EXISTS sold_at TIMESTAMP;
-
-      CREATE INDEX IF NOT EXISTS idx_investments_asset_type ON investments(asset_type);
-      CREATE INDEX IF NOT EXISTS idx_investments_status ON investments(status);
-      CREATE INDEX IF NOT EXISTS idx_investments_invested_at ON investments(invested_at);
-`);
-
-    // Adicionar coluna tag na tabela promo_videos e índices
-    await client.query(`
-      ALTER TABLE promo_videos ADD COLUMN IF NOT EXISTS tag VARCHAR(30) DEFAULT 'OUTROS';
-      CREATE INDEX IF NOT EXISTS idx_promo_videos_tag ON promo_videos(tag);
-      CREATE INDEX IF NOT EXISTS idx_promo_videos_active ON promo_videos(is_active, status);
-      CREATE INDEX IF NOT EXISTS idx_promo_videos_views ON promo_videos(total_views DESC);
-
---Otimização para o Feed de Vídeos
-      CREATE INDEX IF NOT EXISTS idx_promo_video_views_viewer_video ON promo_video_views(viewer_id, video_id, completed);
-      CREATE INDEX IF NOT EXISTS idx_promo_video_views_video_completed ON promo_video_views(video_id) WHERE completed = TRUE;
-
-      CREATE INDEX IF NOT EXISTS idx_transactions_user_type ON transactions(user_id, type);
-      CREATE INDEX IF NOT EXISTS idx_users_balance ON users(balance DESC);
-      
-      -- Logística / Marketplace Indexes
-      CREATE INDEX IF NOT EXISTS idx_marketplace_orders_delivery_status ON marketplace_orders(delivery_status);
-      CREATE INDEX IF NOT EXISTS idx_marketplace_orders_status ON marketplace_orders(status);
-
-      -- Blindagem de Custos
-      ALTER TABLE system_costs ADD COLUMN IF NOT EXISTS category VARCHAR(20) DEFAULT 'MIXED';
-`);
     console.log('Índices de otimização aplicados!');
 
     console.log('Audit logs and performance indexes updated successfully!');
