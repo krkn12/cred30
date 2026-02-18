@@ -330,7 +330,7 @@ export const WithdrawView = ({ balance, currentUser, totalQuotaValue, onSuccess,
                 </p>
                 <div className="h-px bg-white/5 w-1/2 mx-auto" />
                 <p className="text-[9px] text-zinc-600 text-center leading-relaxed italic">
-                    O resgate será processado via PIX pelo administrador. O prazo de 24h úteis depende da liquidez do fundo comum e disponibilidade bancária. Ao confirmar, você declara ciência de que o sistema opera sob regime de cooperação mútua (Art. 991-996 do Código Civil Brasileiro).
+                    O resgate será processado via PIX pelo administrador. O prazo de 24h úteis depende da liquidez do fundo comum e prazos de compensação digital. Ao confirmar, você declara ciência de que o sistema opera sob regime de cooperação mútua (Art. 991-996 do Código Civil Brasileiro).
                 </p>
             </div>
 

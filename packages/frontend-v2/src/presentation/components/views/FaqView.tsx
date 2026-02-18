@@ -37,7 +37,7 @@ export const FaqView: React.FC = () => {
     const faqs = [
         {
             icon: <ShieldCheck size={18} />,
-            question: "O Cred30 é um banco?",
+            question: "O Cred30 funciona como um banco?",
             answer: "Não. O Cred30 é uma plataforma tecnológica que facilita a gestão de um Clube de Benefícios operando sob Sociedade em Conta de Participação (SCP) e contratos de Mútuo Civil entre membros, conforme os Artigos 991 a 996 do Código Civil Brasileiro. Não somos uma instituição financeira regulada pelo BACEN."
         },
         {

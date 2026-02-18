@@ -218,9 +218,9 @@ export const AuthScreen = ({ onLogin }: { onLogin: (u: User) => void }) => {
                         Cred<span className="text-primary-400">30</span>
                     </h1>
                     <p className="text-xl text-zinc-400 font-medium leading-relaxed">
-                        A revolução do microcrédito associativo.
+                        A revolução do apoio mútuo digital.
                         <br />
-                        <span className="text-primary-400">Gestão Associativa Direta. Sem Burocracia Bancária.</span>
+                        <span className="text-primary-400">Gestão Associativa Direta. Sem complicação e 100% Digital.</span>
                     </p>
                 </div>
             </div>
