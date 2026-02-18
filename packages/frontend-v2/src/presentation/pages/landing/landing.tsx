@@ -94,10 +94,10 @@ const LandingPage = () => {
                         </div>
 
                         <h1 className="text-6xl md:text-8xl font-black tracking-tight leading-[0.9] text-white">
-                            Sua <span className="text-primary-400">Liberdade</span> <br />
-                            Financeira Começa <br />
+                            União que <br />
+                            Gera <span className="text-primary-400">Crescimento</span> <br />
                             <span className="relative">
-                                Aqui.
+                                Real.
                                 <div className="absolute bottom-2 left-0 w-full h-3 bg-primary-500/30 -z-10" />
                             </span>
                         </h1>
