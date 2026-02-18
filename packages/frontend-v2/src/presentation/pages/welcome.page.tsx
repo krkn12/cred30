@@ -86,8 +86,8 @@ const WelcomePage = () => {
       {/* Hero */}
       <section className="relative z-10 px-6 pt-12 pb-16">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-full text-emerald-400 text-xs font-bold mb-8">
-            <Shield size={14} /> Clube de Benefícios 100% Transparente
+          <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-full text-emerald-400 text-xs font-bold mb-8 uppercase tracking-wider">
+            <Shield size={14} /> Nosso Projeto: Clube de Benefícios 100% Transparente
           </div>
           <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tight leading-[1] text-white">
             Cred<span className="text-cyan-400">30</span>: A comunidade que <br />

@@ -90,7 +90,7 @@ const LandingPage = () => {
                 <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     <div className={`space-y-8 transition-all duration-1000 delay-300 ${isVisible ? 'translate-x-0 opacity-100' : '-translate-x-20 opacity-0'}`}>
                         <div className="inline-flex items-center gap-2 bg-primary-500/10 border border-primary-500/20 px-4 py-2 rounded-full text-primary-400 text-xs font-black uppercase tracking-widest">
-                            <Star size={14} className="fill-primary-400" /> O Futuro do Microcrédito
+                            <Star size={14} className="fill-primary-400" /> O Futuro do Apoio Mútuo
                         </div>
 
                         <h1 className="text-6xl md:text-8xl font-black tracking-tight leading-[0.9] text-white">
@@ -261,7 +261,7 @@ const LandingPage = () => {
                             <span className="text-xl font-black tracking-tighter">Cred<span className="text-primary-400">30</span></span>
                         </div>
                         <p className="text-zinc-500 max-w-sm font-medium">
-                            Transformando o acesso ao crédito no Brasil através da tecnologia e união comunitária.
+                            Transformando o acesso ao apoio mútuo no Brasil através da tecnologia e união comunitária.
                         </p>
                     </div>
 
