@@ -10,8 +10,16 @@ import {
     PDV_FEE_OWNER_SHARE,
     PDV_FEE_STABILITY_SHARE,
     PDV_FEE_COTISTA_SHARE,
-    PDV_FEE_CORPORATE_SHARE
+    PDV_FEE_CORPORATE_SHARE,
+    PDV_TRANSACTION_FEE_RATE,
+    PLATFORM_FEE_TAX_SHARE,
+    PLATFORM_FEE_OPERATIONAL_SHARE,
+    PLATFORM_FEE_OWNER_SHARE,
+    PLATFORM_FEE_INVESTMENT_SHARE,
+    PLATFORM_FEE_CORPORATE_SHARE,
+    LOAN_INTEREST_RATE
 } from '../../../shared/constants/business.constants';
+import { getCreditAnalysis } from '../../../application/services/credit-analysis.service';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 
@@ -49,10 +57,12 @@ const createSaleSchema = z.object({
         discount: z.coerce.number().min(0).optional().default(0)
     })).min(1),
     discount: z.coerce.number().min(0).optional().default(0),
-    paymentMethod: z.enum(['PIX', 'DINHEIRO', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'CRED30']),
+    paymentMethod: z.enum(['PIX', 'DINHEIRO', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'CRED30', 'CRED30_SALDO', 'CRED30_CREDITO']),
     receivedAmount: z.coerce.number().min(0).optional(),
+    customerId: z.string().optional(), // ID do cliente Cred30 (para pagamento via saldo/crédito)
     customerCpf: z.string().optional(),
     customerName: z.string().optional(),
+    installments: z.coerce.number().int().min(1).max(12).optional().default(1), // Parcelas para crédito Cred30
     notes: z.string().optional()
 });
 
@@ -173,8 +183,8 @@ export class PdvController {
                     throw new Error(`Saldo insuficiente. Você tem R$ ${balance.toFixed(2)}, mas precisa de R$ ${planInfo.price.toFixed(2)}.`);
                 }
 
-                // Descontar saldo
-                await updateUserBalance(client, user.id, -planInfo.price);
+                // Descontar saldo (updateUserBalance com 'debit' espera valor positivo)
+                await updateUserBalance(client, user.id, planInfo.price, 'debit');
 
                 // Distribuir para os potes
                 await lockSystemConfig(client);
@@ -499,6 +509,94 @@ export class PdvController {
         }
     }
 
+    /**
+     * Atualizar produto existente
+     */
+    static async updateProduct(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+            const productId = c.req.param('productId');
+            const body = await c.req.json();
+
+            // Verificar se o produto pertence ao usuário
+            const ownerCheck = await pool.query(
+                'SELECT id FROM pdv_products WHERE id = $1 AND user_id = $2',
+                [productId, user.id]
+            );
+
+            if (ownerCheck.rows.length === 0) {
+                return c.json({ success: false, message: 'Produto não encontrado.' }, 404);
+            }
+
+            // Construir query dinâmica com campos opcionais
+            const updates: string[] = [];
+            const values: any[] = [];
+            let paramIndex = 1;
+
+            if (body.name !== undefined) { updates.push(`name = $${paramIndex++}`); values.push(body.name); }
+            if (body.price !== undefined) { updates.push(`price = $${paramIndex++}`); values.push(body.price); }
+            if (body.stock !== undefined) { updates.push(`stock = $${paramIndex++}`); values.push(body.stock); }
+            if (body.sku !== undefined) { updates.push(`sku = $${paramIndex++}`); values.push(body.sku || null); }
+            if (body.barcode !== undefined) { updates.push(`barcode = $${paramIndex++}`); values.push(body.barcode || null); }
+            if (body.costPrice !== undefined) { updates.push(`cost_price = $${paramIndex++}`); values.push(body.costPrice || null); }
+            if (body.minStock !== undefined) { updates.push(`min_stock = $${paramIndex++}`); values.push(body.minStock); }
+            if (body.category !== undefined) { updates.push(`category = $${paramIndex++}`); values.push(body.category || null); }
+            if (body.unit !== undefined) { updates.push(`unit = $${paramIndex++}`); values.push(body.unit || null); }
+
+            if (updates.length === 0) {
+                return c.json({ success: false, message: 'Nenhum campo para atualizar.' }, 400);
+            }
+
+            updates.push(`updated_at = NOW()`);
+            values.push(productId);
+
+            await pool.query(
+                `UPDATE pdv_products SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+                values
+            );
+
+            return c.json({ success: true, message: 'Produto atualizado com sucesso!' });
+
+        } catch (error: any) {
+            console.error('[PDV] Erro ao atualizar produto:', error);
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
+     * Excluir produto (soft delete)
+     */
+    static async deleteProduct(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+            const productId = c.req.param('productId');
+
+            // Verificar se o produto pertence ao usuário
+            const ownerCheck = await pool.query(
+                'SELECT id FROM pdv_products WHERE id = $1 AND user_id = $2',
+                [productId, user.id]
+            );
+
+            if (ownerCheck.rows.length === 0) {
+                return c.json({ success: false, message: 'Produto não encontrado.' }, 404);
+            }
+
+            // Soft delete — manter registro para histórico de vendas
+            await pool.query(
+                'UPDATE pdv_products SET is_active = FALSE, updated_at = NOW() WHERE id = $1',
+                [productId]
+            );
+
+            return c.json({ success: true, message: 'Produto removido com sucesso!' });
+
+        } catch (error: any) {
+            console.error('[PDV] Erro ao excluir produto:', error);
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
     // ========================================
     // VENDAS
     // ========================================
@@ -582,7 +680,172 @@ export class PdvController {
                     ]);
                 }
 
-                return { saleId, saleNumber, total, changeAmount };
+                // --- PROCESSAMENTO DE PAGAMENTO CRED30 ---
+                let transactionFee = 0;
+                let loanCreated = false;
+
+                if (data.paymentMethod === 'CRED30_SALDO' || data.paymentMethod === 'CRED30_CREDITO') {
+                    if (!data.customerId) {
+                        throw new Error('ID do cliente é obrigatório para pagamento via Cred30.');
+                    }
+
+                    // Verificar se o cliente existe
+                    const customerCheck = await client.query(
+                        'SELECT id, name, balance, score FROM users WHERE id = $1',
+                        [data.customerId]
+                    );
+                    if (customerCheck.rows.length === 0) {
+                        throw new Error('Cliente não encontrado.');
+                    }
+                    const customer = customerCheck.rows[0];
+
+                    // Calcular taxa do comerciante (6%)
+                    transactionFee = Math.round(total * PDV_TRANSACTION_FEE_RATE * 100) / 100;
+                    const merchantReceives = Math.round((total - transactionFee) * 100) / 100;
+
+                    if (data.paymentMethod === 'CRED30_SALDO') {
+                        // === PAGAMENTO VIA SALDO ===
+                        const customerBalance = parseFloat(customer.balance) || 0;
+                        if (customerBalance < total) {
+                            throw new Error(`Saldo insuficiente. Cliente tem R$ ${customerBalance.toFixed(2)} mas a venda é R$ ${total.toFixed(2)}.`);
+                        }
+
+                        // Debitar saldo do cliente
+                        await client.query(
+                            'UPDATE users SET balance = balance - $1 WHERE id = $2',
+                            [total, data.customerId]
+                        );
+
+                        // Creditar saldo no comerciante (menos taxa)
+                        await client.query(
+                            'UPDATE users SET balance = balance + $1 WHERE id = $2',
+                            [merchantReceives, user.id]
+                        );
+
+                        // Registrar transação do cliente (débito)
+                        await client.query(`
+                            INSERT INTO transactions (user_id, type, amount, description, metadata)
+                            VALUES ($1, 'PDV_PURCHASE', $2, $3, $4)
+                        `, [
+                            data.customerId,
+                            -total,
+                            `Compra PDV #${saleNumber} - ${data.customerName || 'Loja'}`,
+                            JSON.stringify({ saleId, saleNumber, merchantId: user.id, method: 'SALDO' })
+                        ]);
+
+                        // Registrar transação do comerciante (crédito)
+                        await client.query(`
+                            INSERT INTO transactions (user_id, type, amount, description, metadata)
+                            VALUES ($1, 'PDV_SALE_INCOME', $2, $3, $4)
+                        `, [
+                            user.id,
+                            merchantReceives,
+                            `Venda PDV #${saleNumber} via Saldo Cred30 (taxa: R$ ${transactionFee.toFixed(2)})`,
+                            JSON.stringify({ saleId, saleNumber, customerId: data.customerId, fee: transactionFee, method: 'SALDO' })
+                        ]);
+
+                    } else {
+                        // === PAGAMENTO VIA CRÉDITO (EMPRÉSTIMO AUTOMÁTICO) ===
+                        // Verificar elegibilidade
+                        const creditAnalysis = await getCreditAnalysis(client, data.customerId.toString());
+                        if (!creditAnalysis.eligible) {
+                            throw new Error('Cliente não possui limite de crédito disponível.');
+                        }
+
+                        const availableCredit = creditAnalysis.details?.availableLimit || 0;
+                        if (availableCredit < total) {
+                            throw new Error(`Limite de crédito insuficiente. Disponível: R$ ${availableCredit.toFixed(2)}, necessário: R$ ${total.toFixed(2)}.`);
+                        }
+
+                        // Criar empréstimo automático para o cliente
+                        const installments = data.installments || 1;
+                        const interestRate = LOAN_INTEREST_RATE; // 20% padrão
+                        const totalRepayment = Math.round(total * (1 + interestRate) * 100) / 100;
+                        const installmentAmount = Math.round((totalRepayment / installments) * 100) / 100;
+
+                        const loanRes = await client.query(`
+                            INSERT INTO loans (user_id, amount, interest_rate, total_repayment, installments, status, metadata)
+                            VALUES ($1, $2, $3, $4, $5, 'APPROVED', $6)
+                            RETURNING id
+                        `, [
+                            data.customerId,
+                            total,
+                            interestRate,
+                            totalRepayment,
+                            installments,
+                            JSON.stringify({
+                                origin: 'PDV_CREDIT',
+                                saleId,
+                                saleNumber,
+                                merchantId: user.id,
+                                guaranteePercentage: 100
+                            })
+                        ]);
+                        const loanId = loanRes.rows[0].id;
+
+                        // Criar parcelas do empréstimo
+                        for (let i = 1; i <= installments; i++) {
+                            const dueDate = new Date();
+                            dueDate.setMonth(dueDate.getMonth() + i);
+                            await client.query(`
+                                INSERT INTO loan_installments (loan_id, installment_number, amount, due_date, status)
+                                VALUES ($1, $2, $3, $4, 'PENDING')
+                            `, [loanId, i, installmentAmount, dueDate.toISOString()]);
+                        }
+
+                        // Creditar saldo no comerciante (menos taxa)
+                        await client.query(
+                            'UPDATE users SET balance = balance + $1 WHERE id = $2',
+                            [merchantReceives, user.id]
+                        );
+
+                        // Registrar transação do comerciante (crédito)
+                        await client.query(`
+                            INSERT INTO transactions (user_id, type, amount, description, metadata)
+                            VALUES ($1, 'PDV_SALE_INCOME', $2, $3, $4)
+                        `, [
+                            user.id,
+                            merchantReceives,
+                            `Venda PDV #${saleNumber} via Crédito Cred30 ${installments}x (taxa: R$ ${transactionFee.toFixed(2)})`,
+                            JSON.stringify({ saleId, saleNumber, customerId: data.customerId, loanId, fee: transactionFee, method: 'CREDITO', installments })
+                        ]);
+
+                        loanCreated = true;
+                    }
+
+                    // Distribuir taxa nos pools da plataforma
+                    if (transactionFee > 0) {
+                        const config = await lockSystemConfig(client);
+                        const taxShare = Math.round(transactionFee * PLATFORM_FEE_TAX_SHARE * 100) / 100;
+                        const opShare = Math.round(transactionFee * PLATFORM_FEE_OPERATIONAL_SHARE * 100) / 100;
+                        const ownerShare = Math.round(transactionFee * PLATFORM_FEE_OWNER_SHARE * 100) / 100;
+                        const investShare = Math.round(transactionFee * PLATFORM_FEE_INVESTMENT_SHARE * 100) / 100;
+                        const corpShare = Math.round(transactionFee * PLATFORM_FEE_CORPORATE_SHARE * 100) / 100;
+
+                        await client.query(`
+                            UPDATE system_config SET 
+                                tax_reserve = COALESCE(tax_reserve, 0) + $1,
+                                operational_reserve = COALESCE(operational_reserve, 0) + $2,
+                                owner_reserve = COALESCE(owner_reserve, 0) + $3,
+                                stability_fund = COALESCE(stability_fund, 0) + $4,
+                                corporate_investment = COALESCE(corporate_investment, 0) + $5
+                            WHERE id = 1
+                        `, [taxShare, opShare, ownerShare, investShare, corpShare]);
+
+                        // Registrar transação de taxa
+                        await client.query(`
+                            INSERT INTO transactions (user_id, type, amount, description, metadata)
+                            VALUES ($1, 'PDV_TRANSACTION_FEE', $2, $3, $4)
+                        `, [
+                            user.id,
+                            -transactionFee,
+                            `Taxa PDV transação #${saleNumber} (${(PDV_TRANSACTION_FEE_RATE * 100).toFixed(0)}%)`,
+                            JSON.stringify({ saleId, saleNumber, feeRate: PDV_TRANSACTION_FEE_RATE })
+                        ]);
+                    }
+                }
+
+                return { saleId, saleNumber, total, changeAmount, transactionFee, loanCreated };
             });
 
             return c.json({
@@ -592,7 +855,9 @@ export class PdvController {
                     id: result.data!.saleId,
                     number: result.data!.saleNumber,
                     total: result.data!.total,
-                    change: result.data!.changeAmount
+                    change: result.data!.changeAmount,
+                    transactionFee: result.data!.transactionFee || 0,
+                    loanCreated: result.data!.loanCreated || false
                 }
             });
 
@@ -656,6 +921,71 @@ export class PdvController {
 
         } catch (error: any) {
             console.error('[PDV] Erro ao listar vendas:', error);
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
+     * Buscar cliente Cred30 por telefone (para pagamento via plataforma)
+     */
+    static async lookupCustomer(c: Context) {
+        try {
+            const user = c.get('user') as UserContext;
+            const pool = getDbPool(c);
+            const body = await c.req.json();
+
+            const phone = body.phone?.replace(/\D/g, '');
+            if (!phone || phone.length < 10) {
+                return c.json({ success: false, message: 'Telefone inválido. Informe pelo menos 10 dígitos.' }, 400);
+            }
+
+            // Buscar cliente pelo telefone
+            const customerRes = await pool.query(
+                `SELECT id, name, balance, score FROM users WHERE REPLACE(REPLACE(REPLACE(phone, '(', ''), ')', ''), '-', '') LIKE '%' || $1 || '%' LIMIT 1`,
+                [phone]
+            );
+
+            if (customerRes.rows.length === 0) {
+                return c.json({ success: true, found: false, message: 'Cliente não encontrado na plataforma.' });
+            }
+
+            const customer = customerRes.rows[0];
+
+            // Não permitir que o comerciante se busque como cliente
+            if (customer.id.toString() === user.id.toString()) {
+                return c.json({ success: false, message: 'Você não pode pagar para si mesmo.' }, 400);
+            }
+
+            // Obter análise de crédito do cliente
+            let creditInfo = { limit: 0, availableCredit: 0, eligible: false };
+            try {
+                const analysis = await getCreditAnalysis(pool, customer.id.toString());
+                creditInfo = {
+                    limit: analysis.limit || 0,
+                    availableCredit: analysis.details?.availableLimit || 0,
+                    eligible: analysis.eligible || false
+                };
+            } catch (e) {
+                // Se falhar a análise de crédito, continua sem crédito
+                console.warn('[PDV] Falha ao analisar crédito do cliente:', e);
+            }
+
+            return c.json({
+                success: true,
+                found: true,
+                customer: {
+                    id: customer.id,
+                    name: customer.name,
+                    balance: parseFloat(customer.balance) || 0,
+                    creditLimit: creditInfo.limit,
+                    availableCredit: creditInfo.availableCredit,
+                    creditEligible: creditInfo.eligible
+                },
+                transactionFeeRate: PDV_TRANSACTION_FEE_RATE // Informar taxa ao frontend
+            });
+
+        } catch (error: any) {
+            console.error('[PDV] Erro ao buscar cliente:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
     }
