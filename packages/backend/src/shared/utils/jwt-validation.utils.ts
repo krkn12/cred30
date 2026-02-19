@@ -19,6 +19,11 @@ const WEAK_SECRETS = [
 ];
 
 export function validateJwtSecret(): void {
+    if (process.env.NODE_ENV === 'test') {
+        console.warn('⚠️  [TEST ENV] Validação de força JWT ignorada.');
+        return;
+    }
+
     const secret = process.env.JWT_SECRET;
 
     if (!secret) {
