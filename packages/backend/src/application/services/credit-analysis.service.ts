@@ -222,7 +222,7 @@ export const checkLoanEligibility = async (pool: Pool | PoolClient, userId: stri
         }
 
         return { eligible: true, details };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Erro ao verificar elegibilidade:', error);
         return { eligible: false, reason: `Erro técnico na análise: ${error.message}`, details: { score: 0, quotasCount: 0, quotasValue: 0, marketplaceTransactions: 0, accountAgeDays: 0, hasOverdue: false, totalSpent: 0, maxLoanAmount: 0, activeDebt: 0, availableLimit: 0 } };
     }

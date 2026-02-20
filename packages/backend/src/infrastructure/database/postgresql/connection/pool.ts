@@ -1281,7 +1281,7 @@ export const initializeDatabase = async () => {
         CREATE INDEX IF NOT EXISTS idx_marketplace_active_created_desc ON marketplace_listings(status, created_at DESC) WHERE status = 'ACTIVE';
       `);
       console.log('✅[DB] Índices de performance criados');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn('⚠️[DB] Índices de performance (parcial):', err.message);
     }
 
@@ -1295,14 +1295,14 @@ export const initializeDatabase = async () => {
         ALTER TABLE system_config ALTER COLUMN total_owner_profit TYPE DECIMAL(20, 2);
         ALTER TABLE system_config ALTER COLUMN total_gateway_costs TYPE DECIMAL(20, 2);
       `);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn('⚠️[DB] Precisão decimal (parcial):', err.message);
     }
 
     // ANALYZE e FILLFACTOR isolados (podem travar em Neon)
-    try { await client.query('ANALYZE users; ANALYZE transactions; ANALYZE loans; ANALYZE quotas;'); } catch (e) { }
-    try { await client.query('ANALYZE marketplace_listings; ANALYZE marketplace_orders;'); } catch (e) { }
-    try { await client.query('ALTER TABLE users SET(fillfactor = 85);'); } catch (e) { }
+    try { await client.query('ANALYZE users; ANALYZE transactions; ANALYZE loans; ANALYZE quotas;'); } catch (e) { console.error(e); }
+    try { await client.query('ANALYZE marketplace_listings; ANALYZE marketplace_orders;'); } catch (e) { console.error(e); }
+    try { await client.query('ALTER TABLE users SET(fillfactor = 85);'); } catch (e) { console.error(e); }
 
     // Adicionar campos de monetização na tabela de usuários
     try {
@@ -1331,7 +1331,7 @@ export const initializeDatabase = async () => {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_notes TEXT;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS cpf VARCHAR(14);
       `);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn('⚠️[DB] Campos de monetização (parcial):', err.message);
     }
 
@@ -1375,7 +1375,7 @@ export const initializeDatabase = async () => {
         CREATE INDEX IF NOT EXISTS idx_webhook_status ON webhook_logs(status);
       `);
       console.log('✅[DB] Auditoria e webhooks inicializados');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('❌[DB] Erro ao inicializar auditoria:', err.message);
     }
 
@@ -1395,7 +1395,7 @@ export const initializeDatabase = async () => {
         CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
       `);
       console.log('✅[DB] Sistema de notificações inicializado');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('❌[DB] Erro ao inicializar notificações:', err.message);
     }
 
@@ -1505,7 +1505,7 @@ export const initializeDatabase = async () => {
         CREATE INDEX IF NOT EXISTS idx_pdv_sales_date ON pdv_sales(created_at);
       `);
       console.log('✅[DB] Sistema PDV inicializado');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('❌[DB] Erro ao inicializar PDV:', err.message);
     }
 
@@ -1541,7 +1541,7 @@ export const initializeDatabase = async () => {
         CREATE INDEX IF NOT EXISTS idx_gov_votes_user ON governance_votes(user_id);
       `);
       console.log('✅[DB] Sistema de governança inicializado');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('❌[DB] Erro ao inicializar governança:', err.message);
     }
 
@@ -1602,11 +1602,11 @@ export const initializeDatabase = async () => {
         try {
           await client.query(table.query);
           console.log(`✅[DB] Tabela verificada/criada: ${table.name}`);
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error(`❌[DB] Erro ao criar tabela ${table.name}:`, err.message);
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('❌[DB] Erro no bloco de tabelas críticas:', err.message);
     }
 
@@ -1634,7 +1634,7 @@ export const initializeDatabase = async () => {
         ALTER TABLE consortium_groups ADD COLUMN IF NOT EXISTS reserve_pool DECIMAL(20, 2) DEFAULT 0;
       `);
       console.log('✅[DB] Sistema de Consórcio inicializado');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('❌[DB] Erro ao inicializar consórcio:', err.message);
     }
 
@@ -1676,12 +1676,12 @@ export const initializeDatabase = async () => {
       `);
 
       // ANALYZE e FILLFACTOR em blocos separados para não travar
-      try { await client.query('ANALYZE users; ANALYZE transactions; ANALYZE loans; ANALYZE quotas;'); } catch (e) { }
-      try { await client.query('ANALYZE marketplace_listings; ANALYZE marketplace_orders;'); } catch (e) { }
-      try { await client.query('ALTER TABLE users SET(fillfactor = 85);'); } catch (e) { }
+      try { await client.query('ANALYZE users; ANALYZE transactions; ANALYZE loans; ANALYZE quotas;'); } catch (e) { console.error(e); }
+      try { await client.query('ANALYZE marketplace_listings; ANALYZE marketplace_orders;'); } catch (e) { console.error(e); }
+      try { await client.query('ALTER TABLE users SET(fillfactor = 85);'); } catch (e) { console.error(e); }
 
       console.log('✅[DB] Manutenção concluída');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn('⚠️[DB] Manutenção parcial concluída com avisos:', err.message);
     }
 

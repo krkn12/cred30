@@ -238,7 +238,7 @@ export class TransactionsController {
                 message: 'Solicitação de depósito registrada. Prossiga com o pagamento PIX.',
                 data: { transactionId: result.transactionId }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
             return c.json({ success: false, message: error.message || 'Erro ao registrar depósito' }, 500);
         }

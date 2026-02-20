@@ -71,7 +71,7 @@ export class LogisticsController {
                     };
                 })
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[LOGISTICS] Erro ao listar entregas:', error);
             return c.json({ success: false, message: `Erro ao buscar entregas: ${error.message}` }, 500);
         }
@@ -407,7 +407,7 @@ export class LogisticsController {
                     }
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[LOGISTICS] Erro ao listar minhas entregas:', error);
             return c.json({ success: false, message: `Erro ao buscar suas entregas: ${error.message}` }, 500);
         }
@@ -442,7 +442,7 @@ export class LogisticsController {
                     avgEarningPerDelivery: parseFloat(stats.avg_earning).toFixed(2),
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[LOGISTICS] Erro ao buscar estatísticas:', error);
             return c.json({ success: false, message: `Erro ao buscar estatísticas: ${error.message}` }, 500);
         }
@@ -474,7 +474,7 @@ export class LogisticsController {
                 registeredAt: userData?.courier_created_at || null,
                 pricePerKm: parseFloat(userData?.courier_price_per_km || '2.00'),
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[LOGISTICS] Erro ao buscar status do entregador:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -552,7 +552,7 @@ export class LogisticsController {
                 message: 'Cadastro enviado para aprovação!',
                 courier: { status: 'pending', vehicle: vehicle }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[LOGISTICS] Erro ao registrar:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -581,7 +581,7 @@ export class LogisticsController {
             }
 
             return c.json({ success: true, message: 'Preço por KM atualizado!' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[LOGISTICS] Erro ao atualizar preço:', error);
             return c.json({ success: false, message: error.message }, 500);
         }

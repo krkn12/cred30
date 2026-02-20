@@ -45,7 +45,7 @@ export async function executeInTransaction<T>(
       success: true,
       data: result
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     await client.query('ROLLBACK');
 
     const logMessage = `\n[${new Date().toISOString()}] Erro na transação:\n${error.stack || error}\n`;

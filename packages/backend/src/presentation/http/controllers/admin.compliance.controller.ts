@@ -16,7 +16,7 @@ export class AdminComplianceController {
                 LIMIT 100
             `);
             return c.json({ success: true, data: result.rows });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao listar aceites de termos:', error);
             return c.json({ success: false, message: 'Erro ao buscar registros de compliance' }, 500);
         }
@@ -52,7 +52,7 @@ export class AdminComplianceController {
                     ...stats.rows[0]
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: 'Erro ao gerar estatísticas de compliance' }, 500);
         }
     }
@@ -70,7 +70,7 @@ export class AdminComplianceController {
                 ORDER BY created_at ASC
             `);
             return c.json({ success: true, data: result.rows });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao listar pendências KYC:', error);
             return c.json({ success: false, message: 'Erro ao buscar pendências' }, 500);
         }

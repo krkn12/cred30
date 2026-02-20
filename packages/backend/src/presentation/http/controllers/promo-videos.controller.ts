@@ -287,7 +287,7 @@ export class PromoVideosController {
                 success: true,
                 message: 'Campanha removida com sucesso.'
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[PROMO-VIDEOS] Erro ao remover campanha:', error);
             return c.json({ success: false, message: error.message || 'Erro ao remover campanha' }, 500);
         }
@@ -312,7 +312,7 @@ export class PromoVideosController {
                 message: `Sucesso! R$ ${result.data?.convertedAmount.toFixed(2)} adicionados ao seu saldo.`,
                 data: result.data
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[PROMO-VIDEOS] Erro ao converter pontos:', error);
             return c.json({ success: false, message: error.message || 'Erro ao converter pontos' }, 500);
         }
@@ -434,7 +434,7 @@ export class PromoVideosController {
             }
 
             return c.json({ success: false, message: 'Opção inválida' }, 400);
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }

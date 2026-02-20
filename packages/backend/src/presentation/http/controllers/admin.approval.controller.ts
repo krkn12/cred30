@@ -297,7 +297,7 @@ export class AdminApprovalController {
 
             return c.json({ success: true, message: 'Pagamento aprovado com sucesso' });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -382,7 +382,7 @@ export class AdminApprovalController {
                 message: 'Pagamento rejeitado! Empréstimo reativado para novo pagamento.',
                 data: result.data
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -420,7 +420,7 @@ export class AdminApprovalController {
                 message: 'Saque aprovado com sucesso! Valor líquido deduzido e taxas distribuídas.',
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -465,7 +465,7 @@ export class AdminApprovalController {
                 data: result.data
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -538,7 +538,7 @@ export class AdminApprovalController {
             });
 
             return c.json(result);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao liquidar empréstimo:', error);
             return c.json({ success: false, message: error.message || 'Erro interno' }, 500);
         }
@@ -556,7 +556,7 @@ export class AdminApprovalController {
                 message: `Varredura concluída. ${result.liquidatedCount} garantias executadas.`,
                 data: result
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }

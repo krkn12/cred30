@@ -34,7 +34,7 @@ export class SellerController {
                 isLiquorStore: userData?.is_liquor_store || false,
                 isPaused: userData?.is_paused || false
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[SELLER] Erro ao buscar status:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -177,7 +177,7 @@ export class SellerController {
                     paymentMethod: 'MANUAL_PIX'
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[SELLER] Erro ao registrar vendedor:', error);
             return c.json({
                 success: false,
@@ -212,7 +212,7 @@ export class SellerController {
                 walletId: result.rows[0].pix_key || 'MANUAL_PAYMENT',
                 paymentMethod: 'MANUAL_PIX'
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[SELLER] Erro ao buscar wallet:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -245,7 +245,7 @@ export class SellerController {
                 sellerName: result.rows[0].seller_company_name,
                 paymentMethod: 'MANUAL_PIX'
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[SELLER] Erro ao buscar wallet do vendedor:', error);
             return c.json({ success: false, message: error.message }, 500);
         }

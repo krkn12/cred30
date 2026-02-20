@@ -19,7 +19,7 @@ retroTermsRoute.post('/', async (c) => {
         `);
 
         return c.json({ success: true, message: `Blindagem retroativa aplicada! ${result.rowCount} registros criados.` });
-    } catch (error: any) {
+    } catch (error: unknown) {
         return c.json({ success: false, message: error.message }, 500);
     }
 });

@@ -24,7 +24,7 @@ export class VotingController {
 
             const result = await GovernanceService.createProposal(user.id, title, description, category, durationDays);
             return c.json({ success: true, data: result[0] });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -51,7 +51,7 @@ export class VotingController {
                 data: proposals,
                 userCurrentPower: userPower
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -77,7 +77,7 @@ export class VotingController {
                 message: `Voto registrado! Seu peso de decisão foi de ${result.powerApplied.toFixed(2)} pontos.`,
                 powerApplied: result.powerApplied
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error.code === '23505') {
                 return c.json({ success: false, message: 'Você já participou desta votação.' }, 400);
             }
@@ -112,7 +112,7 @@ export class VotingController {
                     no: p.no_votes_power
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }

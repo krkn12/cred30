@@ -23,7 +23,7 @@ export class WebhooksController {
             }
 
             return c.json({ success: true, message: 'Webhook registrado. Confirmação manual pendente.' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[WEBHOOK] Erro:', error);
             if (webhookLogId) await updateWebhookStatus(pool, webhookLogId, 'FAILED', error.message);
             return c.json({ success: false, error: error.message }, 200);
@@ -38,7 +38,7 @@ export class WebhooksController {
             const body = await c.req.json();
             console.log('[WEBHOOK NOTIFY] Recebido:', JSON.stringify(body));
             return c.json({ success: true });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[WEBHOOK NOTIFY] Erro:', error);
             return c.json({ success: false, error: error.message }, 200);
         }

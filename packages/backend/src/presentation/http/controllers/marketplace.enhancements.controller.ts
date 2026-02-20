@@ -39,7 +39,7 @@ export class MarketplaceEnhancementsController {
                 );
                 return c.json({ success: true, favorited: true, message: 'Adicionado aos favoritos' });
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[FAVORITES] Erro:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -63,7 +63,7 @@ export class MarketplaceEnhancementsController {
             `, [user.id]);
 
             return c.json({ success: true, data: result.rows });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[FAVORITES] Erro ao listar:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -98,7 +98,7 @@ export class MarketplaceEnhancementsController {
             );
 
             return c.json({ success: true, data: result.rows[0], message: 'Pergunta enviada!' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[QUESTIONS] Erro:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -141,7 +141,7 @@ export class MarketplaceEnhancementsController {
             );
 
             return c.json({ success: true, message: 'Resposta enviada!' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[QUESTIONS] Erro ao responder:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -164,7 +164,7 @@ export class MarketplaceEnhancementsController {
             `, [listingId]);
 
             return c.json({ success: true, data: result.rows });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[QUESTIONS] Erro ao listar:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -247,7 +247,7 @@ export class MarketplaceEnhancementsController {
             `, [reviewedUserId]);
 
             return c.json({ success: true, message: 'Avaliação enviada!' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[REVIEWS] Erro:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -290,7 +290,7 @@ export class MarketplaceEnhancementsController {
                     stats: stats.rows[0]
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[REVIEWS] Erro ao listar:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -338,7 +338,7 @@ export class MarketplaceEnhancementsController {
                     listings: listings.rows
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[SELLER_PROFILE] Erro:', error);
             return c.json({ success: false, message: error.message }, 500);
         }

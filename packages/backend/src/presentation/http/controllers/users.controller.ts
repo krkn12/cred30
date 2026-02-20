@@ -238,7 +238,7 @@ export class UsersController {
             }
 
             return c.json({ success: true, message: 'Perfil atualizado com sucesso', data: { user: result.rows[0] } });
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
             return c.json({ success: false, message: 'Erro interno' }, 500);
         }
@@ -367,7 +367,7 @@ export class UsersController {
                     }
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[SYNC_DATA_ERROR]:', error, error.stack);
             return c.json({ success: false, message: 'Erro ao sincronizar' }, 500);
         }
@@ -409,7 +409,7 @@ export class UsersController {
             await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashed, user.id]);
 
             return c.json({ success: true, message: hasPassword ? 'Senha alterada com sucesso' : 'Senha criada com sucesso' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: 'Erro ao alterar senha' }, 500);
         }
     }
@@ -431,7 +431,7 @@ export class UsersController {
 
             await pool.query('UPDATE users SET cpf = $1 WHERE id = $2', [cleanCpf, user.id]);
             return c.json({ success: true, message: 'CPF atualizado com sucesso!' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: 'Erro ao atualizar CPF' }, 500);
         }
     }
@@ -450,7 +450,7 @@ export class UsersController {
 
             await pool.query('UPDATE users SET phone = $1 WHERE id = $2', [cleanPhone, user.id]);
             return c.json({ success: true, message: 'Telefone atualizado com sucesso!' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: 'Erro ao atualizar telefone' }, 500);
         }
     }
@@ -478,7 +478,7 @@ export class UsersController {
             );
 
             return c.json({ success: true, message: 'Chave PIX atualizada! Saques bloqueados por 48h.' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: 'Erro ao atualizar chave PIX' }, 500);
         }
     }
@@ -518,7 +518,7 @@ export class UsersController {
             ]);
 
             return c.json({ success: true, message, data: { scoreRewarded: scoreReward, adsToday: adsToday + (scoreReward > 0 ? 1 : 0) } });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: 'Erro ao processar ad' }, 500);
         }
     }
@@ -551,7 +551,7 @@ export class UsersController {
             if (!hasOneYear) return c.json({ success: true, data: { eligible: false, reason: 'Necessário 1 ano de carência.' } });
 
             return c.json({ success: true, data: { eligible: true, message: 'Parabéns! Você é elegível ao Título.' } });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: 'Erro ao verificar' }, 500);
         }
     }
@@ -570,7 +570,7 @@ export class UsersController {
             await pool.query('UPDATE users SET title_downloaded = TRUE, title_downloaded_at = NOW() WHERE id = $1', [user.id]);
 
             return c.json({ success: true, message: 'Título emitido com sucesso.', data: { userName: userRes.rows[0].name, issueDate: new Date().toLocaleDateString('pt-BR') } });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: 'Erro ao emitir' }, 500);
         }
     }
@@ -599,7 +599,7 @@ export class UsersController {
                     } : null
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: 'Erro ao consultar benefício' }, 500);
         }
     }
@@ -626,7 +626,7 @@ export class UsersController {
             await pool.query('DELETE FROM users WHERE id = $1', [user.id]);
 
             return c.json({ success: true, message: 'Sua conta foi excluída definitivamente.' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: 'Erro ao processar exclusão' }, 500);
         }
     }
@@ -671,7 +671,7 @@ export class UsersController {
                     }
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao buscar ranking:', error);
         }
     }

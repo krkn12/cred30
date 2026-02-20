@@ -44,7 +44,7 @@ export class BugReportsController {
                 message: 'Bug reportado com sucesso! Nossa equipe irá analisar.',
                 data: { id: result.rows[0].id }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao criar bug report:', error);
             if (error instanceof z.ZodError) {
                 return c.json({ success: false, message: error.errors[0].message }, 400);
@@ -70,7 +70,7 @@ export class BugReportsController {
             );
 
             return c.json({ success: true, data: result.rows });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao listar bugs:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -109,7 +109,7 @@ export class BugReportsController {
                     inProgress: result.rows[0]?.total_in_progress || 0
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao listar bugs (admin):', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -144,7 +144,7 @@ export class BugReportsController {
             );
 
             return c.json({ success: true, message: 'Bug atualizado com sucesso!' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao atualizar bug:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -160,7 +160,7 @@ export class BugReportsController {
             await getDbPool(c).query('DELETE FROM bug_reports WHERE id = $1', [bugId]);
 
             return c.json({ success: true, message: 'Bug excluído com sucesso!' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao excluir bug:', error);
             return c.json({ success: false, message: error.message }, 500);
         }

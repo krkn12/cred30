@@ -94,7 +94,7 @@ export class PointsService {
 
             return { success: true, data: result.data };
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[PointsService] Erro na conversão:', error.message);
             return { success: false, message: error.message };
         }

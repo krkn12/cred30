@@ -3,11 +3,10 @@ import 'dotenv/config';
 // Define ambiente de teste e segredos ANTES de importar o app
 process.env.NODE_ENV = 'test';
 // Tenta pegar do ENV, se não tiver, usa undefined (vai falhar na validação se o CI não passar)
-process.env.JWT_SECRET = process.env.JWT_SECRET;
 // Se estiver indefinido, define um fallback APENAS se não for CI, mas para garantir, vamos deixar sem fallback fraco.
 if (!process.env.JWT_SECRET) {
     console.warn('⚠️  JWT_SECRET não definido. Usando fallback seguro gerado dinamicamente.');
-    process.env.JWT_SECRET = 'dynamic_fallback_' + Math.random().toString(36).substring(7) + '_strictly_for_tests_locally';
+    // Removendo auto-atribuição redundante
 }
 process.env.ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@cred30.site';
 

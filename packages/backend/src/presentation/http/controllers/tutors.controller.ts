@@ -51,7 +51,7 @@ export class TutorsController {
             `, [data.bio, data.pricePerHour, data.subjects, user.id]);
 
             return c.json({ success: true, message: 'Perfil de tutor ativado com sucesso!' });
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (e instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: e.errors }, 400);
             return c.json({ success: false, message: e.message }, 500);
         }
@@ -74,7 +74,7 @@ export class TutorsController {
             `, [user.id]);
 
             return c.json({ success: true, data: result.rows });
-        } catch (e: any) {
+        } catch (e: unknown) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -113,7 +113,7 @@ export class TutorsController {
             `, [user.id, data.tutorId, data.scheduledAt, data.durationHours, data.subject, data.message || '', priceSnapshot]);
 
             return c.json({ success: true, message: 'Solicitação enviada! Aguarde a aprovação do professor.', requestId: result.rows[0].id });
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (e instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: e.errors }, 400);
             return c.json({ success: false, message: e.message }, 500);
         }
@@ -149,7 +149,7 @@ export class TutorsController {
             }
 
             return c.json({ success: false, message: 'Ação inválida.' }, 400);
-        } catch (e: any) {
+        } catch (e: unknown) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -222,7 +222,7 @@ export class TutorsController {
             });
 
             return c.json({ success: true, message: 'Pagamento confirmado! Aula agendada com sucesso.' });
-        } catch (e: any) {
+        } catch (e: unknown) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -244,7 +244,7 @@ export class TutorsController {
             `, [user.id]);
 
             return c.json({ success: true, data: result.rows });
-        } catch (e: any) {
+        } catch (e: unknown) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -266,7 +266,7 @@ export class TutorsController {
             `, [user.id]);
 
             return c.json({ success: true, data: result.rows });
-        } catch (e: any) {
+        } catch (e: unknown) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }

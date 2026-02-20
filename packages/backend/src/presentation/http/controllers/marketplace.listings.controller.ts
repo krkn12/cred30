@@ -92,7 +92,7 @@ export class MarketplaceListingsController {
 
             const result = await pool.query(query, params);
             return c.json({ success: true, data: { listings: result.rows } });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Get Listings Error:', error.message, error.stack);
             return c.json({ success: false, message: error.message || 'Erro ao buscar anúncios' }, 500);
         }
@@ -417,7 +417,7 @@ export class MarketplaceListingsController {
                 message: 'Pagamentos PIX/Cartão externos estão temporariamente indisponíveis. Por favor, deposite saldo na sua conta e use o saldo para impulsionar.'
             }, 400);
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error boosting listing:', error);
             return c.json({ success: false, message: error.message || 'Erro ao impulsionar anúncio' }, 500);
         }

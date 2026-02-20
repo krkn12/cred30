@@ -50,7 +50,7 @@ export class ConsortiumController {
 
             return c.json({ success: true, group: result.rows[0] });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao criar grupo:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -69,7 +69,7 @@ export class ConsortiumController {
                 ORDER BY cg.created_at DESC
             `);
             return c.json({ success: true, data: result.rows });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -97,7 +97,7 @@ export class ConsortiumController {
             `, [user.id]);
 
             return c.json({ success: true, data: result.rows });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -197,7 +197,7 @@ export class ConsortiumController {
                 return c.json({ success: false, message: result.error }, 400);
             }
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 400);
         }
     }
@@ -284,7 +284,7 @@ export class ConsortiumController {
             });
 
             return c.json(result.data || { success: false, message: result.error });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 400);
         }
     }
@@ -310,7 +310,7 @@ export class ConsortiumController {
             await pool.query('UPDATE consortium_groups SET current_assembly_number = $1 WHERE id = $2', [nextNumber, groupId]);
 
             return c.json({ success: true, assemblyId: assemblyRes.rows[0].id });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -433,7 +433,7 @@ export class ConsortiumController {
             });
 
             return c.json(result.data || { success: false, message: result.error });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -505,7 +505,7 @@ export class ConsortiumController {
             });
 
             return c.json(result.success ? result : { success: false, message: result.error });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -528,7 +528,7 @@ export class ConsortiumController {
             `, [memberId, documentType, documentUrl]);
 
             return c.json({ success: true, message: 'Documento enviado para análise.' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -566,7 +566,7 @@ export class ConsortiumController {
                     totalContemplated: Number(countsRes.rows[0].total_contemplated || 0)
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -585,7 +585,7 @@ export class ConsortiumController {
             `, [groupId]);
 
             return c.json({ success: true, data: result.rows });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -630,7 +630,7 @@ export class ConsortiumController {
                     bids: bidsRes.rows
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -668,7 +668,7 @@ export class ConsortiumController {
                     bids: bidsRes.rows
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -707,7 +707,7 @@ export class ConsortiumController {
             `, [assemblyId, memberId, amount, bidType || 'FREE', isEmbedded || false, embeddedAmount || 0]);
 
             return c.json({ success: true, message: 'Lance registrado com sucesso!' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -757,7 +757,7 @@ export class ConsortiumController {
             });
 
             return c.json(result.data || { success: false, message: result.error });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -783,7 +783,7 @@ export class ConsortiumController {
             `, [assemblyId, user.id, bidId, vote]);
 
             return c.json({ success: true, message: 'Voto registrado!' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -848,7 +848,7 @@ export class ConsortiumController {
 
             return c.json(result.data || { success: false, message: result.error });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }

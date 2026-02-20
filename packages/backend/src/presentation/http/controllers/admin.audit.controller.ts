@@ -33,7 +33,7 @@ export class AdminAuditController {
                 success: true,
                 logs: result.rows
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao buscar logs de auditoria:', error);
             return c.json({
                 success: false,
@@ -78,7 +78,7 @@ export class AdminAuditController {
             c.header('Content-Disposition', 'attachment; filename=auditoria_cred30.csv');
 
             return c.body(csv);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao exportar logs:', error);
             return c.json({ success: false, message: 'Erro ao gerar exportação.' }, 500);
         }

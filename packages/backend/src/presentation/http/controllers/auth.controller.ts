@@ -131,7 +131,7 @@ export class AuthController {
                     token,
                 },
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
             console.error('[LOGIN ERROR]:', error);
             return c.json({ success: false, message: 'Erro interno no servidor' }, 500);
@@ -237,7 +237,7 @@ export class AuthController {
                     token,
                 },
             }, 201);
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error instanceof z.ZodError) return c.json({ success: false, message: error.errors[0]?.message || 'Dados inválidos', errors: error.errors }, 400);
             console.error('[REGISTER ERROR]:', error);
             return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
@@ -265,7 +265,7 @@ export class AuthController {
             await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashedPassword, user.id]);
 
             return c.json({ success: true, message: 'Senha redefinida com sucesso' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos' }, 400);
             return c.json({ success: false, message: 'Erro ao redefinir senha' }, 500);
         }
@@ -302,7 +302,7 @@ export class AuthController {
                 message: '2FA redefinido. Reative-o usando o novo QR Code.',
                 data: { secret: tfaSecret, qrCode, otpUri }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos' }, 400);
             return c.json({ success: false, message: 'Erro ao recuperar 2FA' }, 500);
         }
@@ -326,7 +326,7 @@ export class AuthController {
             await AuthController.recordTermsAcceptance(c, user.id);
 
             return c.json({ success: true, message: 'Termos aceitos com sucesso' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error instanceof z.ZodError) return c.json({ success: false, message: 'Você deve aceitar os termos' }, 400);
             return c.json({ success: false, message: 'Erro ao aceitar termos' }, 500);
         }
@@ -445,7 +445,7 @@ export class AuthController {
                     isNewUser
                 },
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[GOOGLE LOGIN ERROR]:', error);
             const errorMessage = error.message || 'Erro na autenticação Google';
             return c.json({ success: false, message: errorMessage }, 401);
@@ -487,7 +487,7 @@ export class AuthController {
                 success: true,
                 data: { secret, qrCode, otpUri }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[2FA SETUP ERROR]:', error);
             return c.json({ success: false, message: 'Erro ao configurar 2FA' }, 500);
         }
@@ -517,7 +517,7 @@ export class AuthController {
             await pool.query('UPDATE users SET two_factor_enabled = TRUE, two_factor_secret = $1 WHERE id = $2', [secret, user.id]);
 
             return c.json({ success: true, message: '2FA ativado com sucesso' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[2FA VERIFY ERROR]:', error);
             return c.json({ success: false, message: 'Erro ao verificar 2FA' }, 500);
         }
@@ -537,7 +537,7 @@ export class AuthController {
             const accepted = !!result.rows[0]?.accepted_terms_at;
 
             return c.json({ success: true, data: { accepted } });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: 'Erro ao verificar status dos termos' }, 500);
         }
     }
@@ -556,7 +556,7 @@ export class AuthController {
             await pool.query('UPDATE users SET two_factor_enabled = FALSE WHERE id = $1', [userId]);
 
             return c.json({ success: true, message: '2FA desabilitado com sucesso pelo administrador' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: 'Erro ao desabilitar 2FA' }, 500);
         }
     }
@@ -583,7 +583,7 @@ export class AuthController {
             );
 
             return c.json({ success: true, message: 'Segurança do usuário resetada com sucesso' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: 'Erro ao resetar segurança' }, 500);
         }
     }
@@ -634,7 +634,7 @@ export class AuthController {
 
             return c.json({ success: true, message: 'Indicação vinculada com sucesso!' });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[APPLY REFERRAL ERROR]:', error);
             return c.json({ success: false, message: 'Erro ao aplicar indicação' }, 500);
         }

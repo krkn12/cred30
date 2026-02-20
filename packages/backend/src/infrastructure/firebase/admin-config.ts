@@ -28,7 +28,7 @@ export const initializeFirebaseAdmin = () => {
                     credential: admin.credential.cert(serviceAccount)
                 });
                 console.log('Firebase Admin inicializado com sucesso para o projeto:', serviceAccount.project_id);
-            } catch (jsonErr: any) {
+            } catch (jsonErr: unknown) {
                 console.error('[Firebase] Erro ao processar JSON da Service Account:', jsonErr.message);
                 console.error('[Firebase] Início da string (primeiros 50 chars):', serviceAccountData.substring(0, 50));
             }

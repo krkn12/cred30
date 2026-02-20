@@ -121,7 +121,7 @@ export class PdvController {
                     autoRenew: sub.auto_renew
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[PDV] Erro ao buscar assinatura:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -256,7 +256,7 @@ export class PdvController {
                 }
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[PDV] Erro ao assinar:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -286,7 +286,7 @@ export class PdvController {
                 message: 'Assinatura cancelada. Você ainda terá acesso até o fim do período pago.'
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[PDV] Erro ao cancelar:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -360,7 +360,7 @@ export class PdvController {
                 }
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[PDV] Erro ao registrar dispositivo:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -394,7 +394,7 @@ export class PdvController {
                 }))
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[PDV] Erro ao listar dispositivos:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -425,7 +425,7 @@ export class PdvController {
 
             return c.json({ success: true, message: 'Dispositivo desativado.' });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[PDV] Erro ao desativar dispositivo:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -466,7 +466,7 @@ export class PdvController {
                 }))
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[PDV] Erro ao listar produtos:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -503,7 +503,7 @@ export class PdvController {
                 productId: result.rows[0].id
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[PDV] Erro ao criar produto:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -558,7 +558,7 @@ export class PdvController {
 
             return c.json({ success: true, message: 'Produto atualizado com sucesso!' });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[PDV] Erro ao atualizar produto:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -591,7 +591,7 @@ export class PdvController {
 
             return c.json({ success: true, message: 'Produto removido com sucesso!' });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[PDV] Erro ao excluir produto:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -861,7 +861,7 @@ export class PdvController {
                 }
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[PDV] Erro ao criar venda:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -919,7 +919,7 @@ export class PdvController {
                 totals
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[PDV] Erro ao listar vendas:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -984,7 +984,7 @@ export class PdvController {
                 transactionFeeRate: PDV_TRANSACTION_FEE_RATE // Informar taxa ao frontend
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[PDV] Erro ao buscar cliente:', error);
             return c.json({ success: false, message: error.message }, 500);
         }

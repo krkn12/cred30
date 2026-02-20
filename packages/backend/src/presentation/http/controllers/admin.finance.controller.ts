@@ -30,7 +30,7 @@ export class AdminFinanceController {
             const pool = getDbPool(c);
             const result = await pool.query('SELECT * FROM system_costs ORDER BY created_at DESC');
             return c.json({ success: true, data: result.rows });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -155,7 +155,7 @@ export class AdminFinanceController {
                 }
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro na auditoria:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -176,7 +176,7 @@ export class AdminFinanceController {
             );
 
             return c.json({ success: true, message: 'Custo adicionado com sucesso' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -196,7 +196,7 @@ export class AdminFinanceController {
             }
 
             return c.json({ success: true, message: 'Custo removido com sucesso' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -280,7 +280,7 @@ export class AdminFinanceController {
             if (!result.success) return c.json({ success: false, message: result.error }, 400);
 
             return c.json({ success: true, message: `Pagamento de "${result.data?.description}" realizado com sucesso!` });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -321,7 +321,7 @@ export class AdminFinanceController {
                     hasMore: offsetNum + result.rows.length < total
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -656,7 +656,7 @@ export class AdminFinanceController {
                 message: `Custo de R$ ${amount.toFixed(2)} registrado com sucesso e deduzido do caixa operacional.`,
                 data: { addedCost: amount }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao adicionar custo manual:', error);
             return c.json({ success: false, message: error.message || 'Erro interno do servidor' }, 500);
         }
@@ -691,7 +691,7 @@ export class AdminFinanceController {
                 message: 'Configurações atualizadas com sucesso!',
                 updatedFields: updates
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao atualizar configurações:', error);
             return c.json({ success: false, message: error.message || 'Erro interno do servidor' }, 500);
         }
@@ -881,7 +881,7 @@ export class AdminFinanceController {
                 data: fiscalSummary,
                 message: isAllTime ? "Relatório consolidado." : "Relatório mensal."
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao gerar relatório fiscal:', error);
             return c.json({ success: false, message: error.message }, 500);
         }

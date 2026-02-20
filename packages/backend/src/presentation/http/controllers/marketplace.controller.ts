@@ -207,7 +207,7 @@ export class MarketplaceController {
             console.log(`[DEBUG] getLogisticMissions - Found ${result.rows.length} missions`);
 
             return c.json({ success: true, data: result.rows });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error listing missions:', error);
             return c.json({ success: false, message: 'Erro ao buscar missões' }, 500);
         }
@@ -464,7 +464,7 @@ export class MarketplaceController {
                         await createTransaction(client, tx.sellerId, 'MARKET_SALE', sellerAmount, `Venda Presencial: ${tx.itemTitle}`, 'APPROVED', { orderId });
                     });
                     results.push({ id: tx.id, status: 'SUCCESS' });
-                } catch (err: any) {
+                } catch (err: unknown) {
                     console.error(`Error processing offline tx ${tx.id}:`, err);
                     results.push({ id: tx.id, status: 'FAILED', message: err.message });
                 }
@@ -515,7 +515,7 @@ export class MarketplaceController {
 
             const result = await pool.query(query, params);
             return c.json({ success: true, data: result.rows });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -530,7 +530,7 @@ export class MarketplaceController {
                 `SELECT * FROM marketplace_food_categories WHERE is_active = TRUE ORDER BY display_order ASC`
             );
             return c.json({ success: true, data: result.rows });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -562,7 +562,7 @@ export class MarketplaceController {
             );
 
             return c.json({ success: true, message: 'Perfil da loja atualizado com sucesso!' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -594,7 +594,7 @@ export class MarketplaceController {
                 isPaused,
                 message: isPaused ? 'Loja pausada com sucesso!' : 'Loja aberta com sucesso!'
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }

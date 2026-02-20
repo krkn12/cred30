@@ -130,7 +130,7 @@ export class MonetizationController {
                     pointsConverted: conversion.pointsConverted
                 } : null
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -215,7 +215,7 @@ export class MonetizationController {
             if (!result.success) return c.json({ success: false, message: result.error }, 400);
             return c.json({ success: true, message: 'Parabéns! Agora você é um MEMBRO PRO!' });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -277,7 +277,7 @@ export class MonetizationController {
 
             if (!result.success) return c.json({ success: false, message: result.error }, 400);
             return c.json({ success: true, message: 'Selo de Verificado Adquirido!' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -336,7 +336,7 @@ export class MonetizationController {
 
             if (!result.success) return c.json({ success: false, message: result.error }, 400);
             return c.json({ success: true, message: `Boost Ativado! +${SCORE_BOOST_POINTS} pontos de Score.` });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -397,7 +397,7 @@ export class MonetizationController {
                     pointsConverted: conversion.pointsConverted
                 } : null
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -479,7 +479,7 @@ export class MonetizationController {
                 message: 'Consulta realizada com sucesso!',
                 data: result.data
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -560,7 +560,7 @@ export class MonetizationController {
                 message: 'Você agora é um Membro Protegido!',
                 expiry: result.data?.expiry
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }

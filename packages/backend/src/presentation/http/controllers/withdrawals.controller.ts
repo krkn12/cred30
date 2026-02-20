@@ -245,7 +245,7 @@ export class WithdrawalsController {
                         pixKey,
                         userAgent
                     }, ip);
-                } catch (e: any) { console.error('Audit Error', e); }
+                } catch (e: unknown) { console.error('Audit Error', e); }
 
                 return {
                     transactionId: transactionResult.transactionId,

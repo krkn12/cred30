@@ -23,7 +23,7 @@ export class AdminReferralController {
                 ORDER BY rc.created_at DESC
             `);
             return c.json({ success: true, data: result.rows });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao listar códigos de indicação:', error);
             return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
         }
@@ -49,7 +49,7 @@ export class AdminReferralController {
                 message: 'Código de indicação criado com sucesso!',
                 data: result.rows[0]
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error.code === '23505') {
                 return c.json({ success: false, message: 'Este código já existe. Escolha outro.' }, 409);
             }
@@ -83,7 +83,7 @@ export class AdminReferralController {
                 message: `Código ${result.rows[0].is_active ? 'ativado' : 'desativado'} com sucesso!`,
                 data: result.rows[0]
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao toggle código de indicação:', error);
             return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
         }
@@ -103,7 +103,7 @@ export class AdminReferralController {
             }
 
             return c.json({ success: true, message: 'Código removido com sucesso!' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao remover código de indicação:', error);
             return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
         }

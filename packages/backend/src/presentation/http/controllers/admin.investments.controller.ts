@@ -106,7 +106,7 @@ export class AdminInvestmentsController {
                     }
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[INVESTMENTS] Erro ao listar:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -175,7 +175,7 @@ export class AdminInvestmentsController {
                 message: `Investimento em ${data.assetName} registrado com sucesso!`,
                 data: { id: result.data?.investmentId }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error instanceof z.ZodError) {
                 return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
             }
@@ -221,7 +221,7 @@ export class AdminInvestmentsController {
             );
 
             return c.json({ success: true, message: 'Investimento atualizado!' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -266,7 +266,7 @@ export class AdminInvestmentsController {
                     ? `Dividendos de R$ ${amount.toFixed(2)} reinvestidos!`
                     : `Dividendos de R$ ${amount.toFixed(2)} creditados no sistema!`
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -318,7 +318,7 @@ export class AdminInvestmentsController {
                 : `${result.data!.assetName} vendido com prejuízo de R$ ${Math.abs(result.data!.profitLoss).toFixed(2)}.`;
 
             return c.json({ success: true, message: msg });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -346,7 +346,7 @@ export class AdminInvestmentsController {
                 success: true,
                 message: `Aporte de R$ ${amount.toFixed(2)} registrado com sucesso na reserva!`
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }

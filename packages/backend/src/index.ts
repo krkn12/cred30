@@ -128,7 +128,7 @@ app.use('*', async (c: Context, next: any) => {
 });
 
 // 🛡️ Global Error Handler
-app.onError((err: any, c: Context) => {
+app.onError((err: unknown, c: Context) => {
   console.error(`[SERVER ERROR] ${c.req.method} ${c.req.url}:`, err);
 
   const status = err.status || 500;
@@ -211,7 +211,7 @@ async function startServer() {
     console.log('--- [DB] Conectando ao Banco de Dados... ---');
     try {
       await initializeDatabase();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('--- [DB] Falha ao conectar/migrar Banco de Dados:', err.message);
     }
 
@@ -221,7 +221,7 @@ async function startServer() {
 
     console.log('✅ [BOOT] Sistema totalmente operacional!');
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [FATAL] Erro catastrófico no boot do servidor:', error);
     // No Render, se falhar, queremos que o processo morra para ele tentar de novo
     setTimeout(() => process.exit(1), 1000);

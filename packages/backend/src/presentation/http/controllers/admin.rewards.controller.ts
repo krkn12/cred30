@@ -22,7 +22,7 @@ export class AdminRewardsController {
                 success: true,
                 data: res.rows
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -62,7 +62,7 @@ export class AdminRewardsController {
                 message: 'Recompensa salva com sucesso!',
                 data: res.rows[0]
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -100,7 +100,7 @@ export class AdminRewardsController {
                 success: true,
                 message: `${codeList.length} códigos adicionados ao estoque.`
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -123,7 +123,7 @@ export class AdminRewardsController {
                 success: true,
                 data: res.rows
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }

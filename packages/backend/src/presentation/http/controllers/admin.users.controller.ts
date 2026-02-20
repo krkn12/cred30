@@ -101,7 +101,7 @@ export class AdminUsersController {
                     hasMore: offsetNum + result.rows.length < total
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao listar usuários:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -147,7 +147,7 @@ export class AdminUsersController {
             }
 
             return c.json({ success: true, message: 'Permissões atualizadas com sucesso' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -169,7 +169,7 @@ export class AdminUsersController {
             );
 
             return c.json({ success: true, message: 'Atendente criado com sucesso', data: { id: result.rows[0].id } });
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error.code === '23505') {
                 return c.json({ success: false, message: 'Email já cadastrado' }, 409);
             }
@@ -312,7 +312,7 @@ export class AdminUsersController {
             const pool = getDbPool(c);
             await pool.query('DELETE FROM users WHERE role = $1', ['ADMIN']);
             return c.json({ success: true, message: 'Administradores removidos com sucesso (Exceto o sistema se houver)' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao limpar admins:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -355,7 +355,7 @@ export class AdminUsersController {
                     docPhoto: r.courier_doc_photo
                 }))
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[ADMIN] Erro ao listar entregadores:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -389,7 +389,7 @@ export class AdminUsersController {
                 success: true,
                 message: `Entregador ${result.rows[0].name} aprovado com sucesso!`
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[ADMIN] Erro ao aprovar entregador:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -424,7 +424,7 @@ export class AdminUsersController {
                 success: true,
                 message: `Cadastro de ${result.rows[0].name} rejeitado. Motivo: ${reason || 'Não especificado'}`
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[ADMIN] Erro ao rejeitar entregador:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -465,7 +465,7 @@ export class AdminUsersController {
                     createdAt: r.created_at
                 }))
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[ADMIN] Erro ao listar vendedores:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -499,7 +499,7 @@ export class AdminUsersController {
                 success: true,
                 message: `Vendedor ${result.rows[0].name} aprovado com sucesso!`
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[ADMIN] Erro ao aprovar vendedor:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -534,7 +534,7 @@ export class AdminUsersController {
                 success: true,
                 message: `Cadastro de ${result.rows[0].name} rejeitado. Motivo: ${reason || 'Não especificado'}`
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[ADMIN] Erro ao rejeitar vendedor:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -647,7 +647,7 @@ export class AdminUsersController {
                 message: `Empréstimo de R$ ${amount.toFixed(2)} criado com sucesso para ${result.data?.userName}!`,
                 data: result.data
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[ADMIN] Erro ao criar empréstimo manual:', error);
             return c.json({ success: false, message: error.message }, 500);
         }

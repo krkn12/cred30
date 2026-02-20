@@ -64,7 +64,7 @@ export class EducationController {
                 message: 'Curso criado com sucesso!',
                 data: result.rows[0]
             });
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (e instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: e.errors }, 400);
             console.error('[COURSES] Erro ao criar curso:', e);
             return c.json({ success: false, message: e.message }, 500);
@@ -111,7 +111,7 @@ export class EducationController {
                 message: 'Aula adicionada com sucesso!',
                 data: result.rows[0]
             });
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (e instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: e.errors }, 400);
             console.error('[COURSES] Erro ao adicionar aula:', e);
             return c.json({ success: false, message: e.message }, 500);
@@ -148,7 +148,7 @@ export class EducationController {
                 success: true,
                 data: result.rows
             });
-        } catch (e: any) {
+        } catch (e: unknown) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -202,7 +202,7 @@ export class EducationController {
                     lessons: lessonsRes.rows
                 }
             });
-        } catch (e: any) {
+        } catch (e: unknown) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -302,7 +302,7 @@ export class EducationController {
                 message: result.data?.free ? 'Curso adicionado à sua biblioteca!' : 'Curso comprado com sucesso!',
                 data: result.data
             });
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error('[COURSES] Erro ao comprar:', e);
             return c.json({ success: false, message: e.message }, 500);
         }
@@ -330,7 +330,7 @@ export class EducationController {
                 success: true,
                 data: result.rows
             });
-        } catch (e: any) {
+        } catch (e: unknown) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -355,7 +355,7 @@ export class EducationController {
                 success: true,
                 data: result.rows
             });
-        } catch (e: any) {
+        } catch (e: unknown) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -381,7 +381,7 @@ export class EducationController {
             `, [user.id, String(lessonId), ip, ua]);
 
             return c.json({ success: true, data: { sessionId: result.rows[0].id } });
-        } catch (e: any) {
+        } catch (e: unknown) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -447,7 +447,7 @@ export class EducationController {
 
             return c.json({ success: true, message: 'Recompensa creditada!', data: result.data });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error.message === 'LIMIT_REACHED') return c.json({ success: false, message: 'Limite do Fundo atingido.' }, 429);
             return c.json({ success: false, message: error.message || 'Erro interno' }, 500);
         }

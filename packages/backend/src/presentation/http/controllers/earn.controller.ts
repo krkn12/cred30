@@ -117,7 +117,7 @@ export class EarnController {
                 chestsRemaining: result.data?.chestsRemaining,
                 points: result.data?.totalPoints
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -157,7 +157,7 @@ export class EarnController {
                 countdown,
                 canOpen: dailyChestsOpened < 3 && countdown === 0
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -210,7 +210,7 @@ export class EarnController {
                 message: `+${REWARD_POINTS} pontos farm! Troque por prêmios na Loja.`,
                 points: result.data?.newPoints
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -240,7 +240,7 @@ export class EarnController {
                 message: `Sucesso! R$ ${result.data?.convertedAmount.toFixed(2)} adicionados ao seu saldo.`,
                 data: result.data
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[EARN] Erro ao converter pontos:', error);
             return c.json({ success: false, message: error.message || 'Erro ao converter pontos' }, 500);
         }
@@ -272,7 +272,7 @@ export class EarnController {
                     rate: `${POINTS_RATE.toLocaleString()} pts = R$ ${MONEY_VALUE.toFixed(2)}`
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -377,7 +377,7 @@ export class EarnController {
                 pointsRemaining: result.data?.newPoints
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[REWARDS] Erro ao resgatar:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -422,7 +422,7 @@ export class EarnController {
                     catalog
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }

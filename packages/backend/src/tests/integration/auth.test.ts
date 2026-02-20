@@ -45,7 +45,7 @@ describe.skip('Auth Integration Tests', () => {
             `, ['TESTCODE', creatorId]);
 
             console.log('--- [AUTH TEST] Cleanup finished ---');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('--- [AUTH TEST] beforeAll Error:', error.message);
         }
     });

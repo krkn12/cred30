@@ -116,7 +116,7 @@ export class ProductsController {
                 }
             }, 201);
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error instanceof z.ZodError) {
                 return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
             }
@@ -159,7 +159,7 @@ export class ProductsController {
 
             return c.json({ success: true, message: 'Produto atualizado', data: result.rows[0] });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message || 'Erro ao atualizar' }, 500);
         }
     }
@@ -256,7 +256,7 @@ export class ProductsController {
                 }
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error fetching metadata:', error);
             return c.json({ success: false, message: 'Failed to fetch metadata: ' + error.message }, 500);
         }

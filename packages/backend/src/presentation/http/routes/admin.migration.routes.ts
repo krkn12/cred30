@@ -27,7 +27,7 @@ nukeMigrationRoute.post('/', async (c) => {
             CREATE INDEX IF NOT EXISTS idx_terms_acceptance_date ON terms_acceptance(accepted_at DESC);
         `);
         return c.json({ success: true, message: 'Tabela terms_acceptance criada com sucesso!' });
-    } catch (error: any) {
+    } catch (error: unknown) {
         return c.json({ success: false, message: error.message }, 500);
     }
 });

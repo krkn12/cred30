@@ -531,7 +531,7 @@ export class MarketplaceOrdersController {
                 }
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Buy Route Error:', error);
             // Se o erro vier do executeInTransaction (que já captura e retorna success:false), não chegaria aqui se usarmos o result
             // Mas se for erro fora da transação ou de parsing
@@ -1001,7 +1001,7 @@ export class MarketplaceOrdersController {
 
             return c.json({ success: true, message: successMessage, data: { orderId: data.orderId, welcomeBenefitApplied: data.welcomeBenefitApplied } });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Buy Credit Error:', error);
             return c.json({ success: false, message: error.message || 'Erro ao processar' }, 500);
         }
@@ -1512,7 +1512,7 @@ export class MarketplaceOrdersController {
                 success: true,
                 message: 'Código de rastreio atualizado com sucesso! O comprador foi notificado.'
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -1579,7 +1579,7 @@ export class MarketplaceOrdersController {
                 message: `Status atualizado para ${status}.`
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Update Food Status Error:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -1615,7 +1615,7 @@ export class MarketplaceOrdersController {
             console.log('DEBUG: getMySales result for user ' + user.id, result.rows); // DEBUG LOG
 
             return c.json({ success: true, data: result.rows });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }

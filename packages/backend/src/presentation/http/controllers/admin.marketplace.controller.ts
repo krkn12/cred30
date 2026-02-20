@@ -39,7 +39,7 @@ export class AdminMarketplaceController {
                 success: true,
                 data: result.rows
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -91,7 +91,7 @@ export class AdminMarketplaceController {
             });
 
             return c.json({ success: true, message: `Disputa resolvida: ${resolution}` });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -128,7 +128,7 @@ export class AdminMarketplaceController {
                     transaction_amount: parseFloat(row.transaction_amount)
                 }))
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -147,7 +147,7 @@ export class AdminMarketplaceController {
             );
 
             return c.json({ success: true, message: 'Avaliação aprovada como depoimento!' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -166,7 +166,7 @@ export class AdminMarketplaceController {
             );
 
             return c.json({ success: true, message: 'Avaliação rejeitada.' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -252,7 +252,7 @@ export class AdminMarketplaceController {
                 message,
                 data: { deletedCount, skipped: skipped || 0, daysOld }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[CLEANUP] Erro ao limpar anúncios:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -289,7 +289,7 @@ export class AdminMarketplaceController {
                     totalAll: parseInt(stats.total_all)
                 }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
