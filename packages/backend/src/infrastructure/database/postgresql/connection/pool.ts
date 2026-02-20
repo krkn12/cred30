@@ -51,7 +51,7 @@ export const pool = new Pool(poolConfig);
 
 // 🛡️ BLINDAGEM: Handler de erro para evitar crash do servidor
 pool.on('error', (err, client) => {
-  console.error('[POOL ERROR] Conexão perdida com o banco de dados:', err.message);
+  console.error('[POOL ERROR] Conexão perdida com o banco de dados:', (err as any)?.message);
   // Não faz nada aqui, o pg-pool reconecta automaticamente
 });
 
@@ -1282,7 +1282,7 @@ export const initializeDatabase = async () => {
       `);
       console.log('✅[DB] Índices de performance criados');
     } catch (err: unknown) {
-      console.warn('⚠️[DB] Índices de performance (parcial):', err.message);
+      console.warn('⚠️[DB] Índices de performance (parcial):', (err as any)?.message);
     }
 
     // Otimização de precisão decimal (protegido por try-catch)
@@ -1296,7 +1296,7 @@ export const initializeDatabase = async () => {
         ALTER TABLE system_config ALTER COLUMN total_gateway_costs TYPE DECIMAL(20, 2);
       `);
     } catch (err: unknown) {
-      console.warn('⚠️[DB] Precisão decimal (parcial):', err.message);
+      console.warn('⚠️[DB] Precisão decimal (parcial):', (err as any)?.message);
     }
 
     // ANALYZE e FILLFACTOR isolados (podem travar em Neon)
@@ -1332,7 +1332,7 @@ export const initializeDatabase = async () => {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS cpf VARCHAR(14);
       `);
     } catch (err: unknown) {
-      console.warn('⚠️[DB] Campos de monetização (parcial):', err.message);
+      console.warn('⚠️[DB] Campos de monetização (parcial):', (err as any)?.message);
     }
 
     // Criar tabelas de auditoria e webhooks (protegido)
@@ -1376,7 +1376,7 @@ export const initializeDatabase = async () => {
       `);
       console.log('✅[DB] Auditoria e webhooks inicializados');
     } catch (err: unknown) {
-      console.error('❌[DB] Erro ao inicializar auditoria:', err.message);
+      console.error('❌[DB] Erro ao inicializar auditoria:', (err as any)?.message);
     }
 
     // --- SISTEMA DE NOTIFICAÇÕES (PERSISTÊNCIA) ---
@@ -1396,7 +1396,7 @@ export const initializeDatabase = async () => {
       `);
       console.log('✅[DB] Sistema de notificações inicializado');
     } catch (err: unknown) {
-      console.error('❌[DB] Erro ao inicializar notificações:', err.message);
+      console.error('❌[DB] Erro ao inicializar notificações:', (err as any)?.message);
     }
 
     // --- SISTEMA PDV (PONTO DE VENDA) ---
@@ -1506,7 +1506,7 @@ export const initializeDatabase = async () => {
       `);
       console.log('✅[DB] Sistema PDV inicializado');
     } catch (err: unknown) {
-      console.error('❌[DB] Erro ao inicializar PDV:', err.message);
+      console.error('❌[DB] Erro ao inicializar PDV:', (err as any)?.message);
     }
 
 
@@ -1542,7 +1542,7 @@ export const initializeDatabase = async () => {
       `);
       console.log('✅[DB] Sistema de governança inicializado');
     } catch (err: unknown) {
-      console.error('❌[DB] Erro ao inicializar governança:', err.message);
+      console.error('❌[DB] Erro ao inicializar governança:', (err as any)?.message);
     }
 
     // --- TABELAS CRÍTICAS DE ADMIN (GARANTIR CRIAÇÃO) ---
@@ -1603,11 +1603,11 @@ export const initializeDatabase = async () => {
           await client.query(table.query);
           console.log(`✅[DB] Tabela verificada/criada: ${table.name}`);
         } catch (err: unknown) {
-          console.error(`❌[DB] Erro ao criar tabela ${table.name}:`, err.message);
+          console.error(`❌[DB] Erro ao criar tabela ${table.name}:`, (err as any)?.message);
         }
       }
     } catch (err: unknown) {
-      console.error('❌[DB] Erro no bloco de tabelas críticas:', err.message);
+      console.error('❌[DB] Erro no bloco de tabelas críticas:', (err as any)?.message);
     }
 
     // --- CONSORTIUM UPDATES (LATEST) ---
@@ -1635,7 +1635,7 @@ export const initializeDatabase = async () => {
       `);
       console.log('✅[DB] Sistema de Consórcio inicializado');
     } catch (err: unknown) {
-      console.error('❌[DB] Erro ao inicializar consórcio:', err.message);
+      console.error('❌[DB] Erro ao inicializar consórcio:', (err as any)?.message);
     }
 
     // --- MANUTENÇÃO E OTIMIZAÇÃO (FINAL) ---
@@ -1682,7 +1682,7 @@ export const initializeDatabase = async () => {
 
       console.log('✅[DB] Manutenção concluída');
     } catch (err: unknown) {
-      console.warn('⚠️[DB] Manutenção parcial concluída com avisos:', err.message);
+      console.warn('⚠️[DB] Manutenção parcial concluída com avisos:', (err as any)?.message);
     }
 
   } catch (error) {
