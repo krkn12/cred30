@@ -195,3 +195,6 @@ export const PDV_FEE_OWNER_SHARE = 0.20;       // 20% Pró-labore
 export const PDV_FEE_STABILITY_SHARE = 0.15;   // 15% Fundo de Estabilidade
 export const PDV_FEE_COTISTA_SHARE = 0.05;     // 5% Para cotistas (profit_pool)
 export const PDV_FEE_CORPORATE_SHARE = 0.20;   // 20% Venture Capital/Empresas
+
+// Taxa de Transação PDV (cobrada do comerciante quando o cliente paga via Cred30)
+export const PDV_TRANSACTION_FEE_RATE = 0.06; // 6% sobre o valor da venda

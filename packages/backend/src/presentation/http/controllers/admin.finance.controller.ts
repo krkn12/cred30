@@ -36,6 +36,132 @@ export class AdminFinanceController {
     }
 
     /**
+     * AUDITORIA CONTÁBIL (Debug)
+     */
+    static async getAuditData(c: Context) {
+        try {
+            const pool = getDbPool(c);
+
+            // 1. Saldos de Usuários
+            const users = await pool.query(`
+                SELECT id, name, balance::numeric, score, role, is_seller 
+                FROM users ORDER BY id
+            `);
+            let totalUserBalances = 0;
+            const usersData = users.rows.map(u => {
+                const bal = parseFloat(u.balance);
+                totalUserBalances += bal;
+                return { ...u, balance: bal };
+            });
+
+            // 2. Reservas
+            const sysConfig = await pool.query(`
+                SELECT key, value FROM system_config 
+                WHERE key IN (
+                    'system_balance', 'tax_reserve', 'operational_reserve', 
+                    'owner_reserve', 'stability_fund', 'corporate_investment',
+                    'total_fees_collected'
+                ) ORDER BY key
+            `);
+            let totalReserves = 0;
+            const reservesData: any = {};
+            sysConfig.rows.forEach(r => {
+                const val = parseFloat(r.value) || 0;
+                reservesData[r.key] = val;
+                if (['tax_reserve', 'operational_reserve', 'owner_reserve', 'stability_fund', 'corporate_investment'].includes(r.key)) {
+                    totalReserves += val;
+                }
+            });
+
+            // 3. Transações
+            const transactions = await pool.query(`
+                SELECT id, user_id, type, amount::numeric, description, status, created_at
+                FROM transactions ORDER BY created_at ASC
+            `);
+            let totalDeposits = 0;
+            let totalWithdrawals = 0;
+            let totalFees = 0;
+            transactions.rows.forEach(t => {
+                const amt = parseFloat(t.amount);
+                if (t.type === 'DEPOSIT' && t.status === 'COMPLETED') totalDeposits += amt;
+                if (t.type === 'WITHDRAWAL' && t.status === 'COMPLETED') totalWithdrawals += amt;
+                if (t.type === 'FEE' || t.type === 'PLATFORM_FEE') totalFees += amt;
+            });
+
+            // 4. Vendas PDV
+            const sales = await pool.query(`
+                SELECT id, user_id, sale_number, total::numeric, payment_method, 
+                       customer_name, change_amount::numeric, created_at
+                FROM pdv_sales ORDER BY created_at ASC
+            `);
+            let totalSales = 0;
+            sales.rows.forEach(s => totalSales += parseFloat(s.total));
+
+            // 5. Empréstimos
+            const loans = await pool.query(`
+                SELECT id, user_id, amount::numeric, total_with_interest::numeric, 
+                       status, installments, origin, created_at
+                FROM loans ORDER BY created_at ASC
+            `);
+            let totalLoansActive = 0;
+            loans.rows.forEach(l => {
+                if (l.status === 'APPROVED' || l.status === 'ACTIVE') totalLoansActive += parseFloat(l.amount);
+            });
+
+            // 6. Cotas
+            const quotas = await pool.query(`
+                SELECT id, user_id, amount::numeric, status, created_at
+                FROM quotas ORDER BY created_at ASC
+            `);
+            let totalQuotas = 0;
+            quotas.rows.forEach(q => {
+                if (q.status === 'ACTIVE') totalQuotas += parseFloat(q.amount);
+            });
+
+            // Resumo Final
+            const dinheiroNoSistema = totalUserBalances + totalReserves + totalQuotas;
+            const dinheiroQueEntrou = totalDeposits - totalWithdrawals;
+            const diferenca = dinheiroNoSistema - dinheiroQueEntrou;
+
+            return c.json({
+                success: true,
+                audit: {
+                    resumo: {
+                        entradas_depositos: totalDeposits,
+                        saidas_saques: totalWithdrawals,
+                        dinheiro_que_entrou_liquido: dinheiroQueEntrou,
+
+                        saldos_usuarios: totalUserBalances,
+                        reservas: totalReserves,
+                        cotas_ativas: totalQuotas,
+                        dinheiro_no_sistema: dinheiroNoSistema,
+
+                        diferenca_inconsistencia: diferenca,
+                        status: Math.abs(diferenca) < 0.01 ? 'EQUILIBRADO' : 'INCONSISTENTE'
+                    },
+                    detalhes: {
+                        reservas: reservesData,
+                        vendas_pdv_total: totalSales,
+                        emprestimos_ativos_total: totalLoansActive,
+                        taxas_totais: totalFees,
+                        usuarios_count: users.rowCount,
+                        transacoes_count: transactions.rowCount
+                    },
+                    dados_brutos: {
+                        users: usersData,
+                        transactions: transactions.rows, // Cuidado com tamanho
+                        sales: sales.rows
+                    }
+                }
+            });
+
+        } catch (error: any) {
+            console.error('Erro na auditoria:', error);
+            return c.json({ success: false, message: error.message }, 500);
+        }
+    }
+
+    /**
      * Adicionar custo do sistema
      */
     static async addCost(c: Context) {

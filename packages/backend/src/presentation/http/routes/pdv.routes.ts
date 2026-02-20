@@ -47,6 +47,12 @@ pdvRoutes.get('/products', PdvController.getProducts);
 // Criar produto
 pdvRoutes.post('/products', PdvController.createProduct);
 
+// Atualizar produto (preço, estoque, nome etc.)
+pdvRoutes.put('/products/:productId', PdvController.updateProduct);
+
+// Excluir produto (soft delete)
+pdvRoutes.delete('/products/:productId', PdvController.deleteProduct);
+
 // ========================================
 // VENDAS
 // ========================================
@@ -56,5 +62,12 @@ pdvRoutes.get('/sales', PdvController.getSales);
 
 // Registrar venda
 pdvRoutes.post('/sales', PdvController.createSale);
+
+// ========================================
+// CLIENTES CRED30 (BUSCA PARA PAGAMENTO)
+// ========================================
+
+// Buscar cliente por telefone (para pagamento via Cred30)
+pdvRoutes.post('/customer/lookup', PdvController.lookupCustomer);
 
 export { pdvRoutes };

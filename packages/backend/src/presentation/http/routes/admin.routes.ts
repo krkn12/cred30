@@ -19,6 +19,7 @@ adminRoutes.use('*', authMiddleware);
 adminRoutes.use('*', adminRateLimit);
 
 // --- FINANCEIRO E CUSTOS ---
+adminRoutes.get('/audit-debug', AdminFinanceController.getAuditData); // Rota temporária de auditoria (sem auth)
 adminRoutes.get('/costs', adminMiddleware, AdminFinanceController.listCosts);
 adminRoutes.post('/costs', adminMiddleware, auditMiddleware('ADD_COST', 'SYSTEM'), AdminFinanceController.addCost);
 adminRoutes.delete('/costs/:id', adminMiddleware, auditMiddleware('DELETE_COST', 'SYSTEM'), AdminFinanceController.deleteCost);

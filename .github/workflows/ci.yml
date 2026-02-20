@@ -26,8 +26,9 @@ jobs:
           --health-retries 10
     env:
       NODE_ENV: test
-      JWT_SECRET: test_secret_key_with_more_than_32_characters_for_validation
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cred30_test
+      JWT_SECRET: a9b8c7d6e5f4g3h2i1j0k9l8m7n6o5p4q3r2s1t0u_strong_key_for_ci_test_only
+      # Removido DATABASE_URL para forçar fallback local sem SSL no pool.ts
+      # DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cred30_test
       DB_HOST: localhost
       DB_PORT: 5432
       DB_USER: postgres
@@ -68,6 +69,13 @@ jobs:
         
       - name: Run Tests (Vitest)
         run: npm test -- --run
+        env:
+          JWT_SECRET: a9b8c7d6e5f4g3h2i1j0k9l8m7n6o5p4q3r2s1t0u_strong_key_for_ci_test_only
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_DATABASE: cred30_test
 
   frontend-ci:
     name: Frontend CI

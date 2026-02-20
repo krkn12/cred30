@@ -17,7 +17,18 @@ const poolConfig: any = {
 
 if (process.env.DATABASE_URL) {
   poolConfig.connectionString = process.env.DATABASE_URL;
-  poolConfig.ssl = { rejectUnauthorized: false };
+  // Só habilita SSL se NÃO for teste (bancos de teste locais geralmente não têm SSL configurado)
+  if (process.env.NODE_ENV !== 'test') {
+    poolConfig.ssl = { rejectUnauthorized: false };
+  } else {
+    // Em ambiente de teste: manter SSL se for NeonDB (exige SSL), remover caso contrário (ex: Postgres CI/CD)
+    if (process.env.DATABASE_URL.includes('neon.tech') || process.env.DATABASE_URL.includes('supabase')) {
+      poolConfig.ssl = { rejectUnauthorized: false };
+    } else {
+      delete poolConfig.ssl;
+      poolConfig.connectionString = poolConfig.connectionString.replace(/\?sslmode=[^&]+/, '').replace(/&sslmode=[^&]+/, '');
+    }
+  }
 } else {
   // Configuração local de fallback
   poolConfig.host = process.env.DB_HOST || 'localhost';
@@ -25,7 +36,15 @@ if (process.env.DATABASE_URL) {
   poolConfig.user = process.env.DB_USER || 'admin';
   poolConfig.password = process.env.DB_PASSWORD || 'password';
   poolConfig.database = process.env.DB_DATABASE || 'cred30_local';
+  // Garantir que SSL está desligado no modo fallback local
+  delete poolConfig.ssl;
 }
+
+// DEBUG: Inspecionar configuração final (sem expor senhas)
+console.log('[POOL DEBUG] NODE_ENV:', process.env.NODE_ENV);
+console.log('[POOL DEBUG] DATABASE_URL Presente:', !!process.env.DATABASE_URL);
+console.log('[POOL DEBUG] SSL Config:', poolConfig.ssl);
+console.log('[POOL DEBUG] Host:', poolConfig.host);
 
 // Criar o pool de conexões
 export const pool = new Pool(poolConfig);
@@ -400,6 +419,30 @@ export const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS ad_points INTEGER DEFAULT 0;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_ad_points INTEGER DEFAULT 0;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS total_ad_points INTEGER DEFAULT 0;
+
+      -- COLUNAS DE VENDEDOR ADICIONAIS (PDV & MARKETPLACE)
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_seller BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_status VARCHAR(20) DEFAULT 'none';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS merchant_name VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_company_name VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_cpf_cnpj VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_phone VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_street VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_number VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_neighborhood VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_city VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_state VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_address_postal_code VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_company_type VARCHAR(50);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS restaurant_category VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS opening_hours TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_restaurant BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_liquor_store BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_rating DECIMAL(10, 2) DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_paused BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified_seller BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified_courier BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seller_created_at TIMESTAMP;
     `);
 
     // Verificar o tipo da coluna id da tabela users para garantir integridade das chaves estrangeiras
@@ -542,7 +585,7 @@ export const initializeDatabase = async () => {
     await client.query(`
       CREATE TABLE IF NOT EXISTS loans (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
+        user_id ${userIdType} REFERENCES users(id),
         amount DECIMAL(10,2) NOT NULL,
         interest_rate DECIMAL(5,2) NOT NULL,
         penalty_rate DECIMAL(5,2) DEFAULT 0.4,
@@ -636,7 +679,7 @@ export const initializeDatabase = async () => {
     await client.query(`
       CREATE TABLE IF NOT EXISTS transactions (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
+        user_id ${userIdType} REFERENCES users(id),
         type VARCHAR(20) NOT NULL,
         amount DECIMAL(10,2) NOT NULL,
         gateway_cost DECIMAL(10,2) DEFAULT 0,
@@ -781,7 +824,7 @@ export const initializeDatabase = async () => {
     await client.query(`
       CREATE TABLE IF NOT EXISTS admin_logs (
         id SERIAL PRIMARY KEY,
-        admin_id INTEGER REFERENCES users(id),
+        admin_id ${userIdType} REFERENCES users(id),
         action VARCHAR(50) NOT NULL,
         entity_type VARCHAR(20) NOT NULL,
         entity_id VARCHAR(50),
@@ -798,7 +841,7 @@ export const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS rate_limit_logs (
         id SERIAL PRIMARY KEY,
         identifier VARCHAR(100) NOT NULL,
-        user_id INTEGER REFERENCES users(id),
+        user_id ${userIdType} REFERENCES users(id),
         count INTEGER NOT NULL,
         ip_address TEXT,
         user_agent TEXT,
@@ -829,7 +872,7 @@ export const initializeDatabase = async () => {
     await client.query(`
       CREATE TABLE IF NOT EXISTS marketplace_listings (
         id SERIAL PRIMARY KEY,
-        seller_id INTEGER REFERENCES users(id),
+        seller_id ${userIdType} REFERENCES users(id),
         quota_id INTEGER REFERENCES quotas(id), -- Referência para cota à venda no mercado secundário
         title VARCHAR(255) NOT NULL,
         description TEXT,
@@ -852,7 +895,7 @@ export const initializeDatabase = async () => {
       
       -- Suporte a itens digitais e logística
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS item_type VARCHAR(20) DEFAULT 'PHYSICAL'; -- PHYSICAL, DIGITAL
-      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS digital_content TEXT; -- Link/código/conteúdo digital
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS digital_content TEXT;
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS required_vehicle VARCHAR(20) DEFAULT 'MOTO';
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS stock INTEGER DEFAULT 1;
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS pickup_address TEXT;
@@ -860,11 +903,73 @@ export const initializeDatabase = async () => {
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS weight_grams INTEGER DEFAULT 1000;
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS free_shipping BOOLEAN DEFAULT FALSE;
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS shipping_price DECIMAL(10,2) DEFAULT 0;
-      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS delivery_fee_final DECIMAL(10,2) DEFAULT 0; -- Cache do frete calculado
-      
-      -- DELIVERY PREMIUM: Opcionais de Cardápio
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS delivery_fee_final DECIMAL(10,2) DEFAULT 0;
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS food_options JSONB DEFAULT '[]';
       ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS seller_phone VARCHAR(20);
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS pickup_lat NUMERIC;
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS pickup_lng NUMERIC;
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS is_food BOOLEAN DEFAULT FALSE;
+      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS estimated_prep_time_minutes INTEGER DEFAULT 20;
+
+      -- Galeria de Imagens
+      CREATE TABLE IF NOT EXISTS marketplace_listing_images (
+        id SERIAL PRIMARY KEY,
+        listing_id INTEGER REFERENCES marketplace_listings(id) ON DELETE CASCADE,
+        image_url TEXT NOT NULL,
+        display_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Variantes de Produtos
+      CREATE TABLE IF NOT EXISTS marketplace_listing_variants (
+        id SERIAL PRIMARY KEY,
+        listing_id INTEGER REFERENCES marketplace_listings(id) ON DELETE CASCADE,
+        name VARCHAR(100),
+        color VARCHAR(50),
+        size VARCHAR(50),
+        stock INTEGER DEFAULT 0,
+        price DECIMAL(10, 2),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Contatos e Analytics
+      CREATE TABLE IF NOT EXISTS marketplace_contacts (
+        id SERIAL PRIMARY KEY,
+        listing_id INTEGER REFERENCES marketplace_listings(id) ON DELETE CASCADE,
+        buyer_id ${userIdType} REFERENCES users(id) ON DELETE CASCADE,
+        points_spent INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(listing_id, buyer_id)
+      );
+
+      -- Categorias de Food/Delivery
+      CREATE TABLE IF NOT EXISTS marketplace_food_categories (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        icon VARCHAR(50),
+        image_url TEXT,
+        display_order INTEGER DEFAULT 0,
+        is_active BOOLEAN DEFAULT TRUE,
+        slug VARCHAR(100) UNIQUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Inserir categorias padrão se não houver nenhuma
+      INSERT INTO marketplace_food_categories (name, slug, icon, display_order)
+      SELECT 'Restaurantes', 'restaurantes', 'utensils', 1
+      WHERE NOT EXISTS (SELECT 1 FROM marketplace_food_categories WHERE slug = 'restaurantes');
+
+      INSERT INTO marketplace_food_categories (name, slug, icon, display_order)
+      SELECT 'Bebidas', 'bebidas', 'glass-martini-alt', 2
+      WHERE NOT EXISTS (SELECT 1 FROM marketplace_food_categories WHERE slug = 'bebidas');
+
+      INSERT INTO marketplace_food_categories (name, slug, icon, display_order)
+      SELECT 'Mercado', 'mercado', 'shopping-basket', 3
+      WHERE NOT EXISTS (SELECT 1 FROM marketplace_food_categories WHERE slug = 'mercado');
+
+      INSERT INTO marketplace_food_categories (name, slug, icon, display_order)
+      SELECT 'Farmácia', 'farmacia', 'pills', 4
+      WHERE NOT EXISTS (SELECT 1 FROM marketplace_food_categories WHERE slug = 'farmacia');
     `);
 
     // Tabela de Pedidos / Escrow (Garantia Cred30)
@@ -872,8 +977,8 @@ export const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS marketplace_orders (
         id SERIAL PRIMARY KEY,
         listing_id INTEGER REFERENCES marketplace_listings(id),
-        buyer_id INTEGER REFERENCES users(id),
-        seller_id INTEGER REFERENCES users(id),
+        buyer_id ${userIdType} REFERENCES users(id),
+        seller_id ${userIdType} REFERENCES users(id),
         amount DECIMAL(10, 2) NOT NULL,
         fee_amount DECIMAL(10, 2) NOT NULL, -- Taxa de 5-10% da Cred30 pela garantia
         seller_amount DECIMAL(10, 2) NOT NULL, -- Valor que o vendedor receberá (amount - fee)
@@ -918,7 +1023,7 @@ export const initializeDatabase = async () => {
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS pickup_address TEXT;
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_status VARCHAR(30) DEFAULT 'NONE';
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_fee DECIMAL(10, 2) DEFAULT 0;
-      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS courier_id INTEGER REFERENCES users(id);
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS courier_id ${userIdType} REFERENCES users(id);
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS pickup_code VARCHAR(10);
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(20);
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS quantity INTEGER DEFAULT 1;
@@ -1010,7 +1115,7 @@ export const initializeDatabase = async () => {
       completed_at TIMESTAMP WITH TIME ZONE,
       expires_at TIMESTAMP WITH TIME ZONE,
       is_approved BOOLEAN DEFAULT FALSE,
-      approved_by INTEGER REFERENCES users(id),
+      approved_by ${userIdType} REFERENCES users(id),
       rejection_reason TEXT,
       tag VARCHAR(30) DEFAULT 'OUTROS',
       budget_gross DECIMAL(10, 2) DEFAULT 0
@@ -1153,277 +1258,432 @@ export const initializeDatabase = async () => {
 
     console.log('Tabelas criadas/verificadas com sucesso!');
 
-    // Criar índices de performance
-    console.log('Criando índices de performance...');
-
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-      CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
-      CREATE INDEX IF NOT EXISTS idx_users_is_admin ON users(is_admin);
-      CREATE INDEX IF NOT EXISTS idx_quotas_user_id ON quotas(user_id);
-      CREATE INDEX IF NOT EXISTS idx_quotas_status ON quotas(status);
-      CREATE INDEX IF NOT EXISTS idx_loans_user_id ON loans(user_id);
-      CREATE INDEX IF NOT EXISTS idx_loans_status ON loans(status);
-      CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
-      CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
-      CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
-
---Novos índices para otimização batch e admin
-      CREATE INDEX IF NOT EXISTS idx_transactions_payout_pending ON transactions(payout_status) WHERE payout_status = 'PENDING_PAYMENT';
-      CREATE INDEX IF NOT EXISTS idx_loans_payout_pending ON loans(payout_status) WHERE payout_status = 'PENDING_PAYMENT';
-      CREATE INDEX IF NOT EXISTS idx_transactions_user_type_idx ON transactions(user_id, type);
-      CREATE INDEX IF NOT EXISTS idx_loans_user_status_active ON loans(user_id, status) WHERE status IN('APPROVED', 'PAYMENT_PENDING');
-      CREATE INDEX IF NOT EXISTS idx_users_score_desc ON users(score DESC);
-
---Novas Otimizações de Índices Compostos
-      CREATE INDEX IF NOT EXISTS idx_transactions_user_created_desc ON transactions(user_id, created_at DESC);
-      CREATE INDEX IF NOT EXISTS idx_marketplace_active_created_desc ON marketplace_listings(status, created_at DESC) WHERE status = 'ACTIVE';
-`);
-
-    // Otimização de precisão decimal e estatísticas
-    await client.query(`
-      ALTER TABLE system_config ALTER COLUMN system_balance TYPE DECIMAL(20, 2);
-      ALTER TABLE system_config ALTER COLUMN profit_pool TYPE DECIMAL(20, 2);
-      ALTER TABLE system_config ALTER COLUMN total_tax_reserve TYPE DECIMAL(20, 2);
-      ALTER TABLE system_config ALTER COLUMN total_operational_reserve TYPE DECIMAL(20, 2);
-      ALTER TABLE system_config ALTER COLUMN total_owner_profit TYPE DECIMAL(20, 2);
-      ALTER TABLE system_config ALTER COLUMN total_gateway_costs TYPE DECIMAL(20, 2);
-      
-      ANALYZE users;
-      ANALYZE transactions;
-      ANALYZE loans;
-      ANALYZE quotas;
-      ANALYZE marketplace_listings;
-      ANALYZE marketplace_orders;
-
---Otimização para HOT Updates(Heaps Only Tuples) na tabela users
---Ajuda a reduzir o vácuo e a fragmentação em tabelas com muitos updates
-      ALTER TABLE users SET(fillfactor = 85);
-`);
-
-
-    // Adicionar campos de monetização na tabela de usuários
-    await client.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS membership_type VARCHAR(20) DEFAULT 'FREE'; --FREE, PRO
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_reward_at TIMESTAMP;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS total_dividends_earned DECIMAL(12, 2) DEFAULT 0;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS security_lock_until TIMESTAMP;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ip VARCHAR(45);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS panic_phrase VARCHAR(255);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_under_duress BOOLEAN DEFAULT FALSE;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS safe_contact_phone VARCHAR(20);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS welcome_benefit_uses INTEGER DEFAULT 0; --Contador de usos do benefício de boas - vindas
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS video_points INTEGER DEFAULT 0;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS ad_points INTEGER DEFAULT 0;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_ad_points INTEGER DEFAULT 0;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS total_ad_points INTEGER DEFAULT 0;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_protected BOOLEAN DEFAULT FALSE;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS protection_expires_at TIMESTAMP;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_chests_opened INTEGER DEFAULT 0;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_chest_date VARCHAR(10);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_status VARCHAR(20) DEFAULT 'NONE'; --NONE, PENDING, APPROVED, REJECTED
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_document_path TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_notes TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS cpf VARCHAR(14);
-`);
-
-    // Criar tabelas de auditoria e webhooks
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS audit_logs(
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id),
-  action_type VARCHAR(100),
-  entity_type VARCHAR(50),
-  entity_id VARCHAR(100),
-  old_values JSONB,
-  new_values JSONB,
-  ip_address VARCHAR(45),
-  user_agent TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-      -- Garantir que colunas existam em tabelas legadas
-      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS action_type VARCHAR(100);
-      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_type VARCHAR(50);
-      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_id VARCHAR(100);
-      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS old_values JSONB;
-      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS new_values JSONB;
-      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS user_agent TEXT;
-      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS metadata JSONB;
-
-      CREATE TABLE IF NOT EXISTS webhook_logs(
-  id SERIAL PRIMARY KEY,
-  provider VARCHAR(50) NOT NULL,
-  payload JSONB NOT NULL,
-  status VARCHAR(20) DEFAULT 'PENDING',
-  error_message TEXT,
-  processed_at TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-      CREATE INDEX IF NOT EXISTS idx_audit_user_id ON audit_logs(user_id);
-      CREATE INDEX IF NOT EXISTS idx_audit_action_type ON audit_logs(action_type);
-      CREATE INDEX IF NOT EXISTS idx_webhook_status ON webhook_logs(status);
-`);
-
-    // --- SISTEMA DE GOVERNANÇA (VOTAÇÃO V2) ---
-    console.log('Verificando tabelas de governança...');
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS governance_proposals(
-  id SERIAL PRIMARY KEY,
-  title VARCHAR(255) NOT NULL,
-  description TEXT NOT NULL,
-  creator_id INTEGER REFERENCES users(id),
-  category VARCHAR(50) DEFAULT 'general',
-  status VARCHAR(20) DEFAULT 'active', --active, passed, rejected, closed
-        yes_votes_power DECIMAL(15, 2) DEFAULT 0,
-  no_votes_power DECIMAL(15, 2) DEFAULT 0,
-  expires_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-      CREATE TABLE IF NOT EXISTS governance_votes(
-  id SERIAL PRIMARY KEY,
-  proposal_id INTEGER REFERENCES governance_proposals(id) ON DELETE CASCADE,
-  user_id ${userIdType} REFERENCES users(id),
-  choice VARCHAR(10) NOT NULL, --yes, no
-        voting_power DECIMAL(15, 2) DEFAULT 1,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(proposal_id, user_id)
-);
-
-      CREATE INDEX IF NOT EXISTS idx_gov_votes_proposal ON governance_votes(proposal_id);
-      CREATE INDEX IF NOT EXISTS idx_gov_votes_user ON governance_votes(user_id);
-`);
-    // Garantir que todas as tabelas tenham as colunas de data necessárias para os índices
-    await client.query(`
-      ALTER TABLE loans ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-      ALTER TABLE marketplace_listings ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-      ALTER TABLE admin_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
-      ALTER TABLE quotas ADD COLUMN IF NOT EXISTS purchase_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-`);
-
-    // --- ÍNDICES DE PERFORMANCE (OTIMIZAÇÃO) ---
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_marketplace_status ON marketplace_listings(status);
-      CREATE INDEX IF NOT EXISTS idx_marketplace_seller ON marketplace_listings(seller_id);
-      CREATE INDEX IF NOT EXISTS idx_marketplace_orders_listing ON marketplace_orders(listing_id);
-      CREATE INDEX IF NOT EXISTS idx_marketplace_orders_buyer_seller ON marketplace_orders(buyer_id, seller_id);
-      CREATE INDEX IF NOT EXISTS idx_marketplace_orders_status ON marketplace_orders(status);
-      CREATE INDEX IF NOT EXISTS idx_marketplace_orders_offline_token ON marketplace_orders(offline_token) WHERE offline_token IS NOT NULL;
-      CREATE INDEX IF NOT EXISTS idx_loans_created_at ON loans(created_at);
-      CREATE INDEX IF NOT EXISTS idx_quotas_purchase_date ON quotas(purchase_date);
-      CREATE INDEX IF NOT EXISTS idx_admin_logs_created_at ON admin_logs(created_at);
-      CREATE INDEX IF NOT EXISTS idx_admin_logs_finance_actions ON admin_logs(created_at DESC) 
-        WHERE action IN('MANUAL_PROFIT_ADD', 'PAY_COST', 'ADD_COST', 'DELETE_COST', 'MANUAL_ADD_QUOTA');
-      CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
-      CREATE INDEX IF NOT EXISTS idx_loans_user_status ON loans(user_id, status);
-      CREATE INDEX IF NOT EXISTS idx_loan_installments_loan ON loan_installments(loan_id);
-      CREATE INDEX IF NOT EXISTS idx_products_active ON products(active);
-`);
-    console.log('Índices de performance verificados!');
-
-    // --- TABELAS CRÍTICAS DE ADMIN (GARANTIR CRIAÇÃO) ---
-    const criticalTables = [
-      {
-        name: 'course_purchases',
-        query: `CREATE TABLE IF NOT EXISTS course_purchases (
-          id SERIAL PRIMARY KEY,
-          user_id ${userIdType} NOT NULL REFERENCES users(id),
-          course_id INTEGER NOT NULL,
-          amount_paid DECIMAL(10,2) NOT NULL,
-          instructor_share DECIMAL(10,2) NOT NULL,
-          platform_share DECIMAL(10,2) NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(user_id, course_id)
-        )`
-      },
-      {
-        name: 'transaction_reviews',
-        query: `CREATE TABLE IF NOT EXISTS transaction_reviews(
-          id SERIAL PRIMARY KEY,
-          transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
-          user_id ${userIdType} NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
-          comment TEXT,
-          is_public BOOLEAN DEFAULT FALSE,
-          is_approved BOOLEAN DEFAULT FALSE,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(transaction_id)
-        )`
-      },
-      {
-        name: 'bug_reports',
-        query: `CREATE TABLE IF NOT EXISTS bug_reports(
-          id SERIAL PRIMARY KEY,
-          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-          user_email VARCHAR(255),
-          user_name VARCHAR(255),
-          title VARCHAR(255) NOT NULL,
-          description TEXT NOT NULL,
-          category VARCHAR(50) DEFAULT 'general',
-          severity VARCHAR(20) DEFAULT 'low',
-          status VARCHAR(20) DEFAULT 'open',
-          screenshot_url TEXT,
-          device_info TEXT,
-          admin_notes TEXT,
-          resolved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-          resolved_at TIMESTAMP,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )`
-      }
-    ];
-
-    for (const table of criticalTables) {
-      try {
-        await client.query(table.query);
-        console.log(`✅ [DB] Tabela verificada/criada: ${table.name}`);
-      } catch (err: any) {
-        console.error(`❌ [DB] Erro ao criar tabela ${table.name}:`, err.message);
-      }
+    // Criar índices de performance (protegido por try-catch)
+    try {
+      console.log('Criando índices de performance...');
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+        CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
+        CREATE INDEX IF NOT EXISTS idx_users_is_admin ON users(is_admin);
+        CREATE INDEX IF NOT EXISTS idx_quotas_user_id ON quotas(user_id);
+        CREATE INDEX IF NOT EXISTS idx_quotas_status ON quotas(status);
+        CREATE INDEX IF NOT EXISTS idx_loans_user_id ON loans(user_id);
+        CREATE INDEX IF NOT EXISTS idx_loans_status ON loans(status);
+        CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
+        CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
+        CREATE INDEX IF NOT EXISTS idx_transactions_payout_pending ON transactions(payout_status) WHERE payout_status = 'PENDING_PAYMENT';
+        CREATE INDEX IF NOT EXISTS idx_loans_payout_pending ON loans(payout_status) WHERE payout_status = 'PENDING_PAYMENT';
+        CREATE INDEX IF NOT EXISTS idx_transactions_user_type_idx ON transactions(user_id, type);
+        CREATE INDEX IF NOT EXISTS idx_loans_user_status_active ON loans(user_id, status) WHERE status IN('APPROVED', 'PAYMENT_PENDING');
+        CREATE INDEX IF NOT EXISTS idx_users_score_desc ON users(score DESC);
+        CREATE INDEX IF NOT EXISTS idx_transactions_user_created_desc ON transactions(user_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_marketplace_active_created_desc ON marketplace_listings(status, created_at DESC) WHERE status = 'ACTIVE';
+      `);
+      console.log('✅[DB] Índices de performance criados');
+    } catch (err: any) {
+      console.warn('⚠️[DB] Índices de performance (parcial):', err.message);
     }
 
-    console.log('Índices de otimização aplicados!');
+    // Otimização de precisão decimal (protegido por try-catch)
+    try {
+      await client.query(`
+        ALTER TABLE system_config ALTER COLUMN system_balance TYPE DECIMAL(20, 2);
+        ALTER TABLE system_config ALTER COLUMN profit_pool TYPE DECIMAL(20, 2);
+        ALTER TABLE system_config ALTER COLUMN total_tax_reserve TYPE DECIMAL(20, 2);
+        ALTER TABLE system_config ALTER COLUMN total_operational_reserve TYPE DECIMAL(20, 2);
+        ALTER TABLE system_config ALTER COLUMN total_owner_profit TYPE DECIMAL(20, 2);
+        ALTER TABLE system_config ALTER COLUMN total_gateway_costs TYPE DECIMAL(20, 2);
+      `);
+    } catch (err: any) {
+      console.warn('⚠️[DB] Precisão decimal (parcial):', err.message);
+    }
 
-    console.log('Audit logs and performance indexes updated successfully!');
+    // ANALYZE e FILLFACTOR isolados (podem travar em Neon)
+    try { await client.query('ANALYZE users; ANALYZE transactions; ANALYZE loans; ANALYZE quotas;'); } catch (e) { }
+    try { await client.query('ANALYZE marketplace_listings; ANALYZE marketplace_orders;'); } catch (e) { }
+    try { await client.query('ALTER TABLE users SET(fillfactor = 85);'); } catch (e) { }
 
-    // Inicializar tabelas de auditoria e rate limiting
-    // Comentado para evitar dependência circular
-    // await initializeAuditTable(pool);
-    // await initializeRateLimitTable(pool);
+    // Adicionar campos de monetização na tabela de usuários
+    try {
+      await client.query(`
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS membership_type VARCHAR(20) DEFAULT 'FREE';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_reward_at TIMESTAMP;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS total_dividends_earned DECIMAL(12, 2) DEFAULT 0;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS security_lock_until TIMESTAMP;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ip VARCHAR(45);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS panic_phrase VARCHAR(255);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_under_duress BOOLEAN DEFAULT FALSE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS safe_contact_phone VARCHAR(20);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS welcome_benefit_uses INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS video_points INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS ad_points INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_ad_points INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS total_ad_points INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_protected BOOLEAN DEFAULT FALSE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS protection_expires_at TIMESTAMP;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_chests_opened INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_chest_date VARCHAR(10);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_status VARCHAR(20) DEFAULT 'NONE';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_document_path TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_notes TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS cpf VARCHAR(14);
+      `);
+    } catch (err: any) {
+      console.warn('⚠️[DB] Campos de monetização (parcial):', err.message);
+    }
 
-    // Criar índices de performance
-    // Comentado para evitar dependência circular
-    // await createIndexes(pool);
+    // Criar tabelas de auditoria e webhooks (protegido)
+    try {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS audit_logs(
+          id SERIAL PRIMARY KEY,
+          user_id ${userIdType} REFERENCES users(id),
+          action_type VARCHAR(100),
+          entity_type VARCHAR(50),
+          entity_id VARCHAR(100),
+          old_values JSONB,
+          new_values JSONB,
+          ip_address VARCHAR(45),
+          user_agent TEXT,
+          metadata JSONB,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+
+        ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS action_type VARCHAR(100);
+        ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_type VARCHAR(50);
+        ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_id VARCHAR(100);
+        ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS old_values JSONB;
+        ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS new_values JSONB;
+        ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS user_agent TEXT;
+        ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS metadata JSONB;
+
+        CREATE TABLE IF NOT EXISTS webhook_logs(
+          id SERIAL PRIMARY KEY,
+          provider VARCHAR(50) NOT NULL,
+          payload JSONB NOT NULL,
+          status VARCHAR(20) DEFAULT 'PENDING',
+          error_message TEXT,
+          processed_at TIMESTAMP WITH TIME ZONE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_audit_user_id ON audit_logs(user_id);
+        CREATE INDEX IF NOT EXISTS idx_audit_action_type ON audit_logs(action_type);
+        CREATE INDEX IF NOT EXISTS idx_webhook_status ON webhook_logs(status);
+      `);
+      console.log('✅[DB] Auditoria e webhooks inicializados');
+    } catch (err: any) {
+      console.error('❌[DB] Erro ao inicializar auditoria:', err.message);
+    }
+
+    // --- SISTEMA DE NOTIFICAÇÕES (PERSISTÊNCIA) ---
+    try {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS notifications (
+          id SERIAL PRIMARY KEY,
+          user_id ${userIdType} REFERENCES users(id) ON DELETE CASCADE,
+          title VARCHAR(255) NOT NULL,
+          message TEXT NOT NULL,
+          type VARCHAR(20) DEFAULT 'INFO',
+          is_read BOOLEAN DEFAULT FALSE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+        CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
+      `);
+      console.log('✅[DB] Sistema de notificações inicializado');
+    } catch (err: any) {
+      console.error('❌[DB] Erro ao inicializar notificações:', err.message);
+    }
+
+    // --- SISTEMA PDV (PONTO DE VENDA) ---
+    try {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS pdv_subscriptions (
+          id SERIAL PRIMARY KEY,
+          user_id ${userIdType} REFERENCES users(id) ON DELETE CASCADE,
+          plan VARCHAR(20) NOT NULL,
+          max_devices INTEGER DEFAULT 1,
+          price_monthly DECIMAL(10,2) NOT NULL,
+          status VARCHAR(20) DEFAULT 'ACTIVE',
+          expires_at TIMESTAMP NOT NULL,
+          last_payment_at TIMESTAMP,
+          auto_renew BOOLEAN DEFAULT TRUE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS pdv_devices (
+          id SERIAL PRIMARY KEY,
+          subscription_id INTEGER REFERENCES pdv_subscriptions(id) ON DELETE CASCADE,
+          device_name VARCHAR(100) NOT NULL,
+          device_token TEXT UNIQUE NOT NULL,
+          device_type VARCHAR(20) DEFAULT 'DESKTOP',
+          is_active BOOLEAN DEFAULT TRUE,
+          last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS pdv_products (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          user_id ${userIdType} REFERENCES users(id) ON DELETE CASCADE,
+          name VARCHAR(200) NOT NULL,
+          barcode VARCHAR(100),
+          sku VARCHAR(100),
+          price DECIMAL(10,2) NOT NULL,
+          cost_price DECIMAL(10,2),
+          stock DECIMAL(12,3) DEFAULT 0,
+          min_stock DECIMAL(12,3) DEFAULT 5,
+          category VARCHAR(100),
+          unit VARCHAR(20) DEFAULT 'UN',
+          tax_ncm VARCHAR(20),
+          image_url TEXT,
+          is_active BOOLEAN DEFAULT TRUE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS pdv_sales (
+          id SERIAL PRIMARY KEY,
+          user_id ${userIdType} REFERENCES users(id) ON DELETE CASCADE,
+          device_id INTEGER REFERENCES pdv_devices(id) ON DELETE SET NULL,
+          sale_number INTEGER NOT NULL,
+          subtotal DECIMAL(12,2) NOT NULL,
+          discount DECIMAL(12,2) DEFAULT 0,
+          total DECIMAL(12,2) NOT NULL,
+          payment_method VARCHAR(20) NOT NULL,
+          received_amount DECIMAL(12,2),
+          change_amount DECIMAL(12,2) DEFAULT 0,
+          customer_cpf VARCHAR(14),
+          customer_name VARCHAR(255),
+          notes TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS pdv_sale_items (
+          id SERIAL PRIMARY KEY,
+          sale_id INTEGER REFERENCES pdv_sales(id) ON DELETE CASCADE,
+          product_id UUID REFERENCES pdv_products(id) ON DELETE SET NULL,
+          product_name VARCHAR(200) NOT NULL,
+          product_barcode VARCHAR(100),
+          quantity DECIMAL(12,3) NOT NULL,
+          unit_price DECIMAL(12,2) NOT NULL,
+          discount DECIMAL(12,2) DEFAULT 0,
+          total DECIMAL(12,2) NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS pdv_subscription_payments (
+          id SERIAL PRIMARY KEY,
+          subscription_id INTEGER REFERENCES pdv_subscriptions(id) ON DELETE CASCADE,
+          amount DECIMAL(10,2) NOT NULL,
+          tax_amount DECIMAL(10,2) DEFAULT 0,
+          operational_amount DECIMAL(10,2) DEFAULT 0,
+          owner_amount DECIMAL(10,2) DEFAULT 0,
+          stability_amount DECIMAL(10,2) DEFAULT 0,
+          cotista_amount DECIMAL(10,2) DEFAULT 0,
+          corporate_amount DECIMAL(10,2) DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE OR REPLACE FUNCTION get_next_sale_number(target_user_id INTEGER) RETURNS INTEGER AS $$
+        DECLARE
+            next_num INTEGER;
+        BEGIN
+            SELECT COALESCE(MAX(sale_number), 1000) + 1 INTO next_num FROM pdv_sales WHERE user_id = target_user_id;
+            RETURN next_num;
+        END;
+        $$ LANGUAGE plpgsql;
+
+        CREATE INDEX IF NOT EXISTS idx_pdv_subs_user ON pdv_subscriptions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_pdv_products_user ON pdv_products(user_id);
+        CREATE INDEX IF NOT EXISTS idx_pdv_products_barcode ON pdv_products(barcode);
+        CREATE INDEX IF NOT EXISTS idx_pdv_sales_user ON pdv_sales(user_id);
+        CREATE INDEX IF NOT EXISTS idx_pdv_sales_date ON pdv_sales(created_at);
+      `);
+      console.log('✅[DB] Sistema PDV inicializado');
+    } catch (err: any) {
+      console.error('❌[DB] Erro ao inicializar PDV:', err.message);
+    }
+
+
+    // --- SISTEMA DE GOVERNANÇA (VOTAÇÃO V2) ---
+    try {
+      console.log('Verificando tabelas de governança...');
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS governance_proposals(
+          id SERIAL PRIMARY KEY,
+          title VARCHAR(255) NOT NULL,
+          description TEXT NOT NULL,
+          creator_id ${userIdType} REFERENCES users(id),
+          category VARCHAR(50) DEFAULT 'general',
+          status VARCHAR(20) DEFAULT 'active',
+          yes_votes_power DECIMAL(15, 2) DEFAULT 0,
+          no_votes_power DECIMAL(15, 2) DEFAULT 0,
+          expires_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS governance_votes(
+          id SERIAL PRIMARY KEY,
+          proposal_id INTEGER REFERENCES governance_proposals(id) ON DELETE CASCADE,
+          user_id ${userIdType} REFERENCES users(id),
+          choice VARCHAR(10) NOT NULL,
+          voting_power DECIMAL(15, 2) DEFAULT 1,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(proposal_id, user_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_gov_votes_proposal ON governance_votes(proposal_id);
+        CREATE INDEX IF NOT EXISTS idx_gov_votes_user ON governance_votes(user_id);
+      `);
+      console.log('✅[DB] Sistema de governança inicializado');
+    } catch (err: any) {
+      console.error('❌[DB] Erro ao inicializar governança:', err.message);
+    }
+
+    // --- TABELAS CRÍTICAS DE ADMIN (GARANTIR CRIAÇÃO) ---
+    try {
+      const criticalTables = [
+        {
+          name: 'course_purchases',
+          query: `CREATE TABLE IF NOT EXISTS course_purchases(
+            id SERIAL PRIMARY KEY,
+            user_id ${userIdType} NOT NULL REFERENCES users(id),
+            course_id INTEGER NOT NULL,
+            amount_paid DECIMAL(10, 2) NOT NULL,
+            instructor_share DECIMAL(10, 2) NOT NULL,
+            platform_share DECIMAL(10, 2) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, course_id)
+          )`
+        },
+        {
+          name: 'transaction_reviews',
+          query: `CREATE TABLE IF NOT EXISTS transaction_reviews(
+            id SERIAL PRIMARY KEY,
+            transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+            user_id ${userIdType} NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+            comment TEXT,
+            is_public BOOLEAN DEFAULT FALSE,
+            is_approved BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(transaction_id)
+          )`
+        },
+        {
+          name: 'bug_reports',
+          query: `CREATE TABLE IF NOT EXISTS bug_reports(
+            id SERIAL PRIMARY KEY,
+            user_id ${userIdType} REFERENCES users(id) ON DELETE SET NULL,
+            user_email VARCHAR(255),
+            user_name VARCHAR(255),
+            title VARCHAR(255) NOT NULL,
+            description TEXT NOT NULL,
+            category VARCHAR(50) DEFAULT 'general',
+            severity VARCHAR(20) DEFAULT 'low',
+            status VARCHAR(20) DEFAULT 'open',
+            screenshot_url TEXT,
+            device_info TEXT,
+            admin_notes TEXT,
+            resolved_by ${userIdType} REFERENCES users(id) ON DELETE SET NULL,
+            resolved_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )`
+        }
+      ];
+
+      for (const table of criticalTables) {
+        try {
+          await client.query(table.query);
+          console.log(`✅[DB] Tabela verificada/criada: ${table.name}`);
+        } catch (err: any) {
+          console.error(`❌[DB] Erro ao criar tabela ${table.name}:`, err.message);
+        }
+      }
+    } catch (err: any) {
+      console.error('❌[DB] Erro no bloco de tabelas críticas:', err.message);
+    }
 
     // --- CONSORTIUM UPDATES (LATEST) ---
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS consortium_groups (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
-        admin_id INTEGER REFERENCES users(id),
-        status VARCHAR(20) DEFAULT 'ACTIVE',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+    try {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS consortium_groups(
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(100) NOT NULL,
+          admin_id ${userIdType} REFERENCES users(id),
+          status VARCHAR(20) DEFAULT 'ACTIVE',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
 
-      CREATE TABLE IF NOT EXISTS consortium_members (
-        id SERIAL PRIMARY KEY,
-        group_id INTEGER REFERENCES consortium_groups(id),
-        user_id INTEGER REFERENCES users(id),
-        status VARCHAR(20) DEFAULT 'ACTIVE',
-        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    await client.query(`
-      ALTER TABLE consortium_members ADD COLUMN IF NOT EXISTS invoice_url TEXT;
-      ALTER TABLE consortium_members ADD COLUMN IF NOT EXISTS credit_limit_released DECIMAL(15, 2);
-      ALTER TABLE consortium_groups ADD COLUMN IF NOT EXISTS reserve_pool DECIMAL(20, 2) DEFAULT 0;
-    `);
+        CREATE TABLE IF NOT EXISTS consortium_members(
+          id SERIAL PRIMARY KEY,
+          group_id INTEGER REFERENCES consortium_groups(id),
+          user_id ${userIdType} REFERENCES users(id),
+          status VARCHAR(20) DEFAULT 'ACTIVE',
+          joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        ALTER TABLE consortium_members ADD COLUMN IF NOT EXISTS invoice_url TEXT;
+        ALTER TABLE consortium_members ADD COLUMN IF NOT EXISTS credit_limit_released DECIMAL(15, 2);
+        ALTER TABLE consortium_groups ADD COLUMN IF NOT EXISTS reserve_pool DECIMAL(20, 2) DEFAULT 0;
+      `);
+      console.log('✅[DB] Sistema de Consórcio inicializado');
+    } catch (err: any) {
+      console.error('❌[DB] Erro ao inicializar consórcio:', err.message);
+    }
+
+    // --- MANUTENÇÃO E OTIMIZAÇÃO (FINAL) ---
+    try {
+      console.log('Executando manutenção e índices de performance...');
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+        CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
+        CREATE INDEX IF NOT EXISTS idx_users_is_admin ON users(is_admin);
+        CREATE INDEX IF NOT EXISTS idx_quotas_user_id ON quotas(user_id);
+        CREATE INDEX IF NOT EXISTS idx_quotas_status ON quotas(status);
+        CREATE INDEX IF NOT EXISTS idx_loans_user_id ON loans(user_id);
+        CREATE INDEX IF NOT EXISTS idx_loans_status ON loans(status);
+        CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
+        CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
+
+        -- Novos índices para otimização batch e admin
+        CREATE INDEX IF NOT EXISTS idx_transactions_payout_pending ON transactions(payout_status) WHERE payout_status = 'PENDING_PAYMENT';
+        CREATE INDEX IF NOT EXISTS idx_loans_payout_pending ON loans(payout_status) WHERE payout_status = 'PENDING_PAYMENT';
+        CREATE INDEX IF NOT EXISTS idx_transactions_user_type_idx ON transactions(user_id, type);
+        CREATE INDEX IF NOT EXISTS idx_loans_user_status_active ON loans(user_id, status) WHERE status IN('APPROVED', 'PAYMENT_PENDING');
+        CREATE INDEX IF NOT EXISTS idx_users_score_desc ON users(score DESC);
+
+        -- Novas Otimizações de Índices Compostos
+        CREATE INDEX IF NOT EXISTS idx_transactions_user_created_desc ON transactions(user_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_marketplace_active_created_desc ON marketplace_listings(status, created_at DESC) WHERE status = 'ACTIVE';
+      `);
+
+      // Otimização de precisão decimal e estatísticas
+      await client.query(`
+        ALTER TABLE system_config ALTER COLUMN system_balance TYPE DECIMAL(20, 2);
+        ALTER TABLE system_config ALTER COLUMN profit_pool TYPE DECIMAL(20, 2);
+        ALTER TABLE system_config ALTER COLUMN total_tax_reserve TYPE DECIMAL(20, 2);
+        ALTER TABLE system_config ALTER COLUMN total_operational_reserve TYPE DECIMAL(20, 2);
+        ALTER TABLE system_config ALTER COLUMN total_owner_profit TYPE DECIMAL(20, 2);
+        ALTER TABLE system_config ALTER COLUMN total_gateway_costs TYPE DECIMAL(20, 2);
+      `);
+
+      // ANALYZE e FILLFACTOR em blocos separados para não travar
+      try { await client.query('ANALYZE users; ANALYZE transactions; ANALYZE loans; ANALYZE quotas;'); } catch (e) { }
+      try { await client.query('ANALYZE marketplace_listings; ANALYZE marketplace_orders;'); } catch (e) { }
+      try { await client.query('ALTER TABLE users SET(fillfactor = 85);'); } catch (e) { }
+
+      console.log('✅[DB] Manutenção concluída');
+    } catch (err: any) {
+      console.warn('⚠️[DB] Manutenção parcial concluída com avisos:', err.message);
+    }
 
   } catch (error) {
     console.error('Erro ao inicializar o banco de dados:', error);

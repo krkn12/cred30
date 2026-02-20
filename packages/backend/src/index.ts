@@ -7,9 +7,7 @@ import { validateEnv } from './shared/schemas/env.schema';
 import { validateJwtSecret } from './shared/utils/jwt-validation.utils';
 
 // Validar variáveis de ambiente e segurança JWT antes de qualquer outra coisa
-console.log(`--- [INDEX] NODE_ENV: ${process.env.NODE_ENV} ---`);
-validateEnv();
-validateJwtSecret();
+// Validações movidas para startServer() para evitar execuções indesejadas em testes.
 
 
 // Force restart: Logistics Fee Fix at 2026-01-29 Audit
@@ -187,6 +185,11 @@ app.get('/api/health', (c: Context) => {
 
 async function startServer() {
   const port = process.env.PORT || 3001;
+
+  // Validar variáveis de ambiente apenas ao iniciar o servidor
+  console.log(`--- [BOOT] NODE_ENV: ${process.env.NODE_ENV} ---`);
+  validateEnv();
+  validateJwtSecret();
 
   try {
     console.log('--- [BOOT] Iniciando Cred30 Backend ---');

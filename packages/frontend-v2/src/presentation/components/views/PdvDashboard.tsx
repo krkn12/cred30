@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     LayoutDashboard,
     Package,
@@ -8,7 +8,11 @@ import {
     Monitor,
     Settings,
     LogOut,
-    Store
+    Store,
+    Pencil,
+    Trash2,
+    Check,
+    X
 } from 'lucide-react';
 import { apiService } from '../../../application/services/api.service';
 
@@ -23,7 +27,7 @@ export const PdvDashboard = ({ subscription, onOpenPos, onCancelSubscription }: 
     const [stats, setStats] = useState<any>(null);
     const [products, setProducts] = useState<any[]>([]);
     const [devices, setDevices] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [, setIsLoading] = useState(false);
 
     // Estados para novo produto
     const [isAddProductOpen, setIsAddProductOpen] = useState(false);
@@ -33,6 +37,11 @@ export const PdvDashboard = ({ subscription, onOpenPos, onCancelSubscription }: 
     // Estados para novo dispositivo
     const [isAddDeviceOpen, setIsAddDeviceOpen] = useState(false);
     const [newDeviceName, setNewDeviceName] = useState('');
+
+    // Estados para edição de produto
+    const [editingProductId, setEditingProductId] = useState<number | null>(null);
+    const [editForm, setEditForm] = useState<any>({ name: '', price: '', stock: '', sku: '', barcode: '', costPrice: '' });
+    const [editPricingCalc, setEditPricingCalc] = useState({ opsCostPercent: '', profitPercent: '' });
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
@@ -86,6 +95,49 @@ export const PdvDashboard = ({ subscription, onOpenPos, onCancelSubscription }: 
             fetchData();
         } catch (error) {
             console.error(error);
+        }
+    };
+
+    // Iniciar edição de produto
+    const handleStartEdit = (prod: any) => {
+        setEditingProductId(prod.id);
+        setEditForm({
+            name: prod.name,
+            price: String(prod.price),
+            stock: String(prod.stock),
+            sku: prod.sku || '',
+            barcode: prod.barcode || '',
+            costPrice: prod.costPrice ? String(prod.costPrice) : ''
+        });
+    };
+
+    // Salvar edição de produto
+    const handleUpdateProduct = async () => {
+        if (!editingProductId || !editForm.name || !editForm.price) return;
+        try {
+            await apiService.put(`/pdv/products/${editingProductId}`, {
+                name: editForm.name,
+                price: parseFloat(editForm.price),
+                stock: parseFloat(editForm.stock || '0'),
+                sku: editForm.sku || undefined,
+                barcode: editForm.barcode || undefined,
+                costPrice: editForm.costPrice ? parseFloat(editForm.costPrice) : undefined
+            });
+            setEditingProductId(null);
+            fetchData();
+        } catch (error) {
+            console.error('Erro ao atualizar produto:', error);
+        }
+    };
+
+    // Excluir produto
+    const handleDeleteProduct = async (productId: number, productName: string) => {
+        if (!window.confirm(`Tem certeza que deseja excluir "${productName}"?`)) return;
+        try {
+            await apiService.delete(`/pdv/products/${productId}`);
+            fetchData();
+        } catch (error) {
+            console.error('Erro ao excluir produto:', error);
         }
     };
 
@@ -364,28 +416,198 @@ export const PdvDashboard = ({ subscription, onOpenPos, onCancelSubscription }: 
                                 </div>
                             ) : (
                                 products.map(prod => (
-                                    <div key={prod.id} className="bg-zinc-900/50 border border-zinc-800/50 p-3 rounded-xl flex items-center justify-between group hover:bg-zinc-800 transition">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center text-zinc-500 font-bold text-xs group-hover:bg-zinc-700">
-                                                {prod.sku ? prod.sku.substring(0, 3) : prod.name.substring(0, 2).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-white">{prod.name}</p>
-                                                <div className="flex gap-2 text-[10px] text-zinc-500">
-                                                    <span>{prod.sku || 'S/ SKU'}</span>
-                                                    <span>•</span>
-                                                    <span>Estoque: {prod.stock}</span>
+                                    <div key={prod.id} className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl overflow-hidden group hover:bg-zinc-800/50 transition">
+                                        {/* Modo de visualização */}
+                                        {editingProductId !== prod.id ? (
+                                            <div className="p-3 flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center text-zinc-500 font-bold text-xs group-hover:bg-zinc-700">
+                                                        {prod.sku ? prod.sku.substring(0, 3) : prod.name.substring(0, 2).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-white">{prod.name}</p>
+                                                        <div className="flex gap-2 text-[10px] text-zinc-500">
+                                                            <span>{prod.sku || 'S/ SKU'}</span>
+                                                            <span>•</span>
+                                                            <span>Estoque: {prod.stock}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="text-right mr-2">
+                                                        <p className="text-sm font-black text-white">{formatCurrency(prod.price)}</p>
+                                                        {prod.costPrice && (
+                                                            <p className="text-[10px] text-emerald-500">
+                                                                Lucro: {formatCurrency(prod.price - prod.costPrice)}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        onClick={() => handleStartEdit(prod)}
+                                                        className="p-2 rounded-lg bg-zinc-800 hover:bg-primary-500/20 text-zinc-400 hover:text-primary-400 transition"
+                                                        aria-label={`Editar produto ${prod.name}`}
+                                                        title="Editar"
+                                                    >
+                                                        <Pencil size={14} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteProduct(prod.id, prod.name)}
+                                                        className="p-2 rounded-lg bg-zinc-800 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 transition"
+                                                        aria-label={`Excluir produto ${prod.name}`}
+                                                        title="Excluir"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-black text-white">{formatCurrency(prod.price)}</p>
-                                            {prod.costPrice && (
-                                                <p className="text-[10px] text-emerald-500">
-                                                    Lucro: {formatCurrency(prod.price - prod.costPrice)}
-                                                </p>
-                                            )}
-                                        </div>
+                                        ) : (
+                                            /* Modo de edição inline */
+                                            <div className="p-4 space-y-3 bg-zinc-900 border-l-2 border-primary-500">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="text-xs font-bold text-primary-400 uppercase">Editando Produto</span>
+                                                </div>
+                                                <input
+                                                    placeholder="Nome do Produto"
+                                                    className="w-full bg-zinc-950 border border-zinc-800 p-3 rounded-xl text-sm focus:border-primary-500 outline-none text-white"
+                                                    value={editForm.name}
+                                                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                                />
+                                                {/* Preço e Estoque em destaque */}
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] text-emerald-400 font-bold uppercase ml-1">💰 Preço de Venda</label>
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            placeholder="R$ 0,00"
+                                                            className="w-full bg-zinc-950 border-2 border-emerald-500/30 p-3 rounded-xl text-sm focus:border-emerald-500 outline-none text-emerald-400 font-black"
+                                                            value={editForm.price}
+                                                            onChange={e => setEditForm({ ...editForm, price: e.target.value })}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] text-blue-400 font-bold uppercase ml-1">📦 Estoque</label>
+                                                        <input
+                                                            type="number"
+                                                            placeholder="Qtd"
+                                                            className="w-full bg-zinc-950 border-2 border-blue-500/30 p-3 rounded-xl text-sm focus:border-blue-500 outline-none text-blue-400 font-black"
+                                                            value={editForm.stock}
+                                                            onChange={e => setEditForm({ ...editForm, stock: e.target.value })}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                {/* Campos secundários */}
+                                                <div className="grid grid-cols-3 gap-3">
+                                                    <input
+                                                        placeholder="SKU"
+                                                        className="bg-zinc-950 border border-zinc-800 p-2 rounded-lg text-xs focus:border-primary-500 outline-none text-white"
+                                                        value={editForm.sku}
+                                                        onChange={e => setEditForm({ ...editForm, sku: e.target.value })}
+                                                    />
+                                                    <input
+                                                        placeholder="Cód. Barras"
+                                                        className="bg-zinc-950 border border-zinc-800 p-2 rounded-lg text-xs focus:border-primary-500 outline-none text-white"
+                                                        value={editForm.barcode}
+                                                        onChange={e => setEditForm({ ...editForm, barcode: e.target.value })}
+                                                    />
+                                                    <input
+                                                        type="number"
+                                                        placeholder="Preço Custo"
+                                                        className="bg-zinc-950 border border-zinc-800 p-2 rounded-lg text-xs focus:border-primary-500 outline-none text-white"
+                                                        value={editForm.costPrice}
+                                                        onChange={e => setEditForm({ ...editForm, costPrice: e.target.value })}
+                                                    />
+                                                </div>
+
+                                                {/* Calculadora Inteligente (mesma do cadastro) */}
+                                                <div className="bg-zinc-950/30 border border-zinc-800 p-3 rounded-xl space-y-2">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <TrendingUp size={14} className="text-primary-400" />
+                                                        <span className="text-xs font-bold text-zinc-300 uppercase">Calculadora Inteligente</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div>
+                                                            <label className="text-[10px] text-zinc-500 font-bold uppercase ml-1">Custos Operacionais %</label>
+                                                            <input
+                                                                type="number"
+                                                                placeholder="Ex: 20%"
+                                                                className="w-full bg-zinc-900 border border-zinc-800 p-2 rounded-lg text-xs text-white outline-none focus:border-primary-500"
+                                                                value={editPricingCalc.opsCostPercent}
+                                                                onChange={e => {
+                                                                    const val = e.target.value;
+                                                                    setEditPricingCalc({ ...editPricingCalc, opsCostPercent: val });
+                                                                    if (editForm.costPrice && val && editPricingCalc.profitPercent) {
+                                                                        const cost = parseFloat(editForm.costPrice);
+                                                                        const ops = parseFloat(val) || 0;
+                                                                        const profit = parseFloat(editPricingCalc.profitPercent) || 0;
+                                                                        const markup = (ops + profit) / 100;
+                                                                        const finalPrice = cost * (1 + markup);
+                                                                        setEditForm((prev: any) => ({ ...prev, price: finalPrice.toFixed(2) }));
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] text-zinc-500 font-bold uppercase ml-1">Lucro Desejado %</label>
+                                                            <input
+                                                                type="number"
+                                                                placeholder="Ex: 30%"
+                                                                className="w-full bg-zinc-900 border border-zinc-800 p-2 rounded-lg text-xs text-white outline-none focus:border-primary-500"
+                                                                value={editPricingCalc.profitPercent}
+                                                                onChange={e => {
+                                                                    const val = e.target.value;
+                                                                    setEditPricingCalc({ ...editPricingCalc, profitPercent: val });
+                                                                    if (editForm.costPrice && editPricingCalc.opsCostPercent && val) {
+                                                                        const cost = parseFloat(editForm.costPrice);
+                                                                        const ops = parseFloat(editPricingCalc.opsCostPercent) || 0;
+                                                                        const profit = parseFloat(val) || 0;
+                                                                        const markup = (ops + profit) / 100;
+                                                                        const finalPrice = cost * (1 + markup);
+                                                                        setEditForm((prev: any) => ({ ...prev, price: finalPrice.toFixed(2) }));
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    {editPricingCalc.opsCostPercent && editPricingCalc.profitPercent && editForm.costPrice && (
+                                                        <p className="text-[10px] text-zinc-500 text-center pt-1 border-t border-zinc-800/50 mt-1">
+                                                            Markup Aplicado: <span className="text-white font-bold">{parseFloat(editPricingCalc.opsCostPercent) + parseFloat(editPricingCalc.profitPercent)}%</span> sobre o custo.
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                {/* Margem de Lucro Calculada */}
+                                                {editForm.price && editForm.costPrice && (
+                                                    <div className="flex items-center gap-4 bg-zinc-950/50 p-2 rounded-lg border border-zinc-800/50">
+                                                        <span className="text-xs text-zinc-500">Margem Estimada:</span>
+                                                        <span className={`text-xs font-bold ${(parseFloat(editForm.price) - parseFloat(editForm.costPrice)) > 0
+                                                            ? 'text-emerald-400'
+                                                            : 'text-red-400'
+                                                            }`}>
+                                                            {formatCurrency(parseFloat(editForm.price) - parseFloat(editForm.costPrice))}
+                                                            {' '}
+                                                            ({(((parseFloat(editForm.price) - parseFloat(editForm.costPrice)) / parseFloat(editForm.price)) * 100).toFixed(1)}%)
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                {/* Botões Salvar / Cancelar */}
+                                                <div className="flex gap-2 pt-1">
+                                                    <button
+                                                        onClick={() => setEditingProductId(null)}
+                                                        className="flex-1 bg-zinc-800 text-zinc-400 font-bold py-2.5 rounded-xl text-xs uppercase flex items-center justify-center gap-1 hover:bg-zinc-700 transition"
+                                                    >
+                                                        <X size={14} /> Cancelar
+                                                    </button>
+                                                    <button
+                                                        onClick={handleUpdateProduct}
+                                                        className="flex-1 bg-emerald-500 text-black font-bold py-2.5 rounded-xl text-xs uppercase flex items-center justify-center gap-1 hover:bg-emerald-400 transition"
+                                                    >
+                                                        <Check size={14} /> Salvar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ))
                             )}

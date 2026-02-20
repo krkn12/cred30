@@ -65,24 +65,13 @@ export const notificationService: NotificationService = {
         console.log(`🔔 [USER NOTIFICATION] User: ${userId} | ${title}: ${body}`);
 
         try {
-            // 1. Persistir no Banco de Dados
-            // Como notificationService é agnóstico de contexto, precisamos de uma instância do pool global
-            // Aqui vamos usar um hack para pegar o pool global ou importar uma instância
-            const pool = await import('../../infrastructure/database/postgresql/connection/pool').then(m => m.generateReferralCode ? m.getDbPool({} as any) : null);
+            // 1. Persistir no Banco de Dados usando o pool global exportado
+            const { pool: dbPool } = await import('../../infrastructure/database/postgresql/connection/pool');
 
-            // Simplificação: vamos fazer o import funcionar corretamente, mas getDbPool exige Contexto Hono
-            // Vamos implementar um método `getGlobalPool` no pool.ts para services isolados, ou usar require.
-
-            // Solução Correta: Injetar pool ou criar nova conexão.
-            // Para não quebrar a arquitetura existente, vamos instanciar aqui pontualmente
-            const { Pool } = await import('pg');
-            const newPool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-
-            await newPool.query(
+            await dbPool.query(
                 `INSERT INTO notifications (user_id, title, message, type) VALUES ($1, $2, $3, $4)`,
                 [userId, title, body, type]
             );
-            await newPool.end(); // Fechar para não vazar conexões
 
             // 2. Enviar via SSE (Tempo Real)
             const userClients = clients.get(userId.toString());
@@ -103,7 +92,14 @@ export const notificationService: NotificationService = {
             // Fallback: Tenta enviar online mesmo sem salvar no banco
             const userClients = clients.get(userId.toString());
             if (userClients) {
-                userClients.forEach((send) => send({ event: 'notification', title, body, type, timestamp: new Date().toISOString(), error: 'Not persisted' }));
+                userClients.forEach((send) => send({
+                    event: 'notification',
+                    title,
+                    body,
+                    type,
+                    timestamp: new Date().toISOString(),
+                    error: 'Not persisted'
+                }));
             }
         }
     },

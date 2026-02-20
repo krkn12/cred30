@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { calculateInterestRate, checkLoanEligibility } from '../../application/services/credit-analysis.service';
 
 describe('Credit Analysis Service', () => {
@@ -18,9 +18,14 @@ describe('Credit Analysis Service', () => {
     });
 
     describe('checkLoanEligibility', () => {
+        const mockQuery = vi.fn();
         const mockPool = {
-            query: vi.fn()
+            query: mockQuery
         };
+
+        beforeEach(() => {
+            mockQuery.mockReset();
+        });
 
         it('deve retornar inelegível se o usuário não for encontrado', async () => {
             mockPool.query.mockResolvedValueOnce({ rows: [] });
@@ -47,10 +52,15 @@ describe('Credit Analysis Service', () => {
             });
             // Mock para system_config (mesmo que não use o resultado, o código chama)
             mockPool.query.mockResolvedValueOnce({ rows: [{ profit_pool: 0, system_total_quotas: 100 }] });
+            // Mock para Late History (NOVO)
+            mockPool.query.mockResolvedValueOnce({ rows: [{ late_count: 0 }] });
             // Mock para isGuarantor
             mockPool.query.mockResolvedValueOnce({ rows: [{ count: 0 }] });
+            // Mock para Active Debt (NOVO)
+            mockPool.query.mockResolvedValueOnce({ rows: [{ total_owed: 0, total_paid: 0 }] });
 
             const result = await checkLoanEligibility(mockPool as any, 'user-123');
+            console.log('Result 1:', result);
             expect(result.eligible).toBe(false);
             expect(result.reason).toBe('Você possui empréstimos em atraso.');
         });
@@ -78,20 +88,28 @@ describe('Credit Analysis Service', () => {
                 rows: [{ profit_pool: 1000, system_total_quotas: 100 }]
             });
 
+            // Mock para Late History (NOVO)
+            mockPool.query.mockResolvedValueOnce({ rows: [{ late_count: 0 }] });
+
             // Mock para isGuarantor
             mockPool.query.mockResolvedValueOnce({
                 rows: [{ count: 0 }]
             });
 
+            // Mock para Active Debt (NOVO)
+            mockPool.query.mockResolvedValueOnce({ rows: [{ total_owed: 0, total_paid: 0 }] });
+
             const result = await checkLoanEligibility(mockPool as any, 'user-123');
+            console.log('Result 2:', result);
             expect(result.eligible).toBe(true);
-            // Limite = (80% + 5% bonus) * totalSpent + (50% + 5% bonus) * quotasValue + userProfitShare
-            // totalSpent = 1000 + (2 * 8) = 1016
-            // spentLimit = 1016 * 0.85 = 863.6
-            // quotasLimit = 200 * 0.55 = 110
-            // userProfitShare = 1000 * (2/100) = 20
-            // total = 863.6 + 110 + 20 = 993.6 -> floor = 993
-            expect(result.details.maxLoanAmount).toBe(993);
+            // Nova Lógica:
+            // Base Spends: 70% | Base Quotas: 70% (linha 27-28 do serviço)
+            // Score Bonus: (600/1000) * 10% = 6%
+            // Total Factor: 0.70 + 0.06 = 0.76
+            // totalSpent = 1016 * 0.76 = 772.16
+            // quotasValue = 200 * 0.76 = 152.00
+            // Total = 924.16 -> floor = 924
+            expect(result.details.maxLoanAmount).toBe(924);
         });
     });
 });
