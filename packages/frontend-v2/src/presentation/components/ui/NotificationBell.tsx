@@ -85,7 +85,7 @@ export const NotificationBell: React.FC = () => {
 
             // Vibração e Som
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-            try { new Audio('/notification.mp3').play().catch(() => { }); } catch { }
+            try { new Audio('/notification.mp3').play().catch((e) => { console.debug('Audio play blocked:', e); }); } catch (e) { console.debug('Audio init failed:', e); }
         });
 
         return cleanup;
