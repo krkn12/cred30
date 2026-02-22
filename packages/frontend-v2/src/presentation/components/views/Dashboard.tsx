@@ -529,7 +529,7 @@ export const Dashboard = ({ state, onLoans, onBuyQuota, onWithdraw, onDeposit, o
                                 <div className="p-1.5 bg-emerald-500/10 rounded-xl group-hover:rotate-12 transition-transform">
                                     <ArrowDownLeft size={20} className="text-emerald-600" />
                                 </div>
-                                <span className="opacity-80">DEPOSITAR</span>
+                                <span className="opacity-80">APORTAR</span>
                             </button>
                             <button
                                 onClick={onWithdraw}
@@ -538,7 +538,7 @@ export const Dashboard = ({ state, onLoans, onBuyQuota, onWithdraw, onDeposit, o
                                 <div className="p-1.5 bg-white/5 rounded-xl group-hover:-rotate-12 transition-transform">
                                     <ArrowUpFromLine size={20} className="text-primary-400" />
                                 </div>
-                                <span className="opacity-60 group-hover:opacity-100 transition-opacity whitespace-nowrap">SACAR</span>
+                                <span className="opacity-60 group-hover:opacity-100 transition-opacity whitespace-nowrap">RESGATAR</span>
                             </button>
                             <button
                                 onClick={() => navigate('/app/services')}
@@ -567,7 +567,7 @@ export const Dashboard = ({ state, onLoans, onBuyQuota, onWithdraw, onDeposit, o
                                 onClick={onBuyQuota}
                                 className="text-[9px] font-black text-primary-400 uppercase tracking-wider hover:text-primary-300 transition-colors flex items-center gap-1"
                             >
-                                Comprar Mais <ArrowRight size={10} />
+                                Integralizar <ArrowRight size={10} />
                             </button>
                         </div>
                         <h3 className="text-3xl font-black text-white tracking-tight">{formatCurrency(user.balance)}</h3>

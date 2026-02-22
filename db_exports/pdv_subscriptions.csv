@@ -1,0 +1,2 @@
+id,user_id,plan,max_devices,price_monthly,status,expires_at,last_payment_at,auto_renew,created_at,updated_at
+1,1,PDV_PRO,3,59.90,ACTIVE,2026-03-18 04:10:16.663,2026-02-18 07:10:15.825768,t,2026-02-18 07:10:15.825768,2026-02-18 07:10:15.825768

@@ -2,7 +2,7 @@ import { Context } from 'hono';
 import { z } from 'zod';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { PoolClient } from 'pg';
-import { executeInTransaction, createTransaction } from '../../../domain/services/transaction.service';
+import { executeInTransaction, createTransaction, incrementSystemReserves } from '../../../domain/services/transaction.service';
 import { updateScore } from '../../../application/services/score.service';
 import {
     VERIFIED_BADGE_PRICE,
@@ -58,7 +58,9 @@ async function autoConvertPoints(client: PoolClient, userId: string | number): P
         return { converted: false, pointsConverted: 0, moneyCredited: 0, remainingPoints: currentPoints };
     }
 
-    await client.query(`UPDATE system_config SET system_balance = system_balance - $1`, [moneyToCredit]);
+    await incrementSystemReserves(client, {
+        systemBalance: -moneyToCredit
+    });
     await client.query(`UPDATE users SET ad_points = $1, balance = balance + $2 WHERE id = $3`, [remainingPoints, moneyToCredit, userId]);
 
     await createTransaction(
@@ -130,7 +132,7 @@ export class MonetizationController {
                     pointsConverted: conversion.pointsConverted
                 } : null
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -181,23 +183,14 @@ export class MonetizationController {
                 // Dividir a parte do sistema (20%) em 4 partes iguais (5% do total cada)
                 const reserveShare = feeForReserves * 0.25;
 
-                await client.query(
-                    `UPDATE system_config SET 
-                        profit_pool = profit_pool + $1,
-                        total_tax_reserve = total_tax_reserve + $2,
-                        total_operational_reserve = total_operational_reserve + $3,
-                        total_owner_profit = total_owner_profit + $4,
-                        investment_reserve = investment_reserve + $5,
-                        total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $6`,
-                    [
-                        feeForProfit,
-                        feeForReserves * PLATFORM_FEE_TAX_SHARE,
-                        feeForReserves * PLATFORM_FEE_OPERATIONAL_SHARE,
-                        feeForReserves * PLATFORM_FEE_OWNER_SHARE,
-                        feeForReserves * PLATFORM_FEE_INVESTMENT_SHARE,
-                        feeForReserves * PLATFORM_FEE_CORPORATE_SHARE
-                    ]
-                );
+                await incrementSystemReserves(client, {
+                    profitPool: feeForProfit,
+                    tax: feeForReserves * PLATFORM_FEE_TAX_SHARE,
+                    operational: feeForReserves * PLATFORM_FEE_OPERATIONAL_SHARE,
+                    owner: feeForReserves * PLATFORM_FEE_OWNER_SHARE,
+                    investment: feeForReserves * PLATFORM_FEE_INVESTMENT_SHARE,
+                    corporate: feeForReserves * PLATFORM_FEE_CORPORATE_SHARE
+                });
 
                 await createTransaction(
                     client,
@@ -215,7 +208,7 @@ export class MonetizationController {
             if (!result.success) return c.json({ success: false, message: result.error }, 400);
             return c.json({ success: true, message: 'Parabéns! Agora você é um MEMBRO PRO!' });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -244,23 +237,14 @@ export class MonetizationController {
                 const feeForProfit = VERIFIED_BADGE_PRICE * 0.80;
                 const feeForReserves = VERIFIED_BADGE_PRICE * 0.20;
 
-                await client.query(
-                    `UPDATE system_config SET 
-                        profit_pool = profit_pool + $1,
-                        total_tax_reserve = total_tax_reserve + $2,
-                        total_operational_reserve = total_operational_reserve + $3,
-                        total_owner_profit = total_owner_profit + $4,
-                        investment_reserve = investment_reserve + $5,
-                        total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $6`,
-                    [
-                        feeForProfit,
-                        feeForReserves * PLATFORM_FEE_TAX_SHARE,
-                        feeForReserves * PLATFORM_FEE_OPERATIONAL_SHARE,
-                        feeForReserves * PLATFORM_FEE_OWNER_SHARE,
-                        feeForReserves * PLATFORM_FEE_INVESTMENT_SHARE,
-                        feeForReserves * PLATFORM_FEE_CORPORATE_SHARE
-                    ]
-                );
+                await incrementSystemReserves(client, {
+                    profitPool: feeForProfit,
+                    tax: feeForReserves * PLATFORM_FEE_TAX_SHARE,
+                    operational: feeForReserves * PLATFORM_FEE_OPERATIONAL_SHARE,
+                    owner: feeForReserves * PLATFORM_FEE_OWNER_SHARE,
+                    investment: feeForReserves * PLATFORM_FEE_INVESTMENT_SHARE,
+                    corporate: feeForReserves * PLATFORM_FEE_CORPORATE_SHARE
+                });
 
                 await createTransaction(
                     client,
@@ -277,7 +261,7 @@ export class MonetizationController {
 
             if (!result.success) return c.json({ success: false, message: result.error }, 400);
             return c.json({ success: true, message: 'Selo de Verificado Adquirido!' });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -303,23 +287,14 @@ export class MonetizationController {
                 const feeForProfit = SCORE_BOOST_PRICE * 0.80;
                 const feeForReserves = SCORE_BOOST_PRICE * 0.20;
 
-                await client.query(
-                    `UPDATE system_config SET 
-                        profit_pool = profit_pool + $1,
-                        total_tax_reserve = total_tax_reserve + $2,
-                        total_operational_reserve = total_operational_reserve + $3,
-                        total_owner_profit = total_owner_profit + $4,
-                        investment_reserve = investment_reserve + $5,
-                        total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $6`,
-                    [
-                        feeForProfit,
-                        feeForReserves * PLATFORM_FEE_TAX_SHARE,
-                        feeForReserves * PLATFORM_FEE_OPERATIONAL_SHARE,
-                        feeForReserves * PLATFORM_FEE_OWNER_SHARE,
-                        feeForReserves * PLATFORM_FEE_INVESTMENT_SHARE,
-                        feeForReserves * PLATFORM_FEE_CORPORATE_SHARE
-                    ]
-                );
+                await incrementSystemReserves(client, {
+                    profitPool: feeForProfit,
+                    tax: feeForReserves * PLATFORM_FEE_TAX_SHARE,
+                    operational: feeForReserves * PLATFORM_FEE_OPERATIONAL_SHARE,
+                    owner: feeForReserves * PLATFORM_FEE_OWNER_SHARE,
+                    investment: feeForReserves * PLATFORM_FEE_INVESTMENT_SHARE,
+                    corporate: feeForReserves * PLATFORM_FEE_CORPORATE_SHARE
+                });
 
                 await createTransaction(
                     client,
@@ -336,7 +311,7 @@ export class MonetizationController {
 
             if (!result.success) return c.json({ success: false, message: result.error }, 400);
             return c.json({ success: true, message: `Boost Ativado! +${SCORE_BOOST_POINTS} pontos de Score.` });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -397,7 +372,7 @@ export class MonetizationController {
                     pointsConverted: conversion.pointsConverted
                 } : null
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -434,23 +409,14 @@ export class MonetizationController {
                 const feeForProfit = REPUTATION_CHECK_PRICE * 0.80;
                 const feeForReserves = REPUTATION_CHECK_PRICE * 0.20;
 
-                await client.query(
-                    `UPDATE system_config SET 
-                        profit_pool = profit_pool + $1,
-                        total_tax_reserve = total_tax_reserve + $2,
-                        total_operational_reserve = total_operational_reserve + $3,
-                        total_owner_profit = total_owner_profit + $4,
-                        investment_reserve = investment_reserve + $5,
-                        total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $6`,
-                    [
-                        feeForProfit,
-                        feeForReserves * PLATFORM_FEE_TAX_SHARE,
-                        feeForReserves * PLATFORM_FEE_OPERATIONAL_SHARE,
-                        feeForReserves * PLATFORM_FEE_OWNER_SHARE,
-                        feeForReserves * PLATFORM_FEE_INVESTMENT_SHARE,
-                        feeForReserves * PLATFORM_FEE_CORPORATE_SHARE
-                    ]
-                );
+                await incrementSystemReserves(client, {
+                    profitPool: feeForProfit,
+                    tax: feeForReserves * PLATFORM_FEE_TAX_SHARE,
+                    operational: feeForReserves * PLATFORM_FEE_OPERATIONAL_SHARE,
+                    owner: feeForReserves * PLATFORM_FEE_OWNER_SHARE,
+                    investment: feeForReserves * PLATFORM_FEE_INVESTMENT_SHARE,
+                    corporate: feeForReserves * PLATFORM_FEE_CORPORATE_SHARE
+                });
 
                 await createTransaction(
                     client,
@@ -479,7 +445,8 @@ export class MonetizationController {
                 message: 'Consulta realizada com sucesso!',
                 data: result.data
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
+            console.error('[MONETIZATION] Erro ao buscar status de proteção:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -519,23 +486,15 @@ export class MonetizationController {
                 const fundShare = MUTUAL_PROTECTION_PRICE * 0.80;
                 const systemShare = MUTUAL_PROTECTION_PRICE * 0.20;
 
-                await client.query(
-                    `UPDATE system_config SET 
-                        mutual_reserve = mutual_reserve + $1,
-                        total_tax_reserve = total_tax_reserve + $2,
-                        total_operational_reserve = total_operational_reserve + $3,
-                        total_owner_profit = total_owner_profit + $4,
-                        investment_reserve = investment_reserve + $5,
-                        total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $6`,
-                    [
-                        fundShare,
-                        systemShare * PLATFORM_FEE_TAX_SHARE,
-                        systemShare * PLATFORM_FEE_OPERATIONAL_SHARE,
-                        systemShare * PLATFORM_FEE_OWNER_SHARE,
-                        systemShare * PLATFORM_FEE_INVESTMENT_SHARE,
-                        systemShare * PLATFORM_FEE_CORPORATE_SHARE
-                    ]
-                );
+                await incrementSystemReserves(client, {
+                    mutual: fundShare,
+                    tax: systemShare * PLATFORM_FEE_TAX_SHARE,
+                    operational: systemShare * PLATFORM_FEE_OPERATIONAL_SHARE,
+                    owner: systemShare * PLATFORM_FEE_OWNER_SHARE,
+                    investment: systemShare * PLATFORM_FEE_INVESTMENT_SHARE,
+                    corporate: systemShare * PLATFORM_FEE_CORPORATE_SHARE,
+                    systemBalance: MUTUAL_PROTECTION_PRICE
+                });
 
                 // Ganho de Score por segurança
                 await updateScore(client, user.id, 50, 'Ativação de Proteção Mútua (Prevenção)');
@@ -560,7 +519,7 @@ export class MonetizationController {
                 message: 'Você agora é um Membro Protegido!',
                 expiry: result.data?.expiry
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }

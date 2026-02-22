@@ -12,7 +12,8 @@ import {
     Truck,
     Store,
     CheckCircle,
-    Zap
+    Zap,
+    Calendar
 } from 'lucide-react';
 import { DELIVERY_MIN_FEES } from './marketplace.constants';
 import { FavoriteButton } from './FavoriteButton';
@@ -85,6 +86,24 @@ export const ItemDetailsView = ({
     const [creditSimulation, setCreditSimulation] = React.useState<any>(null);
     const [selectedInstallments, setSelectedInstallments] = React.useState(1);
     const numberInputRef = React.useRef<HTMLInputElement>(null);
+
+    // Rental State
+    const [startDate, setStartDate] = React.useState('');
+    const [endDate, setEndDate] = React.useState('');
+    const [rentalDays, setRentalDays] = React.useState(0);
+
+    // Calculate Rental Days
+    React.useEffect(() => {
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const diffTime = end.getTime() - start.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            setRentalDays(diffDays > 0 ? diffDays : 0);
+        } else {
+            setRentalDays(0);
+        }
+    }, [startDate, endDate]);
 
     // Sync Structured Address to deliveryAddress string
     React.useEffect(() => {
@@ -204,9 +223,18 @@ export const ItemDetailsView = ({
             ? (shippingQuote?.fee || (item.free_shipping ? 0 : parseFloat(item.shipping_cost || '35')))
             : 0;
 
+    const isRental = item.module_type === 'RENTAL';
+    const rentalPricePerDay = parseFloat(item.rental_price_per_day || item.price || '0');
+    const securityDeposit = parseFloat(item.security_deposit || '0');
+
     const optionsTotal = selectedOptions.reduce((acc, opt: any) => acc + (opt.price || 0), 0);
 
-    const totalAmount = ((currentPrice + optionsTotal) * quantity) + deliveryFee;
+    let totalAmount = 0;
+    if (isRental) {
+        totalAmount = (rentalPricePerDay * rentalDays) + securityDeposit + optionsTotal + deliveryFee;
+    } else {
+        totalAmount = ((currentPrice + optionsTotal) * quantity) + deliveryFee;
+    }
 
     // Fetch Credit Simulation
     React.useEffect(() => {
@@ -364,6 +392,62 @@ export const ItemDetailsView = ({
                                     O vendedor não está aceitando novos pedidos no momento.
                                 </p>
                             </div>
+                        </div>
+                    )}
+
+                    {/* RENTAL DATE SELECTOR */}
+                    {isRental && (
+                        <div className="space-y-4 bg-primary-500/5 border border-primary-500/20 p-5 rounded-3xl animate-in zoom-in duration-300">
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-[10px] font-black text-primary-400 uppercase tracking-widest flex items-center gap-2">
+                                    <Calendar size={14} /> Período do Aluguel
+                                </h4>
+                                {rentalDays > 0 && (
+                                    <span className="bg-primary-500 text-black text-[9px] font-black px-2 py-0.5 rounded-full uppercase">
+                                        {rentalDays} {rentalDays === 1 ? 'Dia' : 'Dias'}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">Início</label>
+                                    <input
+                                        type="date"
+                                        value={startDate}
+                                        onChange={(e) => setStartDate(e.target.value)}
+                                        min={new Date().toISOString().split('T')[0]}
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:border-primary-500 transition-colors"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">Fim</label>
+                                    <input
+                                        type="date"
+                                        value={endDate}
+                                        onChange={(e) => setEndDate(e.target.value)}
+                                        min={startDate || new Date().toISOString().split('T')[0]}
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:border-primary-500 transition-colors"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[10px] bg-black/40 p-3 rounded-xl border border-white/5">
+                                <div className="flex flex-col">
+                                    <span className="text-zinc-500 font-bold uppercase">Preço p/ Dia</span>
+                                    <span className="text-white font-black">{formatCurrency(rentalPricePerDay)}</span>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-zinc-500 font-bold uppercase">Calção (Segurança)</span>
+                                    <span className="text-amber-400 font-black block">{formatCurrency(securityDeposit)}</span>
+                                </div>
+                            </div>
+
+                            {item.minimum_rental_days > 1 && (
+                                <p className="text-[9px] text-zinc-500 italic">
+                                    * Este item exige um aluguel mínimo de {item.minimum_rental_days} dias.
+                                </p>
+                            )}
                         </div>
                     )}
 
@@ -684,7 +768,7 @@ export const ItemDetailsView = ({
                         <div className="flex justify-between items-center px-2">
                             <p className="text-[10px] text-zinc-500 font-bold uppercase">Total À Vista</p>
                             <p className="text-xl font-black text-white">
-                                {formatCurrency(totalAmount)}
+                                {isRental && rentalDays === 0 ? 'Selecione o período' : formatCurrency(totalAmount)}
                             </p>
                         </div>
 
@@ -732,10 +816,13 @@ export const ItemDetailsView = ({
                                     invitedCourierId: invitedCourierId || undefined,
                                     quantity: quantity,
                                     selectedOptions: selectedOptions,
-                                    paymentMethod: 'BALANCE'
+                                    paymentMethod: 'BALANCE',
+                                    startDate,
+                                    endDate,
+                                    rentalDays
                                 })}
-                                disabled={item.is_paused}
-                                className={`flex-1 bg-zinc-900 hover:bg-zinc-800 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[10px] border border-zinc-800 transition-all active:scale-95 ${item.is_paused ? 'opacity-50 grayscale' : ''}`}
+                                disabled={item.is_paused || (isRental && rentalDays === 0)}
+                                className={`flex-1 bg-zinc-900 hover:bg-zinc-800 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[10px] border border-zinc-800 transition-all active:scale-95 ${item.is_paused || (isRental && rentalDays === 0) ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
                             >
                                 Pagar com Saldo
                             </button>
@@ -756,11 +843,14 @@ export const ItemDetailsView = ({
                                         quantity: quantity,
                                         selectedOptions: selectedOptions,
                                         paymentMethod: 'CREDIT',
-                                        installments: selectedInstallments
+                                        installments: selectedInstallments,
+                                        startDate,
+                                        endDate,
+                                        rentalDays
                                     });
                                 }}
-                                disabled={item.is_paused || !creditSimulation || totalAmount > (creditSimulation?.remainingLimit || 0)}
-                                className={`flex-1 bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl uppercase tracking-widest text-[10px] shadow-lg shadow-primary-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 ${item.is_paused ? 'opacity-50 grayscale' : ''}`}
+                                disabled={item.is_paused || !creditSimulation || totalAmount > (creditSimulation?.remainingLimit || 0) || (isRental && rentalDays === 0)}
+                                className={`flex-1 bg-primary-500 hover:bg-primary-400 text-black font-black py-4 rounded-2xl uppercase tracking-widest text-[10px] shadow-lg shadow-primary-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 ${item.is_paused || (isRental && rentalDays === 0) ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
                             >
                                 <Zap size={14} />
                                 {selectedInstallments > 1 ? `Pagar ${selectedInstallments}x` : 'Comprar Parcelado'}

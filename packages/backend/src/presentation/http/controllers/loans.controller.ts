@@ -15,7 +15,7 @@ import {
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
 import { AuditService, AuditActionType } from '../../../application/services/audit.service';
 import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
-import { executeInTransaction, processLoanApproval } from '../../../domain/services/transaction.service';
+import { executeInTransaction, processLoanApproval, incrementSystemReserves } from '../../../domain/services/transaction.service';
 import {
     calculateLoanOffer,
     getCreditAnalysis
@@ -255,21 +255,21 @@ export class LoansController {
 
                 const newLoanId = loanResult.rows[0].id;
 
-                await client.query(
-                    `UPDATE system_config SET 
-            total_tax_reserve = total_tax_reserve + $1,
-            total_operational_reserve = total_operational_reserve + $2,
-            total_owner_profit = total_owner_profit + $3,
-            investment_reserve = investment_reserve + $4,
-            system_balance = system_balance + $5`,
-                    [
-                        originationFee * PLATFORM_FEE_TAX_SHARE,
-                        originationFee * PLATFORM_FEE_OPERATIONAL_SHARE,
-                        originationFee * PLATFORM_FEE_OWNER_SHARE,
-                        originationFee * PLATFORM_FEE_INVESTMENT_SHARE,
-                        originationFee
-                    ]
-                );
+                if (originationFee > 0) {
+                    await incrementSystemReserves(client, {
+                        tax: originationFee * PLATFORM_FEE_TAX_SHARE,
+                        operational: originationFee * PLATFORM_FEE_OPERATIONAL_SHARE,
+                        owner: originationFee * PLATFORM_FEE_OWNER_SHARE,
+                        investment: originationFee * PLATFORM_FEE_INVESTMENT_SHARE,
+                        systemBalance: originationFee
+                    });
+                }
+
+                if (gfcFee > 0) {
+                    await incrementSystemReserves(client, {
+                        gfc: gfcFee
+                    });
+                }
 
                 if (welcomeBenefit.hasDiscount) {
                     await consumeWelcomeBenefitUse(client, user.id, 'LOAN');
@@ -423,17 +423,15 @@ export class LoansController {
                     const investPart = systemShare * 0.20;
                     const corporatePart = systemShare * 0.20;
 
-                    await client.query(`
-                        UPDATE system_config SET 
-                            system_balance = COALESCE(system_balance, 0) + $1,
-                            investment_reserve = COALESCE(investment_reserve, 0) + $2,
-                            profit_pool = profit_pool + $3,
-                            total_tax_reserve = total_tax_reserve + $4,
-                            total_operational_reserve = total_operational_reserve + $5,
-                            total_owner_profit = total_owner_profit + $6,
-                            total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $7
-                        `, [remainingToPay, remainingPrincipal + investPart, profitShare, taxPart, operPart, ownerPart, corporatePart]
-                    );
+                    await incrementSystemReserves(client, {
+                        systemBalance: remainingToPay,
+                        investment: remainingPrincipal + investPart,
+                        profitPool: profitShare,
+                        tax: taxPart,
+                        operational: operPart,
+                        owner: ownerPart,
+                        corporate: corporatePart
+                    });
 
                     // 6. Atualizar Score
                     await updateScore(client, user.id, SCORE_REWARDS.LOAN_PAYMENT_ON_TIME, 'Quitação antecipada total');
@@ -596,16 +594,14 @@ export class LoansController {
                 const investPart = systemShare * 0.20;
                 const corporatePart = systemShare * 0.20;
 
-                await client.query(`
-                    UPDATE system_config SET 
-                        investment_reserve = COALESCE(investment_reserve, 0) + $1 + $6,
-                        profit_pool = profit_pool + $2,
-                        total_tax_reserve = total_tax_reserve + $3,
-                        total_operational_reserve = total_operational_reserve + $4,
-                        total_owner_profit = total_owner_profit + $5,
-                        total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $7
-                    `, [principalPortion, profitShare, taxPart, operPart, ownerPart, investPart, corporatePart]
-                );
+                await incrementSystemReserves(client, {
+                    investment: principalPortion + investPart,
+                    profitPool: profitShare,
+                    tax: taxPart,
+                    operational: operPart,
+                    owner: ownerPart,
+                    corporate: corporatePart
+                });
 
                 // D. Registrar Transação no Histórico (CORREÇÃO DE BUG: Faltava este registro)
                 await client.query(

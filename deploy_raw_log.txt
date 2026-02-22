@@ -1,0 +1,4 @@
+
+> cred30@1.0.638 deploy
+> git add . && git commit -m "chore: update version and deploy" && git push origin master && npm run build:frontend && firebase deploy --only hosting
+

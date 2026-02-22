@@ -3,7 +3,7 @@ import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
-import { createTransaction, executeInTransaction, updateUserBalance } from '../../../domain/services/transaction.service';
+import { createTransaction, executeInTransaction, updateUserBalance, incrementSystemReserves } from '../../../domain/services/transaction.service';
 import { QUOTA_PRICE, QUOTA_SHARE_VALUE } from '../../../shared/constants/business.constants';
 
 // Schemas
@@ -101,7 +101,7 @@ export class AdminUsersController {
                     hasMore: offsetNum + result.rows.length < total
                 }
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('Erro ao listar usuários:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -147,7 +147,7 @@ export class AdminUsersController {
             }
 
             return c.json({ success: true, message: 'Permissões atualizadas com sucesso' });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -169,7 +169,7 @@ export class AdminUsersController {
             );
 
             return c.json({ success: true, message: 'Atendente criado com sucesso', data: { id: result.rows[0].id } });
-        } catch (error: unknown) {
+        } catch (error: any) {
             if (error.code === '23505') {
                 return c.json({ success: false, message: 'Email já cadastrado' }, 409);
             }
@@ -207,10 +207,9 @@ export class AdminUsersController {
                 // 3. Registrar a entrada de capital das cotas presenteadas (Admin aportando/capitalizando)
                 const giftTotal = quantity * QUOTA_PRICE;
 
-                await client.query(
-                    'UPDATE system_config SET system_balance = system_balance + $1',
-                    [giftTotal] // O sistema recebe o valor total (como se o admin estivesse injetando capital)
-                );
+                await incrementSystemReserves(client, {
+                    systemBalance: giftTotal
+                });
 
                 // 4. Atualizar Score do Usuário (Benefício da Cota)
                 await updateScore(client, user.id, SCORE_REWARDS.QUOTA_PURCHASE * quantity, `Ganhou ${quantity} cotas (Gift Admin)`);
@@ -280,10 +279,9 @@ export class AdminUsersController {
                 );
 
                 // 4. Atualizar Custos Manuais do Sistema (Passivo)
-                await client.query(
-                    'UPDATE system_config SET total_manual_costs = total_manual_costs + $1',
-                    [amount]
-                );
+                await incrementSystemReserves(client, {
+                    manualCosts: amount
+                });
 
                 return { user: user.name };
             });
@@ -312,7 +310,7 @@ export class AdminUsersController {
             const pool = getDbPool(c);
             await pool.query('DELETE FROM users WHERE role = $1', ['ADMIN']);
             return c.json({ success: true, message: 'Administradores removidos com sucesso (Exceto o sistema se houver)' });
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('Erro ao limpar admins:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -355,7 +353,7 @@ export class AdminUsersController {
                     docPhoto: r.courier_doc_photo
                 }))
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[ADMIN] Erro ao listar entregadores:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -389,7 +387,7 @@ export class AdminUsersController {
                 success: true,
                 message: `Entregador ${result.rows[0].name} aprovado com sucesso!`
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[ADMIN] Erro ao aprovar entregador:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -424,7 +422,7 @@ export class AdminUsersController {
                 success: true,
                 message: `Cadastro de ${result.rows[0].name} rejeitado. Motivo: ${reason || 'Não especificado'}`
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[ADMIN] Erro ao rejeitar entregador:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -465,7 +463,7 @@ export class AdminUsersController {
                     createdAt: r.created_at
                 }))
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[ADMIN] Erro ao listar vendedores:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -499,7 +497,7 @@ export class AdminUsersController {
                 success: true,
                 message: `Vendedor ${result.rows[0].name} aprovado com sucesso!`
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[ADMIN] Erro ao aprovar vendedor:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -534,7 +532,7 @@ export class AdminUsersController {
                 success: true,
                 message: `Cadastro de ${result.rows[0].name} rejeitado. Motivo: ${reason || 'Não especificado'}`
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[ADMIN] Erro ao rejeitar vendedor:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -627,7 +625,9 @@ export class AdminUsersController {
                 await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [amount, userId]);
 
                 // 6. Deduzir do saldo do sistema (Caixa PIX)
-                await client.query('UPDATE system_config SET system_balance = system_balance - $1', [amount]);
+                await incrementSystemReserves(client, {
+                    systemBalance: -amount
+                });
 
                 return { loanId: loanResult.rows[0].id, userName: userRes.rows[0].name };
             });
@@ -647,7 +647,7 @@ export class AdminUsersController {
                 message: `Empréstimo de R$ ${amount.toFixed(2)} criado com sucesso para ${result.data?.userName}!`,
                 data: result.data
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[ADMIN] Erro ao criar empréstimo manual:', error);
             return c.json({ success: false, message: error.message }, 500);
         }

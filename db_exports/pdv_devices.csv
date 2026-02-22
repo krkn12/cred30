@@ -1,0 +1,2 @@
+id,subscription_id,device_name,device_token,device_type,is_active,last_seen_at,created_at
+1,1,frente1,eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInN1YnNjcmlwdGlvbklkIjoxLCJkZXZpY2VJZCI6ImE2NjU2NTg1LTlmZjYtNGZmZi05OWQ5LTVhMTI0ZTliMTZjMyIsInR5cGUiOiJwZHZfZGV2aWNlIiwiaWF0IjoxNzcxMzk4Njg4LCJleHAiOjE4MDI5MzQ2ODh9.vpFh1PYEZqnt1JRm4EHdpozECt-Sgvx8jHVxRxxc3Gk,DESKTOP,t,2026-02-18 07:11:28.636213,2026-02-18 07:11:28.636213

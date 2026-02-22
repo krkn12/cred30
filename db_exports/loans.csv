@@ -1,0 +1,1 @@
+id,user_id,amount,interest_rate,penalty_rate,total_repayment,installments,term_days,status,created_at,approved_at,due_date,payout_status,pix_key_to_receive,metadata

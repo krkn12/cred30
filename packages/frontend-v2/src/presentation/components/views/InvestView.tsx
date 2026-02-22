@@ -237,7 +237,7 @@ export const InvestView = ({ onBuy, isPro, userBalance = 0, isVerified = false, 
                                                 ? 'Nossa equipe está validando seus documentos. Você será notificado assim que aprovado.'
                                                 : kycStatus === 'REJECTED'
                                                     ? 'Identificamos um problema com seus documentos. Por favor, envie novamente.'
-                                                    : 'A compra de cotas é exclusiva para membros verificados. Realize seu KYC para liberar.'}
+                                                    : 'A integralização de cotas é exclusiva para membros verificados. Realize seu KYC para liberar.'}
                                         </p>
 
                                         {(kycStatus === 'NONE' || kycStatus === 'REJECTED') && (

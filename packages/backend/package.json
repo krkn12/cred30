@@ -11,6 +11,7 @@
     "lint": "npx eslint . --ext .ts",
     "format": "npx prettier --write .",
     "test": "vitest",
+    "db:reset": "tsx scripts/reset-db.ts",
     "release": "cd ../.. && npm run release"
   },
   "dependencies": {

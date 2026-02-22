@@ -3,7 +3,7 @@ import { Wallet, Clock, DollarSign, TrendingUp, AlertTriangle, FileText, X as XI
 import { Loan, User } from '../../../domain/types/common.types';
 import { apiService } from '../../../application/services/api.service';
 import { createContractData, downloadLoanContract } from '../../../application/services/contract.service';
-import { formatBRL, formatNumberBR, parseToNumber } from '../../../shared/utils/format.utils';
+import { formatBRL, parseToNumber } from '../../../shared/utils/format.utils';
 
 interface LoansViewProps {
     loans: Loan[];
@@ -25,7 +25,6 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
     const [acceptedTerms, setAcceptedTerms] = useState(false);
 
     // Helpers de formatação segura migrados para utils
-    const formatNumber = formatNumberBR;
 
     const getDaysRemaining = (dueDate: string | number | null | undefined) => {
         if (!dueDate) return 'N/A';
@@ -208,7 +207,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-white">Solicitar Reciprocidade</h2>
-                            <p className="text-zinc-400 text-sm">Apoio social imediato para membros</p>
+                            <p className="text-zinc-400 text-sm">Apoio associativo mútuo para membros</p>
                         </div>
                     </div>
 
@@ -286,7 +285,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                             </div>
 
                             <div>
-                                <label className="text-xs text-zinc-400 font-medium mb-2 block">Participações em Garantia (Menos Garantia = Maior Taxa)</label>
+                                <label className="text-xs text-zinc-400 font-medium mb-2 block">Cotas em Garantia (Menos Garantia = Maior Taxa)</label>
                                 <div className="grid grid-cols-3 gap-2">
                                     {[50, 60, 70, 80, 90, 100].map(pct => (
                                         <button
@@ -363,11 +362,11 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                         <span className="text-white font-medium">{formatBRL(amount)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-zinc-500">Taxa de Manutenção ({(effectiveInterestRate * 100).toFixed(0)}%)</span>
+                                        <span className="text-zinc-500">Taxa de Reciprocidade ({(effectiveInterestRate * 100).toFixed(0)}%)</span>
                                         <span className="text-red-400 font-medium">{formatBRL(totalRepay - amount)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-zinc-500">Valor da Reposição</span>
+                                        <span className="text-zinc-500">Valor da Reposição Mensal</span>
                                         <span className="text-primary-400 font-medium">{formatBRL(monthlyPayment)}</span>
                                     </div>
                                     <div className="h-px bg-zinc-800 my-2"></div>
@@ -421,7 +420,7 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
 
             {/* Active Loans List */}
             <div className="space-y-4">
-                <h3 className="text-lg font-bold text-white pl-1">Seus Compromissos Sociais</h3>
+                <h3 className="text-lg font-bold text-white pl-1">Seus Compromissos Associativos</h3>
 
                 {myLoans.length === 0 && (
                     <div className="text-center py-12 bg-surface/50 rounded-3xl border border-surfaceHighlight border-dashed">
@@ -595,14 +594,14 @@ export const LoansView = ({ loans, onRequest, onGuarantorRespond, onPay, onPayIn
                                     onClick={() => window.location.hash = '#/app/dashboard'} // Redireciona para home onde tem o botão de depósito
                                     className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-black py-4 rounded-xl mb-2 transition"
                                 >
-                                    SALDO INSUFICIENTE (RECARREGAR)
+                                    SALDO INSUFICIENTE (APORTAR)
                                 </button>
                             ) : (
                                 <button
                                     onClick={() => { onPay(selectedLoan.id, true); setPayModalId(null); }}
                                     className="w-full bg-primary-500 hover:bg-primary-600 text-black font-black py-4 rounded-xl mb-2 transition shadow-lg shadow-primary-500/20"
                                 >
-                                    Pagar com Saldo
+                                    Liquidar com Saldo
                                 </button>
                             )}
 

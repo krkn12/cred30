@@ -1,0 +1,369 @@
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/application/services/audit.service.ts
+  24:19  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  30:19  warning  'logEntry' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  77:63  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/application/services/backup.service.ts
+  15:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/application/services/credit-analysis.service.ts
+  140:15  warning  'systemTotalQuotas' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/application/services/liquidation.service.ts
+  39:72  warning  Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+  55:19  warning  'totalQuotasValue' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/application/services/notification.service.ts
+   1:10  warning  'getDbPool' is defined but never used     @typescript-eslint/no-unused-vars
+   5:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   8:77  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  25:77  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/application/services/profit-distribution.service.ts
+  12:75  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/domain/entities/transaction.entity.ts
+  10:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  17:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/domain/services/order.service.ts
+    1:10  warning  'Pool' is defined but never used                            @typescript-eslint/no-unused-vars
+    5:5   warning  'PLATFORM_FEE_TAX_SHARE' is defined but never used          @typescript-eslint/no-unused-vars
+    6:5   warning  'PLATFORM_FEE_OPERATIONAL_SHARE' is defined but never used  @typescript-eslint/no-unused-vars
+    7:5   warning  'PLATFORM_FEE_OWNER_SHARE' is defined but never used        @typescript-eslint/no-unused-vars
+    8:5   warning  'PLATFORM_FEE_INVESTMENT_SHARE' is defined but never used   @typescript-eslint/no-unused-vars
+    9:5   warning  'PLATFORM_FEE_CORPORATE_SHARE' is defined but never used    @typescript-eslint/no-unused-vars
+   11:10  warning  'AuditService' is defined but never used                    @typescript-eslint/no-unused-vars
+   11:24  warning  'AuditActionType' is defined but never used                 @typescript-eslint/no-unused-vars
+   13:10  warning  'notificationService' is defined but never used             @typescript-eslint/no-unused-vars
+   85:96  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+  113:66  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+  297:79  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/domain/services/transaction.service.ts
+   14:3   warning  'LOAN_GFC_FEE_RATE' is defined but never used  @typescript-eslint/no-unused-vars
+   22:40  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  178:14  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  307:19  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  424:19  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  608:19  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  624:79  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  643:19  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  710:19  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  778:19  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/index.ts
+  109:39  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+  200:11  warning  'serverInstance' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  203:15  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/infrastructure/cache/memory-cache.service.ts
+    8:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  102:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  106:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  111:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  115:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  124:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  128:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  172:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  172:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  176:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  202:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/infrastructure/database/postgresql/connection/pool.ts
+     8:19  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+    53:24  warning  'client' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+    54:79  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+    66:69  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+    73:35  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+    73:51  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+    77:65  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+    94:5   warning  'dbPool' is assigned a value but never used                               @typescript-eslint/no-unused-vars
+    96:31  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+   103:20  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+   113:36  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+   113:47  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+   113:60  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+   115:66  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+   115:74  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+   121:6   warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  1285:72  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  1299:66  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  1335:71  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  1379:69  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  1399:72  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  1509:63  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  1545:70  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  1606:78  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  1610:73  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  1638:69  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  1685:79  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/infrastructure/database/postgresql/repositories/marketplace.repository.ts
+  14:87  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/infrastructure/logging/audit.middleware.ts
+   9:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  10:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  48:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  73:51  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  74:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/infrastructure/logging/winston.logger.ts
+   18:11  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   19:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   81:11  warning  Unexpected console statement              no-console
+   84:11  warning  Unexpected console statement              no-console
+   93:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   93:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  103:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  112:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  121:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  130:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  140:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/admin.approval.controller.ts
+    4:60  warning  'createTransaction' is defined but never used  @typescript-eslint/no-unused-vars
+   40:84  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+   44:77  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  335:31  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/admin.compliance.controller.ts
+  55:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/admin.finance.controller.ts
+    6:32  warning  'processTransactionApproval' is defined but never used  @typescript-eslint/no-unused-vars
+    9:10  warning  'PoolClient' is defined but never used                  @typescript-eslint/no-unused-vars
+   10:13  warning  'fs' is defined but never used                          @typescript-eslint/no-unused-vars
+   11:13  warning  'path' is defined but never used                        @typescript-eslint/no-unused-vars
+   67:33  warning  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+  335:19  warning  'refresh' is assigned a value but never used            @typescript-eslint/no-unused-vars
+  342:19  warning  'cachedData' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  712:25  warning  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/admin.investments.controller.ts
+   57:66  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   57:76  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   58:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   58:80  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   60:68  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   60:78  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   61:64  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   61:74  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  198:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/admin.rewards.controller.ts
+  3:10  warning  'UserContext' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/auth.controller.ts
+  175:21  warning  'message' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  317:19  warning  'validatedData' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  347:34  warning  'picture' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  540:18  warning  'error' is defined but never used                   @typescript-eslint/no-unused-vars
+  559:18  warning  'error' is defined but never used                   @typescript-eslint/no-unused-vars
+  586:18  warning  'error' is defined but never used                   @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/claims.controller.ts
+   5:5   warning  'DELIVERY_CLAIM_TYPES' is defined but never used     @typescript-eslint/no-unused-vars
+   6:5   warning  'DELIVERY_INSURANCE_RATE' is defined but never used  @typescript-eslint/no-unused-vars
+  72:19  warning  'order' is assigned a value but never used           @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/earn.controller.ts
+   3:32  warning  'createTransaction' is defined but never used         @typescript-eslint/no-unused-vars
+  21:7   warning  'REWARDS_CATALOG' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  35:10  warning  'generateVoucherCode' is defined but never used       @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/education.controller.ts
+   16:7   warning  'POINTS_TO_CURRENCY_RATE' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  137:27  warning  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  418:19  warning  'amountToPay' is assigned a value but never used              @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/kyc.controller.ts
+  170:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/loans.controller.ts
+   11:5   warning  'PLATFORM_FEE_CORPORATE_SHARE' is defined but never used  @typescript-eslint/no-unused-vars
+   85:72  warning  Unexpected any. Specify a different type                  @typescript-eslint/no-explicit-any
+   86:79  warning  Unexpected any. Specify a different type                  @typescript-eslint/no-explicit-any
+  171:19  warning  'originationRate' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  195:23  warning  'currentDebt' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  345:41  warning  'paymentMethod' is assigned a value but never used        @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/logistics.controller.ts
+  492:55  warning  'idPhoto' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  492:64  warning  'vehiclePhoto' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  492:78  warning  'docPhoto' is assigned a value but never used      @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/marketplace.controller.ts
+   56:76  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  113:76  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  126:90  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  179:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  248:18  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  273:18  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  305:18  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  323:76  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  409:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  496:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  543:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  575:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/marketplace.listings.controller.ts
+   57:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  368:80  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/marketplace.orders.controller.ts
+    12:5   warning  'MARKET_CREDIT_INTEREST_RATE' is defined but never used     @typescript-eslint/no-unused-vars
+    13:5   warning  'MARKET_CREDIT_MAX_INSTALLMENTS' is defined but never used  @typescript-eslint/no-unused-vars
+    16:5   warning  'QUOTA_FEE_TAX_SHARE' is defined but never used             @typescript-eslint/no-unused-vars
+    17:5   warning  'QUOTA_FEE_OPERATIONAL_SHARE' is defined but never used     @typescript-eslint/no-unused-vars
+    18:5   warning  'QUOTA_FEE_OWNER_SHARE' is defined but never used           @typescript-eslint/no-unused-vars
+    19:5   warning  'QUOTA_FEE_INVESTMENT_SHARE' is defined but never used      @typescript-eslint/no-unused-vars
+    32:5   warning  'calculateLoanOffer' is defined but never used              @typescript-eslint/no-unused-vars
+    33:5   warning  'getCreditAnalysis' is defined but never used               @typescript-eslint/no-unused-vars
+   139:76  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   183:68  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   198:53  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   255:39  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   288:72  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   375:74  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   422:61  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   427:56  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   455:58  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   456:58  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   506:49  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   566:76  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   635:68  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   650:53  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   706:39  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   755:72  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   782:23  warning  'sellerRes' is assigned a value but never used              @typescript-eslint/no-unused-vars
+   846:74  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   881:23  warning  'installmentAmount' is assigned a value but never used      @typescript-eslint/no-unused-vars
+   889:39  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   894:52  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   925:46  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   925:80  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   926:46  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   926:80  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   927:46  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   927:93  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+   994:49  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+  1228:76  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+  1410:18  warning  'error' is defined but never used                           @typescript-eslint/no-unused-vars
+  1446:18  warning  'error' is defined but never used                           @typescript-eslint/no-unused-vars
+  1477:18  warning  'error' is defined but never used                           @typescript-eslint/no-unused-vars
+  1593:43  warning  Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/monetization.controller.ts
+  182:23  warning  'reserveShare' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/notifications.controller.ts
+   41:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  148:18  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/pdv.controller.ts
+  174:76  warning  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  534:27  warning  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  620:76  warning  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  818:31  warning  'config' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/products.controller.ts
+   26:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   77:18  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  140:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  180:18  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  237:26  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/promo-videos.controller.ts
+  14:5  warning  'ADMIN_PIX_KEY' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/quotas.controller.ts
+    7:5   warning  'VESTING_PERIOD_MS' is defined but never used  @typescript-eslint/no-unused-vars
+   30:72  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  190:35  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/transactions.controller.ts
+  118:19  warning  'totalQuotaValue' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/tutors.controller.ts
+  4:32  warning  'createTransaction' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/users.controller.ts
+  412:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  434:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  453:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  481:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  521:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  554:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  573:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  602:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  629:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/controllers/withdrawals.controller.ts
+  13:5   warning  'PRIORITY_WITHDRAWAL_FEE' is defined but never used  @typescript-eslint/no-unused-vars
+  65:19  warning  'isVerified' is assigned a value but never used      @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/middleware/audit.ts
+  17:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/middleware/auth.middleware.ts
+  25:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  28:68  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/middleware/pagination.middleware.ts
+   25:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   46:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   76:11  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  128:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  128:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/middleware/rate-limit.middleware.ts
+   96:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  126:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  151:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  152:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/presentation/http/routes/users.routes.ts
+  3:10  warning  'PointsService' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/shared/errors/validation.error.ts
+  4:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  6:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/shared/types/hono.types.ts
+  37:13  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/shared/utils/indexes.ts
+   98:68  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  120:64  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/shared/utils/logistics.utils.ts
+  35:17  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/shared/utils/transactions.ts
+    7:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   17:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   23:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   70:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  117:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  133:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  141:17  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/shared/utils/validation.utils.ts
+  160:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  160:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  176:14  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/tests/unit/credit-analysis.test.ts
+   32:67  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   62:67  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  102:67  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/josias/Área de trabalho/projetos/app cred30/cred30-master/packages/backend/src/tests/unit/profit-distribution.test.ts
+  11:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  31:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 260 problems (0 errors, 260 warnings)
+

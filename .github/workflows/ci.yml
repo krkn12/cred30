@@ -97,5 +97,8 @@ jobs:
       - name: Install dependencies
         run: npm install
         
+      - name: Check Lint
+        run: npm run lint
+        
       - name: Build Check
         run: npm run build

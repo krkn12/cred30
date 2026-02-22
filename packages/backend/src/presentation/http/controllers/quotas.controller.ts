@@ -21,7 +21,8 @@ import {
     executeInTransaction,
     lockUserBalance,
     updateUserBalance,
-    createTransaction
+    createTransaction,
+    incrementSystemReserves
 } from '../../../domain/services/transaction.service';
 import { updateScore, SCORE_REWARDS } from '../../../application/services/score.service';
 import { calculateTotalToPay, PaymentMethod } from '../../../shared/utils/financial.utils';
@@ -269,16 +270,15 @@ export class QuotasController {
                     const corporateAmount = totalAdmFee * QUOTA_FEE_CORPORATE_SHARE;
                     const principalAmount = quantity * QUOTA_SHARE_VALUE; // R$ 42 por cota
 
-                    await client.query(`
-                        UPDATE system_config SET 
-                            total_tax_reserve = total_tax_reserve + $1,
-                            total_operational_reserve = total_operational_reserve + $2,
-                            total_owner_profit = total_owner_profit + $3,
-                            mutual_reserve = COALESCE(mutual_reserve, 0) + $4,
-                            total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $5,
-                            investment_reserve = COALESCE(investment_reserve, 0) + $6,
-                            system_balance = COALESCE(system_balance, 0) + $7
-                    `, [taxAmount, operationalAmount, ownerAmount, stabilityAmount, corporateAmount, principalAmount, baseCost]);
+                    await incrementSystemReserves(client, {
+                        tax: taxAmount,
+                        operational: operationalAmount,
+                        owner: ownerAmount,
+                        mutual: stabilityAmount,
+                        corporate: corporateAmount,
+                        investment: principalAmount,
+                        systemBalance: baseCost
+                    });
 
                     // AUDITORIA FINTECH
                     try {
@@ -519,20 +519,20 @@ export class QuotasController {
                     const ownerPart = systemShare * QUOTA_FEE_OWNER_SHARE;
                     const investPart = systemShare * QUOTA_FEE_INVESTMENT_SHARE;
 
-                    await client.query(`
-                        UPDATE system_config SET 
-                            profit_pool = profit_pool + $1,
-                            total_tax_reserve = total_tax_reserve + $2,
-                            total_operational_reserve = total_operational_reserve + $3,
-                            total_owner_profit = total_owner_profit + $4,
-                            investment_reserve = COALESCE(investment_reserve, 0) + $5
-                        `, [profitPoolShare, taxPart, operPart, ownerPart, investPart]
-                    );
+                    await incrementSystemReserves(client, {
+                        profitPool: profitPoolShare,
+                        tax: taxPart,
+                        operational: operPart,
+                        owner: ownerPart,
+                        investment: investPart
+                    });
                 }
 
                 // Decrementar do Investment Reserve o valor principal pago ao usuário
                 // Isso garante controle da liquidez
-                await client.query('UPDATE system_config SET investment_reserve = investment_reserve - $1', [finalAmount]);
+                await incrementSystemReserves(client, {
+                    investment: -finalAmount
+                });
 
                 await client.query(
                     `INSERT INTO transactions (user_id, type, amount, description, status, metadata)
@@ -712,19 +712,19 @@ export class QuotasController {
                     const ownerPart = systemShare * QUOTA_FEE_OWNER_SHARE;
                     const investPart = systemShare * QUOTA_FEE_INVESTMENT_SHARE;
 
-                    await client.query(`
-                        UPDATE system_config SET 
-                            profit_pool = profit_pool + $1,
-                            total_tax_reserve = total_tax_reserve + $2,
-                            total_operational_reserve = total_operational_reserve + $3,
-                            total_owner_profit = total_owner_profit + $4,
-                            investment_reserve = COALESCE(investment_reserve, 0) + $5
-                        `, [profitPoolShare, taxPart, operPart, ownerPart, investPart]
-                    );
+                    await incrementSystemReserves(client, {
+                        profitPool: profitPoolShare,
+                        tax: taxPart,
+                        operational: operPart,
+                        owner: ownerPart,
+                        investment: investPart
+                    });
                 }
 
                 // Decrementar Liquidez Paga
-                await client.query('UPDATE system_config SET investment_reserve = investment_reserve - $1', [totalReceived]);
+                await incrementSystemReserves(client, {
+                    investment: -totalReceived
+                });
 
                 await client.query(
                     `INSERT INTO transactions (user_id, type, amount, description, status, metadata)

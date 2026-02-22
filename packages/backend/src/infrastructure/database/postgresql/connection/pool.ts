@@ -1036,6 +1036,9 @@ export const initializeDatabase = async () => {
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS delivery_confirmation_code VARCHAR(10);
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS invited_courier_id INTEGER;
       ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS previous_couriers INTEGER[];
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS selected_options JSONB DEFAULT '[]';
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+      ALTER TABLE marketplace_orders ADD COLUMN IF NOT EXISTS module_type VARCHAR(20) DEFAULT 'PRODUCT';
     `);
 
     // --- VARIANTES E IMAGENS (PHASE 3) ---

@@ -1,9 +1,9 @@
 import { Context } from 'hono';
-import { z } from 'zod'; // Import zod here as schemas will be moved or redefined
+import { z } from 'zod';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { CacheService, addCacheHeaders } from '../../../infrastructure/cache/memory-cache.service';
 import { QUOTA_PRICE, QUOTA_SHARE_VALUE, LOGISTICS_SUSTAINABILITY_FEE_RATE } from '../../../shared/constants/business.constants';
-import { executeInTransaction, processTransactionApproval } from '../../../domain/services/transaction.service';
+import { executeInTransaction, processTransactionApproval, incrementSystemReserves } from '../../../domain/services/transaction.service';
 import { distributeProfits } from '../../../application/services/profit-distribution.service';
 // Removido: import mercadopago.service (gateway desativado)
 import { PoolClient } from 'pg';
@@ -30,8 +30,9 @@ export class AdminFinanceController {
             const pool = getDbPool(c);
             const result = await pool.query('SELECT * FROM system_costs ORDER BY created_at DESC');
             return c.json({ success: true, data: result.rows });
-        } catch (error: unknown) {
-            return c.json({ success: false, message: error.message }, 500);
+        } catch (error: any) {
+            const errorMessage = error instanceof Error ? error.message : 'Erro ao listar custos';
+            return c.json({ success: false, message: errorMessage }, 500);
         }
     }
 
@@ -155,9 +156,10 @@ export class AdminFinanceController {
                 }
             });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('Erro na auditoria:', error);
-            return c.json({ success: false, message: error.message }, 500);
+            const errorMessage = error instanceof Error ? error.message : 'Erro interno na auditoria';
+            return c.json({ success: false, message: errorMessage }, 500);
         }
     }
 
@@ -176,8 +178,9 @@ export class AdminFinanceController {
             );
 
             return c.json({ success: true, message: 'Custo adicionado com sucesso' });
-        } catch (error: unknown) {
-            return c.json({ success: false, message: error.message }, 500);
+        } catch (error: any) {
+            const errorMessage = error instanceof Error ? error.message : 'Erro ao adicionar custo';
+            return c.json({ success: false, message: errorMessage }, 500);
         }
     }
 
@@ -196,8 +199,9 @@ export class AdminFinanceController {
             }
 
             return c.json({ success: true, message: 'Custo removido com sucesso' });
-        } catch (error: unknown) {
-            return c.json({ success: false, message: error.message }, 500);
+        } catch (error: any) {
+            const errorMessage = error instanceof Error ? error.message : 'Erro ao remover custo';
+            return c.json({ success: false, message: errorMessage }, 500);
         }
     }
 
@@ -266,10 +270,11 @@ export class AdminFinanceController {
                 }
 
                 // 4. Executar o desconto nos potes específicos
-                await client.query(
-                    'UPDATE system_config SET system_balance = system_balance - $1, total_tax_reserve = total_tax_reserve - $2, total_operational_reserve = total_operational_reserve - $3',
-                    [amount, taxShare, operationalShare]
-                );
+                await incrementSystemReserves(client, {
+                    systemBalance: -amount,
+                    tax: -taxShare,
+                    operational: -operationalShare
+                });
 
                 // 3. Remover o custo (como solicitado: "as dívidas somem")
                 await client.query('DELETE FROM system_costs WHERE id = $1', [id]);
@@ -280,8 +285,9 @@ export class AdminFinanceController {
             if (!result.success) return c.json({ success: false, message: result.error }, 400);
 
             return c.json({ success: true, message: `Pagamento de "${result.data?.description}" realizado com sucesso!` });
-        } catch (error: unknown) {
-            return c.json({ success: false, message: error.message }, 500);
+        } catch (error: any) {
+            const errorMessage = error instanceof Error ? error.message : 'Erro ao pagar custo';
+            return c.json({ success: false, message: errorMessage }, 500);
         }
     }
 
@@ -321,8 +327,9 @@ export class AdminFinanceController {
                     hasMore: offsetNum + result.rows.length < total
                 }
             });
-        } catch (error: unknown) {
-            return c.json({ success: false, message: error.message }, 500);
+        } catch (error: any) {
+            const errorMessage = error instanceof Error ? error.message : 'Erro ao buscar histórico financeiro';
+            return c.json({ success: false, message: errorMessage }, 500);
         }
     }
 
@@ -406,8 +413,14 @@ export class AdminFinanceController {
             const totalMonthlyCosts = parseFloat(stats.total_monthly_costs);
             const activeProposalsCount = parseInt(stats.active_proposals_count || 0);
 
-            const totalInvestedRes = await pool.query(`SELECT COALESCE(SUM(total_invested), 0) as total FROM investments WHERE status = 'ACTIVE'`);
-            const totalInvestedValue = parseFloat(totalInvestedRes.rows[0].total);
+            let totalInvestedValue = 0;
+            try {
+                const totalInvestedRes = await pool.query(`SELECT COALESCE(SUM(total_invested), 0) as total FROM investments WHERE status = 'ACTIVE'`);
+                totalInvestedValue = parseFloat(totalInvestedRes.rows[0].total);
+            } catch (invErr) {
+                console.error('⚠️ [DASHBOARD] Falha ao consultar investimentos (provável falta de coluna/tabela):', invErr);
+                // Não trava o dashboard se os investimentos falharem
+            }
 
             // FÓRMULA FINAL JOSIAS: Liquidez Real = (Cotas × 42) - Empréstimos - Investimentos Ativos
             const activeQuotasCount = Number(stats.quotas_count || 0);
@@ -426,7 +439,7 @@ export class AdminFinanceController {
             const calcTax = Number(config.total_tax_reserve || 0);
             const calcOper = Number(config.total_operational_reserve || 0);
             const calcProfit = Number(config.total_owner_profit || 0);
-            const calcMutual = Number(config.mutual_reserve || 0);
+            const calcMutual = Number(config.mutual_reserve || config.mutual_protection_fund || 0);
             const calcInvest = Number(config.investment_reserve || 0);
             const calcCorp = Number(config.total_corporate_investment_reserve || 0);
             const calcGfc = Number(config.credit_guarantee_fund || 0);
@@ -465,9 +478,10 @@ export class AdminFinanceController {
                 success: true,
                 data: dashboardData,
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao carregar dashboard administrativo:', error);
-            return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
+            const errorMessage = error instanceof Error ? error.message : 'Erro interno do servidor';
+            return c.json({ success: false, message: errorMessage }, 500);
         }
     }
 
@@ -531,7 +545,7 @@ export class AdminFinanceController {
                     timestamp: new Date().toISOString()
                 }
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao buscar métricas de saúde:', error);
             return c.json({ success: false, message: 'Erro ao coletar métricas' }, 500);
         }
@@ -564,10 +578,10 @@ export class AdminFinanceController {
             const pool = getDbPool(c);
 
             await executeInTransaction(pool, async (client) => {
-                await client.query(
-                    'UPDATE system_config SET profit_pool = profit_pool + $1, system_balance = system_balance + $1',
-                    [amountVal]
-                );
+                await incrementSystemReserves(client, {
+                    profitPool: amountVal,
+                    systemBalance: amountVal
+                });
 
                 const user = c.get('user');
                 await client.query(
@@ -589,7 +603,7 @@ export class AdminFinanceController {
                 message: `R$ ${amountVal.toFixed(2)} adicionado ao acumulado e ao saldo do sistema!`,
                 data: { addedAmount: amountVal }
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao adicionar lucro ao pool:', error);
             return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
         }
@@ -612,7 +626,7 @@ export class AdminFinanceController {
             }
 
             return c.json(result);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao distribuir dividendos:', error);
             return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
         }
@@ -635,10 +649,10 @@ export class AdminFinanceController {
             const pool = getDbPool(c);
 
             await executeInTransaction(pool, async (client) => {
-                await client.query(
-                    'UPDATE system_config SET system_balance = system_balance - $1, total_manual_costs = total_manual_costs + $1',
-                    [amount]
-                );
+                await incrementSystemReserves(client, {
+                    systemBalance: -amount,
+                    manualCosts: amount
+                });
 
                 const user = c.get('user');
                 await client.query(
@@ -656,9 +670,10 @@ export class AdminFinanceController {
                 message: `Custo de R$ ${amount.toFixed(2)} registrado com sucesso e deduzido do caixa operacional.`,
                 data: { addedCost: amount }
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('Erro ao adicionar custo manual:', error);
-            return c.json({ success: false, message: error.message || 'Erro interno do servidor' }, 500);
+            const errorMessage = error instanceof Error ? error.message : 'Erro interno do servidor';
+            return c.json({ success: false, message: errorMessage }, 500);
         }
     }
 
@@ -691,9 +706,10 @@ export class AdminFinanceController {
                 message: 'Configurações atualizadas com sucesso!',
                 updatedFields: updates
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('Erro ao atualizar configurações:', error);
-            return c.json({ success: false, message: error.message || 'Erro interno do servidor' }, 500);
+            const errorMessage = error instanceof Error ? error.message : 'Erro interno do servidor';
+            return c.json({ success: false, message: errorMessage }, 500);
         }
     }
 
@@ -881,9 +897,10 @@ export class AdminFinanceController {
                 data: fiscalSummary,
                 message: isAllTime ? "Relatório consolidado." : "Relatório mensal."
             });
-        } catch (error: unknown) {
+        } catch (error) {
             console.error('Erro ao gerar relatório fiscal:', error);
-            return c.json({ success: false, message: error.message }, 500);
+            const errorMessage = error instanceof Error ? error.message : 'Erro ao gerar relatório';
+            return c.json({ success: false, message: errorMessage }, 500);
         }
     }
 }

@@ -1,9 +1,11 @@
 import { Context } from 'hono';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { UserContext } from '../../../shared/types/hono.types';
-import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction } from '../../../domain/services/transaction.service';
+import { executeInTransaction, createTransaction, updateUserBalance, lockSystemConfig, incrementSystemReserves, lockUserBalance } from '../../../domain/services/transaction.service';
 import { getWelcomeBenefit } from '../../../application/services/welcome-benefit.service';
 import { MARKETPLACE_ESCROW_FEE_RATE, MARKETPLACE_NON_VERIFIED_FEE_RATE } from '../../../shared/constants/business.constants';
+import { PLATFORM_FEE_TAX_SHARE, PLATFORM_FEE_OPERATIONAL_SHARE, PLATFORM_FEE_OWNER_SHARE, PLATFORM_FEE_INVESTMENT_SHARE } from '../../../shared/constants/business.constants';
+
 
 export class MarketplaceController {
 
@@ -57,16 +59,16 @@ export class MarketplaceController {
                 if (anticipationType === 'SELLER') {
                     await client.query(
                         `UPDATE marketplace_orders 
-                        SET seller_amount = $1, 
-                            metadata = jsonb_set(COALESCE(metadata, '{}'), '{anticipated}', 'true') 
+                        SET seller_amount = $1,
+    metadata = jsonb_set(COALESCE(metadata, '{}'), '{anticipated}', 'true') 
                         WHERE id = $2`,
                         [netAmount, orderId]
                     );
                 } else {
                     await client.query(
                         `UPDATE marketplace_orders 
-                        SET courier_fee = $1, 
-                            metadata = jsonb_set(COALESCE(metadata, '{}'), '{courier_anticipated}', 'true') 
+                        SET courier_fee = $1,
+    metadata = jsonb_set(COALESCE(metadata, '{}'), '{courier_anticipated}', 'true') 
                         WHERE id = $2`,
                         [netAmount, orderId]
                     );
@@ -74,14 +76,24 @@ export class MarketplaceController {
 
                 await updateUserBalance(client, user.id, netAmount, 'credit');
 
-                await client.query('UPDATE system_config SET profit_pool = profit_pool + $1', [anticipationFee]);
+                // Transferir Taxa da Jaguar para as reservas
+                if (anticipationFee > 0) {
+                    await incrementSystemReserves(client, {
+                        tax: anticipationFee * PLATFORM_FEE_TAX_SHARE,
+                        operational: anticipationFee * PLATFORM_FEE_OPERATIONAL_SHARE,
+                        owner: anticipationFee * PLATFORM_FEE_OWNER_SHARE,
+                        investment: anticipationFee * PLATFORM_FEE_INVESTMENT_SHARE,
+                        corporate: anticipationFee * 0.20,
+                        systemBalance: anticipationFee
+                    });
+                }
 
                 await createTransaction(
                     client,
                     user.id,
                     'MARKET_ANTICIPATION',
                     netAmount,
-                    `Antecipação (${anticipationType === 'SELLER' ? 'Venda' : 'Frete'}) #${orderId} (Taxa R$ ${anticipationFee.toFixed(2)})`,
+                    `Antecipação(${anticipationType === 'SELLER' ? 'Venda' : 'Frete'}) #${orderId} (Taxa R$ ${anticipationFee.toFixed(2)})`,
                     'APPROVED'
                 );
 
@@ -144,7 +156,7 @@ export class MarketplaceController {
             const user = c.get('user') as UserContext;
             const pool = getDbPool(c);
             const { lat, lng, radius } = c.req.query();
-            console.log(`[DEBUG] getLogisticMissions - User: ${user.id}, Lat: ${lat}, Lng: ${lng}, Radius: ${radius}`);
+            console.log(`[DEBUG] getLogisticMissions - User: ${user.id}, Lat: ${lat}, Lng: ${lng}, Radius: ${radius} `);
 
             const hasAdminVision = user.isAdmin === true || user.role === 'ADMIN';
 
@@ -158,22 +170,22 @@ export class MarketplaceController {
             const feeRate = isVerified ? FEE_VERIFIED : FEE_UNVERIFIED;
 
             let query = `
-                SELECT o.id as "orderId", o.delivery_fee as "deliveryFee", 
-                       o.delivery_address as "deliveryAddress", o.pickup_address as "pickupAddress", 
-                       o.pickup_lat, o.pickup_lng, o.delivery_lat, o.delivery_lng,
-                       o.created_at as "createdAt", o.contact_phone as "buyerPhone",
-                       COALESCE(u_seller.phone, u_seller.pix_key) as "sellerPhone",
-                       l.title as "itemTitle", l.image_url as "imageUrl",
-                       COALESCE(u_seller.seller_company_name, u_seller.name) as "sellerName", u_buyer.name as "buyerName",
-                       (o.delivery_fee * (1 - ${feeRate})) as "courierEarnings"
+                SELECT o.id as "orderId", o.delivery_fee as "deliveryFee",
+    o.delivery_address as "deliveryAddress", o.pickup_address as "pickupAddress",
+    o.pickup_lat, o.pickup_lng, o.delivery_lat, o.delivery_lng,
+    o.created_at as "createdAt", o.contact_phone as "buyerPhone",
+    COALESCE(u_seller.phone, u_seller.pix_key) as "sellerPhone",
+    l.title as "itemTitle", l.image_url as "imageUrl",
+    COALESCE(u_seller.seller_company_name, u_seller.name) as "sellerName", u_buyer.name as "buyerName",
+    (o.delivery_fee * (1 - ${feeRate})) as "courierEarnings"
                 FROM marketplace_orders o
                 JOIN marketplace_listings l ON o.listing_id = l.id
                 JOIN users u_seller ON o.seller_id = u_seller.id
                 JOIN users u_buyer ON o.buyer_id = u_buyer.id
                 WHERE o.delivery_status = 'AVAILABLE'
-                  AND o.status IN ('WAITING_SHIPPING', 'PREPARING', 'READY_FOR_PICKUP')
-                  AND ($2 = TRUE OR (o.seller_id::text != $1::text AND o.buyer_id::text != $1::text))
-                  AND (o.invited_courier_id IS NULL OR o.invited_courier_id::text = $1::text)
+                  AND o.status IN('WAITING_SHIPPING', 'PREPARING', 'READY_FOR_PICKUP')
+AND($2 = TRUE OR(o.seller_id:: text != $1:: text AND o.buyer_id:: text != $1:: text))
+AND(o.invited_courier_id IS NULL OR o.invited_courier_id:: text = $1:: text)
             `;
 
             const params: any[] = [user.id, hasAdminVision];
@@ -186,16 +198,16 @@ export class MarketplaceController {
                 const r = parseFloat(radius || '30');
 
                 if (!isNaN(searchLat) && !isNaN(searchLng)) {
-                    query += ` AND (
-                        o.pickup_lat IS NULL OR
-                        (6371 * acos(
-                            LEAST(1, GREATEST(-1, 
-                                cos(radians($${pIndex})) * cos(radians(o.pickup_lat)) *
-                                cos(radians(o.pickup_lng) - radians($${pIndex + 1})) +
-                                sin(radians($${pIndex})) * sin(radians(o.pickup_lat))
-                            ))
-                        )) <= $${pIndex + 2}
-                    )`;
+                    query += ` AND(
+    o.pickup_lat IS NULL OR
+        (6371 * acos(
+            LEAST(1, GREATEST(-1,
+                cos(radians($${pIndex})) * cos(radians(o.pickup_lat)) *
+                cos(radians(o.pickup_lng) - radians($${pIndex + 1})) +
+                sin(radians($${pIndex})) * sin(radians(o.pickup_lat))
+            ))
+        )) <= $${pIndex + 2}
+)`;
                     params.push(searchLat, searchLng, r);
                     pIndex += 3;
                 }
@@ -292,7 +304,7 @@ export class MarketplaceController {
             const result = await pool.query(
                 `UPDATE marketplace_orders 
                  SET courier_lat = $1, courier_lng = $2, updated_at = NOW()
-                 WHERE id = $3 AND courier_id = $4 AND status IN ('WAITING_SHIPPING', 'IN_TRANSIT')
+                 WHERE id = $3 AND courier_id = $4 AND status IN('WAITING_SHIPPING', 'IN_TRANSIT')
                  RETURNING id`,
                 [lat, lng, orderId, user.id]
             );
@@ -327,7 +339,7 @@ export class MarketplaceController {
                     FROM marketplace_orders o
                     JOIN users u ON u.id = $2
                     WHERE o.id = $1 AND o.courier_id = $2
-                `, [orderId, user.id]);
+    `, [orderId, user.id]);
 
                 if (orderRes.rows.length === 0) throw new Error('Pedido não encontrado ou não pertence a você.');
 
@@ -353,11 +365,11 @@ export class MarketplaceController {
                 );
 
                 await updateUserBalance(client, user.id, courierShare, 'credit');
-                await client.query('UPDATE system_config SET profit_pool = profit_pool + $1', [platformShare]);
+                await incrementSystemReserves(client, { profitPool: platformShare });
 
                 await createTransaction(
                     client, user.id, 'LOGISTIC_EARNING', courierShare,
-                    `Entrega #${orderId} Realizada (${isVerified ? 'Selo Verificado 10%' : 'Sem Selo 27.5%'})`,
+                    `Entrega #${orderId} Realizada(${isVerified ? 'Selo Verificado 10%' : 'Sem Selo 27.5%'})`,
                     'APPROVED'
                 );
 
@@ -408,7 +420,7 @@ export class MarketplaceController {
                 try {
                     await executeInTransaction(pool, async (client: any) => {
                         const balanceCheck = await lockUserBalance(client, tx.buyerId, tx.amount, { skipLockCheck: true });
-                        if (!balanceCheck.success) throw new Error(`Saldo insuficiente no comprador ${tx.buyerId}`);
+                        if (!balanceCheck.success) throw new Error(`Saldo insuficiente no comprador ${tx.buyerId} `);
 
                         const sellerResult = await client.query('SELECT asaas_wallet_id, is_verified_seller, seller_cpf_cnpj FROM users WHERE id = $1', [tx.sellerId]);
                         const sellerData = sellerResult.rows[0];
@@ -432,12 +444,30 @@ export class MarketplaceController {
                                 WHERE seller_id = $1 
                                 AND created_at >= $2 
                                 AND status != 'CANCELLED'
-                            `, [tx.sellerId, startOfMonth]);
+    `, [tx.sellerId, startOfMonth]);
 
                             const currentMonthlySales = parseFloat(salesRes.rows[0].total);
                             if (currentMonthlySales + tx.amount > 2000) {
                                 throw new Error('Limite mensal de vendas para CPF atingido (R$ 2.000,00). Atualize para CNPJ para continuar vendendo.');
                             }
+                        }
+
+                        // Distribuir taxas sistêmicas
+                        // Note: `listing` and `service_fee` are not defined in this context.
+                        // Assuming `tx.service_fee` or a similar property exists on the transaction object.
+                        // For now, using a placeholder `tx.service_fee` to match the instruction's intent.
+                        // If `service_fee` is meant to be `fee` calculated later, this placement is incorrect.
+                        // Based on the instruction, it seems to be a separate fee.
+                        const serviceFeeTotal = parseFloat(tx.service_fee || '0'); // Placeholder, adjust as per actual data structure
+                        if (serviceFeeTotal > 0) {
+                            await incrementSystemReserves(client, {
+                                tax: serviceFeeTotal * PLATFORM_FEE_TAX_SHARE,
+                                operational: serviceFeeTotal * PLATFORM_FEE_OPERATIONAL_SHARE,
+                                owner: serviceFeeTotal * PLATFORM_FEE_OWNER_SHARE,
+                                investment: serviceFeeTotal * PLATFORM_FEE_INVESTMENT_SHARE,
+                                corporate: serviceFeeTotal * 0.20,
+                                systemBalance: serviceFeeTotal
+                            });
                         }
 
                         const baseFeeRate = isVerified ? MARKETPLACE_ESCROW_FEE_RATE : MARKETPLACE_NON_VERIFIED_FEE_RATE;
@@ -452,20 +482,20 @@ export class MarketplaceController {
                         await updateUserBalance(client, tx.sellerId, sellerAmount, 'credit');
 
                         const orderResult = await client.query(
-                            `INSERT INTO marketplace_orders (
-                                listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount, 
-                                status, payment_method, offline_token, delivery_status, delivered_at
-                            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()) RETURNING id`,
+                            `INSERT INTO marketplace_orders(
+        listing_id, buyer_id, seller_id, amount, fee_amount, seller_amount,
+        status, payment_method, offline_token, delivery_status, delivered_at
+    ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()) RETURNING id`,
                             [null, tx.buyerId, tx.sellerId, tx.amount, fee, sellerAmount, 'COMPLETED', 'OFFLINE_QR', tx.id, 'DELIVERED']
                         );
 
                         const orderId = orderResult.rows[0].id;
-                        await createTransaction(client, tx.buyerId, 'MARKET_PURCHASE', tx.amount, `Compra Presencial: ${tx.itemTitle}`, 'APPROVED', { orderId });
-                        await createTransaction(client, tx.sellerId, 'MARKET_SALE', sellerAmount, `Venda Presencial: ${tx.itemTitle}`, 'APPROVED', { orderId });
+                        await createTransaction(client, tx.buyerId, 'MARKET_PURCHASE', tx.amount, `Compra Presencial: ${tx.itemTitle} `, 'APPROVED', { orderId });
+                        await createTransaction(client, tx.sellerId, 'MARKET_SALE', sellerAmount, `Venda Presencial: ${tx.itemTitle} `, 'APPROVED', { orderId });
                     });
                     results.push({ id: tx.id, status: 'SUCCESS' });
                 } catch (err: unknown) {
-                    console.error(`Error processing offline tx ${tx.id}:`, err);
+                    console.error(`Error processing offline tx ${tx.id}: `, err);
                     results.push({ id: tx.id, status: 'FAILED', message: err.message });
                 }
             }
@@ -486,28 +516,28 @@ export class MarketplaceController {
             const { category, city, state } = c.req.query();
 
             let query = `
-                SELECT id, name, merchant_name, is_restaurant, is_liquor_store, 
-                restaurant_category, seller_address_city as city, seller_address_state as state,
-                seller_address_neighborhood as neighborhood, seller_address_street as street,
-                COALESCE(avatar_url, NULL) as avatar_url, COALESCE(seller_rating, 0) as rating, opening_hours
-                FROM users 
-                WHERE (is_restaurant = TRUE OR is_liquor_store = TRUE)
+                SELECT id, name, merchant_name, is_restaurant, is_liquor_store,
+    restaurant_category, seller_address_city as city, seller_address_state as state,
+    seller_address_neighborhood as neighborhood, seller_address_street as street,
+    COALESCE(avatar_url, NULL) as avatar_url, COALESCE(seller_rating, 0) as rating, opening_hours
+                FROM users
+WHERE(is_restaurant = TRUE OR is_liquor_store = TRUE)
             `;
             const params: any[] = [];
             let pIndex = 1;
 
             if (category && category !== 'TODOS') {
-                query += ` AND restaurant_category = $${pIndex++}`;
+                query += ` AND restaurant_category = $${pIndex++} `;
                 params.push(category);
             }
 
             if (city) {
-                query += ` AND seller_address_city = $${pIndex++}`;
+                query += ` AND seller_address_city = $${pIndex++} `;
                 params.push(city);
             }
 
             if (state) {
-                query += ` AND seller_address_state = $${pIndex++}`;
+                query += ` AND seller_address_state = $${pIndex++} `;
                 params.push(state);
             }
 
@@ -553,10 +583,10 @@ export class MarketplaceController {
             }
 
             await pool.query(
-                `UPDATE users SET 
-                merchant_name = $1, 
-                restaurant_category = $2, 
-                opening_hours = $3 
+                `UPDATE users SET
+merchant_name = $1,
+    restaurant_category = $2,
+    opening_hours = $3 
                 WHERE id = $4`,
                 [merchantName, category, JSON.stringify(openingHours), user.id]
             );

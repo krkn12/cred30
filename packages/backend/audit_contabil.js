@@ -35,22 +35,27 @@ async function audit() {
         console.log('\n\n📊 2. RESERVAS DO SISTEMA (system_config)');
         console.log('-'.repeat(50));
         const sysConfig = await client.query(`
-            SELECT key, value FROM system_config 
-            WHERE key IN (
-                'system_balance', 'tax_reserve', 'operational_reserve', 
-                'owner_reserve', 'stability_fund', 'corporate_investment',
-                'total_fees_collected', 'total_platform_revenue'
-            ) ORDER BY key
+            SELECT system_balance, profit_pool, investment_reserve, total_tax_reserve, 
+                   total_operational_reserve, total_owner_profit, total_gateway_costs,
+                   total_corporate_investment_reserve, credit_guarantee_fund, mutual_reserve
+            FROM system_config LIMIT 1
         `);
         let totalReserves = 0;
-        sysConfig.rows.forEach(r => {
-            const val = parseFloat(r.value) || 0;
-            if (['tax_reserve', 'operational_reserve', 'owner_reserve', 'stability_fund', 'corporate_investment'].includes(r.key)) {
+        if (sysConfig.rows.length > 0) {
+            const config = sysConfig.rows[0];
+            const reservesKeys = [
+                'profit_pool', 'investment_reserve', 'total_tax_reserve',
+                'total_operational_reserve', 'total_owner_profit',
+                'total_corporate_investment_reserve', 'credit_guarantee_fund', 'mutual_reserve'
+            ];
+            reservesKeys.forEach(k => {
+                const val = parseFloat(config[k]) || 0;
                 totalReserves += val;
-            }
-            console.log(`  ${r.key}: R$ ${val.toFixed(2)}`);
-        });
-        console.log(`\n  💰 TOTAL RESERVAS (5 pools): R$ ${totalReserves.toFixed(2)}`);
+                console.log(`  ${k}: R$ ${val.toFixed(2)}`);
+            });
+            console.log(`  system_balance: R$ ${parseFloat(config.system_balance || 0).toFixed(2)}`);
+        }
+        console.log(`\n  💰 TOTAL RESERVAS (pools): R$ ${totalReserves.toFixed(2)}`);
 
         // 3. TRANSAÇÕES (transactions)
         console.log('\n\n📊 3. TODAS AS TRANSAÇÕES');
@@ -96,17 +101,16 @@ async function audit() {
         console.log('\n\n📊 5. EMPRÉSTIMOS');
         console.log('-'.repeat(50));
         const loans = await client.query(`
-            SELECT id, user_id, amount::numeric, total_with_interest::numeric, 
-                   status, installments, origin, created_at
+            SELECT id, user_id, amount::numeric, 
+                   status, installments, created_at
             FROM loans ORDER BY created_at ASC
         `);
         let totalLoansActive = 0;
         loans.rows.forEach(l => {
             const amt = parseFloat(l.amount);
-            const total = parseFloat(l.total_with_interest);
             if (l.status === 'APPROVED' || l.status === 'ACTIVE') totalLoansActive += amt;
             const date = new Date(l.created_at).toLocaleString('pt-BR');
-            console.log(`  Emp #${l.id} | User=${l.user_id} | R$ ${amt.toFixed(2)} (total c/ juros: R$ ${total.toFixed(2)}) | ${l.installments}x | ${l.status} | origin: ${l.origin || 'N/A'} | ${date}`);
+            console.log(`  Emp #${l.id} | User=${l.user_id} | R$ ${amt.toFixed(2)} | ${l.installments}x | ${l.status} | ${date}`);
         });
         console.log(`\n  📋 TOTAL EMPRÉSTIMOS ATIVOS: R$ ${totalLoansActive.toFixed(2)}`);
 
@@ -114,14 +118,14 @@ async function audit() {
         console.log('\n\n📊 6. COTAS');
         console.log('-'.repeat(50));
         const quotas = await client.query(`
-            SELECT id, user_id, amount::numeric, status, created_at
-            FROM quotas ORDER BY created_at ASC
+            SELECT id, user_id, purchase_price::numeric AS amount, status, purchase_date
+            FROM quotas ORDER BY purchase_date ASC
         `);
         let totalQuotas = 0;
         quotas.rows.forEach(q => {
             const amt = parseFloat(q.amount);
             if (q.status === 'ACTIVE') totalQuotas += amt;
-            const date = new Date(q.created_at).toLocaleString('pt-BR');
+            const date = new Date(q.purchase_date).toLocaleString('pt-BR');
             console.log(`  Cota #${q.id} | User=${q.user_id} | R$ ${amt.toFixed(2)} | ${q.status} | ${date}`);
         });
         console.log(`\n  📋 TOTAL COTAS ATIVAS: R$ ${totalQuotas.toFixed(2)}`);

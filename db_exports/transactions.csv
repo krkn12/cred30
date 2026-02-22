@@ -1,0 +1,6 @@
+id,user_id,type,amount,gateway_cost,description,status,metadata,payout_status,created_at,processed_at
+1,1,DEPOSIT,100.00,0.00,Depósito manual pendente (Depositante: Não informado),APPROVED,"{""method"": ""MANUAL_TRANSFER""}",NONE,2026-02-15 05:48:43.696125,2026-02-15 04:48:54.604
+2,1,BUY_QUOTA,50.00,0.00,Aquisição de 1 participação(ões) (+ R$ 0.00 manutenção) - APROVADA,APPROVED,"{""quantity"": 1, ""serviceFee"": 0, ""useBalance"": true, ""legal_context"": {""ip_address"": ""127.0.0.1"", ""user_agent"": ""Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"", ""accepted_at"": ""2026-02-15T08:00:55.093Z"", ""accepted_terms"": true, ""contract_version"": ""QUOTA_AGREEMENT_V1""}, ""paymentMethod"": ""balance""}",NONE,2026-02-15 08:00:53.971846,
+3,1,PROTECTION_PURCHASE,5.00,0.00,Ativação de Proteção Mútua (Mensal),APPROVED,"{""useBalance"": true}",NONE,2026-02-15 08:01:50.388907,
+4,1,DEPOSIT,100.00,0.00,Depósito manual pendente (Depositante: Não informado),APPROVED,"{""method"": ""MANUAL_PIX""}",NONE,2026-02-18 05:50:34.328113,2026-02-18 02:51:00.543
+5,1,PDV_SUBSCRIPTION,-59.90,0.00,Assinatura PDV - Plano Profissional,COMPLETED,"{""plan"": ""PDV_PRO"", ""subscriptionId"": 1}",NONE,2026-02-18 07:10:15.825768,

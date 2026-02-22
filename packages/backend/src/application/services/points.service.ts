@@ -1,5 +1,5 @@
 import { Pool, PoolClient } from 'pg';
-import { executeInTransaction, createTransaction } from '../../domain/services/transaction.service';
+import { executeInTransaction, createTransaction, incrementSystemReserves } from '../../domain/services/transaction.service';
 
 /**
  * Taxa de Conversão Oficial: 1000 pontos = R$ 0,07
@@ -66,7 +66,9 @@ export class PointsService {
 
                 // 3. Executar atualizações
                 // Debita da Reserva Operacional (que recebe 25% das taxas)
-                await client.query('UPDATE system_config SET total_operational_reserve = total_operational_reserve - $1', [amountToAdd]);
+                await incrementSystemReserves(client, {
+                    operational: -amountToAdd
+                });
                 await client.query('UPDATE users SET ad_points = ad_points - $1, balance = balance + $2 WHERE id = $3', [pointsToConvert, amountToAdd, userId]);
 
                 // 4. Registrar transação
@@ -94,7 +96,7 @@ export class PointsService {
 
             return { success: true, data: result.data };
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[PointsService] Erro na conversão:', error.message);
             return { success: false, message: error.message };
         }

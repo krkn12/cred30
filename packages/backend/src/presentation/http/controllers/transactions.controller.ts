@@ -2,7 +2,7 @@ import { Context } from 'hono';
 import { z } from 'zod';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { UserContext } from '../../../shared/types/hono.types';
-import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction } from '../../../domain/services/transaction.service';
+import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction, incrementSystemReserves } from '../../../domain/services/transaction.service';
 import { checkLiquidity } from '../../../application/services/liquidity.service';
 
 // Esquemas de validação
@@ -133,7 +133,9 @@ export class TransactionsController {
                 if (!updateResult.success) throw new Error(updateResult.error);
 
                 if (fee > 0) {
-                    await client.query('UPDATE system_config SET profit_pool = profit_pool + $1', [fee]);
+                    await incrementSystemReserves(client, {
+                        profitPool: fee
+                    });
                 }
 
                 const transactionResult = await createTransaction(
@@ -238,7 +240,7 @@ export class TransactionsController {
                 message: 'Solicitação de depósito registrada. Prossiga com o pagamento PIX.',
                 data: { transactionId: result.transactionId }
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             if (error instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
             return c.json({ success: false, message: error.message || 'Erro ao registrar depósito' }, 500);
         }

@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { z } from 'zod';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { executeInTransaction, updateUserBalance, createTransaction, lockSystemConfig } from '../../../domain/services/transaction.service';
+import { executeInTransaction, updateUserBalance, createTransaction, lockSystemConfig, incrementSystemReserves } from '../../../domain/services/transaction.service';
 import { UserContext } from '../../../shared/types/hono.types';
 import {
     PDV_PLANS,
@@ -121,7 +121,7 @@ export class PdvController {
                     autoRenew: sub.auto_renew
                 }
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[PDV] Erro ao buscar assinatura:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -196,15 +196,14 @@ export class PdvController {
                 const cotistaAmount = planInfo.price * PDV_FEE_COTISTA_SHARE;
                 const corporateAmount = planInfo.price * PDV_FEE_CORPORATE_SHARE;
 
-                await client.query(`
-                    UPDATE system_config SET
-                        total_tax_reserve = total_tax_reserve + $1,
-                        total_operational_reserve = total_operational_reserve + $2,
-                        total_owner_profit = total_owner_profit + $3,
-                        mutual_reserve = COALESCE(mutual_reserve, 0) + $4,
-                        profit_pool = profit_pool + $5,
-                        total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $6
-                `, [taxAmount, operationalAmount, ownerAmount, stabilityAmount, cotistaAmount, corporateAmount]);
+                await incrementSystemReserves(client, {
+                    tax: taxAmount,
+                    operational: operationalAmount,
+                    owner: ownerAmount,
+                    mutual: stabilityAmount,
+                    profitPool: cotistaAmount,
+                    corporate: corporateAmount
+                });
 
                 // Criar assinatura
                 const expiresAt = new Date();
@@ -256,7 +255,7 @@ export class PdvController {
                 }
             });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[PDV] Erro ao assinar:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -286,7 +285,7 @@ export class PdvController {
                 message: 'Assinatura cancelada. Você ainda terá acesso até o fim do período pago.'
             });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[PDV] Erro ao cancelar:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -360,7 +359,7 @@ export class PdvController {
                 }
             });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[PDV] Erro ao registrar dispositivo:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -394,7 +393,7 @@ export class PdvController {
                 }))
             });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[PDV] Erro ao listar dispositivos:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -425,7 +424,7 @@ export class PdvController {
 
             return c.json({ success: true, message: 'Dispositivo desativado.' });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[PDV] Erro ao desativar dispositivo:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -466,7 +465,7 @@ export class PdvController {
                 }))
             });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[PDV] Erro ao listar produtos:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -503,7 +502,7 @@ export class PdvController {
                 productId: result.rows[0].id
             });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[PDV] Erro ao criar produto:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -558,7 +557,7 @@ export class PdvController {
 
             return c.json({ success: true, message: 'Produto atualizado com sucesso!' });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[PDV] Erro ao atualizar produto:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -591,7 +590,7 @@ export class PdvController {
 
             return c.json({ success: true, message: 'Produto removido com sucesso!' });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[PDV] Erro ao excluir produto:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -810,6 +809,12 @@ export class PdvController {
                             JSON.stringify({ saleId, saleNumber, customerId: data.customerId, loanId, fee: transactionFee, method: 'CREDITO', installments })
                         ]);
 
+                        // CORREÇÃO CRÍTICA (Fluxo de Caixa Contábil):
+                        // O dinheiro cedido como empréstimo pelo sistema precisa ser debitado do fundo de investimentos
+                        await incrementSystemReserves(client, {
+                            investment: -total
+                        });
+
                         loanCreated = true;
                     }
 
@@ -822,15 +827,13 @@ export class PdvController {
                         const investShare = Math.round(transactionFee * PLATFORM_FEE_INVESTMENT_SHARE * 100) / 100;
                         const corpShare = Math.round(transactionFee * PLATFORM_FEE_CORPORATE_SHARE * 100) / 100;
 
-                        await client.query(`
-                            UPDATE system_config SET 
-                                tax_reserve = COALESCE(tax_reserve, 0) + $1,
-                                operational_reserve = COALESCE(operational_reserve, 0) + $2,
-                                owner_reserve = COALESCE(owner_reserve, 0) + $3,
-                                stability_fund = COALESCE(stability_fund, 0) + $4,
-                                corporate_investment = COALESCE(corporate_investment, 0) + $5
-                            WHERE id = 1
-                        `, [taxShare, opShare, ownerShare, investShare, corpShare]);
+                        await incrementSystemReserves(client, {
+                            tax: taxShare,
+                            operational: opShare,
+                            owner: ownerShare,
+                            investment: investShare,
+                            corporate: corpShare
+                        });
 
                         // Registrar transação de taxa
                         await client.query(`
@@ -861,7 +864,7 @@ export class PdvController {
                 }
             });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[PDV] Erro ao criar venda:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -919,7 +922,7 @@ export class PdvController {
                 totals
             });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[PDV] Erro ao listar vendas:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -984,7 +987,7 @@ export class PdvController {
                 transactionFeeRate: PDV_TRANSACTION_FEE_RATE // Informar taxa ao frontend
             });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[PDV] Erro ao buscar cliente:', error);
             return c.json({ success: false, message: error.message }, 500);
         }

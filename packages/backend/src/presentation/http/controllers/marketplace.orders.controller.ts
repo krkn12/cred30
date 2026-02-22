@@ -2,7 +2,7 @@ import { Context } from 'hono';
 import { z } from 'zod';
 import { calculateShippingQuote } from '../../../shared/utils/logistics.utils';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction, lockSystemConfig } from '../../../domain/services/transaction.service';
+import { executeInTransaction, createTransaction, updateUserBalance, lockSystemConfig, incrementSystemReserves, lockUserBalance } from '../../../domain/services/transaction.service';
 import { updateScore } from '../../../application/services/score.service';
 import { notificationService } from '../../../application/services/notification.service';
 import { UserContext } from '../../../shared/types/hono.types';
@@ -67,6 +67,9 @@ const buyListingSchema = z.object({
         name: z.string(),
         price: z.number()
     })).optional().default([]),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    rentalDays: z.coerce.number().int().min(1).optional()
 }).refine(data => {
     if (data.deliveryType !== 'SELF_PICKUP' && !/\d/.test(data.deliveryAddress)) {
         return false;
@@ -97,6 +100,9 @@ const buyOnCreditSchema = z.object({
         name: z.string(),
         price: z.number()
     })).optional().default([]),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    rentalDays: z.coerce.number().int().min(1).optional()
 }).refine(data => {
     if (data.deliveryType !== 'SELF_PICKUP' && !/\d/.test(data.deliveryAddress)) {
         return false;
@@ -129,7 +135,8 @@ export class MarketplaceOrdersController {
             const {
                 paymentMethod, deliveryType, offeredDeliveryFee, invitedCourierId,
                 deliveryLat, deliveryLng, pickupLat, pickupLng, pickupAddress, selectedOptions,
-                listingId, listingIds, quantity, selectedVariantId, deliveryAddress, contactPhone, offlineToken
+                listingId, listingIds, quantity, selectedVariantId, deliveryAddress, contactPhone, offlineToken,
+                startDate, endDate, rentalDays
             } = parseResult.data;
 
             const idsToProcess = listingIds || (listingId ? [listingId] : []);
@@ -140,7 +147,12 @@ export class MarketplaceOrdersController {
                 const buyerRes = await client.query('SELECT is_verified FROM users WHERE id = $1', [user.id]);
                 const buyerData = buyerRes.rows[0];
 
-                const listingsResult = await client.query('SELECT *, COALESCE(stock, 1) as current_stock, required_vehicle FROM marketplace_listings WHERE id = ANY($1) AND status = $2 FOR UPDATE', [idsToProcess, 'ACTIVE']);
+                const listingsResult = await client.query(`
+                    SELECT *, COALESCE(stock, 1) as current_stock, required_vehicle 
+                    FROM marketplace_listings 
+                    WHERE id = ANY($1) AND status = $2 
+                    FOR UPDATE
+                `, [idsToProcess, 'ACTIVE']);
 
                 if (listingsResult.rows.length === 0) throw new Error('Itens indisponíveis ou não encontrados.');
 
@@ -299,7 +311,27 @@ export class MarketplaceOrdersController {
                 if (isAnyFood && selectedOptions && selectedOptions.length > 0) {
                     optionsTotal = selectedOptions.reduce((acc, opt) => acc + (Number(opt.price) || 0), 0);
                 }
-                const totalPrice = baseAmount + optionsTotal;
+
+                const isRental = listings[0].module_type === 'RENTAL';
+                const isDelivery = listings[0].module_type === 'DELIVERY';
+
+                let totalPrice = 0;
+                let securityDepositTotal = 0;
+
+                if (isRental) {
+                    if (!rentalDays) throw new Error('Duração do aluguel (rentalDays) é obrigatória para este item.');
+                    const minDays = listings[0].minimum_rental_days || 1;
+                    if (rentalDays < minDays) throw new Error(`O aluguel mínimo para este item é de ${minDays} dias.`);
+
+                    const rentalPrice = parseFloat(listings[0].rental_price_per_day || listings[0].price);
+                    securityDepositTotal = parseFloat(listings[0].security_deposit || 0);
+                    totalPrice = (rentalPrice * rentalDays) + securityDepositTotal;
+
+                    console.log(`[RENTAL] Calculando: (${rentalPrice} * ${rentalDays}) + Calção ${securityDepositTotal} = ${totalPrice}`);
+                } else {
+                    totalPrice = baseAmount + optionsTotal;
+                }
+
                 let maxVehicleRank = -1;
                 const vehicleRank: Record<string, number> = { 'BIKE': 0, 'MOTO': 1, 'CAR': 2, 'TRUCK': 3 };
                 let requiredVehicle = 'MOTO';
@@ -458,7 +490,34 @@ export class MarketplaceOrdersController {
                             quantity, selectedVariantId || null, JSON.stringify(selectedOptions)
                         ]
                     );
+
                     const orderId = orderResult.rows[0].id;
+
+                    // Registrar campos específicos de aluguel e module_type
+                    await client.query(`
+                        UPDATE marketplace_orders SET 
+                            module_type = $1
+                        WHERE id = $2
+                    `, [listings[0].module_type || 'PRODUCT', orderId]);
+
+                    if (isRental) {
+                        await client.query(`
+                            UPDATE marketplace_orders SET 
+                                metadata = $1,
+                                status = 'RENTAL_ACTIVE'
+                            WHERE id = $2
+                        `, [JSON.stringify({ startDate, endDate, rentalDays, securityDeposit: securityDepositTotal }), orderId]);
+                    }
+
+                    // Registrar campos específicos de aluguel se houver
+                    if (isRental) {
+                        await client.query(`
+                            UPDATE marketplace_orders SET 
+                                metadata = $1,
+                                status = 'RENTAL_ACTIVE'
+                            WHERE id = $2
+                        `, [JSON.stringify({ startDate, endDate, rentalDays, securityDeposit: securityDepositTotal }), orderId]);
+                    }
                     console.log(`[DEBUG_BUY] Pedido criado: ${orderId} `);
 
                     // Se usou benefício, consumir um uso
@@ -484,7 +543,9 @@ export class MarketplaceOrdersController {
 
                     // ADICIONAR TAXA AO PROFIT POOL DO CLUBE
                     if (fee > 0) {
-                        await client.query('UPDATE system_config SET profit_pool = profit_pool + $1', [fee]);
+                        await incrementSystemReserves(client, {
+                            profitPool: fee
+                        });
                     }
 
                     await createTransaction(client, user.id, 'MARKET_PURCHASE', totalPrice, `Compra${isDigitalLote ? ' Digital' : ''}: ${listings.length > 1 ? `Lote (${listings.length} itens)` : listings[0].title}${welcomeBenefit.hasDiscount ? ' (🎁 Taxa reduzida)' : ''} `, 'APPROVED', { orderId, listingId: listings[0].id, welcomeBenefitApplied: welcomeBenefit.hasDiscount, isDigital: isDigitalLote, useBalance: true });
@@ -535,7 +596,7 @@ export class MarketplaceOrdersController {
             console.error('Buy Route Error:', error);
             // Se o erro vier do executeInTransaction (que já captura e retorna success:false), não chegaria aqui se usarmos o result
             // Mas se for erro fora da transação ou de parsing
-            return c.json({ success: false, message: error.message || 'Erro ao processar compra' }, 500);
+            return c.json({ success: false, message: error.message || 'Erro ao processar pedido' }, 500);
         }
     }
 
@@ -557,7 +618,12 @@ export class MarketplaceOrdersController {
                 }, 400);
             }
 
-            const { listingId, listingIds, selectedVariantId, installments, deliveryAddress, contactPhone, invitedCourierId, quantity, pickupAddress, selectedOptions } = parseResult.data;
+            const {
+                listingId, listingIds, selectedVariantId, installments,
+                deliveryAddress, contactPhone, invitedCourierId, quantity,
+                pickupAddress, selectedOptions,
+                startDate, endDate, rentalDays
+            } = parseResult.data;
 
             const idsToProcess = listingIds || (listingId ? [listingId] : []);
             if (idsToProcess.length === 0) return c.json({ success: false, message: 'Nenhum item selecionado.' }, 400);
@@ -714,7 +780,7 @@ export class MarketplaceOrdersController {
                     const startOfMonth = new Date();
                     startOfMonth.setDate(1);
                     startOfMonth.setHours(0, 0, 0, 0);
-    
+     
                     const salesRes = await client.query(`
                         SELECT COALESCE(SUM(amount), 0) as total 
                         FROM marketplace_orders 
@@ -722,9 +788,9 @@ export class MarketplaceOrdersController {
                         AND created_at >= $2 
                         AND status != 'CANCELLED'
                     `, [sellerId, startOfMonth]);
-    
+     
                     const currentMonthlySales = parseFloat(salesRes.rows[0].total);
-    
+     
                 */
                 // --------------------------------------------------
 
@@ -766,7 +832,27 @@ export class MarketplaceOrdersController {
                     optionsTotal = selectedOptions.reduce((acc, opt) => acc + (Number(opt.price) || 0), 0);
                 }
 
-                const totalPrice = baseAmount + optionsTotal;
+                const isRental = listings[0].module_type === 'RENTAL';
+                const isDelivery = listings[0].module_type === 'DELIVERY';
+
+                let totalPrice = 0;
+                let securityDepositTotal = 0;
+
+                if (isRental) {
+                    if (!rentalDays) throw new Error('Duração do aluguel (rentalDays) é obrigatória para este item.');
+                    const minDays = listings[0].minimum_rental_days || 1;
+                    if (rentalDays < minDays) throw new Error(`O aluguel mínimo para este item é de ${minDays} dias.`);
+
+                    const rentalPrice = parseFloat(listings[0].rental_price_per_day || listings[0].price);
+                    securityDepositTotal = parseFloat(listings[0].security_deposit || 0);
+                    // No crediário, o total financiado inclui o calção se permitido, ou cobrado à parte.
+                    // Para simplificar, financiaremos o total (aluguel + calção).
+                    totalPrice = (rentalPrice * rentalDays) + securityDepositTotal;
+
+                    console.log(`[RENTAL_CREDIT] Calculando: (${rentalPrice} * ${rentalDays}) + Calção ${securityDepositTotal} = ${totalPrice}`);
+                } else {
+                    totalPrice = baseAmount + optionsTotal;
+                }
 
                 // NOTA: Verificação de limite mensal foi movida para o início da transação (linhas 604-648)
 
@@ -901,7 +987,9 @@ export class MarketplaceOrdersController {
 
                 // ADICIONAR TAXA DE ESCROW AO PROFIT POOL DO CLUBE
                 if (escrowFee > 0) {
-                    await client.query('UPDATE system_config SET profit_pool = profit_pool + $1', [escrowFee]);
+                    await incrementSystemReserves(client, {
+                        profitPool: escrowFee
+                    });
                 }
 
                 console.log(`[MARKETPLACE_CREDIT] Inserindo pedido: listing_id=${listings[0].id}, buyer=${user.id}`);
@@ -940,10 +1028,9 @@ export class MarketplaceOrdersController {
 
                 // === CAPITALIZAÇÃO DO FGC (Fundo de Garantia de Crédito) ===
                 if (gfcFee > 0) {
-                    await client.query(
-                        'UPDATE system_config SET credit_guarantee_fund = COALESCE(credit_guarantee_fund, 0) + $1',
-                        [gfcFee]
-                    );
+                    await incrementSystemReserves(client, {
+                        gfc: gfcFee
+                    });
                     console.log(`[FGC-MARKETPLACE] Fundo capitalizado com R$ ${gfcFee.toFixed(2)} para crediário do pedido ${orderId}`);
                 }
 
@@ -1256,29 +1343,24 @@ export class MarketplaceOrdersController {
                 const sellerAmount = parseFloat(order.seller_amount);
                 const totalFee = parseFloat(order.fee_amount || '0');
 
-                if (totalFee > 0) {
-                    // DIVISÃO DA TAXA DE VENDA DO MARKETPLACE
-                    // 50% para Cotistas (Profit Pool)
-                    const profitShare = totalFee * 0.5;
+                // 4. Distribuir taxa da plataforma (Service Fee)
+                const platformFee = parseFloat(order.fee_amount); // Assuming fee_amount is the platform's service fee
+                if (platformFee > 0) {
+                    const platformTaxPart = platformFee * PLATFORM_FEE_TAX_SHARE;
+                    const platformOperPart = platformFee * PLATFORM_FEE_OPERATIONAL_SHARE;
+                    const platformOwnerPart = platformFee * PLATFORM_FEE_OWNER_SHARE;
+                    const platformInvestPart = platformFee * PLATFORM_FEE_INVESTMENT_SHARE;
+                    const platformCorporatePart = platformFee * PLATFORM_FEE_CORPORATE_SHARE; // Using the constant for corporate share
 
-                    // 50% para a Empresa (Sistema) dividida em 4 reservas
-                    const systemShare = totalFee * 0.5;
-                    const taxPart = systemShare * PLATFORM_FEE_TAX_SHARE;
-                    const operPart = systemShare * PLATFORM_FEE_OPERATIONAL_SHARE;
-                    const ownerPart = systemShare * PLATFORM_FEE_OWNER_SHARE;
-                    const investPart = systemShare * PLATFORM_FEE_INVESTMENT_SHARE;
-                    const corpPart = systemShare * PLATFORM_FEE_CORPORATE_SHARE;
-
-                    await client.query(`
-                        UPDATE system_config SET 
-                            profit_pool = profit_pool + $1,
-                            total_tax_reserve = total_tax_reserve + $2,
-                            total_operational_reserve = total_operational_reserve + $3,
-                            total_owner_profit = total_owner_profit + $4,
-                            investment_reserve = COALESCE(investment_reserve, 0) + $5,
-                            total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $6
-                        `, [profitShare, taxPart, operPart, ownerPart, investPart, corpPart]
-                    );
+                    await incrementSystemReserves(client, {
+                        profitPool: platformFee * 0.5, // 50% for profit pool
+                        tax: platformTaxPart,
+                        operational: platformOperPart,
+                        owner: platformOwnerPart,
+                        investment: platformInvestPart,
+                        corporate: platformCorporatePart,
+                        systemBalance: platformFee // Aumenta o balanço sistêmico pelo valor total da taxa
+                    });
                 }
 
                 if (!isAnticipated) {
@@ -1332,17 +1414,15 @@ export class MarketplaceOrdersController {
                     const investPart = companyShare * PLATFORM_FEE_INVESTMENT_SHARE;
                     const corpPart = companyShare * PLATFORM_FEE_CORPORATE_SHARE;
 
-                    await client.query(`
-                        UPDATE system_config SET 
-                            profit_pool = profit_pool + $1,
-                            total_tax_reserve = total_tax_reserve + $2,
-                            total_operational_reserve = total_operational_reserve + $3,
-                            total_owner_profit = total_owner_profit + $4,
-                            investment_reserve = investment_reserve + $5,
-                            total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $6,
-                            system_balance = system_balance + $7
-                        `, [profitShare, taxPart, operPart, ownerPart, investPart, corpPart, companyShare]
-                    );
+                    await incrementSystemReserves(client, {
+                        profitPool: profitShare,
+                        tax: taxPart,
+                        operational: operPart,
+                        owner: ownerPart,
+                        investment: investPart,
+                        corporate: corpPart,
+                        systemBalance: companyShare
+                    });
 
                     // --- LIBERAR SEGURO DE ENTREGA ---
                     // Entrega bem sucedida: devolve contribuição do entregador
@@ -1367,7 +1447,9 @@ export class MarketplaceOrdersController {
 
                 // 4. Se foi no crediário, o dinheiro sai do caixa do sistema para o vendedor + courier
                 if (order.payment_method === 'CRED30_CREDIT') {
-                    await client.query('UPDATE system_config SET system_balance = system_balance - $1', [order.amount]);
+                    await incrementSystemReserves(client, {
+                        systemBalance: -order.amount
+                    });
                 }
 
                 return { success: true };

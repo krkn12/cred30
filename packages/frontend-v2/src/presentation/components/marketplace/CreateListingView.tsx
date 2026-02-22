@@ -1,4 +1,4 @@
-import { MapPin, Navigation2, CheckCircle2, Truck, Image as ImageIcon, Tag, FileText, DollarSign, Archive, Plus, Target } from 'lucide-react';
+import { MapPin, Navigation2, Truck, Image as ImageIcon, Tag, FileText, DollarSign, Archive, Plus, Target } from 'lucide-react';
 import { VEHICLE_ICONS, MARKETPLACE_CATEGORIES } from './marketplace.constants';
 import { LoadingButton } from '../ui/LoadingButton';
 
@@ -31,8 +31,82 @@ export const CreateListingView = ({
 
 
 
+            {/* SELETOR DE MÓDULO (NOVO) */}
+            <div className="grid grid-cols-3 gap-2 mb-6">
+                {(['PRODUCT', 'DELIVERY', 'RENTAL'] as const).map((m) => (
+                    <button
+                        key={m}
+                        type="button"
+                        onClick={() => setNewListing({ ...newListing, moduleType: m, category: m === 'DELIVERY' ? 'COMIDA' : newListing.category })}
+                        className={`py-3 rounded-2xl border transition-all flex flex-col items-center gap-1 ${newListing.moduleType === m ? 'bg-primary-500/10 border-primary-500 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-600 hover:border-zinc-700'}`}
+                    >
+                        <span className="text-[10px] font-black uppercase tracking-tighter">
+                            {m === 'PRODUCT' ? 'Produto' : m === 'DELIVERY' ? 'Delivery' : 'Aluguel'}
+                        </span>
+                    </button>
+                ))}
+            </div>
 
             <form onSubmit={onSubmit} className="space-y-4">
+                {/* CAMPOS ESPECÍFICOS DE ALUGUEL */}
+                {newListing.moduleType === 'RENTAL' && (
+                    <div className="bg-primary-500/5 border border-primary-500/20 rounded-2xl p-4 space-y-4 animate-in zoom-in duration-300">
+                        <h4 className="text-[10px] font-black text-primary-400 uppercase tracking-widest flex items-center gap-2">
+                            <Plus size={12} /> Detalhes do Aluguel
+                        </h4>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">Preço p/ Dia</label>
+                                <input
+                                    type="number"
+                                    value={newListing.rentalPricePerDay}
+                                    onChange={(e) => setNewListing({ ...newListing, rentalPricePerDay: e.target.value })}
+                                    placeholder="R$ 0,00"
+                                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">Calção (Opcional)</label>
+                                <input
+                                    type="number"
+                                    value={newListing.securityDeposit}
+                                    onChange={(e) => setNewListing({ ...newListing, securityDeposit: e.target.value })}
+                                    placeholder="R$ 0,00"
+                                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                />
+                            </div>
+                            <div className="col-span-2">
+                                <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">Aluguel Mínimo (Dias)</label>
+                                <input
+                                    type="number"
+                                    value={newListing.minimumRentalDays}
+                                    min="1"
+                                    onChange={(e) => setNewListing({ ...newListing, minimumRentalDays: e.target.value })}
+                                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {/* CAMPOS ESPECÍFICOS DE DELIVERY */}
+                {newListing.moduleType === 'DELIVERY' && (
+                    <div className="bg-orange-500/5 border border-orange-500/20 rounded-2xl p-4 space-y-4 animate-in zoom-in duration-300">
+                        <h4 className="text-[10px] font-black text-orange-400 uppercase tracking-widest flex items-center gap-2">
+                            <Navigation2 size={12} /> Configurações de Entrega
+                        </h4>
+                        <div>
+                            <label className="text-[9px] text-zinc-500 font-bold uppercase ml-1">Tempo de Preparo (Minutos)</label>
+                            <input
+                                type="number"
+                                value={newListing.estimatedPrepTimeMinutes}
+                                onChange={(e) => setNewListing({ ...newListing, estimatedPrepTimeMinutes: e.target.value })}
+                                placeholder="Ex: 20"
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                            />
+                        </div>
+                    </div>
+                )}
+
                 {/* LOCALIZAÇÃO (NOVO MÓDULO DE CEP) */}
                 <div className="bg-zinc-800/30 border border-zinc-700/50 rounded-2xl p-4 space-y-3">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
@@ -463,8 +537,8 @@ export const CreateListingView = ({
                     )}
                 </div>
 
-                {/* MENU OPTIONS SECTION - Only for Food/Drinks */}
-                {(newListing.category === 'COMIDA' || newListing.category === 'BEBIDAS') && (
+                {/* MENU OPTIONS SECTION - Only for Food/Drinks or Delivery module */}
+                {(newListing.category === 'COMIDA' || newListing.category === 'BEBIDAS' || newListing.moduleType === 'DELIVERY') && (
                     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 space-y-3">
                         <label className="text-[10px] font-black text-primary-400 uppercase flex items-center justify-between">
                             <span>Opcionais de Cardápio (Ex: Borda, Molhos)</span>
@@ -562,6 +636,6 @@ export const CreateListingView = ({
                     </LoadingButton>
                 </div>
             </form>
-        </div>
+        </div >
     );
 };

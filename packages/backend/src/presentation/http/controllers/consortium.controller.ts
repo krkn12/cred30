@@ -1,7 +1,7 @@
 
 import { Context } from 'hono';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { executeInTransaction } from '../../../domain/services/transaction.service';
+import { executeInTransaction, incrementSystemReserves } from '../../../domain/services/transaction.service';
 import { PoolClient } from 'pg';
 import { UserContext } from '../../../shared/types/hono.types';
 
@@ -50,7 +50,7 @@ export class ConsortiumController {
 
             return c.json({ success: true, group: result.rows[0] });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('Erro ao criar grupo:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -69,7 +69,7 @@ export class ConsortiumController {
                 ORDER BY cg.created_at DESC
             `);
             return c.json({ success: true, data: result.rows });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -97,7 +97,7 @@ export class ConsortiumController {
             `, [user.id]);
 
             return c.json({ success: true, data: result.rows });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -138,10 +138,13 @@ export class ConsortiumController {
                 const quotaRes = await client.query('SELECT COUNT(*) as total FROM consortium_members WHERE group_id = $1', [groupId]);
                 const nextQuota = Number(quotaRes.rows[0].total) + 1;
 
-                // 5. Calcula taxa administrativa e valor líquido para o pool
-                const adminFeePercent = Number(group.admin_fee_percent || 10);
-                const adminFee = entryCost * (adminFeePercent / 100);
-                const poolContribution = entryCost - adminFee;
+                // 5. Calcula taxa administrativa e valor líquido para o pool baseado em cotas proporcionais
+                const totalValue = Number(group.total_value);
+                const duration = Number(group.duration_months);
+
+                const baseShare = totalValue / duration;
+                const adminFee = (totalValue * (Number(group.admin_fee_percent || 10) / 100)) / duration;
+                const reserveFee = (totalValue * (Number(group.reserve_fee_percent || 1) / 100)) / duration;
 
                 // Divisão da taxa: 80% para cotistas (profit_pool), 20% para o projeto (owner_profit)
                 const cotistasShare = adminFee * 0.8;
@@ -150,21 +153,20 @@ export class ConsortiumController {
                 // 6. Debita do usuário
                 await client.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [entryCost, user.id]);
 
-                // 7. Acumula no pool do grupo (valor líquido + reserva)
+                // 7. Acumula no pool do grupo (valor base na cota e o respectivo fundo reserva)
                 await client.query(`
                     UPDATE consortium_groups 
                     SET current_pool = COALESCE(current_pool, 0) + $1,
-                        current_pool_available = COALESCE(current_pool_available, 0) + $1
-                    WHERE id = $2
-                `, [poolContribution, groupId]);
+                        current_pool_available = COALESCE(current_pool_available, 0) + $1,
+                        reserve_pool = COALESCE(reserve_pool, 0) + $2
+                    WHERE id = $3
+                `, [baseShare, reserveFee, groupId]);
 
                 // 8. Taxas divididas entre cotistas e plataforma
-                await client.query(`
-                    UPDATE system_config 
-                    SET profit_pool = COALESCE(profit_pool, 0) + $1,
-                        total_owner_profit = COALESCE(total_owner_profit, 0) + $2
-                    WHERE id = 1
-                `, [cotistasShare, platformShare]);
+                await incrementSystemReserves(client, {
+                    profitPool: cotistasShare,
+                    owner: platformShare
+                });
 
                 // 9. Registra transação de saída (Débito do usuário)
                 await client.query(`
@@ -188,7 +190,7 @@ export class ConsortiumController {
                     VALUES ($1, $2, $3, 'ACTIVE', 1, $4, $5)
                 `, [groupId, user.id, nextQuota, entryCost, nextDueDate.toISOString().split('T')[0]]);
 
-                return { success: true, message: `Bem-vindo ao grupo! Sua cota é #${nextQuota}. Pool: R$${poolContribution.toFixed(2)} | Taxa: R$${adminFee.toFixed(2)}` };
+                return { success: true, message: `Bem-vindo ao grupo! Sua cota é #${nextQuota}. Pool: R$${baseShare.toFixed(2)} | Taxa: R$${adminFee.toFixed(2)}` };
             });
 
             if (result.success) {
@@ -197,7 +199,7 @@ export class ConsortiumController {
                 return c.json({ success: false, message: result.error }, 400);
             }
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 400);
         }
     }
@@ -255,12 +257,10 @@ export class ConsortiumController {
                 const cotistasShare = adminFeeVal * 0.8;
                 const platformShare = adminFeeVal * 0.2;
 
-                await client.query(`
-                    UPDATE system_config 
-                    SET profit_pool = COALESCE(profit_pool, 0) + $1,
-                        total_owner_profit = COALESCE(total_owner_profit, 0) + $2
-                    WHERE id = 1
-                `, [cotistasShare, platformShare]);
+                await incrementSystemReserves(client, {
+                    profitPool: cotistasShare,
+                    owner: platformShare
+                });
 
                 // 5. Atualizar Membro
                 const nextDueDate = new Date(member.next_due_date || new Date());
@@ -284,7 +284,7 @@ export class ConsortiumController {
             });
 
             return c.json(result.data || { success: false, message: result.error });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 400);
         }
     }
@@ -310,7 +310,7 @@ export class ConsortiumController {
             await pool.query('UPDATE consortium_groups SET current_assembly_number = $1 WHERE id = $2', [nextNumber, groupId]);
 
             return c.json({ success: true, assemblyId: assemblyRes.rows[0].id });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -433,7 +433,7 @@ export class ConsortiumController {
             });
 
             return c.json(result.data || { success: false, message: result.error });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -505,7 +505,7 @@ export class ConsortiumController {
             });
 
             return c.json(result.success ? result : { success: false, message: result.error });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -528,7 +528,7 @@ export class ConsortiumController {
             `, [memberId, documentType, documentUrl]);
 
             return c.json({ success: true, message: 'Documento enviado para análise.' });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -566,7 +566,7 @@ export class ConsortiumController {
                     totalContemplated: Number(countsRes.rows[0].total_contemplated || 0)
                 }
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -585,7 +585,7 @@ export class ConsortiumController {
             `, [groupId]);
 
             return c.json({ success: true, data: result.rows });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -630,7 +630,7 @@ export class ConsortiumController {
                     bids: bidsRes.rows
                 }
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -668,7 +668,7 @@ export class ConsortiumController {
                     bids: bidsRes.rows
                 }
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -707,7 +707,7 @@ export class ConsortiumController {
             `, [assemblyId, memberId, amount, bidType || 'FREE', isEmbedded || false, embeddedAmount || 0]);
 
             return c.json({ success: true, message: 'Lance registrado com sucesso!' });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -746,9 +746,9 @@ export class ConsortiumController {
 
                 // 5. O valor da multa vai para o lucro da plataforma (ou fundo de reserva conforme regra)
                 // Aqui vamos colocar como plataforma para o Josias ver o lucro
-                await client.query(`
-                    UPDATE system_config SET total_owner_profit = total_owner_profit + $1 WHERE id = 1
-                `, [penaltyAmount]);
+                await incrementSystemReserves(client, {
+                    owner: penaltyAmount
+                });
 
                 return {
                     success: true,
@@ -757,7 +757,7 @@ export class ConsortiumController {
             });
 
             return c.json(result.data || { success: false, message: result.error });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -783,7 +783,7 @@ export class ConsortiumController {
             `, [assemblyId, user.id, bidId, vote]);
 
             return c.json({ success: true, message: 'Voto registrado!' });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -848,7 +848,7 @@ export class ConsortiumController {
 
             return c.json(result.data || { success: false, message: result.error });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }

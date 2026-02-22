@@ -1,6 +1,6 @@
 
 import { Pool, PoolClient } from 'pg';
-import { executeInTransaction } from '../../domain/services/transaction.service';
+import { executeInTransaction, incrementSystemReserves } from '../../domain/services/transaction.service';
 
 /**
  * Serviço de Liquidação Automática
@@ -98,10 +98,9 @@ export const runAutoLiquidation = async (pool: Pool): Promise<{ success: boolean
 
                 if (totalLiquidated > 0) {
                     // d. Devolver valor ao caixa do sistema
-                    await client.query(
-                        'UPDATE system_config SET system_balance = system_balance + $1',
-                        [totalLiquidated]
-                    );
+                    await incrementSystemReserves(client, {
+                        systemBalance: totalLiquidated
+                    });
 
                     // e. Atualizar status do empréstimo
                     const isFullyCleared = remainingDebt <= 0;
@@ -146,7 +145,7 @@ export const runAutoLiquidation = async (pool: Pool): Promise<{ success: boolean
         }
 
         return { success: true, liquidatedCount };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Erro na liquidação automática:', error);
         return { success: false, liquidatedCount: 0 };
     }

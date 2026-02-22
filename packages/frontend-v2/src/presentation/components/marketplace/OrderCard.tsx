@@ -1,5 +1,5 @@
 import React from 'react';
-import { Zap, Navigation2, Truck, Phone, Download, ExternalLink, Scan } from 'lucide-react';
+import { Zap, Navigation2, Truck, Phone, Download, ExternalLink, Scan, Calendar } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { QRScannerModal } from '../ui/QRScannerModal';
 import { correctStoredAddress } from '../../../application/utils/location_corrections';
@@ -65,8 +65,11 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                             </span>
                         )}
                     </div>
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded ${order.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-primary-500/10 text-primary-400'}`}>
-                        {order.status}
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded ${order.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400' :
+                        order.status === 'RENTAL_ACTIVE' ? 'bg-blue-500/10 text-blue-400' :
+                            'bg-primary-500/10 text-primary-400'
+                        }`}>
+                        {order.status === 'RENTAL_ACTIVE' ? 'ALUGUEL ATIVO' : order.status}
                     </span>
                 </div>
                 <p className="text-lg font-black text-white mt-1">{formatCurrency(parseFloat(order.amount))}</p>
@@ -120,7 +123,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                             <span className="text-xs font-mono font-black text-white">{order.tracking_code}</span>
                         </div>
                     )}
-
                     {/* Endereço do Vendedor para Retirada (SELF_PICKUP) */}
                     {order.delivery_type === 'SELF_PICKUP' && order.buyer_id === currentUser?.id && (
                         <div className="w-full mt-3 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
@@ -140,11 +142,39 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                         </div>
                     )}
 
+                    {/* RENTAL DETAILS (NOVO) */}
+                    {(order.module_type === 'RENTAL' || order.metadata?.startDate) && (
+                        <div className="w-full mt-3 bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 space-y-2">
+                            <div className="flex items-center gap-2">
+                                <Calendar size={12} className="text-blue-400" />
+                                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Detalhes do Aluguel</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[10px]">
+                                <div className="flex flex-col">
+                                    <span className="text-zinc-500 font-bold uppercase">Período</span>
+                                    <span className="text-white font-black">
+                                        {order.metadata.startDate ? new Date(order.metadata.startDate).toLocaleDateString() : 'N/A'} - {order.metadata.endDate ? new Date(order.metadata.endDate).toLocaleDateString() : 'N/A'}
+                                    </span>
+                                </div>
+                                <div className="text-right flex flex-col">
+                                    <span className="text-zinc-500 font-bold uppercase">Duração</span>
+                                    <span className="text-white font-black uppercase">{order.metadata.rentalDays || 0} {order.metadata.rentalDays === 1 ? 'Dia' : 'Dias'}</span>
+                                </div>
+                            </div>
+                            {order.metadata?.securityDeposit > 0 && (
+                                <div className="pt-2 border-t border-blue-500/10 flex justify-between items-center">
+                                    <span className="text-[9px] text-zinc-500 font-bold uppercase">Calção (Garantia)</span>
+                                    <span className="text-[10px] text-white font-black">{formatCurrency(order.metadata.securityDeposit)}</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {order.courier_name && (
                         <div className="flex flex-col gap-1 mt-4">
-                            <div className="flex items-center gap-2 text-[10px] text-amber-500 font-black">
-                                <div className="flex items-center gap-1"><Truck size={12} /> {order.courier_name}</div>
-                                <div className="flex items-center gap-1 text-zinc-500 font-mono font-normal">
+                            <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-bold">
+                                <div className="flex items-center gap-1"><Truck size={12} className="text-primary-400" /> <span className="text-zinc-300 font-black">{order.courier_name}</span></div>
+                                <div className="flex items-center gap-1 font-mono font-normal">
                                     <Phone size={10} /> {order.courier_phone}
                                 </div>
                             </div>
@@ -159,7 +189,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                             )}
                         </div>
                     )}
-                    {/* Conteúdo Digital (Curso/E-book) - Apenas para Comprador com Pedido Concluído ou Pago */}
+
+                    {/* Conteúdo Digital (Curso/E-book) */}
                     {order.buyer_id === currentUser?.id && order.digital_content && (
                         <div className="w-full mt-4 bg-gradient-to-r from-blue-900/40 to-indigo-900/40 border border-blue-500/30 rounded-xl p-3 flex flex-col gap-2">
                             <div className="flex items-center gap-2 mb-1">
@@ -187,164 +218,163 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                         </div>
                     )}
 
-                </div>
-
-                {/* Ações de Ordem */}
-                <div className="flex gap-2 mt-4 pt-4 border-t border-white/5">
-                    {/* Vendedor: Informar Rastreio */}
-                    {order.seller_id === currentUser?.id && order.status === 'WAITING_SHIPPING' && order.delivery_type === 'EXTERNAL_SHIPPING' && (
-                        <button
-                            onClick={() => {
-                                const code = prompt('Digite o código de rastreamento (Correios/Transportadora):');
-                                if (code) {
-                                    apiService.post(`/marketplace/order/${order.id}/ship`, { trackingCode: code })
-                                        .then(() => { onSuccess('Sucesso', 'Produto enviado!'); fetchData(); })
-                                        .catch((err: any) => onError('Erro', err.message));
-                                }
-                            }}
-                            className="bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-black px-4 py-2 rounded-lg transition-all uppercase tracking-widest"
-                        >
-                            Informar Envio
-                        </button>
-                    )}
-
-                    {/* Vendedor: Antecipar Recebimento */}
-                    {order.seller_id === currentUser?.id && !order.metadata?.anticipated && (order.status === 'WAITING_SHIPPING' || order.status === 'IN_TRANSIT') && (
-                        <button
-                            onClick={() => {
-                                const amount = parseFloat(order.amount);
-                                const anticipationFee = amount * 0.05;
-                                const netEstimation = amount - anticipationFee;
-
-                                setConfirmData({
-                                    isOpen: true,
-                                    title: 'Antecipar Recebimento?',
-                                    message: `Receba o valor desta venda AGORA, sem esperar a entrega! \n\nValor Retido: ${formatCurrency(amount)}\nTaxa de Antecipação (5%): -${formatCurrency(anticipationFee)}\n\nVocê recebe na hora: ~${formatCurrency(netEstimation)}`,
-                                    confirmText: `ANTECIPAR POR ${formatCurrency(anticipationFee)}`,
-                                    type: 'success',
-                                    onConfirm: async () => {
-                                        try {
-                                            const res = await apiService.post(`/marketplace/order/${order.id}/anticipate`, {});
-                                            if (res.success) {
-                                                onSuccess('Sucesso!', 'Valor antecipado e creditado no seu saldo!');
-                                                fetchData();
-                                                setConfirmData(null);
-                                            }
-                                        } catch (err: any) {
-                                            onError('Erro', err.message);
-                                        }
-                                    }
-                                });
-                            }}
-                            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-orange-500/20 mr-2"
-                        >
-                            <Zap size={10} className="fill-black" /> Antecipar Recebimento
-                        </button>
-                    )}
-
-                    {/* Entregador: Antecipar Frete */}
-                    {order.courier_id === currentUser?.id && order.status === 'IN_TRANSIT' && !order.metadata?.courier_anticipated && (
-                        <button
-                            onClick={() => {
-                                const deliveryFee = parseFloat(order.delivery_fee || '0');
-                                const grossEarnings = deliveryFee * 0.85; // 85% para o entregador
-                                const anticipationFee = grossEarnings * 0.05;
-                                const netEarnings = grossEarnings - anticipationFee;
-
-                                setConfirmData({
-                                    isOpen: true,
-                                    title: 'Antecipar Frete?',
-                                    message: `Receba seu ganho pela entrega AGORA!\n\nGanho Previsto: ${formatCurrency(grossEarnings)}\nTaxa de Antecipação (5%): -${formatCurrency(anticipationFee)}\n\nVocê recebe na hora: ${formatCurrency(netEarnings)}`,
-                                    confirmText: `ANTECIPAR FRETE`,
-                                    type: 'success',
-                                    onConfirm: async () => {
-                                        try {
-                                            const res = await apiService.post(`/marketplace/order/${order.id}/anticipate`, {});
-                                            if (res.success) {
-                                                onSuccess('Sucesso!', 'Frete antecipado e creditado!');
-                                                fetchData();
-                                                setConfirmData(null);
-                                            }
-                                        } catch (err: any) {
-                                            onError('Erro', err.message);
-                                        }
-                                    }
-                                });
-                            }}
-                            className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-purple-500/20 mr-2"
-                        >
-                            <Zap size={10} /> Antecipar Frete
-                        </button>
-                    )}
-
-                    {/* Vendedor/Entregador: Validar Entrega via Código (Handshake) */}
-                    {(order.seller_id === currentUser?.id || order.courier_id === currentUser?.id) && (order.status === 'WAITING_SHIPPING' || order.status === 'IN_TRANSIT') && order.status !== 'COMPLETED' && (
-                        <div className="flex items-center gap-2 ml-auto">
-                            <button
-                                onClick={() => setIsScannerOpen(true)}
-                                className="bg-primary-500 hover:bg-primary-400 text-black p-2.5 rounded-xl transition-all shadow-lg shadow-primary-500/20 flex items-center justify-center group"
-                                title="Escanear QR Code"
-                            >
-                                <Scan size={18} className="group-active:scale-90 transition-transform" />
-                            </button>
+                    {/* Ações de Ordem */}
+                    <div className="flex gap-2 mt-4 pt-4 border-t border-white/5">
+                        {/* Vendedor: Informar Rastreio */}
+                        {order.seller_id === currentUser?.id && order.status === 'WAITING_SHIPPING' && order.delivery_type === 'EXTERNAL_SHIPPING' && (
                             <button
                                 onClick={() => {
-                                    const code = prompt('Solicite ao comprador o código de segurança de 6 dígitos:');
-                                    if (code) handleConfirm(code);
-                                }}
-                                className="bg-zinc-800 hover:bg-zinc-700 text-white text-[9px] font-black px-4 py-2.5 rounded-xl transition-all uppercase tracking-widest border border-white/5"
-                            >
-                                Validar via Código
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Comprador: Confirmar Recebimento Manual */}
-                    {order.buyer_id === currentUser?.id && (order.delivery_status === 'DELIVERED' || order.status === 'IN_TRANSIT') && order.status !== 'COMPLETED' && order.status !== 'RETURN_REQUESTED' && (
-                        <button
-                            onClick={() => {
-                                setConfirmData({
-                                    isOpen: true,
-                                    title: 'Confirmar Recebimento?',
-                                    message: 'Ao confirmar, o dinheiro será liberado para o vendedor e o entregador. Faça isso apenas se já estiver com o produto em mãos.',
-                                    confirmText: 'CONFIRMAR RECEBIMENTO',
-                                    type: 'success',
-                                    onConfirm: async () => {
-                                        try {
-                                            const res = await apiService.post(`/marketplace/order/${order.id}/receive`, {});
-                                            if (res.success) {
-                                                onSuccess('Sucesso!', 'Pedido concluído! Vendedor e entregador receberam o pagamento.');
-                                                fetchData();
-                                                setConfirmData(null);
-                                            }
-                                        } catch (err: any) {
-                                            onError('Erro', err.message);
-                                        }
+                                    const code = prompt('Digite o código de rastreamento (Correios/Transportadora):');
+                                    if (code) {
+                                        apiService.post(`/marketplace/order/${order.id}/ship`, { trackingCode: code })
+                                            .then(() => { onSuccess('Sucesso', 'Produto enviado!'); fetchData(); })
+                                            .catch((err: any) => onError('Erro', err.message));
                                     }
-                                });
-                            }}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black px-4 py-2 rounded-lg transition-all uppercase tracking-widest shadow-lg shadow-emerald-600/20 flex items-center gap-1 ml-auto"
-                        >
-                            ✅ Confirmar Recebimento
-                        </button>
-                    )}
+                                }}
+                                className="bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-black px-4 py-2 rounded-lg transition-all uppercase tracking-widest"
+                            >
+                                Informar Envio
+                            </button>
+                        )}
 
-                    {/* Comprador: Solicitar Devolução (Arrependimento) */}
-                    {order.buyer_id === currentUser?.id && (order.delivery_status === 'DELIVERED' || order.status === 'IN_TRANSIT') && order.status !== 'COMPLETED' && order.status !== 'RETURN_REQUESTED' && (
-                        <button
-                            onClick={() => {
-                                const reason = prompt('Por que você deseja devolver este produto?');
-                                if (reason) {
-                                    apiService.post(`/marketplace/order/${order.id}/return`, { reason })
-                                        .then(() => { onSuccess('Sucesso', 'Solicitação de devolução enviada. O saldo está bloqueado.'); fetchData(); })
-                                        .catch((err: any) => onError('Erro', err.message));
-                                }
-                            }}
-                            className="bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-[9px] font-black px-4 py-2 rounded-lg transition-all uppercase tracking-widest border border-white/5 ml-2"
-                        >
-                            🚨 Solicitar Devolução
-                        </button>
-                    )}
+                        {/* Vendedor: Antecipar Recebimento */}
+                        {order.seller_id === currentUser?.id && !order.metadata?.anticipated && (order.status === 'WAITING_SHIPPING' || order.status === 'IN_TRANSIT') && (
+                            <button
+                                onClick={() => {
+                                    const amount = parseFloat(order.amount);
+                                    const anticipationFee = amount * 0.05;
+                                    const netEstimation = amount - anticipationFee;
+
+                                    setConfirmData({
+                                        isOpen: true,
+                                        title: 'Antecipar Recebimento?',
+                                        message: `Receba o valor desta venda AGORA, sem esperar a entrega! \n\nValor Retido: ${formatCurrency(amount)}\nTaxa de Antecipação (5%): -${formatCurrency(anticipationFee)}\n\nVocê recebe na hora: ~${formatCurrency(netEstimation)}`,
+                                        confirmText: `ANTECIPAR POR ${formatCurrency(anticipationFee)}`,
+                                        type: 'success',
+                                        onConfirm: async () => {
+                                            try {
+                                                const res = await apiService.post(`/marketplace/order/${order.id}/anticipate`, {});
+                                                if (res.success) {
+                                                    onSuccess('Sucesso!', 'Valor antecipado e creditado no seu saldo!');
+                                                    fetchData();
+                                                    setConfirmData(null);
+                                                }
+                                            } catch (err: any) {
+                                                onError('Erro', err.message);
+                                            }
+                                        }
+                                    });
+                                }}
+                                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-orange-500/20 mr-2"
+                            >
+                                <Zap size={10} className="fill-black" /> Antecipar Recebimento
+                            </button>
+                        )}
+
+                        {/* Entregador: Antecipar Frete */}
+                        {order.courier_id === currentUser?.id && order.status === 'IN_TRANSIT' && !order.metadata?.courier_anticipated && (
+                            <button
+                                onClick={() => {
+                                    const deliveryFee = parseFloat(order.delivery_fee || '0');
+                                    const grossEarnings = deliveryFee * 0.85; // 85% para o entregador
+                                    const anticipationFee = grossEarnings * 0.05;
+                                    const netEarnings = grossEarnings - anticipationFee;
+
+                                    setConfirmData({
+                                        isOpen: true,
+                                        title: 'Antecipar Frete?',
+                                        message: `Receba seu ganho pela entrega AGORA!\n\nGanho Previsto: ${formatCurrency(grossEarnings)}\nTaxa de Antecipação (5%): -${formatCurrency(anticipationFee)}\n\nVocê recebe na hora: ${formatCurrency(netEarnings)}`,
+                                        confirmText: `ANTECIPAR FRETE`,
+                                        type: 'success',
+                                        onConfirm: async () => {
+                                            try {
+                                                const res = await apiService.post(`/marketplace/order/${order.id}/anticipate`, {});
+                                                if (res.success) {
+                                                    onSuccess('Sucesso!', 'Frete antecipado e creditado!');
+                                                    fetchData();
+                                                    setConfirmData(null);
+                                                }
+                                            } catch (err: any) {
+                                                onError('Erro', err.message);
+                                            }
+                                        }
+                                    });
+                                }}
+                                className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-purple-500/20 mr-2"
+                            >
+                                <Zap size={10} /> Antecipar Frete
+                            </button>
+                        )}
+
+                        {/* Vendedor/Entregador: Validar Entrega via Código (Handshake) */}
+                        {(order.seller_id === currentUser?.id || order.courier_id === currentUser?.id) && (order.status === 'WAITING_SHIPPING' || order.status === 'IN_TRANSIT') && order.status !== 'COMPLETED' && (
+                            <div className="flex items-center gap-2 ml-auto">
+                                <button
+                                    onClick={() => setIsScannerOpen(true)}
+                                    className="bg-primary-500 hover:bg-primary-400 text-black p-2.5 rounded-xl transition-all shadow-lg shadow-primary-500/20 flex items-center justify-center group"
+                                    title="Escanear QR Code"
+                                >
+                                    <Scan size={18} className="group-active:scale-90 transition-transform" />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const code = prompt('Solicite ao comprador o código de segurança de 6 dígitos:');
+                                        if (code) handleConfirm(code);
+                                    }}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-[9px] font-black px-4 py-2.5 rounded-xl transition-all uppercase tracking-widest border border-white/5"
+                                >
+                                    Validar via Código
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Comprador: Confirmar Recebimento Manual */}
+                        {order.buyer_id === currentUser?.id && (order.delivery_status === 'DELIVERED' || order.status === 'IN_TRANSIT') && order.status !== 'COMPLETED' && order.status !== 'RETURN_REQUESTED' && (
+                            <button
+                                onClick={() => {
+                                    setConfirmData({
+                                        isOpen: true,
+                                        title: 'Confirmar Recebimento?',
+                                        message: 'Ao confirmar, o dinheiro será liberado para o vendedor e o entregador. Faça isso apenas se já estiver com o produto em mãos.',
+                                        confirmText: 'CONFIRMAR RECEBIMENTO',
+                                        type: 'success',
+                                        onConfirm: async () => {
+                                            try {
+                                                const res = await apiService.post(`/marketplace/order/${order.id}/receive`, {});
+                                                if (res.success) {
+                                                    onSuccess('Sucesso!', 'Pedido concluído! Vendedor e entregador receberam o pagamento.');
+                                                    fetchData();
+                                                    setConfirmData(null);
+                                                }
+                                            } catch (err: any) {
+                                                onError('Erro', err.message);
+                                            }
+                                        }
+                                    });
+                                }}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black px-4 py-2 rounded-lg transition-all uppercase tracking-widest shadow-lg shadow-emerald-600/20 flex items-center gap-1 ml-auto"
+                            >
+                                ✅ Confirmar Recebimento
+                            </button>
+                        )}
+
+                        {/* Comprador: Solicitar Devolução (Arrependimento) */}
+                        {order.buyer_id === currentUser?.id && (order.delivery_status === 'DELIVERED' || order.status === 'IN_TRANSIT') && order.status !== 'COMPLETED' && order.status !== 'RETURN_REQUESTED' && (
+                            <button
+                                onClick={() => {
+                                    const reason = prompt('Por que você deseja devolver este produto?');
+                                    if (reason) {
+                                        apiService.post(`/marketplace/order/${order.id}/return`, { reason })
+                                            .then(() => { onSuccess('Sucesso', 'Solicitação de devolução enviada. O saldo está bloqueado.'); fetchData(); })
+                                            .catch((err: any) => onError('Erro', err.message));
+                                    }
+                                }}
+                                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-[9px] font-black px-4 py-2 rounded-lg transition-all uppercase tracking-widest border border-white/5 ml-2"
+                            >
+                                🚨 Solicitar Devolução
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

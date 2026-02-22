@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { z } from 'zod';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { executeInTransaction, createTransaction } from '../../../domain/services/transaction.service';
+import { executeInTransaction, createTransaction, incrementSystemReserves } from '../../../domain/services/transaction.service';
 import { PoolClient } from 'pg';
 import { UserContext } from '../../../shared/types/hono.types';
 
@@ -64,7 +64,7 @@ export class EducationController {
                 message: 'Curso criado com sucesso!',
                 data: result.rows[0]
             });
-        } catch (e: unknown) {
+        } catch (e: any) {
             if (e instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: e.errors }, 400);
             console.error('[COURSES] Erro ao criar curso:', e);
             return c.json({ success: false, message: e.message }, 500);
@@ -111,7 +111,7 @@ export class EducationController {
                 message: 'Aula adicionada com sucesso!',
                 data: result.rows[0]
             });
-        } catch (e: unknown) {
+        } catch (e: any) {
             if (e instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: e.errors }, 400);
             console.error('[COURSES] Erro ao adicionar aula:', e);
             return c.json({ success: false, message: e.message }, 500);
@@ -148,7 +148,7 @@ export class EducationController {
                 success: true,
                 data: result.rows
             });
-        } catch (e: unknown) {
+        } catch (e: any) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -202,7 +202,7 @@ export class EducationController {
                     lessons: lessonsRes.rows
                 }
             });
-        } catch (e: unknown) {
+        } catch (e: any) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -268,20 +268,21 @@ export class EducationController {
                 await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [instructorShare, course.instructor_id]);
 
                 // BLINDAGEM FINANCEIRA: Distribuir taxas nos potes corretos
-                await client.query(`
-                    UPDATE system_config SET 
-                        profit_pool = profit_pool + $1,
-                        total_tax_reserve = total_tax_reserve + $2,
-                        total_operational_reserve = total_operational_reserve + $2,
-                        total_owner_profit = total_owner_profit + $2,
-                        investment_reserve = investment_reserve + $2,
-                        total_corporate_investment_reserve = total_corporate_investment_reserve + $2
-                `, [investorsShare, platformBucketShare]);
+                await incrementSystemReserves(client, {
+                    profitPool: investorsShare,
+                    tax: platformBucketShare,
+                    operational: platformBucketShare,
+                    owner: platformBucketShare,
+                    investment: platformBucketShare,
+                    corporate: platformBucketShare
+                });
+
+                const totalPlatformShare = investorsShare + (platformBucketShare * 5);
 
                 await client.query(`
                     INSERT INTO course_purchases (user_id, course_id, amount_paid, instructor_share, platform_share)
                     VALUES ($1, $2, $3, $4, $5)
-                `, [user.id, courseId, price, instructorShare, investorsShare + (platformBucketShare * 5)]);
+                `, [user.id, courseId, price, instructorShare, totalPlatformShare]);
 
                 await client.query(`
                     UPDATE courses SET total_students = total_students + 1, total_revenue = total_revenue + $1 WHERE id = $2
@@ -290,7 +291,7 @@ export class EducationController {
                 await createTransaction(client, String(user.id), 'COURSE_PURCHASE', -price, `Compra: ${course.title}`, 'APPROVED');
                 await createTransaction(client, String(course.instructor_id), 'COURSE_SALE', instructorShare, `Venda: ${course.title}`, 'APPROVED');
 
-                return { success: true, price, instructorShare, platformShare };
+                return { success: true, price, instructorShare, platformShare: totalPlatformShare };
             });
 
             if (!result.success) {
@@ -302,7 +303,7 @@ export class EducationController {
                 message: result.data?.free ? 'Curso adicionado à sua biblioteca!' : 'Curso comprado com sucesso!',
                 data: result.data
             });
-        } catch (e: unknown) {
+        } catch (e: any) {
             console.error('[COURSES] Erro ao comprar:', e);
             return c.json({ success: false, message: e.message }, 500);
         }
@@ -318,8 +319,8 @@ export class EducationController {
 
             const result = await pool.query(`
                 SELECT c.*, cp.created_at as purchased_at,
-                       (SELECT COUNT(*) FROM course_lessons WHERE course_id = c.id) as total_lessons,
-                       (SELECT COUNT(*) FROM course_progress WHERE user_id = $1 AND course_id = c.id AND completed = TRUE) as completed_lessons
+                    (SELECT COUNT(*) FROM course_lessons WHERE course_id = c.id) as total_lessons,
+                    (SELECT COUNT(*) FROM course_progress WHERE user_id = $1 AND course_id = c.id AND completed = TRUE) as completed_lessons
                 FROM course_purchases cp
                 JOIN courses c ON cp.course_id = c.id
                 WHERE cp.user_id = $1
@@ -330,7 +331,7 @@ export class EducationController {
                 success: true,
                 data: result.rows
             });
-        } catch (e: unknown) {
+        } catch (e: any) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -345,7 +346,7 @@ export class EducationController {
 
             const result = await pool.query(`
                 SELECT c.*,
-                       (SELECT COUNT(*) FROM course_lessons WHERE course_id = c.id) as total_lessons
+                (SELECT COUNT(*) FROM course_lessons WHERE course_id = c.id) as total_lessons
                 FROM courses c
                 WHERE c.instructor_id = $1
                 ORDER BY c.created_at DESC
@@ -355,7 +356,7 @@ export class EducationController {
                 success: true,
                 data: result.rows
             });
-        } catch (e: unknown) {
+        } catch (e: any) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -376,12 +377,12 @@ export class EducationController {
             const ua = c.req.header('user-agent') || 'Unknown';
 
             const result = await pool.query(`
-                INSERT INTO education_sessions (user_id, video_id, ip_address, user_agent)
-                VALUES ($1, $2, $3, $4) RETURNING id
+                INSERT INTO education_sessions(user_id, video_id, ip_address, user_agent)
+                VALUES($1, $2, $3, $4) RETURNING id
             `, [user.id, String(lessonId), ip, ua]);
 
             return c.json({ success: true, data: { sessionId: result.rows[0].id } });
-        } catch (e: unknown) {
+        } catch (e: any) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -415,25 +416,18 @@ export class EducationController {
                 return c.json({ success: false, message: 'Tempo de estudo insuficiente.' }, 400);
             }
 
-            const amountToPay = 0; // DESATIVADO: Aulas não pagam mais em dinheiro
             const scoreToAdd = Math.floor(points * POINTS_TO_SCORE_RATE);
 
             const result = await executeInTransaction(pool, async (client: PoolClient) => {
                 await client.query('UPDATE education_sessions SET is_active = FALSE, total_seconds = $1 WHERE id = $2', [Math.floor(elapsedSeconds), sessionId]);
 
-                // Removido débito do profit_pool, pois não há pagamento monetário
-
                 if (scoreToAdd > 0) {
                     await client.query('UPDATE users SET score = score + $1 WHERE id = $2', [scoreToAdd, user.id]);
                 }
 
-                // Opcional: Registrar transação de Score (se houver tabela para isso) ou apenas logar
-                // Como transactions é financeiro, vamos evitar poluir com R$ 0,00 se possível, 
-                // mas para manter histórico de "Aula Concluída", podemos inserir com valor 0.
-
                 const txResult = await client.query(`
-                    INSERT INTO transactions (user_id, type, amount, description, status, metadata)
-                    VALUES ($1, 'EDUCATION_REWARD', 0, $2, 'COMPLETED', $3)
+                    INSERT INTO transactions(user_id, type, amount, description, status, metadata)
+                    VALUES($1, 'EDUCATION_REWARD', 0, $2, 'COMPLETED', $3)
                     RETURNING id`,
                     [user.id, `Aula Concluída: #${lessonId} (+${scoreToAdd} Score)`, JSON.stringify({ points, lessonId, sessionId })]
                 );
@@ -447,9 +441,9 @@ export class EducationController {
 
             return c.json({ success: true, message: 'Recompensa creditada!', data: result.data });
 
-        } catch (error: unknown) {
-            if (error.message === 'LIMIT_REACHED') return c.json({ success: false, message: 'Limite do Fundo atingido.' }, 429);
-            return c.json({ success: false, message: error.message || 'Erro interno' }, 500);
+        } catch (e: any) {
+            if (e.message === 'LIMIT_REACHED') return c.json({ success: false, message: 'Limite do Fundo atingido.' }, 429);
+            return c.json({ success: false, message: e.message || 'Erro interno' }, 500);
         }
     }
 }

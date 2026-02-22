@@ -33,9 +33,9 @@ export const Layout: React.FC<LayoutProps> = ({
 
   const menuItems = [
     { id: 'dashboard', label: 'Painel', Icon: LayoutDashboard },
-    { id: 'invest', label: 'Participar', Icon: Users },
-    { id: 'portfolio', label: 'Carteira', Icon: Briefcase },
-    { id: 'loans', label: 'Ajuda', Icon: HandCoins },
+    { id: 'invest', label: 'Cooperar', Icon: Users },
+    { id: 'portfolio', label: 'Cotas', Icon: Briefcase },
+    { id: 'loans', label: 'Apoio', Icon: HandCoins },
     { id: 'withdraw', label: 'Resgates', Icon: Wallet },
     { id: 'pdv', label: 'Vendas (PDV)', Icon: Store },
     ...(isAdmin ? [{ id: 'admin', label: 'Gestão', Icon: ShieldCheck }] : []),

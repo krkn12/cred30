@@ -1,6 +1,6 @@
 
 import { Pool, PoolClient } from 'pg';
-import { executeInTransaction } from '../../domain/services/transaction.service';
+import { executeInTransaction, incrementSystemReserves } from '../../domain/services/transaction.service';
 
 /**
  * Serviço de Proteção de Crédito (FGC-Cred30)
@@ -48,10 +48,9 @@ export const runFGCCoverage = async (pool: Pool): Promise<{ success: boolean; co
                 const amountToCover = Math.min(debtAmount, fgcAvailable);
 
                 // c. Abater valor do FGC
-                await client.query(
-                    'UPDATE system_config SET credit_guarantee_fund = credit_guarantee_fund - $1',
-                    [amountToCover]
-                );
+                await incrementSystemReserves(client, {
+                    gfc: -amountToCover
+                });
 
                 // d. Registrar a "Quitação por FGC" no cronograma de parcelas
                 await client.query(
@@ -102,7 +101,7 @@ export const runFGCCoverage = async (pool: Pool): Promise<{ success: boolean; co
         }
 
         return { success: true, coveredCount, totalValue };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Erro no resgate via FGC:', error);
         return { success: false, coveredCount: 0, totalValue: 0 };
     }

@@ -263,7 +263,7 @@ export class UsersController {
                     FROM users u WHERE u.id = $1::integer
                 ),
                 system_stats AS (
-                    SELECT mutual_reserve FROM system_config LIMIT 1
+                    SELECT * FROM system_config LIMIT 1
                 ),
                 global_protected_count AS (
                     SELECT COUNT(*) as count FROM users WHERE is_protected = TRUE
@@ -343,7 +343,7 @@ export class UsersController {
                         kyc_document_path: stats.kyc_document_path || null
                     },
                     system: {
-                        mutualProtectionFund: parseFloat(data.system_stats?.mutual_reserve || '0'),
+                        mutualProtectionFund: parseFloat(data.system_stats?.mutual_reserve || data.system_stats?.mutual_protection_fund || '0'),
                         protectedUsersCount: parseInt(data.protected_users_count || '0')
                     },
                     stats: {
@@ -367,9 +367,10 @@ export class UsersController {
                     }
                 }
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[SYNC_DATA_ERROR]:', error, error.stack);
-            return c.json({ success: false, message: 'Erro ao sincronizar' }, 500);
+            const errorMessage = error instanceof Error ? error.message : 'Erro ao sincronizar';
+            return c.json({ success: false, message: errorMessage }, 500);
         }
     }
 

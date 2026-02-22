@@ -7,8 +7,12 @@
 # 🔐 SEGURANÇA CRÍTICA (NUNCA SUBIR!)
 # ===========================================
 .env*
+!.env.example
 *.key
 *.pem
+*.rsa
+*.p12
+*.pfx
 *-firebase-adminsdk-*.json
 *serviceAccountKey*.json
 *credentials*.json
@@ -16,6 +20,10 @@ secure_storage/
 backups/
 *.backup
 *.bak
+*.dump
+*.sql.gz
+*secret*.txt
+*token*.txt
 
 # ===========================================
 # 📦 DEPENDÊNCIAS

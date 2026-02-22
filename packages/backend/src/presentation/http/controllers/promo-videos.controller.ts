@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { z } from 'zod';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { executeInTransaction } from '../../../domain/services/transaction.service';
+import { executeInTransaction, createTransaction, incrementSystemReserves } from '../../../domain/services/transaction.service';
 import { getYouTubeFullStats } from '../../../infrastructure/gateways/youtube.service';
 import {
     VIDEO_VIEWER_SHARE as VIEWER_SHARE,
@@ -367,23 +367,14 @@ export class PromoVideosController {
                     const quotaShare = data.budget * QUOTA_HOLDERS_SHARE;
                     const platformShare = data.budget * SERVICE_FEE_SHARE;
 
-                    await client.query(
-                        `UPDATE system_config SET 
-                            profit_pool = profit_pool + $1, 
-                            total_tax_reserve = total_tax_reserve + $2,
-                            total_operational_reserve = total_operational_reserve + $3,
-                            total_owner_profit = total_owner_profit + $4,
-                            investment_reserve = investment_reserve + $5,
-                            system_balance = system_balance + $6`,
-                        [
-                            quotaShare,
-                            platformShare * PLATFORM_FEE_TAX_SHARE,
-                            platformShare * PLATFORM_FEE_OPERATIONAL_SHARE,
-                            platformShare * PLATFORM_FEE_OWNER_SHARE,
-                            platformShare * PLATFORM_FEE_INVESTMENT_SHARE,
-                            data.budget - quotaShare
-                        ]
-                    );
+                    await incrementSystemReserves(client, {
+                        profitPool: quotaShare,
+                        tax: platformShare * PLATFORM_FEE_TAX_SHARE,
+                        operational: (platformShare * PLATFORM_FEE_OPERATIONAL_SHARE) + viewerPool,
+                        owner: platformShare * PLATFORM_FEE_OWNER_SHARE,
+                        investment: platformShare * PLATFORM_FEE_INVESTMENT_SHARE,
+                        corporate: platformShare * 0.20
+                    });
 
                     const videoResult = await client.query(`
                         INSERT INTO promo_videos (

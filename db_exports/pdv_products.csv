@@ -1,0 +1,2 @@
+id,user_id,name,barcode,sku,price,cost_price,stock,min_stock,category,unit,tax_ncm,image_url,is_active,created_at,updated_at
+87ddb7b4-9560-417f-9ee9-cfaf3cc0a6e1,1,caixa,"","",1.92,1.50,6.000,5.000,,UN,,,t,2026-02-18 07:14:25.880063,2026-02-18 08:27:35.011985

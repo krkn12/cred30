@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { z } from 'zod';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { executeInTransaction, processTransactionApproval, createTransaction, updateUserBalance, updateTransactionStatus } from '../../../domain/services/transaction.service';
+import { executeInTransaction, processTransactionApproval, createTransaction, updateUserBalance, updateTransactionStatus, incrementSystemReserves } from '../../../domain/services/transaction.service';
 import { runAutoLiquidation } from '../../../application/services/auto-liquidation.service';
 
 // Schemas
@@ -34,7 +34,7 @@ export class AdminApprovalController {
 
             // Executar dentro de transação para garantir consistência
             const result = await executeInTransaction(pool, async (client) => {
-                let processResult;
+                let processResult: any;
                 if (type === 'TRANSACTION') {
                     console.log(`[DEBUG_CTRL] Processando TRANSAÇÃO ID: ${id} | Ação: ${action}`);
                     processResult = await processTransactionApproval(client, id as any, action);
@@ -61,7 +61,7 @@ export class AdminApprovalController {
                 success: true,
                 message: `${action === 'APPROVE' ? 'Aprovado' : 'Rejeitado'} com sucesso! [SERVER_ID: ${Date.now()}]`,
             });
-        } catch (error) {
+        } catch (error: any) {
             if (error instanceof z.ZodError) {
                 return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
             }
@@ -97,7 +97,7 @@ export class AdminApprovalController {
                     loans: [] // Retornar vazio para compatibilidade
                 }
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao buscar fila de pagamentos:', error);
             return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
         }
@@ -124,7 +124,7 @@ export class AdminApprovalController {
                 success: true,
                 data: result.rows
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao buscar transações pendentes:', error);
             return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
         }
@@ -216,7 +216,7 @@ export class AdminApprovalController {
                 success: true,
                 message: `Pagamento de R$ ${txResult.data?.netAmount?.toFixed(2)} confirmado para ${txResult.data?.userName || 'usuário'}!`
             });
-        } catch (error) {
+        } catch (error: any) {
             if (error instanceof z.ZodError) {
                 return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
             }
@@ -255,7 +255,7 @@ export class AdminApprovalController {
                     pixKey: result.rows[0].pix_key_to_receive
                 }
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao atualizar PIX do empréstimo:', error);
             return c.json({ success: false, message: 'Erro interno do servidor' }, 500);
         }
@@ -297,7 +297,7 @@ export class AdminApprovalController {
 
             return c.json({ success: true, message: 'Pagamento aprovado com sucesso' });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -342,7 +342,7 @@ export class AdminApprovalController {
                             metadata = JSON.parse(metadataStr);
                         }
                     }
-                } catch (error) {
+                } catch (error: any) {
                     console.error('Erro ao fazer parse do metadata (rejeição):', error);
                 }
 
@@ -382,7 +382,7 @@ export class AdminApprovalController {
                 message: 'Pagamento rejeitado! Empréstimo reativado para novo pagamento.',
                 data: result.data
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -420,7 +420,7 @@ export class AdminApprovalController {
                 message: 'Saque aprovado com sucesso! Valor líquido deduzido e taxas distribuídas.',
             });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -465,7 +465,7 @@ export class AdminApprovalController {
                 data: result.data
             });
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -510,19 +510,14 @@ export class AdminApprovalController {
                     }
                 }
 
-                if (liquidatedValue === 0) throw new Error('Usuário não possui cotas ativas para garantir a dívida');
-
-                // 4. Executar a liquidação
-                if (quotasToLiquidate.length > 0) {
-                    await client.query('DELETE FROM quotas WHERE id = ANY($1)', [quotasToLiquidate]);
+                if (quotasToLiquidate.length === 0) {
+                    throw new Error('Nenhuma cota ativa encontrada para liquidar o empréstimo.');
                 }
 
-                await client.query('UPDATE system_config SET system_balance = system_balance + $1', [liquidatedValue]);
+                // 4. Atualizar status das cotas para 'LIQUIDATED'
+                await client.query('UPDATE quotas SET status = $1 WHERE id = ANY($2::uuid[])', ['LIQUIDATED', quotasToLiquidate]);
 
-                const newStatus = liquidatedValue >= debtAmount ? 'PAID' : loan.status;
-                await client.query('UPDATE loans SET status = $1 WHERE id = $2', [newStatus, loanId]);
-
-                const admin = c.get('user');
+                // 5. Criar transação de liquidação
                 await client.query(
                     `INSERT INTO transactions (user_id, type, amount, description, status, metadata)
                      VALUES ($1, 'SYSTEM_LIQUIDATION', $2, $3, 'APPROVED', $4)`,
@@ -530,15 +525,22 @@ export class AdminApprovalController {
                         loan.user_id,
                         liquidatedValue,
                         `Liquidação forçada de ${quotasToLiquidate.length} cota(s) para quitar empréstimo ${loanId}`,
-                        JSON.stringify({ adminId: admin.id, loanId, quotasCount: quotasToLiquidate.length })
+                        JSON.stringify({ loanId, quotasCount: quotasToLiquidate.length })
                     ]
                 );
+
+                const newStatus = liquidatedValue >= debtAmount ? 'PAID' : 'PARTIALLY_PAID';
+
+                // Se quitou tudo, marcar empréstimo como pago
+                if (newStatus === 'PAID') {
+                    await client.query('UPDATE loans SET status = $1 WHERE id = $2', ['PAID', loanId]);
+                }
 
                 return { success: true, liquidatedValue, isFullyPaid: newStatus === 'PAID' };
             });
 
             return c.json(result);
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('Erro ao liquidar empréstimo:', error);
             return c.json({ success: false, message: error.message || 'Erro interno' }, 500);
         }
@@ -556,7 +558,7 @@ export class AdminApprovalController {
                 message: `Varredura concluída. ${result.liquidatedCount} garantias executadas.`,
                 data: result
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }

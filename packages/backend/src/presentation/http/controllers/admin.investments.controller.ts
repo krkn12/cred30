@@ -2,7 +2,7 @@ import { Context } from 'hono';
 import { z } from 'zod';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
 import { QUOTA_SHARE_VALUE } from '../../../shared/constants/business.constants';
-import { executeInTransaction } from '../../../domain/services/transaction.service';
+import { executeInTransaction, incrementSystemReserves } from '../../../domain/services/transaction.service';
 
 // Schema de validação
 const investmentSchema = z.object({
@@ -106,7 +106,7 @@ export class AdminInvestmentsController {
                     }
                 }
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[INVESTMENTS] Erro ao listar:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -142,10 +142,9 @@ export class AdminInvestmentsController {
                 }
 
                 // Debita do saldo do sistema (Caixa Real)
-                await client.query(
-                    'UPDATE system_config SET system_balance = system_balance - $1',
-                    [data.totalInvested]
-                );
+                await incrementSystemReserves(client, {
+                    systemBalance: -data.totalInvested
+                });
 
                 const invResult = await client.query(`
           INSERT INTO investments (asset_name, asset_type, quantity, unit_price, total_invested, current_value, broker, notes, invested_at)
@@ -175,7 +174,7 @@ export class AdminInvestmentsController {
                 message: `Investimento em ${data.assetName} registrado com sucesso!`,
                 data: { id: result.data?.investmentId }
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             if (error instanceof z.ZodError) {
                 return c.json({ success: false, message: 'Dados inválidos', errors: error.errors }, 400);
             }
@@ -221,7 +220,7 @@ export class AdminInvestmentsController {
             );
 
             return c.json({ success: true, message: 'Investimento atualizado!' });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -248,15 +247,14 @@ export class AdminInvestmentsController {
                 );
 
                 if (reinvest) {
-                    await client.query(
-                        'UPDATE system_config SET system_balance = COALESCE(system_balance, 0) + $1',
-                        [amount]
-                    );
+                    await incrementSystemReserves(client, {
+                        systemBalance: amount
+                    });
                 } else {
-                    await client.query(
-                        'UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2',
-                        [amount, amount * 0.5]
-                    );
+                    await incrementSystemReserves(client, {
+                        systemBalance: amount,
+                        profitPool: amount * 0.5
+                    });
                 }
             });
 
@@ -266,7 +264,7 @@ export class AdminInvestmentsController {
                     ? `Dividendos de R$ ${amount.toFixed(2)} reinvestidos!`
                     : `Dividendos de R$ ${amount.toFixed(2)} creditados no sistema!`
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -296,10 +294,9 @@ export class AdminInvestmentsController {
                 const totalInvested = parseFloat(investment.total_invested);
                 const profitLoss = saleValue - totalInvested;
 
-                await client.query(
-                    'UPDATE system_config SET system_balance = COALESCE(system_balance, 0) + $1',
-                    [saleValue]
-                );
+                await incrementSystemReserves(client, {
+                    systemBalance: saleValue
+                });
 
                 await client.query(
                     'UPDATE investments SET status = $1, sale_value = $2, sold_at = NOW(), updated_at = NOW() WHERE id = $3',
@@ -318,7 +315,7 @@ export class AdminInvestmentsController {
                 : `${result.data!.assetName} vendido com prejuízo de R$ ${Math.abs(result.data!.profitLoss).toFixed(2)}.`;
 
             return c.json({ success: true, message: msg });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -337,16 +334,15 @@ export class AdminInvestmentsController {
 
             const pool = getDbPool(c);
 
-            await pool.query(
-                'UPDATE system_config SET system_balance = COALESCE(system_balance, 0) + $1, updated_at = NOW()',
-                [amount]
-            );
+            await incrementSystemReserves(pool, {
+                systemBalance: amount
+            });
 
             return c.json({
                 success: true,
                 message: `Aporte de R$ ${amount.toFixed(2)} registrado com sucesso na reserva!`
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }

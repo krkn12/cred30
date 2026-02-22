@@ -1,0 +1,8 @@
+commit 5e40b034e92b35636f127b06f786cd370aef863f
+Author: josias <josias@192.168.1.8>
+Date:   Fri Feb 20 01:23:18 2026 -0300
+
+    fix(frontend): remove no-empty block in NotificationBell to fix CI
+
+ .../frontend-v2/src/presentation/components/ui/NotificationBell.tsx     | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)

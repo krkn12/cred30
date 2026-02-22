@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { z } from 'zod';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction } from '../../../domain/services/transaction.service';
+import { executeInTransaction, lockUserBalance, updateUserBalance, createTransaction, incrementSystemReserves } from '../../../domain/services/transaction.service';
 import { UserContext } from '../../../shared/types/hono.types';
 
 // Schemas
@@ -32,7 +32,12 @@ const createListingSchema = z.object({
     isFood: z.coerce.boolean().optional().default(false),
     estimatedPrepTimeMinutes: z.coerce.number().int().min(1).optional().default(20),
     pickupLat: z.coerce.number().optional(),
-    pickupLng: z.coerce.number().optional()
+    pickupLng: z.coerce.number().optional(),
+    // Novos campos para Aluguéis e Delivery Separado
+    moduleType: z.enum(['PRODUCT', 'DELIVERY', 'RENTAL']).optional().default('PRODUCT'),
+    rentalPricePerDay: z.coerce.number().min(0).optional(),
+    securityDeposit: z.coerce.number().min(0).optional(),
+    minimumRentalDays: z.coerce.number().int().min(1).optional().default(1)
 });
 
 export class MarketplaceListingsController {
@@ -43,7 +48,7 @@ export class MarketplaceListingsController {
     static async getListings(c: Context) {
         try {
             const pool = getDbPool(c);
-            const { category, search, city, state, minPrice, maxPrice } = c.req.query();
+            const { category, search, city, state, minPrice, maxPrice, moduleType } = c.req.query();
 
             let query = `
                 SELECT l.*, COALESCE(u.seller_company_name, u.name) as seller_name, u.is_verified as seller_verified,
@@ -60,6 +65,11 @@ export class MarketplaceListingsController {
             if (category && category !== 'TODOS') {
                 query += ` AND l.category = $${pIndex++}`;
                 params.push(category);
+            }
+
+            if (moduleType) {
+                query += ` AND l.module_type = $${pIndex++}`;
+                params.push(moduleType);
             }
 
             if (search) {
@@ -92,7 +102,7 @@ export class MarketplaceListingsController {
 
             const result = await pool.query(query, params);
             return c.json({ success: true, data: { listings: result.rows } });
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('Get Listings Error:', error.message, error.stack);
             return c.json({ success: false, message: error.message || 'Erro ao buscar anúncios' }, 500);
         }
@@ -153,7 +163,7 @@ export class MarketplaceListingsController {
                 }
             });
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error fetching details:', error);
             return c.json({ success: false, message: 'Erro ao buscar detalhes' }, 500);
         }
@@ -181,7 +191,8 @@ export class MarketplaceListingsController {
             const {
                 title, description, price, category, imageUrl, images, variants,
                 itemType, digitalContent, requiredVehicle, stock, pickupAddress, postalCode,
-                weightGrams, freeShipping, shippingPrice, pickupLat, pickupLng
+                weightGrams, freeShipping, shippingPrice, pickupLat, pickupLng,
+                moduleType, rentalPricePerDay, securityDeposit, minimumRentalDays
             } = parseResult.data;
 
             // ... (digital check kept)
@@ -233,13 +244,18 @@ export class MarketplaceListingsController {
                         seller_id, title, description, price, category, image_url, 
                         item_type, digital_content, required_vehicle, stock, pickup_address, pickup_postal_code,
                         weight_grams, free_shipping, shipping_price, is_food, estimated_prep_time_minutes,
-                        pickup_lat, pickup_lng, seller_phone
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING id, *`,
+                        pickup_lat, pickup_lng, seller_phone,
+                        module_type, rental_price_per_day, security_deposit, preparation_time_minutes, minimum_rental_days
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25) RETURNING id, *`,
                     [
                         user.id, title, description, price, category, mainImage,
                         itemType, digitalContent || null, requiredVehicle, stock || 1, finalPickupAddress || null, postalCode || null,
-                        weightGrams, freeShipping, shippingPrice, parseResult.data.isFood, parseResult.data.estimatedPrepTimeMinutes,
-                        pickupLat || null, pickupLng || null, contactPhone || null
+                        weightGrams, freeShipping, shippingPrice, parseResult.data.isFood || (moduleType === 'DELIVERY'),
+                        parseResult.data.estimatedPrepTimeMinutes,
+                        pickupLat || null, pickupLng || null, contactPhone || null,
+                        moduleType, rentalPricePerDay || null, securityDeposit || null,
+                        moduleType === 'DELIVERY' ? parseResult.data.estimatedPrepTimeMinutes : null,
+                        minimumRentalDays
                     ]
                 );
                 const listing = result.rows[0];
@@ -290,7 +306,7 @@ export class MarketplaceListingsController {
                 client.release();
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao criar anúncio:', error);
             return c.json({ success: false, message: 'Erro ao publicar anúncio' }, 500);
         }
@@ -313,7 +329,7 @@ export class MarketplaceListingsController {
             );
 
             return c.json({ success: true, data: result.rows });
-        } catch (error) {
+        } catch (error: any) {
             console.error('My Listings Error:', error);
             return c.json({ success: false, message: 'Erro ao buscar seus anúncios' }, 500);
         }
@@ -338,7 +354,7 @@ export class MarketplaceListingsController {
             }
 
             return c.json({ success: true, message: 'Anúncio removido com sucesso!' });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Delete Listing Error:', error);
             return c.json({ success: false, message: 'Erro ao remover anúncio' }, 500);
         }
@@ -384,15 +400,12 @@ export class MarketplaceListingsController {
                     const ownerPart = BOOST_FEE * 0.25;
                     const investPart = BOOST_FEE * 0.25;
 
-                    await client.query(
-                        `UPDATE system_config SET 
-                            total_tax_reserve = total_tax_reserve + $1,
-                            total_operational_reserve = total_operational_reserve + $2,
-                            total_owner_profit = total_owner_profit + $3,
-                            investment_reserve = investment_reserve + $4,
-                            profit_pool = profit_pool + $5`,
-                        [taxPart, operPart, ownerPart, investPart, 0]
-                    );
+                    await incrementSystemReserves(client, {
+                        tax: taxPart,
+                        operational: operPart,
+                        owner: ownerPart,
+                        investment: investPart
+                    });
 
                     await createTransaction(
                         client,
@@ -417,7 +430,7 @@ export class MarketplaceListingsController {
                 message: 'Pagamentos PIX/Cartão externos estão temporariamente indisponíveis. Por favor, deposite saldo na sua conta e use o saldo para impulsionar.'
             }, 400);
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('Error boosting listing:', error);
             return c.json({ success: false, message: error.message || 'Erro ao impulsionar anúncio' }, 500);
         }
@@ -532,7 +545,7 @@ export class MarketplaceListingsController {
                     disclaimer: '⚠️ Esta é uma negociação P2P direta. A Cred30 não intermedia esta transação e não oferece garantias. Combine pagamento e entrega diretamente com o vendedor.'
                 }
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Contact Route Error:', error);
             return c.json({ success: false, message: 'Erro ao obter contato' }, 500);
         }

@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { z } from 'zod';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { executeInTransaction, updateUserBalance, createTransaction } from '../../../domain/services/transaction.service';
+import { executeInTransaction, updateUserBalance, createTransaction, incrementSystemReserves } from '../../../domain/services/transaction.service';
 import { updateScore } from '../../../application/services/score.service';
 
 // Schema de validação
@@ -39,7 +39,7 @@ export class AdminMarketplaceController {
                 success: true,
                 data: result.rows
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -73,12 +73,17 @@ export class AdminMarketplaceController {
 
                     const sellerAmount = parseFloat(order.seller_amount);
                     if (order.payment_method === 'CRED30_CREDIT') {
-                        await client.query('UPDATE system_config SET system_balance = system_balance - $1', [order.amount]);
+                        await incrementSystemReserves(client, {
+                            systemBalance: -order.amount
+                        });
                     }
                     await updateUserBalance(client, order.seller_id, sellerAmount, 'credit');
 
                     const feeAmount = parseFloat(order.fee_amount);
-                    await client.query('UPDATE system_config SET system_balance = system_balance + $1, profit_pool = profit_pool + $2', [feeAmount * 0.85, feeAmount * 0.15]);
+                    await incrementSystemReserves(client, {
+                        systemBalance: feeAmount * 0.85,
+                        profitPool: feeAmount * 0.15
+                    });
 
                     await createTransaction(client, order.seller_id, 'MARKET_SALE', sellerAmount, `Disputa Resolvida: Venda #${orderId} Liberada`, 'APPROVED', { orderId });
                 }
@@ -91,7 +96,7 @@ export class AdminMarketplaceController {
             });
 
             return c.json({ success: true, message: `Disputa resolvida: ${resolution}` });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -128,7 +133,7 @@ export class AdminMarketplaceController {
                     transaction_amount: parseFloat(row.transaction_amount)
                 }))
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -147,7 +152,7 @@ export class AdminMarketplaceController {
             );
 
             return c.json({ success: true, message: 'Avaliação aprovada como depoimento!' });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -166,7 +171,7 @@ export class AdminMarketplaceController {
             );
 
             return c.json({ success: true, message: 'Avaliação rejeitada.' });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }
@@ -252,7 +257,7 @@ export class AdminMarketplaceController {
                 message,
                 data: { deletedCount, skipped: skipped || 0, daysOld }
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('[CLEANUP] Erro ao limpar anúncios:', error);
             return c.json({ success: false, message: error.message }, 500);
         }
@@ -289,7 +294,7 @@ export class AdminMarketplaceController {
                     totalAll: parseInt(stats.total_all)
                 }
             });
-        } catch (error: unknown) {
+        } catch (error: any) {
             return c.json({ success: false, message: error.message }, 500);
         }
     }

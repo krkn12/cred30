@@ -1,0 +1,6 @@
+id,user_id,action_type,entity_type,entity_id,old_values,new_values,ip_address,user_agent,created_at,metadata,action
+1,1,,transaction,1,"{""status"": ""PENDING""}","{""type"": ""DEPOSIT"", ""status"": ""APPROVED""}",unknown,,2026-02-15 07:48:52.956258+00,,TRANSACTION_APPROVED
+2,1,,,,"{""cpf"": ""01558516247"", ""phone"": ""91980177874""}","{""cpf"": ""01558516247"", ""phone"": ""91980177874""}",127.0.0.1,,2026-02-15 07:50:57.60904+00,,CPF_UPDATE
+3,1,,,,"{""pixKey"": ""01558516247""}","{""pixKey"": ""01558516247""}",127.0.0.1,,2026-02-15 07:50:59.801096+00,,PIX_KEY_UPDATE
+4,1,,,,"{""quantity"": 1, ""totalCost"": 50, ""userAgent"": ""Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"", ""useBalance"": true}","{""quantity"": 1, ""totalCost"": 50, ""userAgent"": ""Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"", ""useBalance"": true}",127.0.0.1,,2026-02-15 08:00:53.971846+00,,BUY_QUOTA
+5,1,,transaction,4,"{""status"": ""PENDING""}","{""type"": ""DEPOSIT"", ""status"": ""APPROVED""}",unknown,,2026-02-18 05:50:59.621352+00,,TRANSACTION_APPROVED

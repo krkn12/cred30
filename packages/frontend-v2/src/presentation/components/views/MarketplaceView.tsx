@@ -172,6 +172,11 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         stock: string;
         pickupAddress: string;
         foodOptions: { name: string; price: number }[];
+        moduleType: 'PRODUCT' | 'DELIVERY' | 'RENTAL';
+        rentalPricePerDay: string;
+        securityDeposit: string;
+        minimumRentalDays: string;
+        estimatedPrepTimeMinutes: string;
     }>({
         title: '',
         description: '',
@@ -184,7 +189,12 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
         requiredVehicle: 'MOTO',
         stock: '1',
         pickupAddress: '',
-        foodOptions: []
+        foodOptions: [],
+        moduleType: 'PRODUCT',
+        rentalPricePerDay: '',
+        securityDeposit: '',
+        minimumRentalDays: '1',
+        estimatedPrepTimeMinutes: '20'
     });
 
     const categories = MARKETPLACE_CATEGORIES;
@@ -306,7 +316,12 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 requiredVehicle: newListing.requiredVehicle,
                 stock: parseInt(newListing.stock),
                 foodOptions: newListing.foodOptions,
-                isFood: newListing.category === 'COMIDA' || newListing.category === 'BEBIDAS',
+                isFood: newListing.category === 'COMIDA' || newListing.category === 'BEBIDAS' || newListing.moduleType === 'DELIVERY',
+                moduleType: newListing.moduleType,
+                rentalPricePerDay: parseFloat(newListing.rentalPricePerDay || '0'),
+                securityDeposit: parseFloat(newListing.securityDeposit || '0'),
+                minimumRentalDays: parseInt(newListing.minimumRentalDays || '1'),
+                estimatedPrepTimeMinutes: parseInt(newListing.estimatedPrepTimeMinutes || '20'),
                 ...(gpsLocation ? gpsLocation : {})
             };
 
@@ -320,10 +335,11 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                 onSuccess('Sucesso', newListing.quotaId ? 'Sua cota-parte foi listada para repasse!' : 'Anúncio publicado!');
                 setView('browse');
                 setNewListing({
-                    title: '', description: '', price: '', category: 'COMIDA',
+                    title: '', description: '', price: '', category: 'ELETRÔNICOS',
                     image_url: '', images: [], variants: [],
                     quotaId: null, requiredVehicle: 'MOTO', stock: '1', pickupAddress: '',
-                    foodOptions: []
+                    foodOptions: [], moduleType: 'PRODUCT', rentalPricePerDay: '',
+                    securityDeposit: '', minimumRentalDays: '1', estimatedPrepTimeMinutes: '20'
                 });
                 onRefresh();
             }
@@ -1386,6 +1402,9 @@ export const MarketplaceView = ({ state, onRefresh, onSuccess, onError }: Market
                                         pickupLat: selectedItem.pickup_lat,
                                         pickupLng: selectedItem.pickup_lng,
                                         quantity: data.quantity || 1,
+                                        startDate: data.startDate,
+                                        endDate: data.endDate,
+                                        rentalDays: data.rentalDays,
                                     };
 
                                     let res;

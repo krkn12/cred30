@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { z } from 'zod';
 import { getDbPool } from '../../../infrastructure/database/postgresql/connection/pool';
-import { executeInTransaction, createTransaction } from '../../../domain/services/transaction.service';
+import { executeInTransaction, createTransaction, incrementSystemReserves } from '../../../domain/services/transaction.service';
 import { UserContext } from '../../../shared/types/hono.types';
 import {
     PLATFORM_FEE_TAX_SHARE,
@@ -51,7 +51,7 @@ export class TutorsController {
             `, [data.bio, data.pricePerHour, data.subjects, user.id]);
 
             return c.json({ success: true, message: 'Perfil de tutor ativado com sucesso!' });
-        } catch (e: unknown) {
+        } catch (e: any) {
             if (e instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: e.errors }, 400);
             return c.json({ success: false, message: e.message }, 500);
         }
@@ -74,7 +74,7 @@ export class TutorsController {
             `, [user.id]);
 
             return c.json({ success: true, data: result.rows });
-        } catch (e: unknown) {
+        } catch (e: any) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -113,7 +113,7 @@ export class TutorsController {
             `, [user.id, data.tutorId, data.scheduledAt, data.durationHours, data.subject, data.message || '', priceSnapshot]);
 
             return c.json({ success: true, message: 'Solicitação enviada! Aguarde a aprovação do professor.', requestId: result.rows[0].id });
-        } catch (e: unknown) {
+        } catch (e: any) {
             if (e instanceof z.ZodError) return c.json({ success: false, message: 'Dados inválidos', errors: e.errors }, 400);
             return c.json({ success: false, message: e.message }, 500);
         }
@@ -149,7 +149,7 @@ export class TutorsController {
             }
 
             return c.json({ success: false, message: 'Ação inválida.' }, 400);
-        } catch (e: unknown) {
+        } catch (e: any) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -188,20 +188,13 @@ export class TutorsController {
                 await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [tutorAmount, request.tutor_id]);
 
                 // 3. Distribuir Taxa da Plataforma (Service Fee)
-                await client.query(`
-                    UPDATE system_config SET 
-                        system_balance = system_balance + $1,
-                        total_tax_reserve = total_tax_reserve + $2,
-                        total_operational_reserve = total_operational_reserve + $3,
-                        total_owner_profit = total_owner_profit + $4,
-                        investment_reserve = investment_reserve + $5
-                `, [
-                    platformAmount, // Balance total increment
-                    platformAmount * PLATFORM_FEE_TAX_SHARE,
-                    platformAmount * PLATFORM_FEE_OPERATIONAL_SHARE,
-                    platformAmount * PLATFORM_FEE_OWNER_SHARE,
-                    platformAmount * PLATFORM_FEE_INVESTMENT_SHARE
-                ]);
+                await incrementSystemReserves(client, {
+                    systemBalance: platformAmount,
+                    tax: platformAmount * PLATFORM_FEE_TAX_SHARE,
+                    operational: platformAmount * PLATFORM_FEE_OPERATIONAL_SHARE,
+                    owner: platformAmount * PLATFORM_FEE_OWNER_SHARE,
+                    investment: platformAmount * PLATFORM_FEE_INVESTMENT_SHARE
+                });
 
                 // 4. Atualizar Status
                 await client.query("UPDATE tutor_requests SET status = 'PAID' WHERE id = $1", [requestId]);
@@ -222,7 +215,7 @@ export class TutorsController {
             });
 
             return c.json({ success: true, message: 'Pagamento confirmado! Aula agendada com sucesso.' });
-        } catch (e: unknown) {
+        } catch (e: any) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -244,7 +237,7 @@ export class TutorsController {
             `, [user.id]);
 
             return c.json({ success: true, data: result.rows });
-        } catch (e: unknown) {
+        } catch (e: any) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }
@@ -266,7 +259,7 @@ export class TutorsController {
             `, [user.id]);
 
             return c.json({ success: true, data: result.rows });
-        } catch (e: unknown) {
+        } catch (e: any) {
             return c.json({ success: false, message: e.message }, 500);
         }
     }

@@ -1,0 +1,1 @@
+id,seller_id,quota_id,title,description,price,category,image_url,status,is_boosted,boost_expires_at,created_at,updated_at,item_type,digital_content,required_vehicle,stock,pickup_address,pickup_postal_code,weight_grams,free_shipping,shipping_price,delivery_fee_final,food_options,seller_phone,pickup_lat,pickup_lng,is_food,estimated_prep_time_minutes

@@ -1,0 +1,5 @@
+id,name,icon,image_url,display_order,is_active,slug,created_at
+1,Restaurantes,utensils,,1,t,restaurantes,2026-02-18 06:20:03.257762
+2,Bebidas,glass-martini-alt,,2,t,bebidas,2026-02-18 06:20:03.257762
+3,Mercado,shopping-basket,,3,t,mercado,2026-02-18 06:20:03.257762
+4,Farmácia,pills,,4,t,farmacia,2026-02-18 06:20:03.257762

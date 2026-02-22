@@ -48,7 +48,7 @@ export async function executeInTransaction<T>(
   } catch (error: unknown) {
     await client.query('ROLLBACK');
 
-    const logMessage = `\n[${new Date().toISOString()}] Erro na transação:\n${error.stack || error}\n`;
+    const logMessage = `\n[${new Date().toISOString()}] Erro na transação:\n${(error as any).stack || error}\n`;
     try {
       const logDir = path.join(process.cwd(), 'logs');
       if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
@@ -128,6 +128,62 @@ export async function lockUserBalance(
 export async function lockSystemConfig(client: Pool | PoolClient) {
   const result = await client.query('SELECT * FROM system_config FOR UPDATE');
   return result.rows[0];
+}
+
+export interface SystemReservesUpdate {
+  tax?: number;
+  operational?: number;
+  owner?: number;
+  mutual?: number;
+  investment?: number;
+  corporate?: number;
+  gfc?: number;
+  manualCosts?: number;
+  profitPool?: number;
+  systemBalance?: number;
+}
+
+/**
+ * Incrementa as reservas do sistema de forma resiliente
+ */
+export async function incrementSystemReserves(
+  client: Pool | PoolClient,
+  updates: SystemReservesUpdate
+) {
+  const fields: string[] = [];
+  const values: any[] = [];
+  let pIndex = 1;
+
+  if (updates.tax) { fields.push(`total_tax_reserve = total_tax_reserve + $${pIndex++}`); values.push(updates.tax); }
+  if (updates.operational) { fields.push(`total_operational_reserve = total_operational_reserve + $${pIndex++}`); values.push(updates.operational); }
+  if (updates.owner) { fields.push(`total_owner_profit = total_owner_profit + $${pIndex++}`); values.push(updates.owner); }
+  if (updates.investment) { fields.push(`investment_reserve = COALESCE(investment_reserve, 0) + $${pIndex++}`); values.push(updates.investment); }
+  if (updates.profitPool) { fields.push(`profit_pool = profit_pool + $${pIndex++}`); values.push(updates.profitPool); }
+  if (updates.systemBalance) { fields.push(`system_balance = system_balance + $${pIndex++}`); values.push(updates.systemBalance); }
+  if (updates.corporate) { fields.push(`total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $${pIndex++}`); values.push(updates.corporate); }
+  if (updates.gfc) { fields.push(`credit_guarantee_fund = COALESCE(credit_guarantee_fund, 0) + $${pIndex++}`); values.push(updates.gfc); }
+  if (updates.manualCosts) { fields.push(`total_manual_costs = COALESCE(total_manual_costs, 0) + $${pIndex++}`); values.push(updates.manualCosts); }
+
+  if (updates.mutual) {
+    // Detectar qual coluna de proteção mútua existe no banco atual
+    const colCheck = await client.query(`
+          SELECT column_name FROM information_schema.columns 
+          WHERE table_name = 'system_config' AND column_name IN ('mutual_reserve', 'mutual_protection_fund')
+      `);
+    const columns = colCheck.rows.map(r => r.column_name);
+
+    if (columns.includes('mutual_reserve')) {
+      fields.push(`mutual_reserve = COALESCE(mutual_reserve, 0) + $${pIndex++}`);
+      values.push(updates.mutual);
+    } else if (columns.includes('mutual_protection_fund')) {
+      fields.push(`mutual_protection_fund = COALESCE(mutual_protection_fund, 0) + $${pIndex++}`);
+      values.push(updates.mutual);
+    }
+  }
+
+  if (fields.length === 0) return;
+
+  await client.query(`UPDATE system_config SET ${fields.join(', ')}`, values);
 }
 
 /**
@@ -406,17 +462,15 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
       const growthAmount = totalAdmFee * PLATFORM_FEE_INVESTMENT_SHARE;
       const corporateAmount = totalAdmFee * PLATFORM_FEE_CORPORATE_SHARE;
 
-      await client.query(
-        `UPDATE system_config SET 
-          total_tax_reserve = total_tax_reserve + $1,
-          total_operational_reserve = total_operational_reserve + $2,
-          total_owner_profit = total_owner_profit + $3,
-          mutual_reserve = COALESCE(mutual_reserve, 0) + $4,
-          total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $5,
-          investment_reserve = COALESCE(investment_reserve, 0) + $6,
-          system_balance = system_balance + $7`,
-        [taxAmount, operationalAmount, ownerAmount, growthAmount, corporateAmount, principalAmount, parseFloat(transaction.amount)]
-      );
+      await incrementSystemReserves(client, {
+        tax: taxAmount,
+        operational: operationalAmount,
+        owner: ownerAmount,
+        mutual: growthAmount,
+        corporate: corporateAmount,
+        investment: principalAmount,
+        systemBalance: parseFloat(transaction.amount) // Adiciona o valor bruto ao caixa
+      });
     }
   }
 
@@ -484,21 +538,13 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
         // C2. Parte do Sistema (Taxa sobre o lucro do empréstimo)
         // Distribuída conforme regra 25/25/25/25
         if (interestSystemFee > 0) {
-          await client.query(
-            `UPDATE system_config SET 
-              total_tax_reserve = total_tax_reserve + $1,
-              total_operational_reserve = total_operational_reserve + $2,
-              total_owner_profit = total_owner_profit + $3,
-              investment_reserve = investment_reserve + $4,
-              total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $5`,
-            [
-              interestSystemFee * PLATFORM_FEE_TAX_SHARE,
-              interestSystemFee * PLATFORM_FEE_OPERATIONAL_SHARE,
-              interestSystemFee * PLATFORM_FEE_OWNER_SHARE,
-              interestSystemFee * PLATFORM_FEE_INVESTMENT_SHARE,
-              interestSystemFee * PLATFORM_FEE_CORPORATE_SHARE
-            ]
-          );
+          await incrementSystemReserves(client, {
+            tax: interestSystemFee * PLATFORM_FEE_TAX_SHARE,
+            operational: interestSystemFee * PLATFORM_FEE_OPERATIONAL_SHARE,
+            owner: interestSystemFee * PLATFORM_FEE_OWNER_SHARE,
+            investment: interestSystemFee * PLATFORM_FEE_INVESTMENT_SHARE,
+            corporate: interestSystemFee * PLATFORM_FEE_CORPORATE_SHARE
+          });
         }
 
         console.log(`[LOAN_PAYMENT_DISTRIBUTION]
@@ -576,21 +622,13 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
     // 2. Distribuir o valor (regra 25/25/25/25)
     const upgradeFee = Math.abs(parseFloat(transaction.amount));
 
-    await client.query(
-      `UPDATE system_config SET 
-        total_tax_reserve = total_tax_reserve + $1,
-        total_operational_reserve = total_operational_reserve + $2,
-        total_owner_profit = total_owner_profit + $3,
-        investment_reserve = investment_reserve + $4,
-        total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $5`,
-      [
-        upgradeFee * PLATFORM_FEE_TAX_SHARE,
-        upgradeFee * PLATFORM_FEE_OPERATIONAL_SHARE,
-        upgradeFee * PLATFORM_FEE_OWNER_SHARE,
-        upgradeFee * PLATFORM_FEE_INVESTMENT_SHARE,
-        upgradeFee * PLATFORM_FEE_CORPORATE_SHARE
-      ]
-    );
+    await incrementSystemReserves(client, {
+      tax: upgradeFee * PLATFORM_FEE_TAX_SHARE,
+      operational: upgradeFee * PLATFORM_FEE_OPERATIONAL_SHARE,
+      owner: upgradeFee * PLATFORM_FEE_OWNER_SHARE,
+      investment: upgradeFee * PLATFORM_FEE_INVESTMENT_SHARE,
+      corporate: upgradeFee * PLATFORM_FEE_CORPORATE_SHARE
+    });
 
     // Só aumenta o saldo do sistema se houver entrada real de dinheiro (não useBalance)
     if (transaction.metadata && !(typeof transaction.metadata === 'object' ? transaction.metadata : JSON.parse(transaction.metadata)).useBalance) {
@@ -680,21 +718,13 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
       // Valor líquido para distribuição (depois do gateway cost)
       const netBoostFee = boostFee - gatewayCost;
 
-      await client.query(
-        `UPDATE system_config SET 
-          total_tax_reserve = total_tax_reserve + $1,
-          total_operational_reserve = total_operational_reserve + $2,
-          total_owner_profit = total_owner_profit + $3,
-          investment_reserve = investment_reserve + $4,
-          total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $5`,
-        [
-          netBoostFee * PLATFORM_FEE_TAX_SHARE,
-          netBoostFee * PLATFORM_FEE_OPERATIONAL_SHARE,
-          netBoostFee * PLATFORM_FEE_OWNER_SHARE,
-          netBoostFee * PLATFORM_FEE_INVESTMENT_SHARE,
-          netBoostFee * PLATFORM_FEE_CORPORATE_SHARE
-        ]
-      );
+      await incrementSystemReserves(client, {
+        tax: netBoostFee * PLATFORM_FEE_TAX_SHARE,
+        operational: netBoostFee * PLATFORM_FEE_OPERATIONAL_SHARE,
+        owner: netBoostFee * PLATFORM_FEE_OWNER_SHARE,
+        investment: netBoostFee * PLATFORM_FEE_INVESTMENT_SHARE,
+        corporate: netBoostFee * PLATFORM_FEE_CORPORATE_SHARE
+      });
 
       // Aumentar saldo do sistema apenas pelo valor bruto que entrou via gateway
       if (metadata.asaas_id || metadata.external_reference) {
@@ -745,21 +775,13 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
 
     // 2. Se houver taxa cobrada do usuário (ex: R$ 2,00), aplicar a regra de divisão: 25/25/25/25
     if (feeAmount > 0) {
-      await client.query(
-        `UPDATE system_config SET 
-          total_tax_reserve = total_tax_reserve + $1,
-          total_operational_reserve = total_operational_reserve + $2,
-          total_owner_profit = total_owner_profit + $3,
-          investment_reserve = investment_reserve + $4,
-          total_corporate_investment_reserve = COALESCE(total_corporate_investment_reserve, 0) + $5`,
-        [
-          feeAmount * PLATFORM_FEE_TAX_SHARE,
-          feeAmount * PLATFORM_FEE_OPERATIONAL_SHARE,
-          feeAmount * PLATFORM_FEE_OWNER_SHARE,
-          feeAmount * PLATFORM_FEE_INVESTMENT_SHARE,
-          feeAmount * PLATFORM_FEE_CORPORATE_SHARE
-        ]
-      );
+      await incrementSystemReserves(client, {
+        tax: feeAmount * PLATFORM_FEE_TAX_SHARE,
+        operational: feeAmount * PLATFORM_FEE_OPERATIONAL_SHARE,
+        owner: feeAmount * PLATFORM_FEE_OWNER_SHARE,
+        investment: feeAmount * PLATFORM_FEE_INVESTMENT_SHARE,
+        corporate: feeAmount * PLATFORM_FEE_CORPORATE_SHARE
+      });
     }
 
     // CORREÇÃO: O system_balance foi debitado pelo netAmount acima. 
