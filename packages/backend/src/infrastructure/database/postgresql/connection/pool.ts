@@ -1598,6 +1598,17 @@ export const initializeDatabase = async () => {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           )`
+        },
+        {
+          name: 'system_costs',
+          query: `CREATE TABLE IF NOT EXISTS system_costs(
+            id SERIAL PRIMARY KEY,
+            description TEXT NOT NULL,
+            amount DECIMAL(20, 2) NOT NULL,
+            is_recurring BOOLEAN DEFAULT TRUE,
+            category VARCHAR(20) DEFAULT 'MIXED',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )`
         }
       ];
 
