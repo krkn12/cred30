@@ -36,30 +36,38 @@ export class AdminApprovalController {
             const result = await executeInTransaction(pool, async (client) => {
                 let processResult: any;
                 if (type === 'TRANSACTION') {
-                    console.log(`[DEBUG_CTRL] Processando TRANSAÇÃO ID: ${id} | Ação: ${action}`);
+                    console.log(`[DEBUG_ADMIN] Processando TRANSAÇÃO ID: ${id} | Ação Solicitada: ${action}`);
                     processResult = await processTransactionApproval(client, id as any, action);
                 } else if (type === 'LOAN') {
-                    console.log(`[DEBUG_CTRL] Processando EMPRÉSTIMO ID: ${id} | Ação: ${action}`);
+                    console.log(`[DEBUG_ADMIN] Processando EMPRÉSTIMO ID: ${id} | Ação Solicitada: ${action}`);
                     const { processLoanApproval } = await import('../../../domain/services/transaction.service');
                     processResult = await processLoanApproval(client, id as any, action);
                 } else {
                     throw new Error('Tipo de ação não reconhecido');
                 }
 
-                console.log(`[DEBUG_CTRL] Resultado do processamento:`, JSON.stringify(processResult));
+                console.log(`[DEBUG_ADMIN] Resultado Final do Processamento:`, JSON.stringify(processResult));
                 return processResult;
             });
 
             if (!result.success) {
+                console.error(`[DEBUG_ADMIN] FALHA na transação: ${result.error}`);
                 return c.json({
                     success: false,
                     message: result.error
                 }, 400);
             }
 
+            const finalStatus = result.data?.status || (action === 'APPROVE' ? 'APPROVED' : 'REJECTED');
+            const statusLabel = finalStatus === 'APPROVED' ? 'Aprovado' : 'Rejeitado';
+
             return c.json({
                 success: true,
-                message: `${action === 'APPROVE' ? 'Aprovado' : 'Rejeitado'} com sucesso! [SERVER_ID: ${Date.now()}]`,
+                message: `${statusLabel} com sucesso! [REF: ${Date.now()}]`,
+                data: {
+                    id,
+                    status: finalStatus
+                }
             });
         } catch (error: any) {
             if (error instanceof z.ZodError) {

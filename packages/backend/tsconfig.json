@@ -33,7 +33,6 @@
       ]
     },
     "types": [
-      "bun-types",
       "node"
     ]
   },

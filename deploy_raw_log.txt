@@ -2,3 +2,124 @@
 > cred30@1.0.638 deploy
 > git add . && git commit -m "chore: update version and deploy" && git push origin master && npm run build:frontend && firebase deploy --only hosting
 
+[master 314e623] chore: update version and deploy
+ 87 files changed, 2125 insertions(+), 874 deletions(-)
+ create mode 100644 Object
+ create mode 100644 db_exports/admin_logs.csv
+ create mode 100644 db_exports/audit_logs.csv
+ create mode 100644 db_exports/bug_reports.csv
+ create mode 100644 db_exports/consortium_groups.csv
+ create mode 100644 db_exports/consortium_members.csv
+ create mode 100644 db_exports/course_purchases.csv
+ create mode 100644 db_exports/delivery_claims.csv
+ create mode 100644 db_exports/delivery_insurance_fund.csv
+ create mode 100644 db_exports/education_sessions.csv
+ create mode 100644 db_exports/governance_proposals.csv
+ create mode 100644 db_exports/governance_votes.csv
+ create mode 100644 db_exports/investments.csv
+ create mode 100644 db_exports/loan_installments.csv
+ create mode 100644 db_exports/loans.csv
+ create mode 100644 db_exports/marketplace_contacts.csv
+ create mode 100644 db_exports/marketplace_food_categories.csv
+ create mode 100644 db_exports/marketplace_listing_images.csv
+ create mode 100644 db_exports/marketplace_listing_variants.csv
+ create mode 100644 db_exports/marketplace_listings.csv
+ create mode 100644 db_exports/marketplace_orders.csv
+ create mode 100644 db_exports/notifications.csv
+ create mode 100644 db_exports/pdv_devices.csv
+ create mode 100644 db_exports/pdv_products.csv
+ create mode 100644 db_exports/pdv_sale_items.csv
+ create mode 100644 db_exports/pdv_sales.csv
+ create mode 100644 db_exports/pdv_subscription_payments.csv
+ create mode 100644 db_exports/pdv_subscriptions.csv
+ create mode 100644 db_exports/products.csv
+ create mode 100644 db_exports/promo_video_views.csv
+ create mode 100644 db_exports/promo_videos.csv
+ create mode 100644 db_exports/quotas.csv
+ create mode 100644 db_exports/rate_limit_logs.csv
+ create mode 100644 db_exports/referral_codes.csv
+ create mode 100644 db_exports/support_chats.csv
+ create mode 100644 db_exports/support_messages.csv
+ create mode 100644 db_exports/system_config.csv
+ create mode 100644 db_exports/system_costs.csv
+ create mode 100644 db_exports/transaction_reviews.csv
+ create mode 100644 db_exports/transactions.csv
+ create mode 100644 db_exports/users.csv
+ create mode 100644 db_exports/webhook_logs.csv
+ create mode 100644 deploy_log.txt
+ create mode 100644 deploy_raw_log.txt
+ create mode 100644 git_log_result.txt
+ create mode 100644 packages/backend/backend_lint_report.txt
+ create mode 100644 packages/backend/current_eslint_report.txt
+ create mode 100644 packages/backend/fix-ts-error.js
+ create mode 100644 packages/backend/fix_balance.js
+ create mode 100644 packages/backend/sync_db.ts
+To https://github.com/krkn12/cred30.git
+   5e40b03..314e623  master -> master
+
+> cred30@1.0.638 build:frontend
+> cd packages/frontend-v2 && npm run build
+
+
+> cred30-frontend-v2@1.0.641 build
+> vite build
+
+vite v5.4.0 building for production...
+transforming...
+✓ 6779 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/manifest.webmanifest                          1.00 kB
+dist/index.html                                    4.25 kB │ gzip:   1.61 kB
+dist/assets/index-BD1rQ2Cw.css                   141.55 kB │ gzip:  20.08 kB
+dist/assets/app.constants-Bwz90ru_.js              0.10 kB │ gzip:   0.11 kB
+dist/assets/format.utils-B_caB33K.js               0.46 kB │ gzip:   0.30 kB
+dist/assets/LoadingButton-B4IdqCeS.js              0.92 kB │ gzip:   0.52 kB
+dist/assets/use-location-Ci4irQ7I.js               1.00 kB │ gzip:   0.52 kB
+dist/assets/FaqView-DIqLXusz.js                    4.29 kB │ gzip:   1.95 kB
+dist/assets/security.page-wqcGukwE.js              4.98 kB │ gzip:   1.67 kB
+dist/assets/RankingWidget-Bftagi8U.js              5.22 kB │ gzip:   1.36 kB
+dist/assets/workbox-window.prod.es5-vqzQaGvo.js    5.72 kB │ gzip:   2.35 kB
+dist/assets/DepositView-DAVgjUUY.js                6.61 kB │ gzip:   2.21 kB
+dist/assets/MyBugReportsView-DADpaqD0.js           6.90 kB │ gzip:   2.06 kB
+dist/assets/welcome.page-BHganbHy.js               6.92 kB │ gzip:   2.55 kB
+dist/assets/PdvConfirmView-DXigE22B.js             6.96 kB │ gzip:   2.29 kB
+dist/assets/RewardsShopView-tAJz9Z-K.js            8.92 kB │ gzip:   3.25 kB
+dist/assets/HistoryView-DK_F_PCH.js                9.14 kB │ gzip:   3.11 kB
+dist/assets/ViewFarmView-Bm7DXa2r.js               9.38 kB │ gzip:   3.29 kB
+dist/assets/CourierRegistrationView-BuPcfea_.js   12.37 kB │ gzip:   3.39 kB
+dist/assets/ServicesView-ThFAKrfM.js              12.62 kB │ gzip:   3.18 kB
+dist/assets/VotingView-ZE9X6EoP.js                12.83 kB │ gzip:   3.89 kB
+dist/assets/privacy.page-ZJZk_8xE.js              12.86 kB │ gzip:   3.35 kB
+dist/assets/WithdrawView-5Z5W1NIZ.js              14.45 kB │ gzip:   4.78 kB
+dist/assets/PortfolioView-CRwEmcKR.js             14.68 kB │ gzip:   4.61 kB
+dist/assets/terms.page-Coyctuhv.js                16.16 kB │ gzip:   4.77 kB
+dist/assets/ConsortiumView-DnLHk-Tm.js            19.91 kB │ gzip:   5.05 kB
+dist/assets/InvestView-BXsAvecu.js                20.44 kB │ gzip:   5.70 kB
+dist/assets/EarnView-CG7Dkoy0.js                  21.78 kB │ gzip:   5.47 kB
+dist/assets/purify.es-B9ZVCkUG.js                 22.64 kB │ gzip:   8.75 kB
+dist/assets/SellerRegistrationView-BB-6GQQI.js    23.79 kB │ gzip:   5.79 kB
+dist/assets/EducationView-DqlDSqzr.js             24.41 kB │ gzip:   6.08 kB
+dist/assets/LogisticsView-O2qLS5lm.js             27.07 kB │ gzip:   7.51 kB
+dist/assets/Dashboard-Bs6teKeh.js                 30.58 kB │ gzip:   8.36 kB
+dist/assets/LoansView-CIwsCQFr.js                 31.22 kB │ gzip:   8.95 kB
+dist/assets/SettingsView-CjP9RsTj.js              38.06 kB │ gzip:   7.86 kB
+dist/assets/PromoVideosView-BhLqO799.js           42.07 kB │ gzip:  10.08 kB
+dist/assets/PdvView-B36QYDz7.js                   43.11 kB │ gzip:   9.85 kB
+dist/assets/index.es-BiXYeQz_.js                 150.49 kB │ gzip:  51.44 kB
+dist/assets/MarketplaceView-Ct4SCvbd.js          172.59 kB │ gzip:  40.60 kB
+dist/assets/AvailableDeliveriesMap-CV-Z8cOG.js   174.57 kB │ gzip:  50.20 kB
+dist/assets/html2canvas.esm-BfxBtG_O.js          201.41 kB │ gzip:  48.03 kB
+dist/assets/index-B105WPvD.js                    251.38 kB │ gzip:  57.06 kB
+dist/assets/chunk-admin-BkPOzhw_.js              268.42 kB │ gzip:  54.70 kB
+dist/assets/vendor-heavy-D3IObbNf.js             390.35 kB │ gzip: 128.79 kB
+dist/assets/vendor-react-C2zg0BFW.js             392.40 kB │ gzip: 132.80 kB
+✓ built in 7.22s
+
+PWA v0.21.2
+mode      generateSW
+precache  59 entries (8554.70 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-1c4dc35e.js
+sh: linha 1: firebase: comando não encontrado

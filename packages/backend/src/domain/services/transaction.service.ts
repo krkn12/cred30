@@ -340,10 +340,17 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
       }
     }
 
-    await client.query(
+    const updateRes = await client.query(
       'UPDATE transactions SET status = $1, processed_at = $2 WHERE id = $3',
       ['REJECTED', new Date(), id]
     );
+
+    if (updateRes.rowCount === 0) {
+      console.error(`[DEBUG_DB] FALHA ao atualizar status para REJECTED para transação ${id}. Nenhuma linha afetada.`);
+      throw new Error('Falha ao atualizar status da transação no banco de dados');
+    }
+
+    console.log(`[DEBUG_DB] Transação ${id} marcada como REJECTED com sucesso.`);
 
     // Audit Log
     await logAudit(client, {
@@ -351,7 +358,7 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
       action: 'TRANSACTION_REJECTED',
       entityType: 'transaction',
       entityId: id,
-      oldValues: { status: 'PENDING' },
+      oldValues: { status: transaction.status },
       newValues: { status: 'REJECTED' }
     });
 
@@ -842,14 +849,19 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
     console.log(`[DEPOSIT_APPROVED] R$ ${depositAmount} creditados ao usuário ${transaction.user_id}`);
   }
 
-  console.log(`[DEBUG] Finalizando aprovação da transação ${id}. Atualizando status...`);
+  console.log(`[DEBUG_DB] Finalizando aprovação da transação ${id}. Atualizando status...`);
 
-  await client.query(
+  const updateRes = await client.query(
     'UPDATE transactions SET status = $1, processed_at = $2, payout_status = $3 WHERE id = $4',
     ['APPROVED', new Date(), transaction.type === 'WITHDRAWAL' ? 'PENDING_PAYMENT' : 'NONE', id]
   );
 
-  console.log(`[DEBUG] Status atualizado no banco para APPROVED (ID: ${id})`);
+  if (updateRes.rowCount === 0) {
+    console.error(`[DEBUG_DB] FALHA ao atualizar status para APPROVED para transação ${id}. Nenhuma linha afetada.`);
+    throw new Error('Falha ao aprovar transação no banco de dados: nenhuma linha afetada');
+  }
+
+  console.log(`[DEBUG_DB] Status atualizado no banco para APPROVED (ID: ${id})`);
 
   // Audit Log
   await logAudit(client, {
