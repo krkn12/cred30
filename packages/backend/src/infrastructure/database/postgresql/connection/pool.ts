@@ -1639,6 +1639,42 @@ export const initializeDatabase = async () => {
             category VARCHAR(20) DEFAULT 'MIXED',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           )`
+        },
+        {
+          name: 'admin_logs',
+          query: `CREATE TABLE IF NOT EXISTS admin_logs (
+            id SERIAL PRIMARY KEY,
+            admin_id ${userIdType} REFERENCES users(id),
+            action VARCHAR(50) NOT NULL,
+            entity_type VARCHAR(20) NOT NULL,
+            entity_id VARCHAR(50),
+            old_values JSONB,
+            new_values JSONB,
+            ip_address TEXT,
+            user_agent TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )`
+        },
+        {
+          name: 'investments',
+          query: `CREATE TABLE IF NOT EXISTS investments (
+            id SERIAL PRIMARY KEY,
+            asset_name VARCHAR(100) NOT NULL,
+            asset_type VARCHAR(50) NOT NULL,
+            quantity DECIMAL(15,6) DEFAULT 0,
+            unit_price DECIMAL(15,2) NOT NULL,
+            total_invested DECIMAL(15,2) NOT NULL,
+            current_value DECIMAL(15,2) DEFAULT 0,
+            sale_value DECIMAL(15,2),
+            dividends_received DECIMAL(15,2) DEFAULT 0,
+            status VARCHAR(20) DEFAULT 'ACTIVE',
+            broker VARCHAR(100),
+            notes TEXT,
+            invested_at TIMESTAMP DEFAULT NOW(),
+            sold_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+          )`
         }
       ];
 
@@ -1649,6 +1685,18 @@ export const initializeDatabase = async () => {
         } catch (err: unknown) {
           console.error(`❌[DB] Erro ao criar tabela ${table.name}:`, (err as any)?.message);
         }
+      }
+
+      // Garantir colunas de investimento em bancos legados
+      try {
+        await client.query(`
+          ALTER TABLE investments ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'ACTIVE';
+          ALTER TABLE investments ADD COLUMN IF NOT EXISTS sale_value DECIMAL(15,2);
+          ALTER TABLE investments ADD COLUMN IF NOT EXISTS sold_at TIMESTAMP;
+          ALTER TABLE investments ADD COLUMN IF NOT EXISTS dividends_received DECIMAL(15,2) DEFAULT 0;
+        `);
+      } catch (e) {
+        // Silencioso se der erro (provavelmente tabela ainda não existe ou colunas já existem)
       }
     } catch (err: unknown) {
       console.error('❌[DB] Erro no bloco de tabelas críticas:', (err as any)?.message);

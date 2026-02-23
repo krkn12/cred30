@@ -135,6 +135,8 @@ export class AdminApprovalController {
          ORDER BY t.created_at ASC`
             );
 
+            console.log(`[DEBUG_ADMIN] Encontradas ${result.rows.length} transações pendentes. IDs:`, result.rows.map(r => r.id));
+
             return c.json({
                 success: true,
                 data: result.rows
