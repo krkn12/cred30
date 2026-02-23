@@ -58,7 +58,13 @@ export class AdminApprovalController {
                 }, 400);
             }
 
-            const finalStatus = result.data?.status || (action === 'APPROVE' ? 'APPROVED' : 'REJECTED');
+            // --- VERIFICAÇÃO DUPLA PÓS-COMMIT ---
+            // Consultar o banco fora da transação anterior para confirmar persistência real
+            const verification = await pool.query('SELECT status FROM transactions WHERE id = $1', [id]);
+            const actualStatus = verification.rows[0]?.status;
+            console.log(`[DEBUG_ADMIN] VERIFICAÇÃO PÓS-COMMIT para ID ${id}: Status Atual = ${actualStatus}`);
+
+            const finalStatus = actualStatus || result.data?.status || (action === 'APPROVE' ? 'APPROVED' : 'REJECTED');
             const statusLabel = finalStatus === 'APPROVED' ? 'Aprovado' : 'Rejeitado';
 
             return c.json({
@@ -66,7 +72,8 @@ export class AdminApprovalController {
                 message: `${statusLabel} com sucesso! [REF: ${Date.now()}]`,
                 data: {
                     id,
-                    status: finalStatus
+                    status: finalStatus,
+                    verified: actualStatus === (action === 'APPROVE' ? 'APPROVED' : 'REJECTED')
                 }
             });
         } catch (error: any) {

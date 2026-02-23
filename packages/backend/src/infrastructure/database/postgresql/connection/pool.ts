@@ -836,6 +836,36 @@ export const initializeDatabase = async () => {
       )
     `);
 
+    // Criar tabela de investimentos (Fintech Treasury)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS investments (
+        id SERIAL PRIMARY KEY,
+        asset_name VARCHAR(100) NOT NULL,
+        asset_type VARCHAR(50) NOT NULL,
+        quantity DECIMAL(15,6) DEFAULT 0,
+        unit_price DECIMAL(15,2) NOT NULL,
+        total_invested DECIMAL(15,2) NOT NULL,
+        current_value DECIMAL(15,2) DEFAULT 0,
+        sale_value DECIMAL(15,2),
+        dividends_received DECIMAL(15,2) DEFAULT 0,
+        status VARCHAR(20) DEFAULT 'ACTIVE',
+        broker VARCHAR(100),
+        notes TEXT,
+        invested_at TIMESTAMP DEFAULT NOW(),
+        sold_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    // Garantir colunas de investimento em bancos legados
+    await client.query(`
+      ALTER TABLE investments ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'ACTIVE';
+      ALTER TABLE investments ADD COLUMN IF NOT EXISTS sale_value DECIMAL(15,2);
+      ALTER TABLE investments ADD COLUMN IF NOT EXISTS sold_at TIMESTAMP;
+      ALTER TABLE investments ADD COLUMN IF NOT EXISTS dividends_received DECIMAL(15,2) DEFAULT 0;
+    `);
+
     // Criar tabela de rate limiting (rate_limit_logs)
     await client.query(`
       CREATE TABLE IF NOT EXISTS rate_limit_logs (
