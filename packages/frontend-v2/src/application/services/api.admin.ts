@@ -18,7 +18,7 @@ export class AdminApi extends ApiBase {
     }
 
     async getPayoutQueue(): Promise<ApiResponse<any>> {
-        return await this.request<any>('/admin/payout-queue');
+        return await this.request<any>(`/admin/payout-queue?t=${Date.now()}`);
     }
 
     async confirmPayout(id: string, type: string): Promise<ApiResponse<void>> {
@@ -26,7 +26,7 @@ export class AdminApi extends ApiBase {
     }
 
     async getPendingTransactions(): Promise<ApiResponse<any>> {
-        return await this.request<any>('/admin/pending-transactions');
+        return await this.request<any>(`/admin/pending-transactions?t=${Date.now()}`);
     }
 
     async processAction(id: string | number, type: string, action: string): Promise<ApiResponse<any>> {

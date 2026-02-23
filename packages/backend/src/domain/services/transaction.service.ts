@@ -340,24 +340,27 @@ export const processTransactionApproval = async (client: PoolClient, id: string,
       }
     }
 
+    console.log(`[DEBUG_DB] Tentando atualizar ID: ${id} (Tipo: ${typeof id}) para REJECTED`);
     const updateRes = await client.query(
       'UPDATE transactions SET status = $1, processed_at = $2 WHERE id = $3',
       ['REJECTED', new Date(), id]
     );
 
     if (updateRes.rowCount === 0) {
-      console.error(`[DEBUG_DB] FALHA ao atualizar status para REJECTED para transação ${id}. Nenhuma linha afetada.`);
-      throw new Error('Falha ao atualizar status da transação no banco de dados');
+      console.error(`[DEBUG_DB] FALHA CRÍTICA: Nenhuma linha afetada para ID ${id}. Verificando existência...`);
+      const check = await client.query('SELECT status FROM transactions WHERE id = $1', [id]);
+      console.log(`[DEBUG_DB] Existência do ID ${id}:`, check.rows.length > 0 ? `Existe com status ${check.rows[0].status}` : 'Não existe no banco');
+      throw new Error(`Falha ao rejeitar: transação ${id} não encontrada ou status incompatível`);
     }
 
-    console.log(`[DEBUG_DB] Transação ${id} marcada como REJECTED com sucesso.`);
+    console.log(`[DEBUG_DB] Transação ${id} marcada como REJECTED. Linhas afetadas: ${updateRes.rowCount}`);
 
     // Audit Log
     await logAudit(client, {
       userId: transaction.user_id,
       action: 'TRANSACTION_REJECTED',
       entityType: 'transaction',
-      entityId: id,
+      entityId: id.toString(),
       oldValues: { status: transaction.status },
       newValues: { status: 'REJECTED' }
     });
